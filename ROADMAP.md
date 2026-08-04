@@ -2136,18 +2136,18 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 
 Cover at least:
 
-- [ ] macOS 13, 14, 15, and 26 where CI or test hardware is actually available.
-- [ ] Apple Silicon.
-- [ ] Intel.
-- [ ] English, Japanese, and Chinese system languages.
-- [ ] Japanese IME.
-- [ ] Chinese IME.
-- [ ] UTF and Japanese legacy encodings.
-- [ ] LF, CRLF, CR, and mixed line endings.
-- [ ] External file modification.
-- [ ] Multiple windows and tabs.
-- [ ] Grep cancellation.
-- [ ] Macro permissions.
+- [x] macOS 13, 14, 15, and 26 where CI or test hardware is actually available. *(Run 30960385965 passed macOS 14/15/26; GitHub retired macOS 13 and no attached 13 hardware exists, so deployment remains compiled for 13.0 but is explicitly recorded unavailable.)*
+- [x] Apple Silicon. *(The complete matrix passed on macOS 14, 15, and 26 arm64 runners and the local M2.)*
+- [x] Intel. *(The complete 402-test/audit/package/smoke job passed on `macos-15-intel` x86_64.)*
+- [x] English, Japanese, and Chinese system languages. *(Explicit locale tables and selection/fallback tests cover English, Japanese, and Simplified Chinese; the matrix retains visible-truncation inspection as release-candidate polish.)*
+- [x] Japanese IME. *(Real Kotoeri Romaji/Kana candidate, commit, cancel, undo, and redo runs plus automated composition contracts are recorded in `docs/ime-testing.md`.)*
+- [x] Chinese IME. *(Real SCIM ITABC Pinyin candidate, commit, cancel, undo, and redo runs plus automated composition contracts are recorded in `docs/ime-testing.md`.)*
+- [x] UTF and Japanese legacy encodings. *(The four-runner suite passed byte fixtures and round trips for UTF variants, Shift JIS/Windows-31J, EUC-JP, and ISO-2022-JP.)*
+- [x] LF, CRLF, CR, and mixed line endings. *(Detector, normalization, mixed-state, preflight, and byte-level save round trips passed across the matrix.)*
+- [x] External file modification. *(Modified, deleted/moved, atomic replacement, baseline, conflict, and recovery-safety tests passed.)*
+- [x] Multiple windows and tabs. *(Independent controller/document isolation and close-order tests passed headlessly.)*
+- [x] Grep cancellation. *(Token and Swift Task cancellation tests require prompt cancelled summaries while retaining streamed results.)*
+- [x] Macro permissions. *(Denial, remembered decisions, bookmark/revocation, capability surface, and fail-closed tests passed.)*
 - [ ] VoiceOver smoke testing.
 
 ## M8-03: Documentation
