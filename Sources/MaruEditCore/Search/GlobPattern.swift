@@ -42,7 +42,7 @@ public struct GlobPattern: Sendable, Equatable {
 
     private static func regexBody(for pattern: String) -> String {
         var output = ""
-        var characters = Array(pattern)
+        let characters = Array(pattern)
         var index = 0
 
         while index < characters.count {

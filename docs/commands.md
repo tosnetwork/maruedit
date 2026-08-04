@@ -30,6 +30,7 @@ significantly, replace this with a small script that generates it from
 | `search.findPrevious` | Find Previous | Find | ⇧⌘G | `AppCoordinator.findPrevious()` |
 | `search.goToLine` | Go to Line... | Find | ⌘L | `AppCoordinator.showGoToLine()` |
 | `search.quickOpen` | Quick Open... | Find | ⌘P | `AppCoordinator.showQuickOpen()` |
+| `search.grep` | Find in Folder... | Find | ⇧⌘F | `AppCoordinator.showGrep()` |
 | `view.toggleSidebar` | Toggle Sidebar | View | ⌘B | `AppCoordinator.toggleSidebar()` |
 
 All of them are enabled unconditionally right now (`isEnabled` always

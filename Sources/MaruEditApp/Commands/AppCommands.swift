@@ -18,6 +18,7 @@ extension CommandID {
     static let searchFindPrevious = CommandID("search.findPrevious")
     static let searchGoToLine   = CommandID("search.goToLine")
     static let searchQuickOpen  = CommandID("search.quickOpen")
+    static let searchGrep       = CommandID("search.grep")
     static let viewToggleSidebar = CommandID("view.toggleSidebar")
 }
 
@@ -68,6 +69,9 @@ enum AppCommands {
         })
         registry.register(CommandDefinition(id: .searchQuickOpen, title: "Quick Open...") { ctx in
             ctx.coordinator.showQuickOpen()
+        })
+        registry.register(CommandDefinition(id: .searchGrep, title: "Find in Folder...") { ctx in
+            ctx.coordinator.showGrep()
         })
         registry.register(CommandDefinition(id: .viewToggleSidebar, title: "Toggle Sidebar") { ctx in
             ctx.coordinator.toggleSidebar()

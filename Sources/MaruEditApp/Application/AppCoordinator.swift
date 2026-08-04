@@ -49,6 +49,7 @@ final class AppCoordinator {
     func findPrevious()               { ensureWindowControllerReady().findAgain(direction: .previous) }
     func showGoToLine()                { ensureWindowControllerReady().showGoToLine() }
     func showQuickOpen()               { ensureWindowControllerReady().showQuickOpen() }
+    func showGrep()                    { ensureWindowControllerReady().showGrep() }
     func toggleSidebar()               { ensureWindowControllerReady().toggleSidebar() }
     func clearRecoveryData()           { ensureWindowControllerReady().clearRecoveryData() }
 

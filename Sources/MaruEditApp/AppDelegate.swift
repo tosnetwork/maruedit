@@ -93,6 +93,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         findMenu.addItem(commandItem(.searchGoToLine, "l"))
         findMenu.addItem(.separator())
         findMenu.addItem(commandItem(.searchQuickOpen, "p"))
+        findMenu.addItem(commandItem(.searchGrep, "f", modifiers: [.command, .shift]))
         findItem.submenu = findMenu
         main.addItem(findItem)
 

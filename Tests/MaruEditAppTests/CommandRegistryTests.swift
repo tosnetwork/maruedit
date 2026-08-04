@@ -54,7 +54,7 @@ final class CommandRegistryTests: XCTestCase {
         let ids: [CommandID] = [
             .fileNew, .fileOpen, .fileOpenFolder, .fileSave, .fileSaveAs,
             .fileCloseTab, .fileClearRecoveryData, .searchFind, .searchReplace, .searchReplaceAll, .searchFindNext,
-            .searchFindPrevious, .searchGoToLine, .searchQuickOpen, .viewToggleSidebar
+            .searchFindPrevious, .searchGoToLine, .searchQuickOpen, .searchGrep, .viewToggleSidebar
         ]
         for id in ids {
             XCTAssertNotNil(registry.definition(for: id), "\(id.rawValue) should be registered")

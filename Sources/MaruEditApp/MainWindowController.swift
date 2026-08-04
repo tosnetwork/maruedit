@@ -8,7 +8,9 @@ final class MainWindowController: NSWindowController,
     SidebarDelegate,
     FindBarDelegate,
     QuickOpenDelegate,
-    StatusBarViewDelegate
+    StatusBarViewDelegate,
+    GrepPanelDelegate,
+    OutputPaneViewDelegate
 {
     private var splitView: NSSplitView!
     private var sidebarVC: SidebarViewController!
@@ -25,6 +27,14 @@ final class MainWindowController: NSWindowController,
     private var lastQuery: SearchQuery?
     private var findHistory: [String] = []
     private var replaceHistory: [String] = []
+
+    private var grepPanel: GrepPanel?
+    private var outputPane: OutputPaneView?
+    private var lastGrepRequest: GrepRequest?
+    private var grepCancellation: CancellationToken?
+    /// Grep reads and decodes every file it visits, so it never runs on
+    /// the main thread (ROADMAP.md M3-04, "No main-actor traversal").
+    private let grepQueue = DispatchQueue(label: "com.maruedit.grep", qos: .userInitiated)
 
     private let documentController = DocumentController()
     private let sessionStore = SessionStore()
@@ -59,6 +69,10 @@ final class MainWindowController: NSWindowController,
         NotificationCenter.default.addObserver(
             self, selector: #selector(windowDidBecomeKey),
             name: NSWindow.didBecomeKeyNotification, object: w
+        )
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(windowDidResize),
+            name: NSWindow.didResizeNotification, object: w
         )
     }
 
@@ -136,6 +150,36 @@ final class MainWindowController: NSWindowController,
         DispatchQueue.main.async { [weak self] in
             self?.splitView.setPosition(220, ofDividerAt: 0)
         }
+    }
+
+    /// Positions the tab bar, Find Bar, Output Pane, split view, and status
+    /// bar from the current visibility state. One place to compute these
+    /// frames, because as of M3-06 three different things can appear and
+    /// disappear above and below the editor.
+    private func layoutContentViews() {
+        guard let cv = window?.contentView else { return }
+        let tabH: CGFloat = 32
+        let statusH: CGFloat = 24
+        let findH: CGFloat = findBar.isHidden ? 0 : (findBar.isReplaceRowVisible ? 66 : 34)
+        let paneH: CGFloat = (outputPane?.isHidden == false) ? Self.outputPaneHeight : 0
+
+        findBar.frame = NSRect(
+            x: 0, y: cv.bounds.height - tabH - findH,
+            width: cv.bounds.width, height: findH
+        )
+        outputPane?.frame = NSRect(x: 0, y: statusH, width: cv.bounds.width, height: paneH)
+        splitView.frame = NSRect(
+            x: 0, y: statusH + paneH,
+            width: cv.bounds.width,
+            height: cv.bounds.height - tabH - findH - statusH - paneH
+        )
+        updateTabBarFrame()
+    }
+
+    private static let outputPaneHeight: CGFloat = 200
+
+    @objc private func windowDidResize() {
+        layoutContentViews()
     }
 
     private func updateTabBarFrame() {
@@ -561,14 +605,9 @@ final class MainWindowController: NSWindowController,
     }
 
     func showFind(showingReplace: Bool = false) {
-        guard let cv = window?.contentView else { return }
-        let tabH: CGFloat = 32
-        let statusH: CGFloat = 24
         if showingReplace { findBar.setReplaceRowVisible(true) }
-        let findH: CGFloat = findBar.isReplaceRowVisible ? 66 : 34
         findBar.isHidden = false
-        findBar.frame = NSRect(x: 0, y: cv.bounds.height - tabH - findH, width: cv.bounds.width, height: findH)
-        splitView.frame = NSRect(x: 0, y: statusH, width: cv.bounds.width, height: cv.bounds.height - tabH - findH - statusH)
+        layoutContentViews()
         // Incremental search restarts from wherever the caret was when the
         // bar opened, not from the previous keystroke's match.
         let selection = editorVC.textView.selectedRange()
@@ -650,6 +689,148 @@ final class MainWindowController: NSWindowController,
         quickOpen?.activate()
         w.addChildWindow(quickOpen!, ordered: .above)
         quickOpen?.makeKeyAndOrderFront(nil)
+    }
+
+    // MARK: - Grep (M3-06)
+
+    /// Opens the Find in Folder sheet, pre-filled from the Find Bar's
+    /// current query and the most sensible folder available.
+    func showGrep() {
+        guard let window = window else { return }
+        let panel = grepPanel ?? {
+            let created = GrepPanel()
+            created.delegate = self
+            grepPanel = created
+            return created
+        }()
+
+        panel.prefill(with: findBar.isHidden ? lastQuery : findBar.currentQuery)
+        if panel.folderURL == nil {
+            panel.folderURL = sidebarVC.rootFolderURL
+                ?? curDoc?.fileURL?.deletingLastPathComponent()
+        }
+        window.beginSheet(panel.window)
+        panel.focusPattern()
+    }
+
+    func grepPanel(_ panel: GrepPanel, didSubmit request: GrepRequest) {
+        window?.endSheet(panel.window)
+        runGrep(request)
+    }
+
+    func grepPanelDidCancel(_ panel: GrepPanel) {
+        window?.endSheet(panel.window)
+    }
+
+    func grepPanelDidRequestFolderChoice(_ panel: GrepPanel) {
+        let open = NSOpenPanel()
+        open.canChooseDirectories = true
+        open.canChooseFiles = false
+        open.allowsMultipleSelection = false
+        open.directoryURL = panel.folderURL
+        open.beginSheetModal(for: panel.window) { response in
+            guard response == .OK, let url = open.url else { return }
+            panel.folderURL = url
+        }
+    }
+
+    private func runGrep(_ request: GrepRequest) {
+        lastGrepRequest = request
+        grepCancellation?.cancel()
+        let token = CancellationToken()
+        grepCancellation = token
+
+        let pane = ensureOutputPane()
+        pane.beginRun(pattern: request.query.pattern)
+        layoutContentViews()
+
+        grepQueue.async { [weak self] in
+            GrepService.run(request, isCancelled: { token.isCancelled }) { event in
+                // Every event hops back to the main thread; the search
+                // itself — traversal, decoding, matching — stays here on
+                // the background queue.
+                DispatchQueue.main.async {
+                    guard let self = self, self.grepCancellation === token else { return }
+                    self.handle(event)
+                }
+            }
+        }
+    }
+
+    private func handle(_ event: GrepEvent) {
+        guard let pane = outputPane else { return }
+        switch event {
+        case .started:
+            break
+        case .match(let match):
+            pane.append(match)
+        case .skippedFile:
+            // Counted in the summary. Individual skips become visible rows
+            // when the Output Pane gains channels in M6-06; showing them
+            // inline now would bury the matches.
+            break
+        case .progress(let scannedFiles):
+            pane.updateProgress(scannedFiles: scannedFiles)
+        case .finished(let summary):
+            pane.finish(summary)
+            pane.focusResults()
+        }
+    }
+
+    private func ensureOutputPane() -> OutputPaneView {
+        if let existing = outputPane {
+            existing.isHidden = false
+            return existing
+        }
+        let pane = OutputPaneView()
+        pane.delegate = self
+        pane.autoresizingMask = [.width, .maxYMargin]
+        window?.contentView?.addSubview(pane)
+        outputPane = pane
+        return pane
+    }
+
+    // MARK: - OutputPaneViewDelegate
+
+    func outputPane(_ pane: OutputPaneView, didActivate match: GrepMatch) {
+        // Goes through the normal open path, so a file that is already
+        // open is re-selected rather than opened a second time
+        // (`DocumentController.open` reports `wasAlreadyOpen`).
+        openFile(match.url)
+        let length = (editorVC.textView.string as NSString).length
+        guard match.range.location <= length else { return }
+        let clamped = NSRange(
+            location: match.range.location,
+            length: min(match.range.length, length - match.range.location)
+        )
+        editorVC.select(clamped)
+        window?.makeFirstResponder(editorVC.textView)
+    }
+
+    func outputPaneDidRequestRerun(_ pane: OutputPaneView) {
+        guard let request = lastGrepRequest else { return }
+        runGrep(request)
+    }
+
+    func outputPaneDidRequestCancel(_ pane: OutputPaneView) {
+        grepCancellation?.cancel()
+    }
+
+    func outputPaneDidRequestClose(_ pane: OutputPaneView) {
+        grepCancellation?.cancel()
+        pane.isHidden = true
+        layoutContentViews()
+        window?.makeFirstResponder(editorVC.textView)
+    }
+
+    func outputPaneDidRequestSave(_ pane: OutputPaneView, text: String) {
+        guard let window = window else { return }
+        let save = NSSavePanel()
+        save.nameFieldStringValue = "search-results.txt"
+        save.beginSheetModal(for: window) { response in
+            guard response == .OK, let url = save.url else { return }
+            try? AtomicFileWriter.write(Data(text.utf8), to: url)
+        }
     }
 
     // MARK: - QuickOpenDelegate
@@ -845,12 +1026,8 @@ final class MainWindowController: NSWindowController,
     }
 
     func findBarDidDismiss(_ bar: FindBarView) {
-        guard let cv = window?.contentView else { return }
-        let tabH: CGFloat = 32
-        let statusH: CGFloat = 24
         findBar.isHidden = true
-        findBar.frame.size.height = 0
-        splitView.frame = NSRect(x: 0, y: statusH, width: cv.bounds.width, height: cv.bounds.height - tabH - statusH)
+        layoutContentViews()
         editorVC.incrementalSearchAnchor = nil
         editorVC.searchScopeSelection = nil
         window?.makeFirstResponder(editorVC.textView)
