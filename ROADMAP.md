@@ -1707,16 +1707,16 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M3-06: Grep UI and Output Pane
 
-- [ ] Add a Grep panel.
-- [ ] Present results in a structured list.
-- [ ] Double-click or Return opens and locates a result.
-- [ ] Reuse an already-open document instead of creating a duplicate tab.
-- [ ] Add Copy Path, Copy Line, and Reveal in Finder.
-- [ ] Save results.
-- [ ] Rerun a query.
-- [ ] Support keyboard navigation and accessibility.
+- [x] Add a Grep panel. *(`GrepPanel`, opened by the stable `search.grep` command / ⌘⇧F, collects the shared query options, root folder, include/exclude globs, and hidden-file option in a non-blocking sheet.)*
+- [x] Present results in a structured list. *(`OutputPaneView` is an `NSTableView`-backed pane below the editor; matches stream into rows containing relative path, line, and highlighted preview rather than becoming an editable document.)*
+- [x] Double-click or Return opens and locates a result. *(`ResultTableView` handles Return/Enter and the table handles double-click; both call one delegate path that opens the URL and selects the normalized-text `NSRange`. Verified live at `OutputPaneView.swift` line 170, column 35.)*
+- [x] Reuse an already-open document instead of creating a duplicate tab. *(`openFile` uses `DocumentController.open`, whose existing-tab behavior is covered by `testOpenActivatesExistingTabInsteadOfDuplicating`; verified live by rerunning the query and activating the same result a second time — one `OutputPaneView.swift` tab remained.)*
+- [x] Add Copy Path, Copy Line, and Reveal in Finder. *(Context-menu actions use the selected structured result; Copy Line uses the tested `path:line:column: preview` representation from `GrepResultFormatter`.)*
+- [x] Save results. *(The pane formats the same structured results through `GrepResultFormatter` and writes them with `AtomicFileWriter`; failures leave the pane intact and show a non-blocking error sheet.)*
+- [x] Rerun a query. *(The last complete `GrepRequest` is retained by the window controller; Rerun cancels any prior token, clears the pane, and starts the same request on the background queue.)*
+- [x] Support keyboard navigation and accessibility. *(The panel and pane controls have explicit accessibility labels; results expose path/line/column/preview descriptions; focus moves to the first row after completion so arrow keys and Return work immediately. Covered by `GrepUITests` and verified live with keyboard activation.)*
 
-**Acceptance:** A user can run Grep and jump to a match without using the mouse.
+**Acceptance:** A user can run Grep and jump to a match without using the mouse. *(Verified live in the Release app: ⌘⇧F opened the sheet, Accessibility automation entered a query/root and invoked Search, the background scan returned 9 matches across 99 files, focus moved to the results table, and Return opened `OutputPaneView.swift` at line 170 / column 35. `swift test`: 233/233 passed.)*
 
 ## M3-07: Search History and Privacy
 

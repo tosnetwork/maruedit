@@ -829,7 +829,16 @@ final class MainWindowController: NSWindowController,
         save.nameFieldStringValue = "search-results.txt"
         save.beginSheetModal(for: window) { response in
             guard response == .OK, let url = save.url else { return }
-            try? AtomicFileWriter.write(Data(text.utf8), to: url)
+            do {
+                try AtomicFileWriter.write(Data(text.utf8), to: url)
+            } catch {
+                let alert = NSAlert()
+                alert.alertStyle = .critical
+                alert.messageText = "Search Results Could Not Be Saved"
+                alert.informativeText = "The results remain open and unchanged. Choose another location or check that the destination is writable."
+                alert.addButton(withTitle: "OK")
+                alert.beginSheetModal(for: window)
+            }
         }
     }
 
