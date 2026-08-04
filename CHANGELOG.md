@@ -6,6 +6,11 @@ semantic version tags.
 
 ## [Unreleased]
 
+### Documentation
+
+- Added the 1.0 user, Search/Grep, migration, compatibility, FAQ, and troubleshooting guides; linked the existing key-binding, macro, and external-command references from the README.
+- Replaced stale sub-megabyte/20 MB and unsigned-download claims with reproducible M7 measurements and a Gatekeeper-safe release policy.
+
 ### Changed
 
 - Entered the 1.0 feature freeze; changes are now limited to release work and
@@ -15,4 +20,3 @@ semantic version tags.
 
 - Cold launch, one-window idle RSS, and 1 MB open time do not yet meet their
   engineering targets. See GitHub issues #1–#3 and `docs/performance.md`.
-

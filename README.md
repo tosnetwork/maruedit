@@ -1,6 +1,6 @@
 # MaruEdit
 
-The fastest way to open, browse, and quick-edit code on macOS — a native editor under 1 MB, built entirely with Swift and AppKit.
+A fast native editor for opening, browsing, and editing text on macOS, built entirely with Swift and AppKit.
 
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue)
 ![Swift 5.9](https://img.shields.io/badge/Swift-5.9-orange)
@@ -52,17 +52,17 @@ MaruEdit is not trying to replace VS Code, Xcode, or Sublime Text. If you need e
 
 ## Why MaruEdit?
 
-Most code editors ship hundreds of megabytes of bundled runtimes, web engines, and frameworks before you even open a file. MaruEdit takes the opposite approach: a single native binary under 1 MB that launches instantly and uses minimal resources.
+Most code editors ship bundled web runtimes and large framework stacks. MaruEdit takes the opposite approach: a small native AppKit application with no third-party runtime dependencies.
 
 ### Size Comparison
 
 | Editor | App Size | RAM at Idle | Runtime |
 |---|---|---|---|
-| **MaruEdit** | **< 1 MB** | **~20 MB** | Native (AppKit) |
+| **MaruEdit 1.0 beta** | **2.82 MiB** | **115 MB measured** | Native (AppKit) |
 | Sublime Text | ~40 MB | ~90–140 MB | Native (C++) |
 | VS Code | ~400 MB | ~226+ MB | Electron (Chromium + Node.js) |
 
-The entire app — editor, syntax highlighter, file explorer, session persistence — compiles to a single sub-megabyte binary from ~3,000 lines of Swift. Zero dependencies. Zero frameworks. Just `swift build`.
+The editor, search engine, file explorer, session persistence, macros, and settings compile without third-party package dependencies. Current measurements and their reproducible method are in [docs/performance.md](docs/performance.md).
 
 ### What Makes It Different
 
@@ -107,19 +107,7 @@ The entire app — editor, syntax highlighter, file explorer, session persistenc
 
 ## Install
 
-Download the latest DMG from the [Releases page](https://github.com/tosnetwork/maruedit/releases/latest), open it, and drag MaruEdit to Applications.
-
-> **macOS Gatekeeper note:** Because the app is not signed with an Apple Developer certificate, macOS may show *"MaruEdit is damaged and can't be opened."* This is a false positive — run the command below to clear the quarantine flag, or install via Homebrew which handles it automatically:
->
-> ```bash
-> xattr -rd com.apple.quarantine /Applications/MaruEdit.app
-> ```
-
-**Or install with Homebrew** (no quarantine issue):
-
-```bash
-brew install tosnetwork/maruedit/maruedit
-```
+When a signed and notarized build is published, download its DMG from the [Releases page](https://github.com/tosnetwork/maruedit/releases/latest), open it, and drag MaruEdit to Applications. Until then, build from source; do not bypass Gatekeeper for an artifact you cannot verify.
 
 ## Build from Source
 
@@ -196,6 +184,15 @@ maruedit/
 │   └── MaruEditAppTests/
 └── .gitignore
 ```
+
+## Documentation
+
+- [User Guide](docs/user-guide.md): files, encodings, BOMs, and line endings
+- [Search and Grep](docs/search-and-grep.md): Find, Replace, folder Grep, and Grep Replace
+- [Key bindings](docs/key-bindings.md) and the complete [command catalog](docs/commands.md)
+- [Macros](docs/macros.md), [Macro API v1](docs/macro-api-v1.md), and [external-command security](docs/external-commands.md)
+- [Windows-editor migration](docs/migration-windows-editors.md) and [Hidemaru workflow compatibility](docs/hidemaru-compatibility.md)
+- [FAQ](docs/faq.md) and [Troubleshooting](docs/troubleshooting.md)
 
 ## License
 

@@ -2152,16 +2152,16 @@ Cover at least:
 
 ## M8-03: Documentation
 
-- [ ] README with positioning, installation, build instructions, screenshots, and license.
-- [ ] User Guide for opening, saving, encodings, and line endings.
-- [ ] Search and Grep guide.
-- [ ] Keybinding guide.
-- [ ] Macro API guide.
-- [ ] External-command security guide.
-- [ ] Migration guide for users of Windows-style editors.
-- [ ] Hidemaru workflow compatibility matrix.
-- [ ] FAQ.
-- [ ] Troubleshooting guide.
+- [x] README with positioning, installation, build instructions, screenshots, and license. *(The README links verified screenshots and license/provenance files, gives source and eventual notarized-release installation paths, and corrects size/RSS claims to measured M7 data.)*
+- [x] User Guide for opening, saving, encodings, and line endings. *(`docs/user-guide.md` covers file lifecycle, conflicts, recovery, encoding/BOM/newline state, large-file policy, settings, and profiles.)*
+- [x] Search and Grep guide. *(`docs/search-and-grep.md` covers literal/regex Find and Replace, result navigation, cancellation, and previewed Grep Replace.)*
+- [x] Keybinding guide. *(`docs/key-bindings.md` documents schema v1, built-in profiles, conflicts, chords, timeout, and IME-safe routing.)*
+- [x] Macro API guide. *(`docs/macro-api-v1.md`, `docs/macros.md`, and `docs/macro-engine.md` document the frozen capability API, installation, execution, cancellation, and compatibility.)*
+- [x] External-command security guide. *(`docs/external-commands.md` documents direct execution, environment allowlisting, shell warnings, output modes, cancellation, and user authority.)*
+- [x] Migration guide for users of Windows-style editors. *(`docs/migration-windows-editors.md` maps shortcuts, encodings/newlines, search, BOX/multiple selection, automation, and profiles.)*
+- [x] Hidemaru workflow compatibility matrix. *(`docs/hidemaru-compatibility.md` distinguishes supported workflows, partial macro compatibility, and intentionally unsupported proprietary/Windows integration.)*
+- [x] FAQ. *(`docs/faq.md` answers independence, telemetry, OS coverage, legacy files, macros, large files, and settings questions.)*
+- [x] Troubleshooting guide. *(`docs/troubleshooting.md` covers decoding, newlines, conflicts, Grep, keys/IME, permissions, recovery, Gatekeeper, and diagnostic evidence.)*
 
 ## M8-04: Security and Supply Chain
 
