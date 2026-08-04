@@ -60,9 +60,14 @@ does not request access to files from the user's previous session.
   `zhongwen`; Space committed `中文 中文`; Undo/Redo restored both states.
   Escape cancellation restored the seeded text after the deferred-cancel fix.
   Pass.
-- Japanese direct Kana typing and non-first Kanji candidate: not executed on
-  this machine because only the Romaji Kotoeri input mode is enabled. The M4
-  Gate remains open until this final manual case is verified.
+- Japanese direct Kana (Kotoeri KanaTyping): temporarily enabled the system
+  Kana source and used physical key codes (rather than synthesized Latin
+  characters). Direct `か` composition stayed at the primary selection;
+  pressing Space twice selected the non-first `火` candidate, and Kotoeri's
+  two Enter stages (accept candidate, then commit marked text) produced
+  `火 火`. Undo restored `aa aa`, Redo restored `火 火`, and two Escape presses
+  during active Kana input restored `aa aa`. Pass. The temporary source was
+  disabled and the prior Romaji source restored after testing.
 
 The run exposed three real system paths absent from the original deterministic
 tests: legacy one-argument `insertText`, unmark-only commits, and cancellation
