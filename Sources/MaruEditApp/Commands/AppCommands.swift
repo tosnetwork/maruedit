@@ -31,6 +31,7 @@ extension CommandID {
     static let viewTabWidth4 = CommandID("view.tabWidth4")
     static let viewTabWidth8 = CommandID("view.tabWidth8")
     static let viewShowFonts = CommandID("view.showFonts")
+    static let viewCustomizeMenus = CommandID("view.customizeMenus")
     static let editAddCursorAbove = CommandID("edit.addCursorAbove")
     static let editAddCursorBelow = CommandID("edit.addCursorBelow")
     static let editSelectNextOccurrence = CommandID("edit.selectNextOccurrence")
@@ -143,6 +144,9 @@ enum AppCommands {
         })
         registry.register(CommandDefinition(id: .viewShowFonts, title: "Show Fonts") {
             $0.coordinator.showFontPanel()
+        })
+        registry.register(CommandDefinition(id: .viewCustomizeMenus, title: "Customize Menus...") {
+            $0.coordinator.showMenuCustomization()
         })
         registry.register(CommandDefinition(id: .editAddCursorAbove, title: "Add Cursor Above") { $0.coordinator.addCursorAbove() })
         registry.register(CommandDefinition(id: .editAddCursorBelow, title: "Add Cursor Below") { $0.coordinator.addCursorBelow() })

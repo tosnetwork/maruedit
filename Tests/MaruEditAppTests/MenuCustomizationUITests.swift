@@ -1,0 +1,68 @@
+import AppKit
+import MaruEditCore
+import XCTest
+@testable import MaruEditApp
+
+final class MenuCustomizationUITests: XCTestCase {
+    private let settings = CommandDefinition(id: .appSettings, title: "Settings") { _ in }
+    private let find = CommandDefinition(id: .searchFind, title: "Find") { _ in }
+
+    func testWindowHidesOptionalCommandsButProtectsRequiredCommandsAndRestores() throws {
+        var changes: [MenuCustomization] = []
+        let controller = MenuCustomizationWindowController(
+            definitions: [settings, find], protectedCommandIDs: [.appSettings],
+            customization: .defaults, onChange: { changes.append($0) })
+
+        controller.setVisibleForTesting(false, command: .appSettings)
+        XCTAssertEqual(controller.checkboxForTesting(.appSettings)?.state, .on)
+        XCTAssertEqual(controller.currentCustomization, .defaults)
+
+        controller.setVisibleForTesting(false, command: .searchFind)
+        XCTAssertEqual(controller.currentCustomization.hiddenCommandIDs, [.searchFind])
+        XCTAssertEqual(changes.last?.hiddenCommandIDs, [.searchFind])
+
+        controller.restoreForTesting()
+        XCTAssertEqual(controller.currentCustomization, .defaults)
+        XCTAssertEqual(controller.checkboxForTesting(.searchFind)?.state, .on)
+    }
+
+    func testApplyingCustomizationUsesIDsAndNeverHidesSystemOrProtectedItems() {
+        let root = NSMenu()
+        let menu = NSMenu(title: "Test")
+        let top = NSMenuItem(); top.submenu = menu; root.addItem(top)
+        menu.addItem(NSMenuItem(title: "About Localized However", action: nil, keyEquivalent: ""))
+        menu.addItem(.separator())
+        let protected = NSMenuItem(title: "Localized Settings", action: nil, keyEquivalent: "")
+        protected.representedObject = CommandID.appSettings
+        menu.addItem(protected)
+        let group = NSMenuItem(title: "Localized Group", action: nil, keyEquivalent: "")
+        group.identifier = NSUserInterfaceItemIdentifier("menu.group.test")
+        let submenu = NSMenu()
+        let optional = NSMenuItem(title: "Localized Find", action: nil, keyEquivalent: "")
+        optional.representedObject = CommandID.searchFind
+        submenu.addItem(optional)
+        group.submenu = submenu
+        menu.addItem(group)
+
+        AppDelegate.applyMenuCustomization(
+            MenuCustomization(hiddenCommandIDs: [.appSettings, .searchFind]),
+            protectedCommandIDs: [.appSettings], to: root)
+
+        XCTAssertFalse(menu.items[0].isHidden, "system item has no Command ID and is protected by construction")
+        XCTAssertFalse(protected.isHidden)
+        XCTAssertTrue(optional.isHidden)
+        XCTAssertTrue(group.isHidden, "an empty optional command group should collapse")
+    }
+
+    func testBuiltApplicationMenuContainsRequiredMacOSItems() {
+        _ = NSApplication.shared
+        let delegate = AppDelegate()
+        delegate.buildMenu()
+        let menus = NSApp.mainMenu?.items.compactMap(\.submenu) ?? []
+        let allTitles = Set(menus.flatMap { $0.items.map(\.title) })
+        for required in ["About MaruEdit", "Services", "Hide MaruEdit", "Hide Others",
+                         "Show All", "Quit MaruEdit", "Undo", "Redo", "Minimize", "Zoom"] {
+            XCTAssertTrue(allTitles.contains(required), "missing required menu item \(required)")
+        }
+    }
+}

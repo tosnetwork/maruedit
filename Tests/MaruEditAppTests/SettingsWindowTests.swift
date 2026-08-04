@@ -87,6 +87,24 @@ final class SettingsWindowTests: XCTestCase {
         XCTAssertTrue(groupButtons.allSatisfy { !($0.accessibilityLabel() ?? "").isEmpty })
     }
 
+    func testSettingsExportImportAndRestoreAll() throws {
+        var original = Preferences.defaults
+        original.fontSize = 19
+        original.invisibleCharacters.tabs = true
+        var received: Preferences?
+        let controller = SettingsWindowController(preferences: original) { received = $0 }
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("SettingsWindowTests-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        try controller.exportSettings(to: url)
+        controller.restoreAllForTesting()
+        XCTAssertEqual(received, .defaults)
+        try controller.importSettings(from: url)
+        XCTAssertEqual(received, original)
+        XCTAssertEqual(controller.currentPreferences, original)
+    }
+
     private func descendants(of view: NSView) -> [NSView] {
         view.subviews.flatMap { [$0] + descendants(of: $0) }
     }

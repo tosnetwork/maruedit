@@ -43,6 +43,7 @@ significantly, replace this with a small script that generates it from
 | `view.tabWidth4` | 4 Spaces | View > Tab Width | — | `AppCoordinator.setTabWidth(4)` |
 | `view.tabWidth8` | 8 Spaces | View > Tab Width | — | `AppCoordinator.setTabWidth(8)` |
 | `view.showFonts` | Show Fonts | View | — | `AppCoordinator.showFontPanel()` |
+| `view.customizeMenus` | Customize Menus... | View | — | `AppCoordinator.showMenuCustomization()` |
 | `edit.addCursorAbove` | Add Cursor Above | Edit | ⌥⌘↑ | `AppCoordinator.addCursorAbove()` |
 | `edit.addCursorBelow` | Add Cursor Below | Edit | ⌥⌘↓ | `AppCoordinator.addCursorBelow()` |
 | `edit.selectNextOccurrence` | Select Next Occurrence | Edit | ⌘D | `AppCoordinator.selectNextOccurrence()` |

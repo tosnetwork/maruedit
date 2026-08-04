@@ -96,4 +96,25 @@ final class PreferencesStoreTests: XCTestCase {
         XCTAssertEqual(migrated.schemaVersion, 2)
         XCTAssertEqual(migrated.invisibleCharacters, .none)
     }
+
+    func testExportImportRestoreAndRejectFutureSchema() throws {
+        let (store, defaults, suite) = makeStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MaruEditSettings-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        var preferences = Preferences.defaults
+        preferences.fontSize = 17
+        preferences.invisibleCharacters.tabs = true
+        try store.export(preferences, to: url)
+        XCTAssertEqual(try store.importSettings(from: url), preferences)
+
+        store.save(preferences)
+        store.resetToDefaults()
+        XCTAssertEqual(store.load(), .defaults)
+
+        preferences.schemaVersion = Preferences.currentSchemaVersion + 1
+        try JSONEncoder().encode(preferences).write(to: url)
+        XCTAssertThrowsError(try store.importSettings(from: url))
+    }
 }

@@ -1914,11 +1914,11 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 
 ## M5-08: Basic Menu Customization
 
-- [ ] Allow users to hide or show selected non-system commands.
-- [ ] Store customization by Command ID only.
-- [ ] Protect required macOS menu items.
-- [ ] Restore default menus.
-- [ ] Version and migrate the menu schema.
+- [x] Allow users to hide or show selected non-system commands. *(`MenuCustomizationWindowController` presents native checkboxes for registered commands and immediately rebuilds the menu from the saved visibility model.)*
+- [x] Store customization by Command ID only. *(`MenuCustomization` persists a normalized array of stable `CommandID` values; localized titles never enter the schema, as verified by the title-independent AppKit test.)*
+- [x] Protect required macOS menu items. *(About, Settings, Services, Hide/Hide Others/Show All, Quit, Undo/Redo, Cut/Copy/Paste/Select All, Minimize/Zoom, and the customization command remain available; protected registered commands are disabled in the editor.)*
+- [x] Restore default menus. *(Restore Defaults clears only the hidden-command set, saves it, and rebuilds the standard menu; Core and window tests cover the path.)*
+- [x] Version and migrate the menu schema. *(Schema v1 is version checked, missing legacy storage migrates to defaults, and unsupported future data falls back safely without hiding commands.)*
 
 ### M5 Gate
 

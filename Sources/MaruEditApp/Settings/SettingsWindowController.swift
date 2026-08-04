@@ -9,6 +9,7 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
 
     private var preferences: Preferences
     private let onChange: (Preferences) -> Void
+    private let transferStore = PreferencesStore()
     private let searchField = NSSearchField()
     private let sidebar = NSStackView()
     private let content = NSView()
@@ -133,6 +134,22 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
             stack.addArrangedSubview(row(SettingsLocalization.text("fontSize"), fontSizeField))
         case .general:
             stack.addArrangedSubview(NSTextField(wrappingLabelWithString: SettingsLocalization.text("immediate")))
+        case .advanced:
+            stack.addArrangedSubview(NSTextField(
+                wrappingLabelWithString: SettingsLocalization.text("settingsTransfer")))
+            let export = NSButton(
+                title: SettingsLocalization.text("exportSettings"),
+                target: self, action: #selector(showExportPanel))
+            let importButton = NSButton(
+                title: SettingsLocalization.text("importSettings"),
+                target: self, action: #selector(showImportPanel))
+            let restoreAll = NSButton(
+                title: SettingsLocalization.text("restoreAll"),
+                target: self, action: #selector(restoreAllSettings))
+            for button in [export, importButton, restoreAll] {
+                button.setAccessibilityLabel(button.title)
+                stack.addArrangedSubview(button)
+            }
         default:
             stack.addArrangedSubview(NSTextField(wrappingLabelWithString: SettingsLocalization.text("comingSoon")))
         }
@@ -182,8 +199,55 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
             preferences.fontName = defaults.fontName
             preferences.fontSize = defaults.fontSize
             preferences.theme = defaults.theme
+        case .advanced:
+            preferences = defaults
         default: break
         }
+        onChange(preferences)
+        select(selectedGroup)
+    }
+
+    @objc private func showExportPanel() {
+        guard let window else { return }
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "MaruEdit-settings.json"
+        panel.beginSheetModal(for: window) { [weak self] response in
+            guard response == .OK, let self, let url = panel.url else { return }
+            do { try self.exportSettings(to: url) }
+            catch { self.presentTransferError(error) }
+        }
+    }
+
+    @objc private func showImportPanel() {
+        guard let window else { return }
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.beginSheetModal(for: window) { [weak self] response in
+            guard response == .OK, let self, let url = panel.url else { return }
+            do { try self.importSettings(from: url) }
+            catch { self.presentTransferError(error) }
+        }
+    }
+
+    @objc private func restoreAllSettings() {
+        preferences = .defaults
+        onChange(preferences)
+        select(selectedGroup)
+    }
+
+    private func presentTransferError(_ error: Error) {
+        guard let window else { return }
+        let alert = NSAlert(error: error)
+        alert.beginSheetModal(for: window)
+    }
+
+    func exportSettings(to url: URL) throws {
+        try transferStore.export(preferences, to: url)
+    }
+
+    func importSettings(from url: URL) throws {
+        preferences = try transferStore.importSettings(from: url)
         onChange(preferences)
         select(selectedGroup)
     }
@@ -201,6 +265,7 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
     var visibleGroups: [Group] { Group.allCases.filter { groupButtons[$0]?.isHidden == false } }
     func selectForTesting(_ group: Group) { select(group) }
     func restoreForTesting() { restoreGroupDefaults() }
+    func restoreAllForTesting() { restoreAllSettings() }
     func searchForTesting(_ query: String) {
         searchField.stringValue = query
         controlTextDidChange(Notification(name: NSControl.textDidChangeNotification, object: searchField))

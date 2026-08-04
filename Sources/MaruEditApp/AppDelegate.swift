@@ -7,8 +7,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let isUITestMode = ProcessInfo.processInfo.environment["MARUEDIT_UI_TEST_MODE"] == "1"
     private var recentMenu: NSMenu!
     private var reopenWithEncodingMenu: NSMenu!
+    private var menuCustomizationWindowController: MenuCustomizationWindowController?
+    private lazy var menuCustomizationStore: MenuCustomizationStore = {
+        if isUITestMode {
+            let suite = "network.tos.maruedit.MenuUITest.\(ProcessInfo.processInfo.processIdentifier)"
+            let defaults = UserDefaults(suiteName: suite)!
+            defaults.removePersistentDomain(forName: suite)
+            return MenuCustomizationStore(defaults: defaults)
+        }
+        return MenuCustomizationStore()
+    }()
+    private lazy var menuCustomization = menuCustomizationStore.load()
+    static let protectedCommandIDs: Set<CommandID> = [.appSettings, .viewCustomizeMenus]
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        coordinator.onShowMenuCustomization = { [weak self] in self?.showMenuCustomization() }
         EditorShortcuts.install(
             keyBindings: keyBindings,
             execute: { [coordinator] id in
@@ -51,7 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // MARK: - Menu bar
 
-    private func buildMenu() {
+    func buildMenu() {
         let main = NSMenu()
 
         // App menu
@@ -60,6 +73,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         appMenu.addItem(withTitle: "About MaruEdit", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())
         appMenu.addItem(commandItem(.appSettings))
+        appMenu.addItem(.separator())
+        let servicesItem = NSMenuItem(title: "Services", action: nil, keyEquivalent: "")
+        let servicesMenu = NSMenu(title: "Services")
+        servicesItem.submenu = servicesMenu
+        appMenu.addItem(servicesItem)
+        NSApp.servicesMenu = servicesMenu
+        appMenu.addItem(.separator())
+        appMenu.addItem(withTitle: "Hide MaruEdit", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        let hideOthers = appMenu.addItem(
+            withTitle: "Hide Others", action: #selector(NSApplication.hideOtherApplications(_:)),
+            keyEquivalent: "h")
+        hideOthers.keyEquivalentModifierMask = [.command, .option]
+        appMenu.addItem(withTitle: "Show All", action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Quit MaruEdit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu
@@ -76,12 +102,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         recentMenu.delegate = self
         let recentItem = NSMenuItem(title: "Open Recent", action: nil, keyEquivalent: "")
         recentItem.submenu = recentMenu
+        recentItem.identifier = NSUserInterfaceItemIdentifier("menu.dynamic.openRecent")
         fileMenu.addItem(recentItem)
 
         reopenWithEncodingMenu = NSMenu(title: "Reopen with Encoding")
         reopenWithEncodingMenu.delegate = self
         let reopenItem = NSMenuItem(title: "Reopen with Encoding", action: nil, keyEquivalent: "")
         reopenItem.submenu = reopenWithEncodingMenu
+        reopenItem.identifier = NSUserInterfaceItemIdentifier("menu.dynamic.reopenEncoding")
         fileMenu.addItem(reopenItem)
 
         fileMenu.addItem(.separator())
@@ -120,6 +148,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .editSortLines, .editReverseLines, .editIndent, .editOutdent, .editToggleComment,
         ] { linesMenu.addItem(commandItem(id)) }
         linesItem.submenu = linesMenu
+        linesItem.identifier = NSUserInterfaceItemIdentifier("menu.group.lines")
         editMenu.addItem(linesItem)
         editMenu.addItem(.separator())
         editMenu.addItem(commandItem(.navigateToggleBookmark))
@@ -160,6 +189,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         invisiblesMenu.addItem(commandItem(.viewToggleLineEndings))
         invisiblesMenu.addItem(commandItem(.viewToggleFullWidthSpaces))
         invisiblesItem.submenu = invisiblesMenu
+        invisiblesItem.identifier = NSUserInterfaceItemIdentifier("menu.group.invisibles")
         viewMenu.addItem(invisiblesItem)
         let tabWidthItem = NSMenuItem(title: "Tab Width", action: nil, keyEquivalent: "")
         let tabWidthMenu = NSMenu(title: "Tab Width")
@@ -167,9 +197,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         tabWidthMenu.addItem(commandItem(.viewTabWidth4))
         tabWidthMenu.addItem(commandItem(.viewTabWidth8))
         tabWidthItem.submenu = tabWidthMenu
+        tabWidthItem.identifier = NSUserInterfaceItemIdentifier("menu.group.tabWidth")
         viewMenu.addItem(tabWidthItem)
         viewMenu.addItem(.separator())
         viewMenu.addItem(commandItem(.viewShowFonts))
+        viewMenu.addItem(.separator())
+        viewMenu.addItem(commandItem(.viewCustomizeMenus))
         viewItem.submenu = viewMenu
         main.addItem(viewItem)
 
@@ -183,7 +216,66 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         NSApp.mainMenu = main
         NSApp.windowsMenu = winMenu
+        applyMenuCustomization(to: main)
         syncCommandMenuBindings()
+    }
+
+    private func showMenuCustomization() {
+        if menuCustomizationWindowController == nil {
+            menuCustomizationWindowController = MenuCustomizationWindowController(
+                definitions: coordinator.commandRegistry.allDefinitions,
+                protectedCommandIDs: Self.protectedCommandIDs,
+                customization: menuCustomization
+            ) { [weak self] customization in
+                guard let self else { return }
+                self.menuCustomization = customization
+                if customization == .defaults { self.menuCustomizationStore.restoreDefaults() }
+                else { self.menuCustomizationStore.save(customization) }
+                if let menu = NSApp.mainMenu { self.applyMenuCustomization(to: menu) }
+            }
+        }
+        menuCustomizationWindowController?.showWindow(nil)
+        menuCustomizationWindowController?.window?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func applyMenuCustomization(to root: NSMenu) {
+        Self.applyMenuCustomization(
+            menuCustomization, protectedCommandIDs: Self.protectedCommandIDs, to: root)
+    }
+
+    static func applyMenuCustomization(
+        _ customization: MenuCustomization,
+        protectedCommandIDs: Set<CommandID>,
+        to root: NSMenu
+    ) {
+        func apply(_ menu: NSMenu) {
+            for item in menu.items {
+                item.isHidden = false
+                if let id = item.representedObject as? CommandID {
+                    item.isHidden = customization.hiddenCommands.contains(id)
+                        && !protectedCommandIDs.contains(id)
+                }
+                if let submenu = item.submenu { apply(submenu) }
+                if item.identifier?.rawValue.hasPrefix("menu.group.") == true,
+                   let submenu = item.submenu {
+                    item.isHidden = !submenu.items.contains { !$0.isHidden && !$0.isSeparatorItem }
+                }
+            }
+            for (index, item) in menu.items.enumerated() where item.isSeparatorItem {
+                let hasBefore = menu.items[..<index].reversed().contains {
+                    !$0.isHidden && !$0.isSeparatorItem
+                }
+                let hasAfter = menu.items[(index + 1)...].contains {
+                    !$0.isHidden && !$0.isSeparatorItem
+                }
+                let previousVisibleIsSeparator = menu.items[..<index].reversed().first {
+                    !$0.isHidden
+                }?.isSeparatorItem == true
+                item.isHidden = !hasBefore || !hasAfter || previousVisibleIsSeparator
+            }
+        }
+        apply(root)
     }
 
     func activateKeyBindingProfile(_ profile: KeyBindingProfile) throws {
@@ -222,6 +314,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         mi.keyEquivalentModifierMask = gesture?.menuModifierFlags ?? []
         mi.target = self
         mi.representedObject = id
+        mi.isHidden = menuCustomization.hiddenCommands.contains(id)
+            && !Self.protectedCommandIDs.contains(id)
         return mi
     }
 

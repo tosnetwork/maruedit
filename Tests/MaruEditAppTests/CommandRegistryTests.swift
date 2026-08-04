@@ -58,7 +58,7 @@ final class CommandRegistryTests: XCTestCase {
             .searchClearHistory, .viewToggleSidebar, .viewToggleWrap,
             .viewToggleSpaces, .viewToggleTabs, .viewToggleLineEndings,
             .viewToggleFullWidthSpaces, .viewTabWidth2, .viewTabWidth4,
-            .viewTabWidth8, .viewShowFonts
+            .viewTabWidth8, .viewShowFonts, .viewCustomizeMenus
             , .editAddCursorAbove, .editAddCursorBelow, .editSelectNextOccurrence,
             .editSelectAllOccurrences, .editUndoLastAddedCursor, .editBeginColumnSelection,
             .editDeleteLine, .editDuplicateLine, .editMoveLineUp, .editMoveLineDown,

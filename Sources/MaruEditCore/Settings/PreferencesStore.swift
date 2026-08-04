@@ -41,13 +41,38 @@ public final class PreferencesStore {
         defaults.removeObject(forKey: key)
     }
 
+    public func export(_ preferences: Preferences, to url: URL) throws {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(Self.migrate(preferences)).write(to: url, options: .atomic)
+    }
+
+    public func importSettings(from url: URL) throws -> Preferences {
+        let decoded = try JSONDecoder().decode(
+            Preferences.self, from: Data(contentsOf: url))
+        guard decoded.schemaVersion <= Preferences.currentSchemaVersion else {
+            throw PreferencesImportError.unsupportedSchema(decoded.schemaVersion)
+        }
+        return Self.migrate(decoded)
+    }
+
     /// Migration entry point: brings a decoded, possibly-older schema up
     /// to `Preferences.currentSchemaVersion`. Preferences' decoder supplies
     /// v2's invisible-character defaults for v1 blobs; this entry point then
     /// records the current version and remains the home for future migrations.
-    static func migrate(_ preferences: Preferences) -> Preferences {
+    public static func migrate(_ preferences: Preferences) -> Preferences {
         var migrated = preferences
         migrated.schemaVersion = Preferences.currentSchemaVersion
         return migrated
+    }
+}
+
+public enum PreferencesImportError: LocalizedError {
+    case unsupportedSchema(Int)
+    public var errorDescription: String? {
+        switch self {
+        case .unsupportedSchema(let version):
+            "Unsupported settings schema version \(version)."
+        }
     }
 }

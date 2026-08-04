@@ -30,6 +30,10 @@ enum SettingsLocalization {
             "restore": [.english: "Restore Group Defaults", .japanese: "グループを初期設定に戻す", .simplifiedChinese: "恢复此组默认值"],
             "immediate": [.english: "Changes apply immediately to open and new documents.", .japanese: "変更は開いている書類と新規書類にすぐ適用されます。", .simplifiedChinese: "更改会立即应用于已打开和新建的文档。"],
             "comingSoon": [.english: "Options for this group are provided by later M5 tasks.", .japanese: "このグループの項目は後続の M5 タスクで追加されます。", .simplifiedChinese: "此组的选项将在后续 M5 任务中提供。"],
+            "exportSettings": [.english: "Export Settings…", .japanese: "設定を書き出す…", .simplifiedChinese: "导出设置…"],
+            "importSettings": [.english: "Import Settings…", .japanese: "設定を読み込む…", .simplifiedChinese: "导入设置…"],
+            "restoreAll": [.english: "Restore All Settings", .japanese: "すべての設定を初期化", .simplifiedChinese: "恢复所有默认设置"],
+            "settingsTransfer": [.english: "Export, import, or restore the versioned settings file.", .japanese: "バージョン付き設定ファイルの書き出し、読み込み、初期化を行います。", .simplifiedChinese: "导出、导入或恢复带版本的设置文件。"],
         ]
         return values[key]?[language] ?? key
     }

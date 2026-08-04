@@ -17,7 +17,11 @@ so upgrading does not unexpectedly change document appearance. See
 `display-settings.md` for marker, wrap, Tab width, font-panel, high-contrast,
 and large-file behavior.
 
-**Restore Group Defaults** changes only the selected group's fields. Groups
+**Restore Group Defaults** changes only the selected group's fields. The
+Advanced group also provides **Export Settings**, **Import Settings**, and
+**Restore All Settings**. Export writes versioned, human-readable JSON;
+Import validates and migrates supported older schemas before applying the
+settings; Restore All resets the complete typed preference value. Groups
 whose features arrive in later M5/M6 tasks remain visible and searchable so
 their controls can be added without redesigning navigation.
 

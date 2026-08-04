@@ -16,6 +16,7 @@ final class AppCoordinator {
     private let fileTypeProfileStore = FileTypeProfileStore()
     private(set) var preferences: Preferences
     let commandRegistry = CommandRegistry()
+    var onShowMenuCustomization: (() -> Void)?
 
     init(preferencesStore: PreferencesStore? = nil) {
         if let preferencesStore {
@@ -107,6 +108,7 @@ final class AppCoordinator {
     func toggleWrapLines()             { ensureWindowControllerReady().toggleWrapLines() }
     func setTabWidth(_ width: Int)      { ensureWindowControllerReady().setTabWidth(width) }
     func showFontPanel()                { ensureWindowControllerReady().showFontPanel() }
+    func showMenuCustomization()        { onShowMenuCustomization?() }
     func toggleInvisible(_ keyPath: WritableKeyPath<InvisibleCharacterOptions, Bool>) {
         preferences.invisibleCharacters[keyPath: keyPath].toggle()
         preferencesStore.save(preferences)
