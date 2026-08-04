@@ -198,6 +198,7 @@ extension EditorViewController {
 extension EditorViewController {
 
     fileprivate func handleMultiEditKey(_ event: NSEvent) -> Bool {
+        if textView.hasMarkedText() || hasMarkedTextComposition { return false }
         let mods = event.modifierFlags.intersection([.command, .shift, .option, .control])
         let key  = event.keyCode
 
@@ -218,13 +219,9 @@ extension EditorViewController {
         if key == 51  { multiEditBackspace();     return true }
         if key == 117 { multiEditForwardDelete(); return true }
 
-        if let chars = event.characters, !chars.isEmpty,
-           chars.unicodeScalars.allSatisfy({ !CharacterSet.controlCharacters.contains($0) }) {
-            multiEditInsert(chars)
-            return true
-        }
-
-        exitMultiEdit()
+        // Printable text, including the keystrokes that begin an IME
+        // composition, must flow through NSTextInputClient. MaruTextView
+        // broadcasts only the final `insertText` commit.
         return false
     }
 

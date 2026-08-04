@@ -1771,13 +1771,13 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M4-04: CJK IME
 
-- [ ] Marked text uses the primary cursor only.
-- [ ] Replicate text only after composition commit.
-- [ ] Handle composition cancellation.
-- [ ] Maintain a Japanese Romaji/Kana manual-test checklist.
-- [ ] Maintain a Chinese Pinyin manual-test checklist.
-- [ ] Automate deterministic portions of text-input testing.
-- [ ] One Undo reverses one committed composition.
+- [x] Marked text uses the primary cursor only. *(`MaruTextView.setMarkedText` delegates directly to AppKit and snapshots the logical selection; the global key monitor no longer broadcasts printable keystrokes. `testMarkedTextStaysAtPrimaryThenCommitReplicatesFinalText` observes only the primary text changing during composition.)*
+- [x] Replicate text only after composition commit. *(`MaruTextView.insertText` is the commit boundary: it closes AppKit's marked session without Undo, restores the pre-composition text, then performs one `batchReplace` across the saved selections.)*
+- [x] Handle composition cancellation. *(`cancelOperation` restores the pre-composition text and complete selection set without changing secondary cursors; covered by `testCancellingCompositionRestoresTextAndSecondarySelections`.)*
+- [x] Maintain a Japanese Romaji/Kana manual-test checklist. *(`docs/ime-testing.md` has separate Romaji and Kana candidate/commit/cancel/Undo/Redo cases.)*
+- [x] Maintain a Chinese Pinyin manual-test checklist. *(`docs/ime-testing.md` includes Pinyin candidate paging, commit, cancel, Undo, and Redo.)*
+- [x] Automate deterministic portions of text-input testing. *(`CJKIMETests` drives real `setMarkedText`/`insertText` calls with Japanese and CJK strings and also verifies ordinary committed-text routing.)*
+- [x] One Undo reverses one committed composition. *(`testMarkedTextStaysAtPrimaryThenCommitReplicatesFinalText` commits `日本` twice and one Undo restores the original text and selections.)*
 
 ## M4-05: BOX Selection
 

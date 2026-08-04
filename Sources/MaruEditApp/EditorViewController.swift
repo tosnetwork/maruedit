@@ -26,6 +26,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     private var suppressTextChange = false
     private var suppressAutoIndent = false
     private var isApplyingSelectionSet = false
+    private var markedTextSnapshot: (text: String, ranges: [NSRange], primary: NSRange)?
 
     /// Multi-cursor ("select all occurrences") edit-mode state. Owned by
     /// this instance — not a global dictionary keyed by identity, per
@@ -102,13 +103,25 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     override func loadView() {
         let wrapper = FlippedView()
 
-        scrollView = NSTextView.scrollableTextView()
+        scrollView = NSScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.borderType = .noBorder
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
 
-        textView = scrollView.documentView as? NSTextView
+        let maruTextView = MaruTextView(frame: .zero)
+        maruTextView.minSize = NSSize(width: 0, height: 0)
+        maruTextView.maxSize = NSSize(
+            width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        maruTextView.isVerticallyResizable = true
+        maruTextView.isHorizontallyResizable = false
+        maruTextView.autoresizingMask = [.width]
+        maruTextView.textContainer?.widthTracksTextView = true
+        maruTextView.textContainer?.containerSize = NSSize(
+            width: scrollView.contentSize.width, height: CGFloat.greatestFiniteMagnitude)
+        maruTextView.selectionOwner = self
+        scrollView.documentView = maruTextView
+        textView = maruTextView
         // Force TextKit 1 so layout manager APIs work reliably
         _ = textView.layoutManager
 
@@ -340,13 +353,47 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     }
 
     func textViewDidChangeSelection(_ n: Notification) {
-        guard !isApplyingSelectionSet else { return }
+        guard !isApplyingSelectionSet, markedTextSnapshot == nil else { return }
         selectionSet.update(
             ranges: textView.selectedRanges.map(\.rangeValue),
             primaryRange: textView.selectedRange()
         )
         lineNumbers?.needsDisplay = true
         emitCursor()
+    }
+
+    var hasMarkedTextComposition: Bool { markedTextSnapshot != nil }
+
+    func beginMarkedTextComposition() {
+        guard markedTextSnapshot == nil, isMultiEditActive else { return }
+        markedTextSnapshot = (textView.string, selectionSet.ranges, selectionSet.primaryRange)
+    }
+
+    func commitMarkedText(_ text: String) {
+        guard let snapshot = markedTextSnapshot else { return }
+        markedTextSnapshot = nil
+        restoreCompositionBaseline(snapshot)
+        batchReplace(snapshot.ranges, with: text)
+    }
+
+    func cancelMarkedTextComposition() {
+        guard let snapshot = markedTextSnapshot else { return }
+        markedTextSnapshot = nil
+        restoreCompositionBaseline(snapshot)
+    }
+
+    private func restoreCompositionBaseline(
+        _ snapshot: (text: String, ranges: [NSRange], primary: NSRange)
+    ) {
+        guard let storage = textView.textStorage else { return }
+        textView.undoManager?.disableUndoRegistration()
+        storage.beginEditing()
+        storage.replaceCharacters(in: NSRange(location: 0, length: storage.length), with: snapshot.text)
+        storage.endEditing()
+        textView.undoManager?.enableUndoRegistration()
+        document?.content = snapshot.text
+        document?.markModified()
+        setSelections(snapshot.ranges, primaryRange: snapshot.primary)
     }
 
     private func emitCursor() {
