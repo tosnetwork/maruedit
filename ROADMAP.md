@@ -1568,14 +1568,14 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M2-06: External-Modification Detection
 
-- [ ] Monitor or revalidate open file state.
-- [ ] Prompt or auto-reload an unmodified document according to preference.
-- [ ] Show a conflict state when the in-memory document is dirty.
-- [ ] Offer Reload, Save As, and Cancel.
-- [ ] Handle deletion and movement clearly.
-- [ ] Suppress false conflicts caused by MaruEdit's own save.
+- [x] Monitor or revalidate open file state. *(Revalidation, not live FSEvents monitoring — explicitly allowed by this bullet's "or." `ExternalChangeDetector` (`Sources/MaruEditCore/Documents/ExternalChangeDetector.swift`) compares current mtime/identity against the known baseline. Checked at two points: `MainWindowController.windowDidBecomeKey` (new `NSWindow.didBecomeKeyNotification` observer) and immediately before every same-file save.)*
+- [ ] Prompt or auto-reload an unmodified document according to preference. *(Prompt only — always. No auto-reload preference exists yet; that needs a real Preferences UI, which is explicitly M5's job (same deferral already recorded for M1-04's `PreferencesStore`, which still has no UI consumer). Every detected change is surfaced explicitly today, never applied silently — the safer of the two behaviors this bullet allows, just not configurable yet.)*
+- [x] Show a conflict state when the in-memory document is dirty. *(`presentExternalChangeConflict` branches on `doc.isModified`: a dirty document gets a different message plus a third option.)*
+- [x] Offer Reload, Save As, and Cancel. *(Exactly these three buttons when the document is dirty; Reload/Cancel only when it's clean, since there's nothing to protect with Save As on an unmodified document.)*
+- [x] Handle deletion and movement clearly. *(`ExternalChangeStatus.deletedOrMoved` — reported identically for both, since revalidation without a live filesystem watcher can't distinguish "deleted" from "renamed elsewhere"; an alert explains the file can't be found at its original location and that in-memory content is unaffected.)*
+- [x] Suppress false conflicts caused by MaruEdit's own save. *(Structural, not a special case: `Document.fileIdentity`/`lastKnownModificationDate` are refreshed from `TextFileSaver`'s result after every successful save (M2-05), so the next revalidation compares against MaruEdit's own just-written state, not a stale pre-save baseline. Verified directly by `ExternalChangeDetectorTests.testOwnSaveUpdatingTheBaselineIsNotFlaggedAsExternal` and `MainWindowControllerExternalChangeTests.testSavingAnUnchangedFileProceedsWithoutFalsePositive`.)*
 
-**Acceptance:** An external editor cannot be silently overwritten by MaruEdit.
+**Acceptance:** An external editor cannot be silently overwritten by MaruEdit. *(Verified live, not just by unit test: opened a real file, switched to Finder, overwrote the file's content externally, switched back to MaruEdit — screenshotted the resulting "Changed on Disk" alert with Reload from Disk / Cancel, appearing correctly with the right filename and message. The pre-save check protecting an actual `Cmd+S` from silently overwriting has no interactive automated test — same `NSAlert.runModal()`-blocks-headless-tests constraint as M2-03/M2-04 — but is covered by 6 `ExternalChangeDetectorTests` at the Core level plus code review confirming `performSave` checks before, not after, writing.)*
 
 ## M2-07: Autosave and Recovery
 

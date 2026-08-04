@@ -48,10 +48,15 @@ final class MainWindowController: NSWindowController,
         buildUI()
         newDocument()
         installKeyMonitor()
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(windowDidBecomeKey),
+            name: NSWindow.didBecomeKeyNotification, object: w
+        )
     }
 
     deinit {
         if let monitor = keyMonitor { NSEvent.removeMonitor(monitor) }
+        NotificationCenter.default.removeObserver(self)
     }
 
     private func installKeyMonitor() {
@@ -273,6 +278,19 @@ final class MainWindowController: NSWindowController,
     /// unrepresentable-character alert (with line/column detail) and
     /// offers to convert to UTF-8 and retry, rather than a bare error.
     private func performSave(_ doc: Document) {
+        // Revalidate before writing: an external editor's changes must
+        // never be silently overwritten (ROADMAP.md M2-06 acceptance).
+        // Scoped to same-file Save only — Save As already gets its own
+        // protection from NSSavePanel's native overwrite confirmation
+        // (M2-05), and doc's known baseline describes the *old* path, not
+        // whatever new location the user might pick there.
+        if let url = doc.fileURL {
+            let status = ExternalChangeDetector.check(url: url, knownIdentity: doc.fileIdentity, knownModificationDate: doc.lastKnownModificationDate)
+            if status == .modified {
+                presentExternalChangeConflict(status, for: doc)
+                return
+            }
+        }
         do {
             try doc.save()
             refreshTabs(); refreshStatus()
@@ -353,6 +371,71 @@ final class MainWindowController: NSWindowController,
         default: return false
         }
         return true
+    }
+
+    // MARK: - External-modification detection (M2-06)
+    //
+    // Revalidation, not live monitoring — checked when the window regains
+    // focus and again right before every same-file save, rather than a
+    // continuous FSEvents watcher (ROADMAP.md M2-06 explicitly allows
+    // either approach). No "auto-reload an unmodified file" preference
+    // exists yet — that's gated on a real Preferences UI (M5); until
+    // then, every detected change is surfaced explicitly, never applied
+    // silently.
+
+    @objc private func windowDidBecomeKey() {
+        guard let doc = curDoc, let url = doc.fileURL else { return }
+        let status = ExternalChangeDetector.check(url: url, knownIdentity: doc.fileIdentity, knownModificationDate: doc.lastKnownModificationDate)
+        guard status != .unchanged else { return }
+        presentExternalChangeConflict(status, for: doc)
+    }
+
+    private func presentExternalChangeConflict(_ status: ExternalChangeStatus, for doc: Document) {
+        switch status {
+        case .unchanged:
+            return
+
+        case .deletedOrMoved:
+            let a = NSAlert()
+            a.alertStyle = .warning
+            a.messageText = "\(doc.displayName) Can't Be Found"
+            a.informativeText = "The file at its original location has been deleted or moved. Your content here is unaffected — use Save As to write it somewhere."
+            a.addButton(withTitle: "OK")
+            a.runModal()
+
+        case .modified:
+            let a = NSAlert()
+            a.alertStyle = .warning
+            a.messageText = "\(doc.displayName) Changed on Disk"
+            if doc.isModified {
+                a.informativeText = "This file has unsaved changes here and has also been modified outside MaruEdit. Reloading will discard your changes here."
+                a.addButton(withTitle: "Reload from Disk")
+                a.addButton(withTitle: "Save As…")
+                a.addButton(withTitle: "Cancel")
+                switch a.runModal() {
+                case .alertFirstButtonReturn: reloadFromDisk(doc)
+                case .alertSecondButtonReturn: saveDocumentAs()
+                default: break
+                }
+            } else {
+                a.informativeText = "This file has been modified outside MaruEdit."
+                a.addButton(withTitle: "Reload from Disk")
+                a.addButton(withTitle: "Cancel")
+                if a.runModal() == .alertFirstButtonReturn {
+                    reloadFromDisk(doc)
+                }
+            }
+        }
+    }
+
+    private func reloadFromDisk(_ doc: Document) {
+        do {
+            try doc.reopen(forcing: doc.encoding)
+            editorVC.reloadCurrentDocument()
+            refreshTabs(); refreshStatus()
+        } catch {
+            NSAlert(error: error).runModal()
+        }
     }
 
     func closeCurrentTab() {
