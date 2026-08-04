@@ -560,20 +560,35 @@ final class MainWindowController: NSWindowController,
         scheduleSessionSave()
     }
 
-    func showFind() {
+    func showFind(showingReplace: Bool = false) {
         guard let cv = window?.contentView else { return }
         let tabH: CGFloat = 32
-        let findH: CGFloat = 34
         let statusH: CGFloat = 24
+        if showingReplace { findBar.setReplaceRowVisible(true) }
+        let findH: CGFloat = findBar.isReplaceRowVisible ? 66 : 34
         findBar.isHidden = false
         findBar.frame = NSRect(x: 0, y: cv.bounds.height - tabH - findH, width: cv.bounds.width, height: findH)
         splitView.frame = NSRect(x: 0, y: statusH, width: cv.bounds.width, height: cv.bounds.height - tabH - findH - statusH)
         // Incremental search restarts from wherever the caret was when the
         // bar opened, not from the previous keystroke's match.
-        editorVC.incrementalSearchAnchor = editorVC.textView.selectedRange().location
+        let selection = editorVC.textView.selectedRange()
+        editorVC.incrementalSearchAnchor = selection.location
+        editorVC.searchScopeSelection = selection.length > 0 ? selection : nil
         findBar.searchHistory = findHistory
         findBar.replacementHistory = replaceHistory
         findBar.activate()
+    }
+
+    /// Replace All from the menu. Opens the Find Bar first when it isn't
+    /// showing: bulk replacement must never run against a query the user
+    /// can't currently see.
+    func replaceAllFromFindBar() {
+        guard !findBar.isHidden else {
+            showFind(showingReplace: true)
+            return
+        }
+        findBar.setReplaceRowVisible(true)
+        findBar.perform(.replaceAll)
     }
 
     /// Runs Find Next/Previous from the menu, whether or not the Find Bar
@@ -820,11 +835,12 @@ final class MainWindowController: NSWindowController,
         case .findPrevious:
             recordSearchHistory(query)
             return editorVC.find(query, direction: .previous)
-        case .replace, .replaceAll:
-            // Wired in M3-03; until then the bar's Replace buttons stay
-            // inert rather than falling back to a second, inconsistent
-            // matching implementation.
-            return .empty
+        case .replace:
+            recordSearchHistory(query)
+            return editorVC.replaceCurrent(query)
+        case .replaceAll:
+            recordSearchHistory(query)
+            return editorVC.replaceAll(query)
         }
     }
 
@@ -836,6 +852,7 @@ final class MainWindowController: NSWindowController,
         findBar.frame.size.height = 0
         splitView.frame = NSRect(x: 0, y: statusH, width: cv.bounds.width, height: cv.bounds.height - tabH - statusH)
         editorVC.incrementalSearchAnchor = nil
+        editorVC.searchScopeSelection = nil
         window?.makeFirstResponder(editorVC.textView)
     }
 

@@ -90,7 +90,7 @@ final class FindBarView: NSView, NSTextFieldDelegate {
         replaceField.delegate = self
         replaceField.translatesAutoresizingMaskIntoConstraints = false
         replaceField.setAccessibilityLabel("Replace with")
-        replaceField.setAccessibilityHelp("Replacement text. Up and Down recall earlier replacements.")
+        replaceField.setAccessibilityHelp("Replacement text. Return replaces the current match; Replace All is in the Find menu. Up and Down recall earlier replacements.")
 
         matchLabel.font = Theme.uiFontSmall
         matchLabel.textColor = Theme.statusText
@@ -188,8 +188,10 @@ final class FindBarView: NSView, NSTextFieldDelegate {
     /// for a keyboard-only user (ROADMAP.md M3-02 acceptance) — it decides
     /// what the current search means.
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        guard !isHidden,
-              event.modifierFlags.intersection(.deviceIndependentFlagsMask) == [.command, .option],
+        guard !isHidden else { return super.performKeyEquivalent(with: event) }
+        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+
+        guard modifiers == [.command, .option],
               let key = event.charactersIgnoringModifiers?.lowercased()
         else { return super.performKeyEquivalent(with: event) }
 
@@ -213,14 +215,22 @@ final class FindBarView: NSView, NSTextFieldDelegate {
     /// to Find but not to Replace All.
     var currentQuery: SearchQuery {
         SearchQuery(
-            pattern: searchField.stringValue,
-            replacement: replaceField.stringValue,
+            pattern: text(of: searchField),
+            replacement: text(of: replaceField),
             mode: regexBtn.state == .on ? .regularExpression : .literal,
             isCaseSensitive: caseBtn.state == .on,
             wholeWord: wordBtn.state == .on,
             wraps: true,
             scope: .document
         )
+    }
+
+    /// A field being edited holds its in-progress text in the shared field
+    /// editor; `stringValue` only catches up when editing ends. Reading it
+    /// directly would run Replace All against a stale — often empty —
+    /// replacement, which was observed live.
+    private func text(of field: NSTextField) -> String {
+        field.currentEditor()?.string ?? field.stringValue
     }
 
     /// Shows the replace row (used when Find is opened via a Replace
@@ -323,6 +333,12 @@ final class FindBarView: NSView, NSTextFieldDelegate {
     /// state, exposed so tests can assert what the user would see.
     var statusText: String { matchLabel.stringValue }
 
+    /// Runs an action the owner initiated (e.g. the Replace All menu
+    /// command) against the bar's current input, and displays the result.
+    func perform(_ action: FindBarAction) {
+        run(action)
+    }
+
     /// Exposed for the owner to refresh the status line after an action it
     /// initiated itself (e.g. the Find Next menu command while the bar is
     /// open).
@@ -363,11 +379,9 @@ final class FindBarView: NSView, NSTextFieldDelegate {
         let isSearchField = control === searchField
 
         if sel == #selector(insertNewline(_:)) {
-            if isSearchField {
-                run(NSEvent.modifierFlags.contains(.shift) ? .findPrevious : .findNext)
-            } else {
-                run(.replace)
-            }
+            run(isSearchField
+                ? (NSEvent.modifierFlags.contains(.shift) ? .findPrevious : .findNext)
+                : .replace)
             return true
         }
         if sel == #selector(cancelOperation(_:)) { doClose(); return true }

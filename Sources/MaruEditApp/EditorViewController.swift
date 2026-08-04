@@ -41,6 +41,13 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     /// through it (ROADMAP.md M3-02, "Support incremental search").
     var incrementalSearchAnchor: Int?
 
+    /// The selection that existed when the Find Bar was opened, when it
+    /// spanned text. Replace All treats it as "replace inside this"
+    /// (ROADMAP.md M3-03, "Support selection scope"); the selection at the
+    /// moment the button is pressed can't serve that role, since by then
+    /// it is usually just the current match.
+    var searchScopeSelection: NSRange?
+
     /// Rehighlights the whole document (or just the viewport for large
     /// ones). Used after a bulk edit such as Replace All, where per-line
     /// rehighlighting can't describe what changed.

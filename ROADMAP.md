@@ -1643,15 +1643,15 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M3-03: Replace and Replace All
 
-- [ ] Support capture groups.
-- [ ] Handle `$` and backslash escaping correctly.
-- [ ] Group Replace All into one Undo operation.
-- [ ] Support selection scope.
-- [ ] Report replacement count.
-- [ ] Prevent zero-length infinite loops.
-- [ ] Maintain replacement history.
+- [x] Support capture groups. *(`SearchEngine.replacement(for:in:query:)` expands `$0`…`$n` and `${n}` against the match's stored capture ranges; `EditorSearchTests.testReplaceAllExpandsCaptureGroups` turns `width=100` into `100 is the width`.)*
+- [x] Handle `$` and backslash escaping correctly. *(`\$` is a literal dollar, `\\` a literal backslash, `\n`/`\t` the obvious characters, and an unknown escape keeps both characters instead of silently swallowing the backslash. In literal mode the replacement is inserted verbatim, so `$1` means those two characters — `testReplacementEscapesAreHonored`, `testLiteralModeInsertsTheReplacementVerbatim`.)*
+- [x] Group Replace All into one Undo operation. *(One `shouldChangeText`/`replaceCharacters`/`didChangeText` cycle over the span from the first to the last match — see `EditorViewController.replaceAll`. `testOneUndoRestoresTheDocumentAfterReplaceAll`.)*
+- [x] Support selection scope. *(A selection that spanned text when the Find Bar opened is captured as `EditorViewController.searchScopeSelection` and becomes the Replace All scope. Using the selection at the moment the button is pressed would not work — by then it is normally just the current match. `testReplaceAllWithinTheSelectionScopeLeavesTheRestAlone`.)*
+- [x] Report replacement count. *(`FindOutcome.replacementCount`, shown as "Replaced 4"; verified live.)*
+- [x] Prevent zero-length infinite loops. *(Inherited from M3-01's single-sweep matching; `testReplaceAllWithAZeroLengthPatternTerminates` prefixes every line via `^` and terminates with 3 replacements.)*
+- [x] Maintain replacement history. *(`MainWindowController.recordSearchHistory` records the replacement string on every Replace/Replace All into a list kept separate from the Find history, recalled with Up/Down in the replace field. Still in memory — persisting and clearing it is M3-07.)*
 
-**Acceptance:** One Undo restores the document after Replace All.
+**Acceptance:** One Undo restores the document after Replace All. *(Automated: `testOneUndoRestoresTheDocumentAfterReplaceAll`. Verified live on the release build too: ⌥⌘F opened Find and Replace, "alpha" → "OMEGA", Find ▸ Replace All reported "Replaced 4" and rewrote all four occurrences (including inside "alphabet"), then a single ⌘Z restored the original four lines exactly. Two findings from that live run are folded into the code: the Find Bar now reads its fields' in-progress text from the field editor rather than `stringValue`, which lags behind while editing (and lags indefinitely under an IME); and Replace All is a real command (`search.replaceAll`, Find menu) rather than an ⌥Return shortcut inside the field editor, which behaved inconsistently.)*
 
 ## M3-04: GrepRequest and Directory Traversal
 

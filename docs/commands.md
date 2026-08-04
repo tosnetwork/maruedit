@@ -24,6 +24,8 @@ significantly, replace this with a small script that generates it from
 | `file.closeTab` | Close Tab | File | ⌘W | `AppCoordinator.closeCurrentTab()` |
 | `file.clearRecoveryData` | Clear Recovery Data... | File | — | `AppCoordinator.clearRecoveryData()` |
 | `search.find` | Find... | Find | ⌘F | `AppCoordinator.showFind()` |
+| `search.replace` | Find and Replace... | Find | ⌥⌘F | `AppCoordinator.showReplace()` |
+| `search.replaceAll` | Replace All | Find | — | `AppCoordinator.replaceAll()` |
 | `search.findNext` | Find Next | Find | ⌘G | `AppCoordinator.findNext()` |
 | `search.findPrevious` | Find Previous | Find | ⇧⌘G | `AppCoordinator.findPrevious()` |
 | `search.goToLine` | Go to Line... | Find | ⌘L | `AppCoordinator.showGoToLine()` |
@@ -67,7 +69,7 @@ M3-02 moved Go to Line off ⌘G, which macOS reserves for Find Next, onto
   (`KeyBindingManager`), which will replace this ad-hoc `NSEvent` monitor
   outright.
 
-Counting only MaruEdit's own static, non-dynamic menu actions (the eleven
-above, excluding the standard-AppKit and dynamic-recent-items cases), all
-of them — 100% — execute through the registry, exceeding M1-03's ≥90%
-acceptance target.
+Counting only MaruEdit's own static, non-dynamic menu actions (the ones
+listed above, excluding the standard-AppKit and dynamic-recent-items
+cases), all of them — 100% — execute through the registry, exceeding
+M1-03's ≥90% acceptance target.

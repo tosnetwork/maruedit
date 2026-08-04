@@ -53,7 +53,7 @@ final class CommandRegistryTests: XCTestCase {
 
         let ids: [CommandID] = [
             .fileNew, .fileOpen, .fileOpenFolder, .fileSave, .fileSaveAs,
-            .fileCloseTab, .fileClearRecoveryData, .searchFind, .searchFindNext,
+            .fileCloseTab, .fileClearRecoveryData, .searchFind, .searchReplace, .searchReplaceAll, .searchFindNext,
             .searchFindPrevious, .searchGoToLine, .searchQuickOpen, .viewToggleSidebar
         ]
         for id in ids {

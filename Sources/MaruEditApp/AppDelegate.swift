@@ -84,6 +84,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let findItem = NSMenuItem()
         let findMenu = NSMenu(title: "Find")
         findMenu.addItem(commandItem(.searchFind, "f"))
+        findMenu.addItem(commandItem(.searchReplace, "f", modifiers: [.command, .option]))
+        findMenu.addItem(commandItem(.searchReplaceAll, ""))
         findMenu.addItem(commandItem(.searchFindNext, "g"))
         findMenu.addItem(commandItem(.searchFindPrevious, "G"))
         findMenu.addItem(.separator())
@@ -116,11 +118,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// Builds a menu item that invokes `id` through the `CommandRegistry`
     /// rather than a dedicated `@objc` method per command (ROADMAP.md
     /// M1-03, "Route menus through the registry").
-    private func commandItem(_ id: CommandID, _ key: String) -> NSMenuItem {
+    private func commandItem(
+        _ id: CommandID,
+        _ key: String,
+        modifiers: NSEvent.ModifierFlags = .command
+    ) -> NSMenuItem {
         guard let definition = coordinator.commandRegistry.definition(for: id) else {
             preconditionFailure("No command registered for \(id.rawValue)")
         }
         let mi = NSMenuItem(title: definition.title, action: #selector(performCommand(_:)), keyEquivalent: key)
+        mi.keyEquivalentModifierMask = modifiers
         mi.target = self
         mi.representedObject = id
         return mi

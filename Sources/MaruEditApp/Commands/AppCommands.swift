@@ -13,6 +13,8 @@ extension CommandID {
     static let fileClearRecoveryData = CommandID("file.clearRecoveryData")
     static let searchFind       = CommandID("search.find")
     static let searchFindNext   = CommandID("search.findNext")
+    static let searchReplace    = CommandID("search.replace")
+    static let searchReplaceAll = CommandID("search.replaceAll")
     static let searchFindPrevious = CommandID("search.findPrevious")
     static let searchGoToLine   = CommandID("search.goToLine")
     static let searchQuickOpen  = CommandID("search.quickOpen")
@@ -48,6 +50,12 @@ enum AppCommands {
         })
         registry.register(CommandDefinition(id: .searchFind, title: "Find...") { ctx in
             ctx.coordinator.showFind()
+        })
+        registry.register(CommandDefinition(id: .searchReplace, title: "Find and Replace...") { ctx in
+            ctx.coordinator.showReplace()
+        })
+        registry.register(CommandDefinition(id: .searchReplaceAll, title: "Replace All") { ctx in
+            ctx.coordinator.replaceAll()
         })
         registry.register(CommandDefinition(id: .searchFindNext, title: "Find Next") { ctx in
             ctx.coordinator.findNext()

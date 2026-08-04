@@ -104,6 +104,99 @@ extension EditorViewController {
         }
     }
 
+    // MARK: - Replace (M3-03)
+
+    /// Replaces the current selection when it is exactly a match, then
+    /// moves to the next one. When the selection is not a match this only
+    /// finds — the same "find first, then replace" behavior as the system
+    /// find bar, so Replace never edits text the user cannot see selected.
+    func replaceCurrent(_ query: SearchQuery) -> FindOutcome {
+        let text = textView.string
+        let selection = textView.selectedRange()
+        do {
+            let matches = try SearchEngine.matches(for: query, in: text)
+            guard let current = matches.first(where: { $0.range == selection }) else {
+                return find(query, direction: .next)
+            }
+            let replacement = SearchEngine.replacement(for: current, in: text, query: query)
+            guard textView.shouldChangeText(in: current.range, replacementString: replacement) else {
+                return matchStatus(for: query)
+            }
+            textView.textStorage?.replaceCharacters(in: current.range, with: replacement)
+            textView.didChangeText()
+            textView.setSelectedRange(NSRange(
+                location: current.range.location,
+                length: (replacement as NSString).length
+            ))
+
+            var outcome = find(query, direction: .next)
+            outcome.replacementCount = 1
+            return outcome
+        } catch let error as SearchError {
+            return .failure(error.localizedDescription)
+        } catch {
+            return .failure(error.localizedDescription)
+        }
+    }
+
+    /// Replaces every match in one edit, and therefore in one Undo step.
+    ///
+    /// Only the span from the first to the last match is rewritten, so
+    /// unaffected text (and its highlighting) is left alone even in a large
+    /// document.
+    func replaceAll(_ query: SearchQuery) -> FindOutcome {
+        var scoped = query
+        // A selection that existed *before* the Find Bar opened means
+        // "replace inside this"; the selection at the moment Replace All
+        // is pressed is usually just the current match, which would make
+        // Replace All silently replace exactly one occurrence.
+        if let scope = searchScopeSelection, scope.length > 0 {
+            scoped.scope = .selection(scope)
+        }
+
+        let text = textView.string
+        do {
+            let matches = try SearchEngine.matches(for: scoped, in: text)
+            guard let first = matches.first, let last = matches.last else {
+                return FindOutcome(totalMatches: 0)
+            }
+            let result = try SearchEngine.replacingAllMatches(of: scoped, in: text)
+            guard let firstNew = result.replacedRanges.first,
+                  let lastNew = result.replacedRanges.last else {
+                return FindOutcome(totalMatches: 0)
+            }
+
+            let oldSpan = NSRange(
+                location: first.range.location,
+                length: NSMaxRange(last.range) - first.range.location
+            )
+            let newSpan = NSRange(
+                location: firstNew.location,
+                length: NSMaxRange(lastNew) - firstNew.location
+            )
+            let replacementText = (result.text as NSString).substring(with: newSpan)
+
+            guard textView.shouldChangeText(in: oldSpan, replacementString: replacementText) else {
+                return matchStatus(for: query)
+            }
+            textView.textStorage?.replaceCharacters(in: oldSpan, with: replacementText)
+            textView.didChangeText()
+            rehighlightEntireDocument()
+
+            // Leave the caret after the last replacement rather than
+            // selecting the whole rewritten span, which for a
+            // document-wide replace would select nearly everything.
+            textView.setSelectedRange(NSRange(location: NSMaxRange(lastNew), length: 0))
+            searchScopeSelection = nil
+
+            return FindOutcome(totalMatches: 0, replacementCount: result.replacementCount)
+        } catch let error as SearchError {
+            return .failure(error.localizedDescription)
+        } catch {
+            return .failure(error.localizedDescription)
+        }
+    }
+
     func select(_ range: NSRange) {
         textView.setSelectedRange(range)
         textView.scrollRangeToVisible(range)

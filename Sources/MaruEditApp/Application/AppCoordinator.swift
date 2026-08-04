@@ -43,6 +43,8 @@ final class AppCoordinator {
     func saveDocumentAs()             { ensureWindowControllerReady().saveDocumentAs() }
     func closeCurrentTab()            { ensureWindowControllerReady().closeCurrentTab() }
     func showFind()                   { ensureWindowControllerReady().showFind() }
+    func showReplace()                { ensureWindowControllerReady().showFind(showingReplace: true) }
+    func replaceAll()                 { ensureWindowControllerReady().replaceAllFromFindBar() }
     func findNext()                   { ensureWindowControllerReady().findAgain(direction: .next) }
     func findPrevious()               { ensureWindowControllerReady().findAgain(direction: .previous) }
     func showGoToLine()                { ensureWindowControllerReady().showGoToLine() }
