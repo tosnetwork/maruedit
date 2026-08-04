@@ -1781,14 +1781,14 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M4-05: BOX Selection
 
-- [ ] Option-drag interaction.
-- [ ] Visual-column model.
-- [ ] Correct tabs and full-width characters.
-- [ ] Copy, Delete, and Insert.
-- [ ] Multiline paste.
-- [ ] Defined behavior for empty and short lines.
-- [ ] Correct wrap behavior or an explicit documented restriction.
-- [ ] No accessibility regression.
+- [x] Option-drag interaction. *(`MaruTextView` starts, updates, and ends a column selection from Option-modified mouse events; `edit.beginColumnSelection` also exposes the mode through the Command Registry and Edit menu.)*
+- [x] Visual-column model. *(`BoxSelectionModel` maps UTF-16 positions to logical lines/display columns and produces one `BoxSelectionRow` per crossed line.)*
+- [x] Correct tabs and full-width characters. *(Tabs advance to the next tab stop; CJK/full-width/emoji use two cells and combining sequences stay one cell. `testVisualWidthHandlesTabsFullWidthAndCombiningCharacters`.)*
+- [x] Copy, Delete, and Insert. *(Column copy joins row fragments with newlines; Delete uses the shared reverse-order transaction; insertion includes virtual-space padding. `testColumnCopyDeleteAndInsert`.)*
+- [x] Multiline paste. *(Exact fragment count maps per row, one fragment repeats, and other mismatches repeat the complete clipboard without dropping data; documented and tested.)*
+- [x] Defined behavior for empty and short lines. *(Rows beyond end-of-line carry `leadingVirtualSpaces`; insertion materializes spaces while copy/delete leave absent cells empty.)*
+- [x] Correct wrap behavior or an explicit documented restriction. *(1.0 BOX mode is explicitly no-wrap with horizontal scrolling; `docs/multiple-selections.md` explains why one logical line equals one rectangle row.)*
+- [x] No accessibility regression. *(The custom editor remains labeled “Editor”; column selection uses ordinary TextKit ranges where representable and Command Registry provides a non-pointer entry point. `testEditorRemainsAccessibleAndColumnModeIsNoWrap`.)*
 
 ## M4-06: Core Line-Editing Commands
 

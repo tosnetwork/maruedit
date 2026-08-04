@@ -83,6 +83,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         editMenu.addItem(commandItem(.editSelectNextOccurrence, "d"))
         editMenu.addItem(commandItem(.editSelectAllOccurrences, "l", modifiers: [.command, .shift]))
         editMenu.addItem(commandItem(.editUndoLastAddedCursor, "u"))
+        editMenu.addItem(commandItem(.editBeginColumnSelection, ""))
         editItem.submenu = editMenu
         main.addItem(editItem)
 

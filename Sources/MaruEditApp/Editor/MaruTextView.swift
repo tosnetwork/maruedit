@@ -5,6 +5,31 @@ import AppKit
 /// only `insertText` (the committed result) is replicated.
 final class MaruTextView: NSTextView {
     weak var selectionOwner: EditorViewController?
+    private var isDraggingColumn = false
+
+    override func mouseDown(with event: NSEvent) {
+        if event.modifierFlags.contains(.option) {
+            isDraggingColumn = true
+            selectionOwner?.beginColumnSelection(atUTF16Offset: characterIndexForInsertion(at: convert(event.locationInWindow, from: nil)))
+            return
+        }
+        selectionOwner?.cancelColumnSelection()
+        super.mouseDown(with: event)
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard isDraggingColumn else { super.mouseDragged(with: event); return }
+        selectionOwner?.updateColumnSelection(toUTF16Offset: characterIndexForInsertion(at: convert(event.locationInWindow, from: nil)))
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        if isDraggingColumn {
+            isDraggingColumn = false
+            selectionOwner?.endColumnSelection()
+            return
+        }
+        super.mouseUp(with: event)
+    }
 
     override func setMarkedText(
         _ string: Any,

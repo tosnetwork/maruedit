@@ -20,3 +20,20 @@ TextKit 1 displays multiple non-empty ranges through `selectedRanges`, but
 collapses multiple zero-length insertion points. MaruEdit therefore keeps
 collapsed multi-cursors in the per-editor `SelectionSet`; editing, Undo,
 Redo, and future caret drawing use that logical model.
+
+## BOX selection
+
+Option-drag creates a rectangular selection. The Edit menu also exposes
+“Begin Column Selection” for keyboard and future command-palette use.
+Columns are display cells: tabs advance to the configured tab stop,
+full-width CJK and emoji occupy two cells, and combining marks stay with
+their base character. Insertion beyond a short line pads it with spaces.
+
+BOX selection is intentionally no-wrap in 1.0. The editor uses horizontal
+scrolling while this model is active, so one logical line always represents
+one rectangle row. This avoids ambiguous wrapped-row semantics.
+
+For multiline paste, an exact fragment-to-row count maps one fragment to
+each row. A single fragment repeats on every row. Any other line-count
+mismatch repeats the complete clipboard text at every row; MaruEdit never
+silently drops excess fragments.

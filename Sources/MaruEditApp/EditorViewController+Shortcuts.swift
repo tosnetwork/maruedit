@@ -213,6 +213,12 @@ extension EditorViewController {
             multiEditPaste(text)
             return true
         }
+        if mods == .command, event.charactersIgnoringModifiers == "c",
+           let text = copiedColumnText() {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(text, forType: .string)
+            return true
+        }
 
         if mods.contains(.command) { exitMultiEdit(); return false }
 
@@ -237,12 +243,17 @@ extension EditorViewController {
 extension EditorViewController {
 
     func multiEditInsert(_ text: String) {
+        if columnSelectionRows != nil {
+            insertIntoColumnSelection([text])
+            return
+        }
         let cursors = multiEditCursorRanges
         guard !cursors.isEmpty else { exitMultiEdit(); return }
         batchReplace(cursors, with: text)
     }
 
     func multiEditBackspace() {
+        let wasColumnSelection = columnSelectionRows != nil
         let cursors = multiEditCursorRanges
         guard !cursors.isEmpty else { exitMultiEdit(); return }
 
@@ -256,9 +267,11 @@ extension EditorViewController {
             guard !expanded.isEmpty else { return }
             batchReplace(expanded, with: "")
         }
+        if wasColumnSelection { columnSelectionRows = nil }
     }
 
     func multiEditForwardDelete() {
+        let wasColumnSelection = columnSelectionRows != nil
         let cursors = multiEditCursorRanges
         guard !cursors.isEmpty else { exitMultiEdit(); return }
         let len = (textView.string as NSString).length
@@ -273,12 +286,17 @@ extension EditorViewController {
             guard !expanded.isEmpty else { return }
             batchReplace(expanded, with: "")
         }
+        if wasColumnSelection { columnSelectionRows = nil }
     }
 
     /// If the clipboard has exactly one line per selection, each line is
     /// pasted into its corresponding normalized selection. Otherwise the
     /// complete clipboard text is inserted at every selection.
     func multiEditPaste(_ text: String) {
+        if columnSelectionRows != nil {
+            insertIntoColumnSelection(text.components(separatedBy: "\n"))
+            return
+        }
         let ranges = selectionSet.ranges
         let fragments = text.components(separatedBy: "\n")
         if ranges.count > 1, fragments.count == ranges.count {

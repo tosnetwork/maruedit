@@ -26,6 +26,7 @@ extension CommandID {
     static let editSelectNextOccurrence = CommandID("edit.selectNextOccurrence")
     static let editSelectAllOccurrences = CommandID("edit.selectAllOccurrences")
     static let editUndoLastAddedCursor = CommandID("edit.undoLastAddedCursor")
+    static let editBeginColumnSelection = CommandID("edit.beginColumnSelection")
 }
 
 /// The command definitions for MaruEdit's current static menu actions.
@@ -90,5 +91,6 @@ enum AppCommands {
         registry.register(CommandDefinition(id: .editSelectNextOccurrence, title: "Select Next Occurrence") { $0.coordinator.selectNextOccurrence() })
         registry.register(CommandDefinition(id: .editSelectAllOccurrences, title: "Select All Occurrences") { $0.coordinator.selectAllOccurrences() })
         registry.register(CommandDefinition(id: .editUndoLastAddedCursor, title: "Undo Last Added Cursor") { $0.coordinator.undoLastAddedCursor() })
+        registry.register(CommandDefinition(id: .editBeginColumnSelection, title: "Begin Column Selection") { $0.coordinator.beginColumnSelection() })
     }
 }

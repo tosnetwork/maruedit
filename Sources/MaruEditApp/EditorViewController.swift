@@ -37,6 +37,8 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     var isMultiEditActive = false
     let selectionSet = SelectionSet()
     var selectionHistory: [[NSRange]] = []
+    var columnSelectionRows: [BoxSelectionRow]?
+    private var columnSelectionAnchor: TextCoordinate?
 
     /// Compatibility access for the M1 prototype. M4-02/M4-03 remove the
     /// remaining direct uses as commands and editing move to SelectionSet.
@@ -57,6 +59,52 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
             textView.setSelectedRanges(values, affinity: .downstream, stillSelecting: false)
             isApplyingSelectionSet = false
         }
+    }
+
+    func beginColumnSelection(atUTF16Offset offset: Int) {
+        let coordinate = BoxSelectionModel.coordinate(atUTF16Offset: offset, in: textView.string)
+        columnSelectionAnchor = coordinate
+        updateColumnSelection(toUTF16Offset: offset)
+    }
+
+    func updateColumnSelection(toUTF16Offset offset: Int) {
+        guard let anchor = columnSelectionAnchor else { return }
+        let current = BoxSelectionModel.coordinate(atUTF16Offset: offset, in: textView.string)
+        let rows = BoxSelectionModel.rows(in: textView.string, anchor: anchor, current: current)
+        columnSelectionRows = rows
+        let ranges = rows.map(\.range)
+        setSelections(ranges, primaryRange: ranges.first)
+        isMultiEditActive = ranges.count > 1
+    }
+
+    func endColumnSelection() { columnSelectionAnchor = nil }
+
+    func beginColumnSelectionCommand() {
+        beginColumnSelection(atUTF16Offset: selectionSet.primaryRange.location)
+    }
+
+    func cancelColumnSelection() {
+        columnSelectionAnchor = nil
+        columnSelectionRows = nil
+    }
+
+    func copiedColumnText() -> String? {
+        guard let rows = columnSelectionRows else { return nil }
+        let ns = textView.string as NSString
+        return rows.map { ns.substring(with: $0.range) }.joined(separator: "\n")
+    }
+
+    func insertIntoColumnSelection(_ fragments: [String]) {
+        guard let rows = columnSelectionRows, !rows.isEmpty else { return }
+        let mapped: [String]
+        if fragments.count == rows.count { mapped = fragments }
+        else if fragments.count == 1 { mapped = Array(repeating: fragments[0], count: rows.count) }
+        else { mapped = Array(repeating: fragments.joined(separator: "\n"), count: rows.count) }
+        let replacements = zip(rows, mapped).map { row, fragment in
+            String(repeating: " ", count: row.leadingVirtualSpaces) + fragment
+        }
+        batchReplace(rows.map(\.range), with: replacements)
+        columnSelectionRows = nil
     }
 
     /// Where incremental Find restarts from on each keystroke — captured
@@ -114,14 +162,16 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         maruTextView.maxSize = NSSize(
             width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         maruTextView.isVerticallyResizable = true
-        maruTextView.isHorizontallyResizable = false
+        maruTextView.isHorizontallyResizable = true
         maruTextView.autoresizingMask = [.width]
-        maruTextView.textContainer?.widthTracksTextView = true
+        maruTextView.textContainer?.widthTracksTextView = false
         maruTextView.textContainer?.containerSize = NSSize(
             width: scrollView.contentSize.width, height: CGFloat.greatestFiniteMagnitude)
         maruTextView.selectionOwner = self
         scrollView.documentView = maruTextView
+        scrollView.hasHorizontalScroller = true
         textView = maruTextView
+        textView.setAccessibilityLabel("Editor")
         // Force TextKit 1 so layout manager APIs work reliably
         _ = textView.layoutManager
 

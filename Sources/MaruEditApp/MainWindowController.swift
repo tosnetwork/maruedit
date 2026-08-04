@@ -1070,6 +1070,7 @@ final class MainWindowController: NSWindowController,
     func selectNextOccurrence() { editorVC.selectNextOccurrence() }
     func selectAllOccurrences() { editorVC.selectAllOccurrences() }
     func undoLastAddedCursor() { editorVC.undoLastAddedCursor() }
+    func beginColumnSelection() { editorVC.beginColumnSelectionCommand() }
 
     // MARK: - Session persistence
     //
