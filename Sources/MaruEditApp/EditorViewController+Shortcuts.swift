@@ -185,6 +185,7 @@ extension EditorViewController {
 
         guard !ranges.isEmpty else { return }
         textView.setSelectedRanges(ranges, affinity: .downstream, stillSelecting: false)
+        selectionSet.update(ranges: ranges.map(\.rangeValue), primaryRange: sel)
 
         if ranges.count > 1 {
             isMultiEditActive = true
@@ -224,7 +225,7 @@ extension EditorViewController {
 
     fileprivate func exitMultiEdit() {
         isMultiEditActive = false
-        multiEditCursorRanges = []
+        setSelections([selectionSet.primaryRange], primaryRange: selectionSet.primaryRange)
     }
 }
 

@@ -25,6 +25,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
 
     private var suppressTextChange = false
     private var suppressAutoIndent = false
+    private var isApplyingSelectionSet = false
 
     /// Multi-cursor ("select all occurrences") edit-mode state. Owned by
     /// this instance — not a global dictionary keyed by identity, per
@@ -33,7 +34,28 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     /// multi-edit state, and this state is freed automatically when the
     /// editor is deallocated instead of leaking in a module-level map.
     var isMultiEditActive = false
-    var multiEditCursorRanges: [NSRange] = []
+    let selectionSet = SelectionSet()
+
+    /// Compatibility access for the M1 prototype. M4-02/M4-03 remove the
+    /// remaining direct uses as commands and editing move to SelectionSet.
+    var multiEditCursorRanges: [NSRange] {
+        get { selectionSet.ranges }
+        set { setSelections(newValue) }
+    }
+
+    func setSelections(_ ranges: [NSRange], primaryRange: NSRange? = nil) {
+        selectionSet.update(ranges: ranges, primaryRange: primaryRange)
+        guard isViewLoaded else { return }
+        var ordered = selectionSet.ranges
+        let primary = ordered.remove(at: selectionSet.primaryIndex)
+        ordered.insert(primary, at: 0)
+        let values = ordered.map(NSValue.init(range:))
+        if textView.selectedRanges != values {
+            isApplyingSelectionSet = true
+            textView.setSelectedRanges(values, affinity: .downstream, stillSelecting: false)
+            isApplyingSelectionSet = false
+        }
+    }
 
     /// Where incremental Find restarts from on each keystroke — captured
     /// when the Find Bar opens, so typing a longer pattern refines the
@@ -56,7 +78,11 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     }
 
     var document: Document? {
-        didSet { if isViewLoaded && document !== oldValue { loadDoc() } }
+        didSet {
+            guard document !== oldValue else { return }
+            isMultiEditActive = false
+            if isViewLoaded { loadDoc() }
+        }
     }
 
     private static func cachedHighlighter(for language: Language) -> SyntaxHighlighter {
@@ -200,6 +226,8 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         }
 
         suppressTextChange = false
+        let cursor = NSRange(location: min(doc.cursorPosition, lm.textStorage?.length ?? 0), length: 0)
+        setSelections([cursor], primaryRange: cursor)
         lineNumbers?.needsDisplay = true
         deferredHighlightVisible()
     }
@@ -311,6 +339,11 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     }
 
     func textViewDidChangeSelection(_ n: Notification) {
+        guard !isApplyingSelectionSet else { return }
+        selectionSet.update(
+            ranges: textView.selectedRanges.map(\.rangeValue),
+            primaryRange: textView.selectedRange()
+        )
         lineNumbers?.needsDisplay = true
         emitCursor()
     }

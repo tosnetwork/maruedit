@@ -1743,12 +1743,12 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M4-01: Refactor SelectionSet
 
-- [ ] Scope selection state to each Editor instance.
-- [ ] Synchronize bidirectionally with `NSTextView.selectedRanges`.
-- [ ] Normalize ranges.
-- [ ] Maintain a primary selection.
-- [ ] Prevent state leakage during document switching.
-- [ ] Add multi-window isolation tests.
+- [x] Scope selection state to each Editor instance. *(`EditorViewController` owns one `SelectionSet`; the former cursor-array property is now a temporary compatibility view over that instance.)*
+- [x] Synchronize bidirectionally with `NSTextView.selectedRanges`. *(`setSelections` applies model ranges to TextKit; `textViewDidChangeSelection` imports AppKit selection changes. Native non-empty selections round-trip in `testEditorAndTextViewSynchronizeInBothDirections`; collapsed multi-cursors remain represented by `SelectionSet` because AppKit collapses multiple zero-length ranges.)*
+- [x] Normalize ranges. *(`SelectionSet.normalize` removes invalid/duplicate ranges, sorts them, merges true overlaps, and deliberately keeps adjacent selections distinct.)*
+- [x] Maintain a primary selection. *(`primaryIndex`/`primaryRange` remain attached to the requested primary even when normalized ranges are sorted; the primary is placed first when applying to TextKit.)*
+- [x] Prevent state leakage during document switching. *(Changing `document` exits multi-edit and resets the selection to that document's saved cursor; `testSwitchingDocumentsResetsMultiSelectionToDocumentsCursor`.)*
+- [x] Add multi-window isolation tests. *(`SelectionSetTests.testTwoEditorsOwnIndependentSelectionSets` plus the existing `EditorViewControllerIsolationTests`; no static mutable selection state exists.)*
 
 ## M4-02: Multi-Cursor Creation and Navigation
 

@@ -16,8 +16,8 @@ final class EditorViewControllerIsolationTests: XCTestCase {
 
         XCTAssertFalse(editorA.isMultiEditActive)
         XCTAssertFalse(editorB.isMultiEditActive)
-        XCTAssertTrue(editorA.multiEditCursorRanges.isEmpty)
-        XCTAssertTrue(editorB.multiEditCursorRanges.isEmpty)
+        XCTAssertEqual(editorA.multiEditCursorRanges, [NSRange(location: 0, length: 0)])
+        XCTAssertEqual(editorB.multiEditCursorRanges, [NSRange(location: 0, length: 0)])
 
         editorA.isMultiEditActive = true
         editorA.multiEditCursorRanges = [NSRange(location: 0, length: 3), NSRange(location: 10, length: 3)]
@@ -26,7 +26,7 @@ final class EditorViewControllerIsolationTests: XCTestCase {
         XCTAssertEqual(editorA.multiEditCursorRanges.count, 2)
 
         XCTAssertFalse(editorB.isMultiEditActive, "activating multi-edit on one editor must not affect another")
-        XCTAssertTrue(editorB.multiEditCursorRanges.isEmpty, "cursor ranges must not leak between editor instances")
+        XCTAssertEqual(editorB.multiEditCursorRanges, [NSRange(location: 0, length: 0)], "cursor ranges must not leak between editor instances")
     }
 
     func testDeallocatingOneEditorDoesNotAffectAnother() {
@@ -38,6 +38,6 @@ final class EditorViewControllerIsolationTests: XCTestCase {
         editorA = nil // deallocate — must not touch any global map editorB could be keyed into
 
         XCTAssertFalse(editorB.isMultiEditActive)
-        XCTAssertTrue(editorB.multiEditCursorRanges.isEmpty)
+        XCTAssertEqual(editorB.multiEditCursorRanges, [NSRange(location: 0, length: 0)])
     }
 }
