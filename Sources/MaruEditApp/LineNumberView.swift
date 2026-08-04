@@ -5,6 +5,7 @@ import AppKit
 /// NSTextView rendering on macOS 15+.
 final class LineNumberView: NSView {
     private weak var textView: NSTextView?
+    var bookmarkOffsets: Set<Int> = [] { didSet { needsDisplay = true } }
     override var isFlipped: Bool { true }
 
     init(textView: NSTextView) {
@@ -64,7 +65,7 @@ final class LineNumberView: NSView {
             if cr.location == lr.location {
                 let y = fragRect.origin.y + containerOrigin.y - yOffset
                 let active = NSLocationInRange(selectedRange.location, lr)
-                drawNumber(lineNum, y: y, active: active)
+                drawNumber(lineNum, y: y, active: active, bookmarked: bookmarkOffsets.contains(lr.location))
                 lineNum += 1
             }
             gi = NSMaxRange(effectiveRange)
@@ -75,7 +76,7 @@ final class LineNumberView: NSView {
         textView?.enclosingScrollView?.contentView.bounds.origin.y ?? 0
     }
 
-    private func drawNumber(_ num: Int, y: CGFloat, active: Bool) {
+    private func drawNumber(_ num: Int, y: CGFloat, active: Bool, bookmarked: Bool = false) {
         let attrs: [NSAttributedString.Key: Any] = [
             .font: Theme.lineNumFont,
             .foregroundColor: active ? Theme.gutterActiveText : Theme.gutterText
@@ -85,5 +86,9 @@ final class LineNumberView: NSView {
         let pt = NSPoint(x: bounds.width - sz.width - 10,
                          y: y + (Theme.editorFont.ascender - sz.height) / 2 + 2)
         str.draw(at: pt, withAttributes: attrs)
+        if bookmarked {
+            Theme.accent.setFill()
+            NSBezierPath(ovalIn: NSRect(x: 5, y: y + 5, width: 7, height: 7)).fill()
+        }
     }
 }

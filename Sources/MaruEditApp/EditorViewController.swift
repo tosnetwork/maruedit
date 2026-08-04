@@ -292,8 +292,13 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         suppressTextChange = false
         let cursor = NSRange(location: min(doc.cursorPosition, lm.textStorage?.length ?? 0), length: 0)
         setSelections([cursor], primaryRange: cursor)
+        refreshBookmarkGutter()
         lineNumbers?.needsDisplay = true
         deferredHighlightVisible()
+    }
+
+    func refreshBookmarkGutter() {
+        lineNumbers?.bookmarkOffsets = document?.bookmarks.offsets ?? []
     }
 
     /// Deferred to next run-loop so the scroll view geometry is settled
@@ -359,7 +364,11 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
 
     func textView(_ textView: NSTextView, shouldChangeTextIn range: NSRange,
                   replacementString text: String?) -> Bool {
-        guard !suppressAutoIndent, let text = text, text == "\n" else { return true }
+        let replacement = text ?? ""
+        if suppressAutoIndent || replacement != "\n" {
+            document?.bookmarks.applyEdit(range: range, replacement: replacement)
+            return true
+        }
 
         let ns = textView.string as NSString
         let lineRange = ns.lineRange(for: NSRange(location: min(range.location, ns.length), length: 0))
@@ -370,7 +379,10 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
             if ch == " " || ch == "\t" { indent.append(ch) }
             else { break }
         }
-        guard !indent.isEmpty else { return true }
+        guard !indent.isEmpty else {
+            document?.bookmarks.applyEdit(range: range, replacement: replacement)
+            return true
+        }
 
         suppressAutoIndent = true
         textView.insertText("\n" + indent, replacementRange: range)
@@ -381,10 +393,12 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     func textDidChange(_ n: Notification) {
         guard !suppressTextChange else { return }
         let content = textView.string
+        document?.bookmarks.normalize(in: content as NSString)
         document?.content = content
         document?.markModified()
         delegate?.editorTextDidChange(self)
         lineNumbers?.needsDisplay = true
+        lineNumbers?.bookmarkOffsets = document?.bookmarks.offsets ?? []
         emitCursor()
 
         if let ts = textView.textStorage, ts.length > 0 {

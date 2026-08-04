@@ -1075,6 +1075,10 @@ final class MainWindowController: NSWindowController,
     func undoLastAddedCursor() { editorVC.undoLastAddedCursor() }
     func beginColumnSelection() { editorVC.beginColumnSelectionCommand() }
     func performLineCommand(_ command: LineEditCommand) { editorVC.performLineCommand(command) }
+    func toggleBookmark() { editorVC.toggleBookmark() }
+    func nextBookmark() { editorVC.nextBookmark() }
+    func previousBookmark() { editorVC.previousBookmark() }
+    func clearBookmarks() { editorVC.clearBookmarks() }
 
     // MARK: - Session persistence
     //

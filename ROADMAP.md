@@ -1810,20 +1810,20 @@ Every command must have applicable normal, selection, and multi-selection tests,
 
 ## M4-07: Bookmarks
 
-- [ ] Toggle Bookmark.
-- [ ] Next/Previous Bookmark.
-- [ ] Clear Bookmarks.
-- [ ] Display bookmarks in the gutter.
-- [ ] Update bookmark line positions after edits.
-- [ ] Decide through an ADR whether bookmarks persist in Session state.
+- [x] Toggle Bookmark. *(`navigate.toggleBookmark`; bookmarks are owned by the active `Document`, not global editor state.)*
+- [x] Next/Previous Bookmark. *(`navigate.nextBookmark` / `navigate.previousBookmark`; navigation wraps within the document.)*
+- [x] Clear Bookmarks. *(`navigate.clearBookmarks`; covered together with toggle and navigation in `BookmarkTests`.)*
+- [x] Display bookmarks in the gutter. *(`LineNumberView` draws an accent marker beside every bookmarked logical line.)*
+- [x] Update bookmark line positions after edits. *(`BookmarkSet` uses UTF-16 line anchors transformed through both normal TextKit edits and multi-selection batch edits; Undo restores anchors with the editor snapshot.)*
+- [x] Decide through an ADR whether bookmarks persist in Session state. *(`docs/adr-007-bookmark-persistence.md`: bookmarks are document-owned but session-ephemeral for 1.0 until contextual stale-anchor handling exists.)*
 
 ### M4 Gate
 
-- [ ] No cross-window selection-state leakage.
+- [x] No cross-window selection-state leakage. *(`SelectionSetTests.testTwoEditorsOwnIndependentSelectionSets` and document-owned `BookmarkSet` isolation.)*
 - [ ] IME manual tests pass.
-- [ ] BOX behavior is predictable for tabs, full-width characters, and short lines.
-- [ ] Undo/Redo preserves text and selection integrity.
-- [ ] Every editing capability executes through the Command Registry.
+- [x] BOX behavior is predictable for tabs, full-width characters, and short lines. *(`BoxSelectionTests`, including virtual-space behavior.)*
+- [x] Undo/Redo preserves text and selection integrity. *(Multi-selection, IME commit, line-command, and bookmark snapshot tests cover text plus logical selections/anchors.)*
+- [x] Every editing capability executes through the Command Registry. *(All M4 selection, BOX, line-editing, and bookmark commands have stable IDs registered by `AppCommands`; ordinary text input remains correctly owned by TextKit.)*
 
 ---
 

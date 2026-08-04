@@ -94,6 +94,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         ] { linesMenu.addItem(commandItem(id, "")) }
         linesItem.submenu = linesMenu
         editMenu.addItem(linesItem)
+        editMenu.addItem(.separator())
+        editMenu.addItem(commandItem(.navigateToggleBookmark, ""))
+        editMenu.addItem(commandItem(.navigateNextBookmark, ""))
+        editMenu.addItem(commandItem(.navigatePreviousBookmark, ""))
+        editMenu.addItem(commandItem(.navigateClearBookmarks, ""))
         editItem.submenu = editMenu
         main.addItem(editItem)
 

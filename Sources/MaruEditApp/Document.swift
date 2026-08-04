@@ -35,6 +35,7 @@ final class Document {
     var cursorPosition: Int = 0
     var scrollOffset: NSPoint = .zero
     var cachedTextStorage: NSTextStorage?
+    let bookmarks = BookmarkSet()
     /// Stable for this document's lifetime, used to key its crash-
     /// recovery record while it's unnamed (ROADMAP.md M2-07). Kept even
     /// after the document gains a file — `MainWindowController` deletes

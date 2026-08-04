@@ -40,6 +40,10 @@ extension CommandID {
     static let editIndent = CommandID("edit.indent")
     static let editOutdent = CommandID("edit.outdent")
     static let editToggleComment = CommandID("edit.toggleComment")
+    static let navigateToggleBookmark = CommandID("navigate.toggleBookmark")
+    static let navigateNextBookmark = CommandID("navigate.nextBookmark")
+    static let navigatePreviousBookmark = CommandID("navigate.previousBookmark")
+    static let navigateClearBookmarks = CommandID("navigate.clearBookmarks")
 }
 
 /// The command definitions for MaruEdit's current static menu actions.
@@ -106,6 +110,10 @@ enum AppCommands {
         registry.register(CommandDefinition(id: .editUndoLastAddedCursor, title: "Undo Last Added Cursor") { $0.coordinator.undoLastAddedCursor() })
         registry.register(CommandDefinition(id: .editBeginColumnSelection, title: "Begin Column Selection") { $0.coordinator.beginColumnSelection() })
         registerLineCommands(in: registry)
+        registry.register(CommandDefinition(id: .navigateToggleBookmark, title: "Toggle Bookmark") { $0.coordinator.toggleBookmark() })
+        registry.register(CommandDefinition(id: .navigateNextBookmark, title: "Next Bookmark") { $0.coordinator.nextBookmark() })
+        registry.register(CommandDefinition(id: .navigatePreviousBookmark, title: "Previous Bookmark") { $0.coordinator.previousBookmark() })
+        registry.register(CommandDefinition(id: .navigateClearBookmarks, title: "Clear Bookmarks") { $0.coordinator.clearBookmarks() })
     }
 
     private static func registerLineCommands(in registry: CommandRegistry) {

@@ -365,11 +365,13 @@ extension EditorViewController {
 
         ts.beginEditing()
         for operation in merged.reversed() {
+            document?.bookmarks.applyEdit(range: operation.range, replacement: operation.replacement)
             ts.replaceCharacters(in: operation.range, with: operation.replacement)
         }
         ts.endEditing()
 
         let newContent = textView.string
+        document?.bookmarks.normalize(in: newContent as NSString)
         document?.content = newContent
         document?.markModified()
         delegate?.editorTextDidChange(self)
@@ -381,6 +383,7 @@ extension EditorViewController {
         let primary = newCursors.first ?? NSRange(location: 0, length: 0)
         setSelections(newCursors, primaryRange: primary)
         isMultiEditActive = newCursors.count > 1
+        refreshBookmarkGutter()
         rehighlightEntireDocument()
         // Attribute-only highlighting must not change logical selections.
         setSelections(newCursors, primaryRange: primary)
@@ -399,10 +402,16 @@ extension EditorViewController {
         let text: String
         let selections: [NSRange]
         let primary: NSRange
+        let bookmarks: Set<Int>
     }
 
     private func editorSnapshot() -> EditorSnapshot {
-        EditorSnapshot(text: textView.string, selections: selectionSet.ranges, primary: selectionSet.primaryRange)
+        EditorSnapshot(
+            text: textView.string,
+            selections: selectionSet.ranges,
+            primary: selectionSet.primaryRange,
+            bookmarks: document?.bookmarks.offsets ?? []
+        )
     }
 
     private func restoreEditorSnapshot(_ snapshot: EditorSnapshot) {
@@ -412,10 +421,12 @@ extension EditorViewController {
         ts.replaceCharacters(in: NSRange(location: 0, length: ts.length), with: snapshot.text)
         ts.endEditing()
         document?.content = snapshot.text
+        document?.bookmarks.restore(snapshot.bookmarks)
         document?.markModified()
         delegate?.editorTextDidChange(self)
         setSelections(snapshot.selections, primaryRange: snapshot.primary)
         isMultiEditActive = snapshot.selections.count > 1
+        refreshBookmarkGutter()
         rehighlightEntireDocument()
         setSelections(snapshot.selections, primaryRange: snapshot.primary)
         textView.undoManager?.registerUndo(withTarget: self) { target in

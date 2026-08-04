@@ -58,6 +58,10 @@ final class AppCoordinator {
     func undoLastAddedCursor()         { ensureWindowControllerReady().undoLastAddedCursor() }
     func beginColumnSelection()        { ensureWindowControllerReady().beginColumnSelection() }
     func performLineCommand(_ command: LineEditCommand) { ensureWindowControllerReady().performLineCommand(command) }
+    func toggleBookmark()               { ensureWindowControllerReady().toggleBookmark() }
+    func nextBookmark()                 { ensureWindowControllerReady().nextBookmark() }
+    func previousBookmark()             { ensureWindowControllerReady().previousBookmark() }
+    func clearBookmarks()               { ensureWindowControllerReady().clearBookmarks() }
     func toggleSidebar()               { ensureWindowControllerReady().toggleSidebar() }
     func clearRecoveryData()           { ensureWindowControllerReady().clearRecoveryData() }
 
