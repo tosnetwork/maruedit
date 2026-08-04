@@ -115,6 +115,55 @@ final class SyntaxHighlightCoordinatorTests: XCTestCase {
         }
     }
 
+    func testRegexBudgetCapsInputMatchesAndPathologicalWork() throws {
+        let fixtureURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Fixtures/Syntax/stress.swift")
+        let fixture = try String(contentsOf: fixtureURL, encoding: .utf8)
+        let text = String(repeating: fixture, count: 200)
+        let highlighter = SyntaxHighlighter(definitions: [
+            ("(a+)+$", .red),
+            ("\\b(let|func|struct|return)\\b", .green),
+        ])
+        let budget = SyntaxHighlighter.WorkBudget(
+            maximumDuration: 0.02, maximumMatches: 25, maximumUTF16Length: 4_096)
+        let started = CFAbsoluteTimeGetCurrent()
+
+        let batch = highlighter.matchBatch(
+            in: text, range: NSRange(location: 0, length: (text as NSString).length),
+            budget: budget)
+
+        XCTAssertTrue(batch.wasTruncated)
+        XCTAssertLessThanOrEqual(batch.matches.count, 25)
+        XCTAssertLessThan(CFAbsoluteTimeGetCurrent() - started, 0.5)
+    }
+
+    func testStressFixtureSurvivesRapidRevisionChurn() throws {
+        let fixtureURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Fixtures/Syntax/stress.swift")
+        let fixture = try String(contentsOf: fixtureURL, encoding: .utf8)
+        let storage = NSTextStorage(string: String(repeating: fixture, count: 40))
+        let coordinator = SyntaxHighlightCoordinator()
+        var staleCompletions = 0
+        for offset in 0..<50 {
+            coordinator.schedule(
+                storage: storage, language: .swift,
+                visibleRange: NSRange(location: offset, length: 200), font: font, delay: 0.01
+            ) { staleCompletions += 1 }
+        }
+        let latest = expectation(description: "latest stress revision")
+        coordinator.schedule(
+            storage: storage, language: .swift,
+            visibleRange: NSRange(location: 500, length: 200), font: font, delay: 0
+        ) { latest.fulfill() }
+
+        wait(for: [latest], timeout: 2)
+        XCTAssertEqual(staleCompletions, 0)
+        XCTAssertEqual(coordinator.revision, 51)
+        XCTAssertLessThan(coordinator.lastAppliedRange?.length ?? .max, 8_000)
+    }
+
     private func runMainLoopBriefly() {
         RunLoop.main.run(until: Date().addingTimeInterval(0.03))
     }

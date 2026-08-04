@@ -21,6 +21,7 @@ final class SyntaxHighlightCoordinator {
     }
     private(set) var isLargeFileMode = false
     private(set) var lastAppliedRange: NSRange?
+    private(set) var lastWorkWasTruncated = false
 
     init(
         workerQueue: DispatchQueue = DispatchQueue(
@@ -61,6 +62,7 @@ final class SyntaxHighlightCoordinator {
         let snapshot = storage.string
         let length = (snapshot as NSString).length
         isLargeFileMode = length > Self.largeFileThreshold
+        lastWorkWasTruncated = false
         guard length > 0 else {
             lastAppliedRange = nil
             completion?()
@@ -86,7 +88,9 @@ final class SyntaxHighlightCoordinator {
             guard let self, let storage, self.isCurrent(requestedRevision) else { return }
             let matchWork = DispatchWorkItem { [weak self, weak storage] in
                 guard let self, let storage, self.isCurrent(requestedRevision) else { return }
-                let matches = matcher.matches(in: snapshot, range: target)
+                let batch = matcher.matchBatch(
+                    in: snapshot, range: target,
+                    isCancelled: { !self.isCurrent(requestedRevision) })
                 self.callbackQueue.async { [weak self, weak storage] in
                     guard let self, let storage,
                           self.isCurrent(requestedRevision),
@@ -96,12 +100,13 @@ final class SyntaxHighlightCoordinator {
                         .foregroundColor: baseForeground,
                         .font: font,
                     ], range: target)
-                    for match in matches where NSMaxRange(match.range) <= storage.length {
+                    for match in batch.matches where NSMaxRange(match.range) <= storage.length {
                         storage.addAttribute(
                             .foregroundColor, value: match.color, range: match.range)
                     }
                     storage.endEditing()
                     self.lastAppliedRange = target
+                    self.lastWorkWasTruncated = batch.wasTruncated
                     completion?()
                 }
             }

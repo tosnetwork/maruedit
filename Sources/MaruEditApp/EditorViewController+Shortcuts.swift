@@ -376,6 +376,8 @@ extension EditorViewController {
     func batchReplace(_ targetRanges: [NSRange], with replacements: [String]) {
         guard let ts = textView.textStorage else { return }
         guard targetRanges.count == replacements.count else { return }
+        beginInputLatencySignpost()
+        defer { endInputLatencySignpost() }
         if lineIndex.utf16Length != ts.length {
             lineIndex = LineIndex(textView.string)
         }

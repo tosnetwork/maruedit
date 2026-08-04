@@ -2,9 +2,23 @@ import AppKit
 import MaruEditCore
 
 final class SyntaxHighlighter {
+    struct WorkBudget: Equatable {
+        let maximumDuration: TimeInterval
+        let maximumMatches: Int
+        let maximumUTF16Length: Int
+
+        static let interactive = WorkBudget(
+            maximumDuration: 0.025, maximumMatches: 10_000, maximumUTF16Length: 12_000)
+    }
+
     struct Match {
         let range: NSRange
         let color: NSColor
+    }
+
+    struct MatchBatch {
+        let matches: [Match]
+        let wasTruncated: Bool
     }
 
     private let rules: [(NSRegularExpression, NSColor)]
@@ -25,14 +39,45 @@ final class SyntaxHighlighter {
     }
 
     func matches(in text: String, range: NSRange) -> [Match] {
+        matchBatch(in: text, range: range).matches
+    }
+
+    func matchBatch(
+        in text: String,
+        range: NSRange,
+        budget: WorkBudget = .interactive,
+        isCancelled: () -> Bool = { false }
+    ) -> MatchBatch {
         let length = (text as NSString).length
         let safeRange = NSIntersectionRange(range, NSRange(location: 0, length: length))
-        guard safeRange.length > 0 else { return [] }
-        return rules.flatMap { regex, color in
-            regex.matches(in: text, options: [], range: safeRange).map {
-                Match(range: $0.range, color: color)
+        guard safeRange.length > 0 else { return MatchBatch(matches: [], wasTruncated: false) }
+        let boundedRange = NSRange(
+            location: safeRange.location,
+            length: min(safeRange.length, max(0, budget.maximumUTF16Length)))
+        var output: [Match] = []
+        var truncated = boundedRange.length < safeRange.length
+        let deadline = CFAbsoluteTimeGetCurrent() + max(0, budget.maximumDuration)
+
+        outer: for (regex, color) in rules {
+            if isCancelled() || CFAbsoluteTimeGetCurrent() >= deadline {
+                truncated = true
+                break
             }
+            regex.enumerateMatches(
+                in: text, options: [.reportProgress], range: boundedRange
+            ) { result, flags, stop in
+                if isCancelled() || CFAbsoluteTimeGetCurrent() >= deadline
+                    || output.count >= budget.maximumMatches {
+                    truncated = true
+                    stop.pointee = true
+                    return
+                }
+                guard !flags.contains(.progress), let result else { return }
+                output.append(Match(range: result.range, color: color))
+            }
+            if truncated { break outer }
         }
+        return MatchBatch(matches: output, wasTruncated: truncated)
     }
 
     // MARK: - Rule builder

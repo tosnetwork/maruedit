@@ -1,5 +1,6 @@
 import AppKit
 import MaruEditCore
+import os.log
 
 protocol EditorViewControllerDelegate: AnyObject {
     func editorTextDidChange(_ vc: EditorViewController)
@@ -16,6 +17,7 @@ private final class FlippedView: NSView {
 }
 
 final class EditorViewController: NSViewController, NSTextViewDelegate {
+    static let inputLatencyLog = OSLog(subsystem: "com.maruedit.editor", category: "InputLatency")
     weak var delegate: EditorViewControllerDelegate?
 
     private(set) var scrollView: NSScrollView!
@@ -28,6 +30,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     private var isApplyingSelectionSet = false
     private var markedTextSnapshot: (text: String, ranges: [NSRange], primary: NSRange)?
     private var isCompositionCommitScheduled = false
+    var inputLatencySignpostID: OSSignpostID?
     var lineIndex = LineIndex()
     private var preferences = Preferences.defaults
     private(set) var isHighContrast = false
@@ -448,6 +451,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
 
     func textView(_ textView: NSTextView, shouldChangeTextIn range: NSRange,
                   replacementString text: String?) -> Bool {
+        beginInputLatencySignpost()
         let replacement = text ?? ""
         if lineIndex.utf16Length != (textView.string as NSString).length {
             lineIndex = LineIndex(textView.string)
@@ -508,6 +512,20 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
                 visibleRange: rehighlightRange, font: preferredEditorFont,
                 baseForeground: editorForeground)
         }
+        endInputLatencySignpost()
+    }
+
+    func beginInputLatencySignpost() {
+        endInputLatencySignpost()
+        let identifier = OSSignpostID(log: Self.inputLatencyLog)
+        inputLatencySignpostID = identifier
+        os_signpost(.begin, log: Self.inputLatencyLog, name: "EditorInputLatency", signpostID: identifier)
+    }
+
+    func endInputLatencySignpost() {
+        guard let identifier = inputLatencySignpostID else { return }
+        os_signpost(.end, log: Self.inputLatencyLog, name: "EditorInputLatency", signpostID: identifier)
+        inputLatencySignpostID = nil
     }
 
     func textViewDidChangeSelection(_ n: Notification) {

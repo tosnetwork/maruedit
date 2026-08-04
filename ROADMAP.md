@@ -2053,12 +2053,12 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 
 ## M7-03: Incremental Highlighting and Input Latency
 
-- [ ] Recompute only affected ranges and context.
-- [ ] Cancel stale revisions.
-- [ ] Enforce a regex work budget.
-- [ ] Add signposts for input latency.
-- [ ] Disable highlighting automatically for large files.
-- [ ] Add a stress fixture.
+- [x] Recompute only affected ranges and context. *(Editor changes schedule the affected logical line or viewport; the coordinator expands only to line boundaries plus a bounded 3,000-unit context.)*
+- [x] Cancel stale revisions. *(Pending debounce/match work is cancelled and lock-protected revision checks run before matching, during regex progress, and before attribute application.)*
+- [x] Enforce a regex work budget. *(Interactive matching is capped at 25 ms, 10,000 matches, and 12,000 UTF-16 units, with explicit truncation reporting.)*
+- [x] Add signposts for input latency. *(`EditorInputLatency` covers AppKit pre-edit through document/index update and scheduling, including batch multi-selection edits.)*
+- [x] Disable highlighting automatically for large files. *(Above 100,000 UTF-16 units the coordinator clears stale colors and schedules no regex work.)*
+- [x] Add a stress fixture. *(`Tests/Fixtures/Syntax/stress.swift` drives pathological-regex budget and 51-revision churn tests with Unicode and multiline constructs.)*
 
 ## M7-04: Large-File Mode
 
