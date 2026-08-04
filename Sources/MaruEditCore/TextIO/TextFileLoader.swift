@@ -98,7 +98,7 @@ public enum TextFileLoader {
 
     private static func readData(at url: URL) throws -> (path: String, data: Data) {
         let path = url.path
-        guard let data = FileManager.default.contents(atPath: path) else {
+        guard let data = try? Data(contentsOf: url, options: .mappedIfSafe) else {
             throw TextFileLoaderError.fileNotReadable(path: path)
         }
         return (path, data)

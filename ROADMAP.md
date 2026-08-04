@@ -2044,12 +2044,12 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 
 ## M7-02: Memory and Buffer Audit
 
-- [ ] Document the lifecycle of `Data`, `String`, and `NSTextStorage` copies.
-- [ ] Release original `Data` after opening unless it remains necessary.
-- [ ] Prevent Session and Recovery stores from retaining duplicate large strings.
-- [ ] Run Instruments allocations and leak analysis.
-- [ ] Test ten open 10 MB documents.
-- [ ] Record before-and-after measurements.
+- [x] Document the lifecycle of `Data`, `String`, and `NSTextStorage` copies. *(`docs/memory-audit.md` records ownership and release points through open, edit, save, Session, and Recovery.)*
+- [x] Release original `Data` after opening unless it remains necessary. *(The loader uses mapped-if-safe local `Data`; `LoadedText` has no byte-buffer field, so mapped bytes leave scope after decoding.)*
+- [x] Prevent Session and Recovery stores from retaining duplicate large strings. *(Session never stores content; Recovery encodes/decodes call-local values and caches neither records nor `Data`; its debounce closure captures only the document weakly.)*
+- [x] Run Instruments allocations and leak analysis. *(Valid Release Allocations/Leaks traces sampled 5.69s/8.70s; `vmmap` measured 59.8 MiB idle footprint and `leaks --list` found no MaruEdit-owned leak stack; see `docs/memory-audit.md`.)*
+- [x] Test ten open 10 MB documents. *(`MemoryAuditTests` opens ten independent 10 MiB files, materializes each editable `NSTextStorage`, and edits every buffer.)*
+- [x] Record before-and-after measurements. *(The reproducible audit records 31.69 MiB before and 291.08 MiB after, a 259.39 MiB RSS increase.)*
 
 ## M7-03: Incremental Highlighting and Input Latency
 
