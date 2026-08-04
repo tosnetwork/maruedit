@@ -105,6 +105,9 @@ final class MacroEngineTests: XCTestCase {
         command;
         """
         XCTAssertEqual(try value(MacroEngine().execute(script, host: host)), .boolean(true))
+        XCTAssertEqual(try value(MacroEngine().execute(
+            "maru.commands.run(1).catch(error => error instanceof TypeError)", host: host
+        )), .boolean(true))
         XCTAssertEqual(document, "HELLO")
         XCTAssertEqual(clipboard, "clip!")
         XCTAssertEqual(calls, ["command:edit.test", "begin:Transform", "prompt:Question:initial",
