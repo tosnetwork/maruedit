@@ -45,6 +45,7 @@ final class Document {
     /// meaning.
     let recoveryID: RecoveryID
     private var savedContent: String
+    private var isFormatModified = false
 
     init(fileURL: URL? = nil, content: String = "", language: Language = .plainText, recoveryID: RecoveryID = RecoveryID()) {
         self.fileURL = fileURL
@@ -72,11 +73,17 @@ final class Document {
     var title: String { isModified ? "\(displayName) •" : displayName }
 
     func markModified() {
-        isModified = content != savedContent
+        isModified = content != savedContent || isFormatModified
+    }
+
+    func markFormatModified() {
+        isFormatModified = true
+        isModified = true
     }
 
     func markSaved() {
         savedContent = content
+        isFormatModified = false
         isModified = false
     }
 

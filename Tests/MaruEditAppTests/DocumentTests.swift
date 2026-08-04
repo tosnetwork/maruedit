@@ -28,6 +28,16 @@ final class DocumentTests: XCTestCase {
         XCTAssertFalse(doc.isModified)
     }
 
+    func testFormatChangesRemainModifiedUntilSaved() {
+        let doc = Document(content: "unchanged")
+        doc.markFormatModified()
+        XCTAssertTrue(doc.isModified)
+        doc.markModified()
+        XCTAssertTrue(doc.isModified, "matching text must not clear an unsaved format change")
+        doc.markSaved()
+        XCTAssertFalse(doc.isModified)
+    }
+
     func testSaveAndReopenRoundTrip() throws {
         let dir = FileManager.default.temporaryDirectory
         let url = dir.appendingPathComponent("MaruEditDocumentTests-\(UUID().uuidString).swift")

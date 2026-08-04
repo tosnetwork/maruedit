@@ -3,7 +3,7 @@ import MaruEditCore
 
 protocol EditorViewControllerDelegate: AnyObject {
     func editorTextDidChange(_ vc: EditorViewController)
-    func editorCursorMoved(_ vc: EditorViewController, line: Int, col: Int)
+    func editorCursorMoved(_ vc: EditorViewController, state: EditorCursorState)
 }
 
 private final class FlippedView: NSView {
@@ -532,14 +532,22 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     private func emitCursor() {
         let sel = textView.selectedRange()
         let ns = textView.string as NSString
-        var line = 1
-        var i = 0
-        while i < sel.location && i < ns.length {
-            if ns.character(at: i) == 0x0A { line += 1 }
-            i += 1
-        }
-        let lineStart = ns.lineRange(for: NSRange(location: min(sel.location, ns.length), length: 0)).location
-        delegate?.editorCursorMoved(self, line: line, col: sel.location - lineStart + 1)
+        let offset = min(sel.location, ns.length)
+        let tabWidth = document?.fileTypeProfile?.settings.tabWidth ?? preferences.tabWidth
+        let coordinate = BoxSelectionModel.coordinate(
+            atUTF16Offset: offset, in: textView.string, tabWidth: tabWidth)
+        let ranges = textView.selectedRanges.map(\.rangeValue)
+        delegate?.editorCursorMoved(self, state: EditorCursorState(
+            lineNumber: coordinate.line + 1,
+            displayColumn: coordinate.visualColumn + 1,
+            utf16Offset: offset,
+            selectedCharacterCount: ranges.reduce(0) {
+                $0 + ns.substring(with: NSIntersectionRange(
+                    $1, NSRange(location: 0, length: ns.length))).count
+            },
+            selectedUTF16Length: ranges.reduce(0) { $0 + $1.length },
+            selectionRangeCount: ranges.count
+        ))
     }
 
     func goToLine(_ line: Int) {

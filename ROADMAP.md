@@ -1891,15 +1891,15 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 
 ## M5-06: Status Bar and Clickable Format Controls
 
-- [ ] Line and column.
-- [ ] Selection count.
-- [ ] Encoding.
-- [ ] BOM.
-- [ ] Line ending.
-- [ ] Language/profile.
-- [ ] Insert/overwrite mode if implemented.
-- [ ] Clickable popup controls.
-- [ ] Distinguish display column from UTF-16 offset in APIs and documentation.
+- [x] Line and column. *(`EditorCursorState` reports one-based line and visual display column; the status bar renders `Ln …, Col …`.)*
+- [x] Selection count. *(The status bar shows grapheme-cluster count plus range count for multiple selections, while the API separately retains selected UTF-16 length.)*
+- [x] Encoding. *(The active `TextEncoding.displayName` remains visible and opens the tested Reopen with Encoding menu.)*
+- [x] BOM. *(An explicit `BOM` / `No BOM` control opens a checked menu, disables unsupported encodings, and records a save-requiring format change.)*
+- [x] Line ending. *(LF, CRLF, CR, Mixed, or none is displayed; the popup selects a concrete saved format and keeps the document dirty until saved.)*
+- [x] Language/profile. *(The field displays both syntax language and active FileType Profile name; its menu shows the profile and permits an explicit language override.)*
+- [x] Insert/overwrite mode if implemented. *(Not implemented, so no misleading mode indicator is shown; this conditional item requires no control.)*
+- [x] Clickable popup controls. *(Encoding, BOM, line ending, and language/profile have button accessibility roles, pointing-hand hit regions, delegate routing, checked menus, and interaction tests.)*
+- [x] Distinguish display column from UTF-16 offset in APIs and documentation. *(`EditorCursorState.displayColumn` uses tab/full-width/grapheme display widths, while `utf16Offset` remains an explicitly named zero-based storage coordinate; `EditorCursorStateTests` proves they differ.)*
 
 ## M5-07: Invisibles, Wrapping, and Fonts
 

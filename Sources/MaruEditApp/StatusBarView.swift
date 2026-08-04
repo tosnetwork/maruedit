@@ -1,26 +1,35 @@
 import AppKit
 import MaruEditCore
 
+enum StatusBarControl: CaseIterable {
+    case encoding, byteOrderMark, lineEnding, languageProfile
+}
+
 protocol StatusBarViewDelegate: AnyObject {
-    /// The user clicked the encoding label. `menu` should be popped up
-    /// at `point` (already in the status bar's own coordinate space).
-    func statusBar(_ statusBar: StatusBarView, didClickEncodingAt point: NSPoint)
+    func statusBar(
+        _ statusBar: StatusBarView, didClick control: StatusBarControl, at point: NSPoint)
 }
 
 final class StatusBarView: NSView {
     weak var delegate: StatusBarViewDelegate?
 
-    private let lineColLabel     = NSTextField(labelWithString: "Ln 1, Col 1")
-    private let langLabel        = NSTextField(labelWithString: "Plain Text")
-    private let encLabel         = NSTextField(labelWithString: "UTF-8")
-    private let lineEndingLabel  = NSTextField(labelWithString: "LF")
-    private let indentLabel      = NSTextField(labelWithString: "Spaces: 4")
-    /// ROADMAP.md M2-08: "Show an explicit read-only state." Hidden
-    /// unless the current document's file is not writable.
-    private let readOnlyLabel    = NSTextField(labelWithString: "Read-Only")
+    private let lineColLabel = NSTextField(labelWithString: "Ln 1, Col 1")
+    private let selectionLabel = NSTextField(labelWithString: "")
+    private let indentLabel = NSTextField(labelWithString: "Spaces: 4")
+    private let langLabel = NSTextField(labelWithString: "Plain Text")
+    private let encLabel = NSTextField(labelWithString: "UTF-8")
+    private let bomLabel = NSTextField(labelWithString: "No BOM")
+    private let lineEndingLabel = NSTextField(labelWithString: "LF")
+    private let readOnlyLabel = NSTextField(labelWithString: "Read-Only")
     private var cursorText = "Ln 1, Col 1"
     private var messageWorkItem: DispatchWorkItem?
+
     var displayedLeadingText: String { lineColLabel.stringValue }
+    var displayedSelectionText: String { selectionLabel.stringValue }
+    var displayedEncodingText: String { encLabel.stringValue }
+    var displayedBOMText: String { bomLabel.stringValue }
+    var displayedLineEndingText: String { lineEndingLabel.stringValue }
+    var displayedLanguageProfileText: String { langLabel.stringValue }
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -34,41 +43,68 @@ final class StatusBarView: NSView {
 
     override func layout() {
         super.layout()
-        let h = bounds.height
-        let midY = (h - 16) / 2
-        lineColLabel.frame = NSRect(x: 14, y: midY, width: messageWorkItem == nil ? 100 : 280, height: 16)
-        indentLabel.frame = NSRect(x: 120, y: midY, width: 80, height: 16)
-        langLabel.sizeToFit()
-        langLabel.frame.origin = NSPoint(x: bounds.width - 14 - langLabel.frame.width, y: midY)
-        encLabel.sizeToFit()
-        encLabel.frame.origin = NSPoint(x: langLabel.frame.minX - 20 - encLabel.frame.width, y: midY)
-        lineEndingLabel.sizeToFit()
-        lineEndingLabel.frame.origin = NSPoint(x: encLabel.frame.minX - 16 - lineEndingLabel.frame.width, y: midY)
+        let midY = (bounds.height - 16) / 2
+        lineColLabel.frame = NSRect(
+            x: 14, y: midY, width: messageWorkItem == nil ? 105 : 280, height: 16)
+        selectionLabel.frame = NSRect(x: 122, y: midY, width: 130, height: 16)
+        indentLabel.frame = NSRect(x: 255, y: midY, width: 85, height: 16)
+
+        var right = bounds.width - 14
+        for label in [langLabel, encLabel, bomLabel, lineEndingLabel] {
+            label.sizeToFit()
+            right -= label.frame.width
+            label.frame.origin = NSPoint(x: right, y: midY)
+            right -= 18
+        }
         readOnlyLabel.sizeToFit()
-        readOnlyLabel.frame.origin = NSPoint(x: lineEndingLabel.frame.minX - 16 - readOnlyLabel.frame.width, y: midY)
+        right -= readOnlyLabel.frame.width
+        readOnlyLabel.frame.origin = NSPoint(x: right, y: midY)
         window?.invalidateCursorRects(for: self)
     }
 
     private func setup() {
-        let labels = [lineColLabel, langLabel, encLabel, lineEndingLabel, indentLabel, readOnlyLabel]
-        for l in labels {
-            l.font = Theme.uiFontSmall
-            l.textColor = Theme.statusText
-            l.isBordered = false
-            l.isEditable = false
-            l.drawsBackground = false
-            addSubview(l)
+        let labels = [lineColLabel, selectionLabel, indentLabel, langLabel, encLabel,
+                      bomLabel, lineEndingLabel, readOnlyLabel]
+        for label in labels {
+            label.font = Theme.uiFontSmall
+            label.textColor = Theme.statusText
+            label.isBordered = false
+            label.isEditable = false
+            label.drawsBackground = false
+            addSubview(label)
         }
-        encLabel.textColor = Theme.accent
-        encLabel.toolTip = "Click to reopen this file with a different encoding"
+        let controls: [(NSTextField, String, String)] = [
+            (encLabel, "Encoding", "Choose or reopen with a text encoding"),
+            (bomLabel, "Byte order mark", "Choose whether to save a byte order mark"),
+            (lineEndingLabel, "Line ending", "Choose the saved line-ending style"),
+            (langLabel, "Language and file-type profile", "Choose syntax language or inspect the active profile"),
+        ]
+        for (label, accessibilityLabel, toolTip) in controls {
+            label.textColor = Theme.accent
+            label.setAccessibilityRole(.button)
+            label.setAccessibilityLabel(accessibilityLabel)
+            label.toolTip = toolTip
+        }
+        lineColLabel.setAccessibilityLabel("Cursor line and display column")
+        selectionLabel.setAccessibilityLabel("Selection count")
         readOnlyLabel.textColor = .systemOrange
         readOnlyLabel.toolTip = "This file is read-only on disk; use Save As to save changes"
         readOnlyLabel.isHidden = true
     }
 
-    func updateCursor(line: Int, col: Int) {
-        cursorText = "Ln \(line), Col \(col)"
+    func updateCursor(_ state: EditorCursorState) {
+        cursorText = "Ln \(state.lineNumber), Col \(state.displayColumn)"
         if messageWorkItem == nil { lineColLabel.stringValue = cursorText }
+        if state.selectedCharacterCount == 0 {
+            selectionLabel.stringValue = state.selectionRangeCount > 1
+                ? "\(state.selectionRangeCount) carets" : ""
+        } else if state.selectionRangeCount > 1 {
+            selectionLabel.stringValue = "Sel \(state.selectedCharacterCount) (\(state.selectionRangeCount) ranges)"
+        } else {
+            selectionLabel.stringValue = "Sel \(state.selectedCharacterCount)"
+        }
+        lineColLabel.toolTip = "UTF-16 offset: \(state.utf16Offset)"
+        selectionLabel.toolTip = "Selected UTF-16 units: \(state.selectedUTF16Length)"
         needsLayout = true
     }
 
@@ -91,8 +127,9 @@ final class StatusBarView: NSView {
         needsLayout = true
     }
 
-    func updateLanguage(_ lang: Language) {
-        langLabel.stringValue = lang.displayName
+    func updateLanguage(_ language: Language, profileName: String?) {
+        langLabel.stringValue = profileName.map { "\(language.displayName) · \($0)" }
+            ?? language.displayName
         needsLayout = true
     }
 
@@ -101,8 +138,18 @@ final class StatusBarView: NSView {
         needsLayout = true
     }
 
+    func updateByteOrderMark(_ hasByteOrderMark: Bool) {
+        bomLabel.stringValue = hasByteOrderMark ? "BOM" : "No BOM"
+        needsLayout = true
+    }
+
     func updateLineEnding(_ state: LineEndingState) {
         lineEndingLabel.stringValue = state.displayName
+        needsLayout = true
+    }
+
+    func updateIndentation(style: IndentStyle, width: Int) {
+        indentLabel.stringValue = style == .tabs ? "Tabs: \(width)" : "Spaces: \(width)"
         needsLayout = true
     }
 
@@ -112,19 +159,39 @@ final class StatusBarView: NSView {
         needsLayout = true
     }
 
-    // MARK: - Clickable encoding control
-
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
-        guard encLabel.frame.contains(point) else {
+        guard let control = control(at: point), let frame = frame(for: control) else {
             super.mouseDown(with: event)
             return
         }
-        delegate?.statusBar(self, didClickEncodingAt: NSPoint(x: encLabel.frame.minX, y: encLabel.frame.maxY))
+        activate(control, at: NSPoint(x: frame.minX, y: frame.maxY))
     }
 
     override func resetCursorRects() {
         super.resetCursorRects()
-        addCursorRect(encLabel.frame, cursor: .pointingHand)
+        for control in StatusBarControl.allCases {
+            if let frame = frame(for: control) { addCursorRect(frame, cursor: .pointingHand) }
+        }
+    }
+
+    func frame(for control: StatusBarControl) -> NSRect? {
+        switch control {
+        case .encoding: encLabel.frame
+        case .byteOrderMark: bomLabel.frame
+        case .lineEnding: lineEndingLabel.frame
+        case .languageProfile: langLabel.frame
+        }
+    }
+
+    func activate(_ control: StatusBarControl, at point: NSPoint? = nil) {
+        guard let frame = frame(for: control) else { return }
+        delegate?.statusBar(
+            self, didClick: control,
+            at: point ?? NSPoint(x: frame.minX, y: frame.maxY))
+    }
+
+    private func control(at point: NSPoint) -> StatusBarControl? {
+        StatusBarControl.allCases.first { frame(for: $0)?.contains(point) == true }
     }
 }

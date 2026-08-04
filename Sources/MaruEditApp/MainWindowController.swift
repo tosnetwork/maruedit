@@ -867,9 +867,14 @@ final class MainWindowController: NSWindowController,
 
     private func refreshStatus() {
         if let doc = curDoc {
-            statusBar.updateLanguage(doc.language)
+            statusBar.updateLanguage(doc.language, profileName: doc.fileTypeProfile?.name)
             statusBar.updateEncoding(doc.encoding)
+            statusBar.updateByteOrderMark(doc.hasByteOrderMark)
             statusBar.updateLineEnding(doc.lineEnding)
+            let settings = doc.fileTypeProfile?.settings
+            statusBar.updateIndentation(
+                style: settings?.indentStyle ?? .spaces,
+                width: settings?.indentWidth ?? max(1, editorVC.appliedPreferences.tabWidth))
             statusBar.updateReadOnly(doc.isReadOnly)
         }
     }
@@ -913,9 +918,103 @@ final class MainWindowController: NSWindowController,
         reopenCurrentDocument(with: encoding)
     }
 
-    func statusBar(_ statusBar: StatusBarView, didClickEncodingAt point: NSPoint) {
-        guard curDoc?.fileURL != nil else { return } // nothing to reopen for an unsaved document
-        buildEncodingMenu().popUp(positioning: nil, at: point, in: statusBar)
+    func statusBar(
+        _ statusBar: StatusBarView, didClick control: StatusBarControl, at point: NSPoint
+    ) {
+        let menu: NSMenu
+        switch control {
+        case .encoding:
+            guard curDoc?.fileURL != nil else { return }
+            menu = buildEncodingMenu()
+        case .byteOrderMark: menu = buildByteOrderMarkMenu()
+        case .lineEnding: menu = buildLineEndingMenu()
+        case .languageProfile: menu = buildLanguageProfileMenu()
+        }
+        menu.popUp(positioning: nil, at: point, in: statusBar)
+    }
+
+    func buildByteOrderMarkMenu() -> NSMenu {
+        let menu = NSMenu()
+        for (title, enabled) in [("With BOM", true), ("Without BOM", false)] {
+            let item = NSMenuItem(
+                title: title, action: #selector(didSelectByteOrderMark(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = NSNumber(value: enabled)
+            item.state = curDoc?.hasByteOrderMark == enabled ? .on : .off
+            item.isEnabled = !enabled || curDoc?.encoding.byteOrderMark != nil
+            menu.addItem(item)
+        }
+        return menu
+    }
+
+    @objc private func didSelectByteOrderMark(_ sender: NSMenuItem) {
+        guard let doc = curDoc,
+              let enabled = (sender.representedObject as? NSNumber)?.boolValue,
+              !enabled || doc.encoding.byteOrderMark != nil else { return }
+        guard doc.hasByteOrderMark != enabled else { return }
+        doc.hasByteOrderMark = enabled
+        doc.markFormatModified()
+        refreshTabs(); refreshStatus()
+    }
+
+    func buildLineEndingMenu() -> NSMenu {
+        let menu = NSMenu()
+        for (title, value) in [("LF", "lf"), ("CRLF", "crlf"), ("CR", "cr")] {
+            let item = NSMenuItem(
+                title: title, action: #selector(didSelectLineEnding(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = value
+            item.state = curDoc?.lineEnding.displayName == title ? .on : .off
+            menu.addItem(item)
+        }
+        return menu
+    }
+
+    @objc private func didSelectLineEnding(_ sender: NSMenuItem) {
+        guard let doc = curDoc, let value = sender.representedObject as? String else { return }
+        let state: LineEndingState
+        switch value {
+        case "lf": state = .lf
+        case "crlf": state = .crlf
+        case "cr": state = .cr
+        default: return
+        }
+        guard doc.lineEnding != state else { return }
+        doc.lineEnding = state
+        doc.markFormatModified()
+        refreshTabs(); refreshStatus()
+    }
+
+    func buildLanguageProfileMenu() -> NSMenu {
+        let menu = NSMenu()
+        if let profile = curDoc?.fileTypeProfile {
+            let item = NSMenuItem(title: "Profile: \(profile.name)", action: nil, keyEquivalent: "")
+            item.isEnabled = false
+            menu.addItem(item)
+            menu.addItem(.separator())
+        }
+        for language in Language.allCases where language != .plainText {
+            menu.addItem(languageMenuItem(language))
+        }
+        menu.addItem(languageMenuItem(.plainText))
+        return menu
+    }
+
+    private func languageMenuItem(_ language: Language) -> NSMenuItem {
+        let item = NSMenuItem(
+            title: language.displayName, action: #selector(didSelectLanguage(_:)), keyEquivalent: "")
+        item.target = self
+        item.representedObject = language.rawValue
+        item.state = curDoc?.language == language ? .on : .off
+        return item
+    }
+
+    @objc private func didSelectLanguage(_ sender: NSMenuItem) {
+        guard let doc = curDoc, let raw = sender.representedObject as? String,
+              let language = Language(rawValue: raw) else { return }
+        doc.language = language
+        editorVC.rehighlightEntireDocument()
+        refreshStatus()
     }
 
     /// Re-reads the current document's file with `encoding`, resolving
@@ -982,7 +1081,9 @@ final class MainWindowController: NSWindowController,
         }
         scheduleSessionSave()
     }
-    func editorCursorMoved(_ vc: EditorViewController, line: Int, col: Int) { statusBar.updateCursor(line: line, col: col) }
+    func editorCursorMoved(_ vc: EditorViewController, state: EditorCursorState) {
+        statusBar.updateCursor(state)
+    }
 
     // MARK: - TabBarViewDelegate
 
