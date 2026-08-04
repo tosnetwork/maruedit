@@ -2188,16 +2188,16 @@ Cover at least:
 
 ## M8-06: 1.0 Release Check
 
-- [ ] Complete naming and trademark searches.
-- [ ] Make the independent-project statement prominent.
+- [x] Complete naming and trademark searches. *(`docs/naming-audit.md` records the 2026-08-05 exact/near-name web, GitHub, App Store, USPTO, and J-PlatPat search surfaces, nearby names, limitations, and professional-clearance recommendation.)*
+- [x] Make the independent-project statement prominent. *(The README opening, FAQ, compatibility matrix, release notes, NOTICE, and naming audit state that MaruEdit is independent and not affiliated with or endorsed by Hidemaru's developers.)*
 - [ ] Include `LICENSE`, `NOTICE.md`, and `UPSTREAM.md` in the release.
-- [ ] Confirm there is no telemetry.
-- [ ] Confirm P0 = 0 and P1 = 0.
-- [ ] Update performance documentation.
+- [x] Confirm there is no telemetry. *(Source audit found no telemetry/analytics SDK, client, or network-session code; SwiftPM has no third-party dependencies, and the threat model/FAQ document the absence.)*
+- [x] Confirm P0 = 0 and P1 = 0. *(GitHub open-label audit on 2026-08-05 returned zero `p0` and zero `p1` issues; this must be repeated immediately before tagging.)*
+- [x] Update performance documentation. *(`docs/performance.md` contains the final M7 measurements, reproducible commands, misses, GitHub issues, and the large-file off-main-thread follow-up.)*
 - [ ] Pass every prior Gate.
 - [ ] Create the `v1.0.0` tag.
 - [ ] Publish the GitHub Release.
-- [ ] Prepare rollback and hotfix procedures.
+- [x] Prepare rollback and hotfix procedures. *(`docs/rollback-and-hotfix.md` defines stop/disclosure actions, immutable-tag handling, installed-copy limitations, regression/Gate requirements, patch release steps, and credential-compromise handling.)*
 
 ### M8 Gate / Definition of MaruEdit 1.0
 

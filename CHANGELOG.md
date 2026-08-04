@@ -18,6 +18,7 @@ semantic version tags.
 ### Release engineering
 
 - Added a fail-closed Developer ID, Hardened Runtime, notarization, stapling, Gatekeeper, DMG, and SHA-256 pipeline plus drafted 1.0 release notes.
+- Added naming/trademark search evidence and rollback/hotfix procedures; release DMGs include license, notice, and upstream-attribution files.
 
 ### Changed
 

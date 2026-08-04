@@ -40,6 +40,7 @@ codesign --display --verbose=4 "$APP" 2>&1 | grep -q 'flags=.*runtime'
 rm -rf "$DIST"
 mkdir -p "$DIST/dmg-root"
 ditto "$APP" "$DIST/dmg-root/$APP"
+cp LICENSE NOTICE.md UPSTREAM.md "$DIST/dmg-root/"
 ln -s /Applications "$DIST/dmg-root/Applications"
 hdiutil create -volname "MaruEdit" -srcfolder "$DIST/dmg-root" -format UDZO -ov "$DMG"
 rm -rf "$DIST/dmg-root"
