@@ -4,6 +4,12 @@ import MaruEditCore
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let coordinator = AppCoordinator()
     private let keyBindings = KeyBindingManager(profile: .macOSStandard)
+    private lazy var macroManager: MacroManager = {
+        let injected = ProcessInfo.processInfo.environment["MARUEDIT_MACRO_DIRECTORY"]
+            .map { URL(fileURLWithPath: $0, isDirectory: true) }
+        return MacroManager(directory: injected ?? MacroManager.defaultDirectory,
+                            coordinator: coordinator, keyBindings: keyBindings)
+    }()
     private let isUITestMode = ProcessInfo.processInfo.environment["MARUEDIT_UI_TEST_MODE"] == "1"
     private var recentMenu: NSMenu!
     private var reopenWithEncodingMenu: NSMenu!
@@ -30,6 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             showStatus: { [coordinator] message, duration in
                 coordinator.showStatusMessage(message, duration: duration)
             })
+        macroManager.reload()
         buildMenu()
         coordinator.ensureWindowControllerReady(restoreSession: !isUITestMode)
         if isUITestMode,
@@ -176,6 +183,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         findMenu.addItem(commandItem(.searchClearHistory))
         findItem.submenu = findMenu
         main.addItem(findItem)
+
+        let macroItem = NSMenuItem(title: "Macro", action: nil, keyEquivalent: "")
+        macroItem.submenu = macroManager.menu
+        main.addItem(macroItem)
 
         // View menu
         let viewItem = NSMenuItem()

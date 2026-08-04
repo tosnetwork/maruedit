@@ -19,6 +19,11 @@ final class CommandRegistry {
         definitionsByID[definition.id] = definition
     }
 
+    @discardableResult
+    func unregister(_ id: CommandID) -> Bool {
+        definitionsByID.removeValue(forKey: id) != nil
+    }
+
     func definition(for id: CommandID) -> CommandDefinition? {
         definitionsByID[id]
     }

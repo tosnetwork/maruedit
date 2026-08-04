@@ -1957,14 +1957,14 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 
 ## M6-03: Macro Manager
 
-- [ ] Scan the user Macro directory.
-- [ ] Parse metadata: name, description, shortcut, and required permissions.
-- [ ] Populate the Macro menu.
-- [ ] Reload macros.
-- [ ] Open the macro folder.
-- [ ] Enable and disable individual macros.
-- [ ] Provide an error console.
-- [ ] Register macro shortcuts as dynamic commands through the Command Registry.
+- [x] Scan the user Macro directory. *(`MacroCatalogLoader` creates and recursively scans Application Support/MaruEdit/Macros for visible UTF-8 `.js` files, with stable relative-path IDs even across `/var` aliases.)*
+- [x] Parse metadata: name, description, shortcut, and required permissions. *(The first 40 comment lines accept `@maru-name`, `description`, `shortcut`, and comma-separated typed permissions; fallback behavior is tested.)*
+- [x] Populate the Macro menu. *(`MacroManager` builds executable enabled items, descriptions, shortcuts, an enablement submenu, and management actions; Release UI verification uses an injected fixture directory.)*
+- [x] Reload macros. *(Reload unregisters stale dynamic IDs, rescans, registers the new catalog, replaces dynamic bindings, and rebuilds the same live menu.)*
+- [x] Open the macro folder. *(Open Macro Folder ensures the directory exists and opens it through `NSWorkspace`.)*
+- [x] Enable and disable individual macros. *(`MacroEnablementStore` persists disabled stable IDs; checked submenu actions immediately reload commands, menus, and shortcuts.)*
+- [x] Provide an error console. *(A resizable monospaced console retains up to 500 timestamped load/execution failures including JavaScript stacks; AppKit tests verify error content.)*
+- [x] Register macro shortcuts as dynamic commands through the Command Registry. *(Each macro is a removable `CommandDefinition`; valid enabled shortcuts overlay the active binding profile without entering exported user profiles, and execute through the registry.)*
 
 ## M6-04: Macro Permissions
 

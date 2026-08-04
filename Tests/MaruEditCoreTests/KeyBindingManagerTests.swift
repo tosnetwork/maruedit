@@ -2,6 +2,16 @@ import XCTest
 @testable import MaruEditCore
 
 final class KeyBindingManagerTests: XCTestCase {
+    func testDynamicBindingsOverlayProfileWithoutChangingExport() throws {
+        let manager = KeyBindingManager(profile: .macOSStandard)
+        let dynamic = KeyBinding(keys: [KeyGesture("cmd+shift+m")!], command: "macro.user.test")
+        manager.setDynamicBindings([dynamic])
+        XCTAssertEqual(manager.command(for: dynamic.keys), dynamic.command)
+        XCTAssertEqual(manager.keys(for: dynamic.command), dynamic.keys)
+        XCTAssertFalse(String(decoding: try manager.exportJSON(), as: UTF8.self).contains("macro.user.test"))
+        manager.setDynamicBindings([])
+        XCTAssertNil(manager.command(for: dynamic.keys))
+    }
     func testSchemaV1RoundTripsPortableGestureStrings() throws {
         let manager = KeyBindingManager(profile: KeyBindingProfile(name: "Custom", bindings: [
             KeyBinding(keys: [KeyGesture("cmd+k")!, KeyGesture("cmd+c")!], command: "edit.commentLine"),

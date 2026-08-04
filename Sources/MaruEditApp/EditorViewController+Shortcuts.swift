@@ -52,7 +52,7 @@ enum EditorShortcuts {
                     chordTimeoutWorkItem?.cancel()
                 }
             } else if let gesture = KeyGesture(event: event) {
-                switch chordMachine.handle(gesture, bindings: keyBindings.activeProfile.bindings) {
+                switch chordMachine.handle(gesture, bindings: keyBindings.bindings) {
                 case .command(let command):
                     chordTimeoutWorkItem?.cancel()
                     EditorShortcuts.showStatus?("", 0)

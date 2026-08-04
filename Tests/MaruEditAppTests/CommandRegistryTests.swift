@@ -3,6 +3,15 @@ import MaruEditCore
 @testable import MaruEditApp
 
 final class CommandRegistryTests: XCTestCase {
+    func testDynamicCommandCanBeUnregistered() {
+        let registry = CommandRegistry()
+        let id: CommandID = "macro.user.dynamic"
+        registry.register(CommandDefinition(id: id, title: "Dynamic") { _ in })
+        XCTAssertNotNil(registry.definition(for: id))
+        XCTAssertTrue(registry.unregister(id))
+        XCTAssertNil(registry.definition(for: id))
+        XCTAssertFalse(registry.unregister(id))
+    }
 
     /// A minimal context for exercising the registry mechanism itself.
     /// `AppCoordinator()` alone is safe to construct — it doesn't create a

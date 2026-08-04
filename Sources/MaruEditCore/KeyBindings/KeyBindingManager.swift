@@ -56,6 +56,7 @@ public enum KeyBindingError: LocalizedError, Equatable {
 
 public final class KeyBindingManager {
     public private(set) var activeProfile: KeyBindingProfile
+    public private(set) var dynamicBindings: [KeyBinding] = []
 
     public init(profile: KeyBindingProfile = .macOSStandard) {
         self.activeProfile = profile
@@ -72,15 +73,21 @@ public final class KeyBindingManager {
     }
 
     public func command(for keys: [KeyGesture]) -> CommandID? {
-        activeProfile.bindings.first { $0.keys == keys }?.command
+        bindings.first { $0.keys == keys }?.command
     }
 
     public func keys(for command: CommandID) -> [KeyGesture]? {
-        activeProfile.bindings.first { $0.command == command }?.keys
+        bindings.first { $0.command == command }?.keys
+    }
+
+    public var bindings: [KeyBinding] { dynamicBindings + activeProfile.bindings }
+
+    public func setDynamicBindings(_ bindings: [KeyBinding]) {
+        dynamicBindings = bindings.filter { !$0.keys.isEmpty }
     }
 
     public var conflicts: [KeyBindingConflict] {
-        Dictionary(grouping: activeProfile.bindings, by: \.keys)
+        Dictionary(grouping: bindings, by: \.keys)
             .compactMap { keys, bindings in
                 let commands = Array(Set(bindings.map(\.command))).sorted { $0.rawValue < $1.rawValue }
                 return commands.count > 1 ? KeyBindingConflict(keys: keys, commands: commands) : nil
@@ -91,8 +98,8 @@ public final class KeyBindingManager {
     /// A one-step command cannot also be the prefix of a chord: dispatch
     /// would otherwise have to guess whether to run now or wait.
     public var prefixConflicts: [KeyBindingConflict] {
-        let singles = activeProfile.bindings.filter { $0.keys.count == 1 }
-        return activeProfile.bindings.compactMap { binding in
+        let singles = bindings.filter { $0.keys.count == 1 }
+        return bindings.compactMap { binding in
             guard binding.keys.count == 2,
                   let single = singles.first(where: { $0.keys[0] == binding.keys[0] }) else { return nil }
             return KeyBindingConflict(keys: [binding.keys[0]], commands: [single.command, binding.command])
