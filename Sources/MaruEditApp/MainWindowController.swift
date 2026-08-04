@@ -3,7 +3,6 @@ import MaruEditCore
 
 @MainActor
 final class MainWindowController: NSWindowController,
-    @preconcurrency NSSplitViewDelegate,
     EditorViewControllerDelegate,
     TabBarViewDelegate,
     SidebarDelegate,
@@ -1295,28 +1294,30 @@ final class MainWindowController: NSWindowController,
 
     // MARK: - NSSplitViewDelegate
 
-    func splitView(_ sv: NSSplitView, constrainMinCoordinate pos: CGFloat, ofSubviewAt idx: Int) -> CGFloat {
-        idx == 0 ? 150 : pos
+    nonisolated func splitView(_ sv: NSSplitView, constrainMinCoordinate pos: CGFloat, ofSubviewAt idx: Int) -> CGFloat {
+        MainActor.assumeIsolated { idx == 0 ? 150 : pos }
     }
 
-    func splitView(_ sv: NSSplitView, constrainMaxCoordinate pos: CGFloat, ofSubviewAt idx: Int) -> CGFloat {
-        idx == 0 ? sv.bounds.width - 400 : pos
+    nonisolated func splitView(_ sv: NSSplitView, constrainMaxCoordinate pos: CGFloat, ofSubviewAt idx: Int) -> CGFloat {
+        MainActor.assumeIsolated { idx == 0 ? sv.bounds.width - 400 : pos }
     }
 
-    func splitView(_ sv: NSSplitView, canCollapseSubview subview: NSView) -> Bool {
-        subview === sidebarVC.view && sidebarManuallyCollapsed
+    nonisolated func splitView(_ sv: NSSplitView, canCollapseSubview subview: NSView) -> Bool {
+        MainActor.assumeIsolated { subview === sidebarVC.view && sidebarManuallyCollapsed }
     }
 
-    func splitView(_ sv: NSSplitView, shouldCollapseSubview subview: NSView, forDoubleClickOnDividerAt dividerIndex: Int) -> Bool {
-        if subview === sidebarVC.view {
-            sidebarManuallyCollapsed = true
-            return true
+    nonisolated func splitView(_ sv: NSSplitView, shouldCollapseSubview subview: NSView, forDoubleClickOnDividerAt dividerIndex: Int) -> Bool {
+        MainActor.assumeIsolated {
+            if subview === sidebarVC.view {
+                sidebarManuallyCollapsed = true
+                return true
+            }
+            return false
         }
-        return false
     }
 
-    func splitViewDidResizeSubviews(_ notification: Notification) {
-        updateTabBarFrame()
+    nonisolated func splitViewDidResizeSubviews(_ notification: Notification) {
+        MainActor.assumeIsolated { updateTabBarFrame() }
     }
 
     // MARK: - EditorViewControllerDelegate
@@ -1592,3 +1593,5 @@ final class MainWindowController: NSWindowController,
         recoveryStore.clearAll()
     }
 }
+
+extension MainWindowController: NSSplitViewDelegate {}
