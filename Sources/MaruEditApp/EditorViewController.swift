@@ -16,12 +16,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     private(set) var scrollView: NSScrollView!
     private(set) var textView: NSTextView!
     private var lineNumbers: LineNumberView?
-    private var highlighter: SyntaxHighlighter?
-
-    private static var highlighterCache: [Language: SyntaxHighlighter] = [:]
-    private static let fullHighlightThreshold = 100_000
-    private var highlightWorkItem: DispatchWorkItem?
-    private var scrollHighlightItem: DispatchWorkItem?
+    private let syntaxHighlightCoordinator = SyntaxHighlightCoordinator()
 
     private var suppressTextChange = false
     private var suppressAutoIndent = false
@@ -137,19 +132,18 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         rehighlightAll()
     }
 
+    /// Reapplies palette attributes without touching the backing string.
+    /// M5-08 can call this after switching themes.
+    func refreshSyntaxTheme() {
+        rehighlightAll()
+    }
+
     var document: Document? {
         didSet {
             guard document !== oldValue else { return }
             isMultiEditActive = false
             if isViewLoaded { loadDoc() }
         }
-    }
-
-    private static func cachedHighlighter(for language: Language) -> SyntaxHighlighter {
-        if let h = highlighterCache[language] { return h }
-        let h = SyntaxHighlighter(language: language)
-        highlighterCache[language] = h
-        return h
     }
 
     deinit {
@@ -256,12 +250,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     }
 
     private func scheduleScrollHighlight() {
-        scrollHighlightItem?.cancel()
-        let item = DispatchWorkItem { [weak self] in
-            self?.highlightVisible()
-        }
-        scrollHighlightItem = item
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.03, execute: item)
+        highlightVisible(delay: 0.03)
     }
 
     // MARK: - Document
@@ -279,9 +268,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
 
     private func loadDoc() {
         guard let doc = document else { return }
-        highlightWorkItem?.cancel()
-        scrollHighlightItem?.cancel()
-        highlighter = Self.cachedHighlighter(for: doc.language)
+        syntaxHighlightCoordinator.cancel()
 
         let lm = textView.layoutManager!
         suppressTextChange = true
@@ -345,43 +332,27 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         lineNumbers?.needsDisplay = true
     }
 
-    /// Deferred to next run-loop so the scroll view geometry is settled
-    /// after replaceTextStorage.  For small files the full document is
-    /// highlighted; large files get viewport-only (scroll handles the rest).
+    /// Deferred to let scroll-view geometry settle after replaceTextStorage.
+    /// Small files request the full document; large-file mode skips regex work.
     private func deferredHighlightVisible() {
-        let item = DispatchWorkItem { [weak self] in
-            guard let self = self else { return }
-            guard let ts = self.textView.textStorage, ts.length > 0 else { return }
-
-            let visible = self.visibleCharacterRange()
-            if ts.length <= Self.fullHighlightThreshold {
-                ts.beginEditing()
-                self.highlighter?.highlight(ts, in: NSRange(location: 0, length: ts.length), font: self.preferredEditorFont)
-                ts.endEditing()
-            } else if visible.length > 0 {
-                ts.beginEditing()
-                self.highlighter?.highlight(ts, in: visible, font: self.preferredEditorFont)
-                ts.endEditing()
-            }
-        }
-        highlightWorkItem = item
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.02, execute: item)
+        guard let storage = textView.textStorage, let language = document?.language else { return }
+        let range = storage.length <= SyntaxHighlightCoordinator.largeFileThreshold
+            ? nil : visibleCharacterRange()
+        syntaxHighlightCoordinator.schedule(
+            storage: storage, language: language, visibleRange: range,
+            font: preferredEditorFont, delay: 0.02)
     }
 
     /// Highlights the visible range plus a buffer for smooth scrolling.
-    private func highlightVisible() {
-        guard let ts = textView.textStorage, ts.length > 0 else { return }
+    private func highlightVisible(delay: TimeInterval = 0.05) {
+        guard let ts = textView.textStorage, ts.length > 0,
+              let language = document?.language else { return }
+        guard ts.length <= SyntaxHighlightCoordinator.largeFileThreshold else { return }
         let visible = visibleCharacterRange()
         guard visible.length > 0 else { return }
-
-        let buffer = 3000
-        let start = max(0, visible.location - buffer)
-        let end = min(ts.length, NSMaxRange(visible) + buffer)
-        let range = NSRange(location: start, length: end - start)
-
-        ts.beginEditing()
-        highlighter?.highlight(ts, in: range, font: preferredEditorFont)
-        ts.endEditing()
+        syntaxHighlightCoordinator.schedule(
+            storage: ts, language: language, visibleRange: visible,
+            font: preferredEditorFont, delay: delay)
     }
 
     private func visibleCharacterRange() -> NSRange {
@@ -394,14 +365,11 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     }
 
     private func rehighlightAll() {
-        guard let ts = textView.textStorage, ts.length > 0 else { return }
-        if ts.length > Self.fullHighlightThreshold {
-            highlightVisible()
-            return
-        }
-        ts.beginEditing()
-        highlighter?.highlight(ts, in: NSRange(location: 0, length: ts.length), font: preferredEditorFont)
-        ts.endEditing()
+        guard let ts = textView.textStorage, ts.length > 0,
+              let language = document?.language else { return }
+        syntaxHighlightCoordinator.schedule(
+            storage: ts, language: language, visibleRange: nil,
+            font: preferredEditorFont, delay: 0)
     }
 
     // MARK: - NSTextViewDelegate
@@ -446,7 +414,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         lineNumbers?.bookmarkOffsets = document?.bookmarks.offsets ?? []
         emitCursor()
 
-        if let ts = textView.textStorage, ts.length > 0 {
+        if let ts = textView.textStorage, ts.length > 0, let language = document?.language {
             let rehighlightRange: NSRange
             if document?.language == .markdown {
                 rehighlightRange = visibleCharacterRange()
@@ -455,9 +423,9 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
                 let ns = content as NSString
                 rehighlightRange = ns.lineRange(for: NSRange(location: min(sel.location, ns.length), length: 0))
             }
-            ts.beginEditing()
-            highlighter?.highlight(ts, in: rehighlightRange, font: preferredEditorFont)
-            ts.endEditing()
+            syntaxHighlightCoordinator.schedule(
+                storage: ts, language: language, visibleRange: rehighlightRange,
+                font: preferredEditorFont)
         }
     }
 

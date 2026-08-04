@@ -49,7 +49,7 @@ scenario.
 | Open 1 MB `.swift` file to editable, median (n=5) | ≤ 200 ms | **2,235 ms** (min 2,139, max 2,268) | ~11x over target |
 | Open 10 MB `.swift` file to editable, median (n=5) | ≤ 1,000 ms | **12,680 ms** (min 11,762, max 29,530) | ~13x over target; one run spiked to 29.5s |
 
-## Analysis (baseline only, not a fix)
+## Analysis (original M0 baseline)
 
 The file-open numbers are consistent with the risk ROADMAP.md already
 flags in §5.3 and §16.3: **synchronous, main-thread, regex-based syntax
@@ -58,8 +58,14 @@ detects `.swift` and the highlighter has no large-file degradation path
 yet (§16.2's "Reduced Features Mode" doesn't exist yet; that's future
 milestone work, not M0). This baseline is what later milestones' large-file
 work (§16) should be measured against — no code changes were made to chase
-these numbers down in this batch, per the M0-06 task's explicit "do not
-optimize yet."
+these numbers down in the M0 batch, per M0-06's explicit "do not optimize
+yet."
+
+M5-05 subsequently replaced this synchronous whole-file path with the
+revision-aware `SyntaxHighlightCoordinator`: matching is debounced and runs on
+a background queue, viewport work is context-bounded, and regex highlighting
+is disabled above 100,000 UTF-16 units. The M0 figures remain recorded here as
+historical baseline data; they must not be presented as current measurements.
 
 ## Known Risks / Follow-Up
 
@@ -72,9 +78,9 @@ optimize yet."
   instrumented timestamp (e.g. log time-to-first-window-visible) once
   there's a logging facility (see `Sources/MaruEditCore/Utilities/Logger.swift`
   in the target structure, not yet created).
-- Idle RSS and file-open times already exceed 1.0 targets. This is
-  expected at M0 and is exactly the gap §16 exists to close later — not a
-  regression to chase down now.
+- Idle RSS and the M0 file-open measurements exceed 1.0 targets. M5-05 removes
+  the identified synchronous highlighting bottleneck, but M7 must rerun the
+  end-to-end scripts before claiming the launch/open targets are met.
 
 ## Reproducing
 

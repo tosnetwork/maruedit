@@ -2,34 +2,35 @@ import AppKit
 import MaruEditCore
 
 final class SyntaxHighlighter {
+    struct Match {
+        let range: NSRange
+        let color: NSColor
+    }
+
     private let rules: [(NSRegularExpression, NSColor)]
 
     init(language: Language) {
         rules = Self.buildRules(for: language)
     }
 
-    func highlight(_ storage: NSTextStorage, in editedRange: NSRange, font: NSFont = Theme.editorFont) {
-        let string = storage.string as NSString
-        guard string.length > 0 else { return }
+    /// Test and extension seam for user-provided syntax definitions. Invalid
+    /// expressions are ignored independently, so one bad rule never disables
+    /// the remaining grammar or crashes the editor.
+    init(definitions: [(pattern: String, color: NSColor)]) {
+        rules = definitions.compactMap { definition in
+            guard let regex = try? NSRegularExpression(
+                pattern: definition.pattern, options: .anchorsMatchLines) else { return nil }
+            return (regex, definition.color)
+        }
+    }
 
-        let start = string.lineRange(for: NSRange(location: editedRange.location, length: 0)).location
-        let end: Int = {
-            let e = NSMaxRange(editedRange)
-            let clamped = min(e, string.length)
-            return NSMaxRange(string.lineRange(for: NSRange(location: max(clamped - 1, 0), length: 0)))
-        }()
-        let range = NSRange(location: start, length: end - start)
-        guard range.length > 0 else { return }
-
-        storage.addAttributes([
-            .foregroundColor: Theme.foreground,
-            .font: font
-        ], range: range)
-
-        for (regex, color) in rules {
-            regex.enumerateMatches(in: storage.string, options: [], range: range) { match, _, _ in
-                guard let r = match?.range else { return }
-                storage.addAttribute(.foregroundColor, value: color, range: r)
+    func matches(in text: String, range: NSRange) -> [Match] {
+        let length = (text as NSString).length
+        let safeRange = NSIntersectionRange(range, NSRange(location: 0, length: length))
+        guard safeRange.length > 0 else { return [] }
+        return rules.flatMap { regex, color in
+            regex.matches(in: text, options: [], range: safeRange).map {
+                Match(range: $0.range, color: color)
             }
         }
     }

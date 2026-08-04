@@ -1880,14 +1880,14 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 
 ## M5-05: SyntaxHighlightCoordinator
 
-- [ ] Extract the existing highlighter from the editor controller.
-- [ ] Debounce updates.
-- [ ] Cancel stale work using document revisions.
-- [ ] Limit work to visible and required context ranges.
-- [ ] Disable automatically in large-file mode.
-- [ ] Ensure theme changes never mutate text.
-- [ ] Handle invalid syntax regex definitions without crashing.
-- [ ] Add highlighting performance benchmarks.
+- [x] Extract the existing highlighter from the editor controller. *(`SyntaxHighlightCoordinator` now owns scheduling, background matching, revision validity, context ranges, and attribute application; `EditorViewController` only submits requests.)*
+- [x] Debounce updates. *(Typing defaults to 50 ms, scrolling to 30 ms, and a new request cancels both queued debounce and matching work; covered by `testDebounceOnlyAppliesNewestRequest`.)*
+- [x] Cancel stale work using document revisions. *(Every request/cancel advances a lock-protected revision, and both worker and main-thread apply phases reject older snapshots; the suspended-queue test proves stale work cannot apply.)*
+- [x] Limit work to visible and required context ranges. *(Viewport requests expand by 3,000 UTF-16 units and to complete line boundaries; small initial/full refreshes explicitly request the full document.)*
+- [x] Disable automatically in large-file mode. *(Documents over 100,000 UTF-16 units receive only the base foreground color and no regex work; the large-file test verifies both the mode and unchanged text.)*
+- [x] Ensure theme changes never mutate text. *(`refreshSyntaxTheme` submits an attribute-only refresh, and `testThemeRefreshChangesAttributesOnly` verifies byte-for-byte logical text stability.)*
+- [x] Handle invalid syntax regex definitions without crashing. *(Rules compile independently with invalid expressions omitted; a mixed invalid/valid definition test proves remaining highlighting continues.)*
+- [x] Add highlighting performance benchmarks. *(`testPerformanceHighlightingRequiredViewportContext` measures the real Swift grammar over a buffered viewport; methodology is documented in `docs/syntax-highlighting.md`.)*
 
 ## M5-06: Status Bar and Clickable Format Controls
 
