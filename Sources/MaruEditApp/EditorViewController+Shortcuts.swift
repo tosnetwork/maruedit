@@ -11,31 +11,39 @@
 
 import AppKit
 
-// MARK: - Per-editor multi-edit state
-
-private var multiEditActive:  [ObjectIdentifier: Bool] = [:]
-private var multiEditCursors: [ObjectIdentifier: [NSRange]] = [:]
-
 // MARK: - Global event monitors
 
 enum EditorShortcuts {
     private static var installed = false
 
+    // Explicitly retained rather than discarding addLocalMonitorForEvents'
+    // return value: `leaks` correctly flags an unretained local monitor's
+    // block as unreachable memory. These two are intentionally kept alive
+    // for the whole app lifetime (never removed — there's no "uninstall"
+    // concept for app-wide shortcut handling today), but that should be
+    // this enum's explicit choice, not an accident of the system happening
+    // to keep the block alive anyway.
+    private static var keyMonitor: Any?
+    private static var mouseMonitor: Any?
+
     static func install() {
         guard !installed else { return }
         installed = true
 
-        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             guard let editor = activeEditor(for: event) else { return event }
 
-            if multiEditActive[ObjectIdentifier(editor)] == true {
+            if editor.isMultiEditActive {
                 return editor.handleMultiEditKey(event) ? nil : event
             }
             return editor.handleShortcutEvent(event) ? nil : event
         }
 
-        NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { event in
-            for key in multiEditActive.keys { multiEditActive[key] = false }
+        mouseMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { event in
+            // Scoped to the editor that owns the clicked window, not every
+            // open editor — a click in one window must never affect
+            // multi-edit state in another (ROADMAP.md M1-06).
+            activeEditor(for: event)?.isMultiEditActive = false
             return event
         }
     }
@@ -179,9 +187,8 @@ extension EditorViewController {
         textView.setSelectedRanges(ranges, affinity: .downstream, stillSelecting: false)
 
         if ranges.count > 1 {
-            let id = ObjectIdentifier(self)
-            multiEditActive[id] = true
-            multiEditCursors[id] = ranges.map { $0.rangeValue }
+            isMultiEditActive = true
+            multiEditCursorRanges = ranges.map { $0.rangeValue }
         }
     }
 }
@@ -216,9 +223,8 @@ extension EditorViewController {
     }
 
     fileprivate func exitMultiEdit() {
-        let id = ObjectIdentifier(self)
-        multiEditActive[id] = false
-        multiEditCursors[id] = nil
+        isMultiEditActive = false
+        multiEditCursorRanges = []
     }
 }
 
@@ -227,14 +233,14 @@ extension EditorViewController {
 extension EditorViewController {
 
     fileprivate func multiEditInsert(_ text: String) {
-        guard let cursors = multiEditCursors[ObjectIdentifier(self)],
-              !cursors.isEmpty else { exitMultiEdit(); return }
+        let cursors = multiEditCursorRanges
+        guard !cursors.isEmpty else { exitMultiEdit(); return }
         batchReplace(cursors, with: text)
     }
 
     fileprivate func multiEditBackspace() {
-        guard let cursors = multiEditCursors[ObjectIdentifier(self)],
-              !cursors.isEmpty else { exitMultiEdit(); return }
+        let cursors = multiEditCursorRanges
+        guard !cursors.isEmpty else { exitMultiEdit(); return }
 
         if cursors.contains(where: { $0.length > 0 }) {
             batchReplace(cursors, with: "")
@@ -249,8 +255,8 @@ extension EditorViewController {
     }
 
     fileprivate func multiEditForwardDelete() {
-        guard let cursors = multiEditCursors[ObjectIdentifier(self)],
-              !cursors.isEmpty else { exitMultiEdit(); return }
+        let cursors = multiEditCursorRanges
+        guard !cursors.isEmpty else { exitMultiEdit(); return }
         let len = (textView.string as NSString).length
 
         if cursors.contains(where: { $0.length > 0 }) {
@@ -334,7 +340,7 @@ extension EditorViewController {
         let newCursors = unique.map { NSRange(location: $0, length: 0) }
 
         if newCursors.count <= 1 { exitMultiEdit() }
-        else { multiEditCursors[ObjectIdentifier(self)] = newCursors }
+        else { multiEditCursorRanges = newCursors }
 
         let nsValues = newCursors.map { NSValue(range: $0) }
         if !nsValues.isEmpty {

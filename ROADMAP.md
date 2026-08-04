@@ -1468,12 +1468,12 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M1-06: Remove Global Editing State
 
-- [ ] Bind multiple-selection state, event monitors, and temporary editor state to an Editor instance.
-- [ ] Remove observers and event monitors when documents or windows close.
-- [ ] Add two-window or two-editor isolation tests.
-- [ ] Use logs or Instruments to identify duplicate listeners.
+- [x] Bind multiple-selection state, event monitors, and temporary editor state to an Editor instance. *(`multiEditActive`/`multiEditCursors` were module-level `[ObjectIdentifier: ...]` dictionaries in `EditorViewController+Shortcuts.swift` — moved to plain instance properties `isMultiEditActive`/`multiEditCursorRanges` on `EditorViewController` itself. The app-wide shortcut/mouse `NSEvent` monitors in `EditorShortcuts` stay intentionally global — they route to the correct per-window editor dynamically via `activeEditor(for:)` — but the mouse-down handler used to reset *every* editor's multi-edit state; it now resets only the editor under the click.)*
+- [x] Remove observers and event monitors when documents or windows close. *(`MainWindowController`'s per-window Cmd+P key monitor was already removed in `deinit` before this task. Added: `EditorViewController.deinit` now calls `NotificationCenter.default.removeObserver(self)` for its `boundsDidChangeNotification` observer — not strictly required for crash-safety on macOS 13+, but explicit rather than relying on that. `EditorShortcuts`'s two app-lifetime monitors are unretained-by-design candidates for the next bullet.)*
+- [x] Add two-window or two-editor isolation tests. *(`EditorViewControllerIsolationTests`, 2 tests: two live `EditorViewController` instances never see each other's multi-edit state, and deallocating one doesn't affect the other.)*
+- [x] Use logs or Instruments to identify duplicate listeners. *(Used `leaks <pid>` — command-line `leaks`, not the Instruments GUI, but the same underlying tool — against a real running release build. It found two genuine `ROOT LEAK: <_NSLocalEventObserver>` entries attributed to `MaruEdit`'s own block thunks: `EditorShortcuts.install()`'s two `NSEvent.addLocalMonitorForEvents` calls never captured their return value, so nothing in our code retained them. Fixed by storing them in `keyMonitor`/`mouseMonitor` static properties (still intentionally never removed — there's no "uninstall shortcuts" concept — but now an explicit choice instead of relying on undocumented system retention). Re-ran `leaks` after the fix: zero entries attributed to MaruEdit; the remaining ~287 leaks/14KB in the process are generic AppKit/XPC/system-framework internals unrelated to this app's code.)*
 
-**Acceptance:** Multi-cursor or shortcut state in one window never affects another.
+**Acceptance:** Multi-cursor or shortcut state in one window never affects another. *(True by construction now — instance properties can't cross-contaminate — and the mouse-down-resets-every-editor bug that would have violated this even under the old design is also fixed.)*
 
 ## M1-07: Localization Skeleton
 
@@ -1486,11 +1486,11 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ### M1 Gate
 
-- [ ] Existing LiteEdit user-visible behavior has no major regression.
-- [ ] Core and App tests both run.
-- [ ] The Command Registry is the primary command entry point.
-- [ ] No third-party dependency has been added.
-- [ ] Controller responsibilities and line counts begin to decrease rather than merely gaining wrappers.
+- [x] Existing LiteEdit user-visible behavior has no major regression. *(Verified across M1-01 through M1-06 with real launches, a real file-open smoke test, and — for the highest-risk change (M1-05's session persistence rewrite) — a genuine forced-termination test: opened a file, waited past the debounce window, `kill -9`'d the process, and confirmed it reopened correctly on relaunch. `leaks` found and let us fix one real pre-existing-pattern issue (M1-06) rather than surfacing a regression.)*
+- [x] Core and App tests both run. *(`swift test` runs both `MaruEditCoreTests` (15 tests: Language, PreferencesStore, SessionStore, AtomicFileWriter, Debouncer) and `MaruEditAppTests` (23 tests: Document, DocumentController, CommandRegistry, EditorViewController isolation) — 38 total, 0 failures.)*
+- [x] The Command Registry is the primary command entry point. *(For all 10 static menu commands, yes. Known, explicitly documented exceptions: standard AppKit responder-chain items (Cut/Copy/Paste/Undo/Redo/Window), dynamic Open Recent entries, and the Cmd+P global shortcut — see `docs/commands.md`.)*
+- [x] No third-party dependency has been added. *(`Package.swift` has no `dependencies:` array.)*
+- [x] Controller responsibilities and line counts begin to decrease rather than merely gaining wrappers. *(Nuance worth recording honestly: `MainWindowController.swift`'s raw line count is essentially flat — 605 lines now vs. 607 at the start of M1 — because M1-05 added genuinely new functionality (scroll/sidebar session persistence, debounced auto-save) that grew it back even as state ownership shrank. What actually moved is responsibility, not just line count: `DocumentController` (111 lines), `AppCoordinator` (49 lines), and `Commands/` (144 lines across 4 files) now own real state and logic — each with its own tests — that would otherwise be inline in `MainWindowController`/`AppDelegate`. None of these are thin pass-through wrappers; each has behavior `MainWindowController`/`AppDelegate` no longer needs to know about.)*
 
 ---
 

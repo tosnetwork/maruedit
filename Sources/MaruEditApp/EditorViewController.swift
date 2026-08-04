@@ -26,6 +26,15 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     private var suppressTextChange = false
     private var suppressAutoIndent = false
 
+    /// Multi-cursor ("select all occurrences") edit-mode state. Owned by
+    /// this instance — not a global dictionary keyed by identity, per
+    /// ROADMAP.md M1-06 — so two editors (e.g. in two windows, once
+    /// multi-window support exists) can never see or affect each other's
+    /// multi-edit state, and this state is freed automatically when the
+    /// editor is deallocated instead of leaking in a module-level map.
+    var isMultiEditActive = false
+    var multiEditCursorRanges: [NSRange] = []
+
     var document: Document? {
         didSet { if isViewLoaded && document !== oldValue { loadDoc() } }
     }
@@ -35,6 +44,10 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         let h = SyntaxHighlighter(language: language)
         highlighterCache[language] = h
         return h
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     // MARK: - View lifecycle
