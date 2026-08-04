@@ -1,0 +1,40 @@
+name: Download Alert
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+jobs:
+  check-downloads:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      issues: write
+    steps:
+      - name: Get total download count
+        id: downloads
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          total=$(gh api repos/${{ github.repository }}/releases \
+            --jq '[.[].assets[].download_count] | add // 0')
+          echo "total=$total" >> "$GITHUB_OUTPUT"
+          echo "Total downloads: $total"
+
+      - name: Open milestone issue
+        if: fromJSON(steps.downloads.outputs.total) >= 500
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create -R ${{ github.repository }} \
+            --title "maruedit reached ${{ steps.downloads.outputs.total }} downloads!" \
+            --body "tosnetwork/maruedit has reached **${{ steps.downloads.outputs.total }}** total release downloads (threshold: 500).
+
+          View releases: https://github.com/tosnetwork/maruedit/releases"
+
+      - name: Disable this workflow after alert
+        if: fromJSON(steps.downloads.outputs.total) >= 500
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow disable -R ${{ github.repository }} "Download Alert"

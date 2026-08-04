@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build app and create DMG
+        run: bash create-dmg.sh
+
+      - name: Extract version from tag
+        id: version
+        run: echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: MaruEdit ${{ steps.version.outputs.tag }}
+          body: |
+            ## MaruEdit ${{ steps.version.outputs.tag }}
+
+            ### Install
+            1. Download **MaruEdit.dmg** below
+            2. Open the DMG and drag **MaruEdit** to Applications
+            3. Launch from Applications or Spotlight
+
+            Requires macOS 13+.
+          files: MaruEdit.dmg
+          draft: false
+          prerelease: false

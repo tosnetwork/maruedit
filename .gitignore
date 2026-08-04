@@ -1,0 +1,10 @@
+.build/
+.swiftpm/
+MaruEdit.app/
+*.dSYM
+*.o
+*.d
+.DS_Store
+xcuserdata/
+*.dmg
+dmg-staging/
