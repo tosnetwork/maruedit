@@ -50,6 +50,7 @@ final class AppCoordinator {
     func showGoToLine()                { ensureWindowControllerReady().showGoToLine() }
     func showQuickOpen()               { ensureWindowControllerReady().showQuickOpen() }
     func showGrep()                    { ensureWindowControllerReady().showGrep() }
+    func clearSearchHistory()          { ensureWindowControllerReady().clearSearchHistory() }
     func toggleSidebar()               { ensureWindowControllerReady().toggleSidebar() }
     func clearRecoveryData()           { ensureWindowControllerReady().clearRecoveryData() }
 

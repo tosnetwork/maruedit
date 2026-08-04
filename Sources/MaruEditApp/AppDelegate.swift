@@ -94,6 +94,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         findMenu.addItem(.separator())
         findMenu.addItem(commandItem(.searchQuickOpen, "p"))
         findMenu.addItem(commandItem(.searchGrep, "f", modifiers: [.command, .shift]))
+        findMenu.addItem(.separator())
+        findMenu.addItem(commandItem(.searchClearHistory, ""))
         findItem.submenu = findMenu
         main.addItem(findItem)
 

@@ -1720,20 +1720,20 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M3-07: Search History and Privacy
 
-- [ ] Model Find, Replace, and Grep histories separately.
-- [ ] Enforce history limits.
-- [ ] Allow history persistence to be disabled.
-- [ ] Add one-click clearing.
-- [ ] Never store matched document content in history.
-- [ ] Add schema-migration tests.
+- [x] Model Find, Replace, and Grep histories separately. *(`SearchHistoryState` has independent `find`, `replace`, and `grep` collections; Find Bar and Grep Panel recall only their relevant collection.)*
+- [x] Enforce history limits. *(`SearchHistoryStore`, default 20, deduplicates most-recent-first and normalizes oversized stored data on load; tested with a limit of three.)*
+- [x] Allow history persistence to be disabled. *(`setPersistenceEnabled(false)` clears all query arrays immediately and persists only the disabled flag; re-enabling starts empty. The M5 Settings window will expose this typed API.)*
+- [x] Add one-click clearing. *(`search.clearHistory` is a stable Command Registry entry in the Find menu and clears/synchronizes all three lists.)*
+- [x] Never store matched document content in history. *(The Codable schema contains only user-entered query/replacement strings and the persistence flag — no match, preview, path, or document-content field; pinned by `testEncodedStateContainsQueriesButNoMatchedContentField`.)*
+- [x] Add schema-migration tests. *(`SearchHistoryStoreTests` covers old-version restamping, normalization, corrupt-data fallback, independent lists, clearing, disabling, and round-trip persistence.)*
 
 ### M3 Gate
 
-- [ ] Literal and regex semantics are consistent across Find and Replace.
-- [ ] Grep is cancellable and does not freeze the UI.
-- [ ] Mixed Japanese-encoding directory tests pass.
-- [ ] Result navigation is reliable.
-- [ ] Search history is manageable and clearable.
+- [x] Literal and regex semantics are consistent across Find and Replace. *(`SearchEngineTests.testFindSelectAllAndReplaceAgreeOnTheSameMatchSet` plus the M3-01/M3-03 shared-engine implementation.)*
+- [x] Grep is cancellable and does not freeze the UI. *(Traversal/search run on the dedicated `com.maruedit.grep` queue and share a locked `CancellationToken`; Core cancellation tests pass and the Release-app search streamed results while the window remained interactive.)*
+- [x] Mixed Japanese-encoding directory tests pass. *(`GrepServiceTests.testFindsMatchesAcrossUTF8Windows31JAndEUCJPFixtures`.)*
+- [x] Result navigation is reliable. *(Ranges target the editor's line-ending-normalized text; CRLF mapping is unit-tested, existing tabs are reused, and Return navigation was verified live at an exact line/column in M3-06.)*
+- [x] Search history is manageable and clearable. *(`SearchHistoryStoreTests` plus the `search.clearHistory` menu command; 240/240 tests pass.)*
 
 ---
 

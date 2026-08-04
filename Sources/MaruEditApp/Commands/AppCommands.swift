@@ -19,6 +19,7 @@ extension CommandID {
     static let searchGoToLine   = CommandID("search.goToLine")
     static let searchQuickOpen  = CommandID("search.quickOpen")
     static let searchGrep       = CommandID("search.grep")
+    static let searchClearHistory = CommandID("search.clearHistory")
     static let viewToggleSidebar = CommandID("view.toggleSidebar")
 }
 
@@ -72,6 +73,9 @@ enum AppCommands {
         })
         registry.register(CommandDefinition(id: .searchGrep, title: "Find in Folder...") { ctx in
             ctx.coordinator.showGrep()
+        })
+        registry.register(CommandDefinition(id: .searchClearHistory, title: "Clear Search History") { ctx in
+            ctx.coordinator.clearSearchHistory()
         })
         registry.register(CommandDefinition(id: .viewToggleSidebar, title: "Toggle Sidebar") { ctx in
             ctx.coordinator.toggleSidebar()

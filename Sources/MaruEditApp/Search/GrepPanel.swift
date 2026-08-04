@@ -17,7 +17,7 @@ final class GrepPanel: NSObject, NSTextFieldDelegate {
 
     let window: NSWindow
 
-    private let patternField = NSTextField()
+    let patternField = NSTextField()
     private let folderField = NSTextField()
     private let includeField = NSTextField()
     private let excludeField = NSTextField()
@@ -25,6 +25,8 @@ final class GrepPanel: NSObject, NSTextFieldDelegate {
     private let wordButton = NSButton(checkboxWithTitle: "Whole word", target: nil, action: nil)
     private let regexButton = NSButton(checkboxWithTitle: "Regular expression", target: nil, action: nil)
     private let hiddenButton = NSButton(checkboxWithTitle: "Include hidden files", target: nil, action: nil)
+    var searchHistory: [String] = []
+    private var searchHistoryIndex: Int?
 
     override init() {
         window = NSWindow(
@@ -164,5 +166,25 @@ final class GrepPanel: NSObject, NSTextFieldDelegate {
 
     func focusPattern() {
         window.makeFirstResponder(patternField)
+    }
+
+    func controlTextDidChange(_ notification: Notification) {
+        if (notification.object as? NSTextField) === patternField { searchHistoryIndex = nil }
+    }
+
+    func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+        guard control === patternField else { return false }
+        if commandSelector == #selector(NSResponder.moveUp(_:)) {
+            guard !searchHistory.isEmpty else { return false }
+            searchHistoryIndex = min((searchHistoryIndex ?? -1) + 1, searchHistory.count - 1)
+        } else if commandSelector == #selector(NSResponder.moveDown(_:)) {
+            guard let current = searchHistoryIndex else { return false }
+            searchHistoryIndex = current == 0 ? nil : current - 1
+        } else {
+            return false
+        }
+        patternField.stringValue = searchHistoryIndex.map { searchHistory[$0] } ?? ""
+        patternField.currentEditor()?.selectAll(nil)
+        return true
     }
 }

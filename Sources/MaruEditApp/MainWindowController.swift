@@ -25,8 +25,8 @@ final class MainWindowController: NSWindowController,
     /// The last query actually executed, so Find Next works after the bar
     /// is closed.
     private var lastQuery: SearchQuery?
-    private var findHistory: [String] = []
-    private var replaceHistory: [String] = []
+    private let searchHistoryStore = SearchHistoryStore()
+    private var searchHistory = SearchHistoryState()
 
     private var grepPanel: GrepPanel?
     private var outputPane: OutputPaneView?
@@ -64,6 +64,8 @@ final class MainWindowController: NSWindowController,
 
         self.init(window: w)
         buildUI()
+        searchHistory = searchHistoryStore.load()
+        syncSearchHistoryUI()
         newDocument()
         installKeyMonitor()
         NotificationCenter.default.addObserver(
@@ -613,8 +615,7 @@ final class MainWindowController: NSWindowController,
         let selection = editorVC.textView.selectedRange()
         editorVC.incrementalSearchAnchor = selection.location
         editorVC.searchScopeSelection = selection.length > 0 ? selection : nil
-        findBar.searchHistory = findHistory
-        findBar.replacementHistory = replaceHistory
+        syncSearchHistoryUI()
         findBar.activate()
     }
 
@@ -700,6 +701,7 @@ final class MainWindowController: NSWindowController,
         let panel = grepPanel ?? {
             let created = GrepPanel()
             created.delegate = self
+            created.searchHistory = searchHistory.grep
             grepPanel = created
             return created
         }()
@@ -715,6 +717,8 @@ final class MainWindowController: NSWindowController,
 
     func grepPanel(_ panel: GrepPanel, didSubmit request: GrepRequest) {
         window?.endSheet(panel.window)
+        searchHistoryStore.record(request.query.pattern, in: .grep, state: &searchHistory)
+        syncSearchHistoryUI()
         runGrep(request)
     }
 
@@ -1042,20 +1046,23 @@ final class MainWindowController: NSWindowController,
         window?.makeFirstResponder(editorVC.textView)
     }
 
-    /// In-memory for now: modeled separately per field and capped, but not
-    /// yet persisted or clearable — that's ROADMAP.md M3-07, which
-    /// replaces these two arrays with a real store.
     private func recordSearchHistory(_ query: SearchQuery) {
-        func record(_ value: String, into history: inout [String]) {
-            guard !value.isEmpty else { return }
-            history.removeAll { $0 == value }
-            history.insert(value, at: 0)
-            if history.count > 20 { history.removeLast(history.count - 20) }
+        searchHistoryStore.record(query.pattern, in: .find, state: &searchHistory)
+        if let replacement = query.replacement {
+            searchHistoryStore.record(replacement, in: .replace, state: &searchHistory)
         }
-        record(query.pattern, into: &findHistory)
-        if let replacement = query.replacement { record(replacement, into: &replaceHistory) }
-        findBar.searchHistory = findHistory
-        findBar.replacementHistory = replaceHistory
+        syncSearchHistoryUI()
+    }
+
+    private func syncSearchHistoryUI() {
+        findBar.searchHistory = searchHistory.find
+        findBar.replacementHistory = searchHistory.replace
+        grepPanel?.searchHistory = searchHistory.grep
+    }
+
+    func clearSearchHistory() {
+        searchHistoryStore.clear(&searchHistory)
+        syncSearchHistoryUI()
     }
 
     // MARK: - Session persistence

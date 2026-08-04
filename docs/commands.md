@@ -31,6 +31,7 @@ significantly, replace this with a small script that generates it from
 | `search.goToLine` | Go to Line... | Find | ⌘L | `AppCoordinator.showGoToLine()` |
 | `search.quickOpen` | Quick Open... | Find | ⌘P | `AppCoordinator.showQuickOpen()` |
 | `search.grep` | Find in Folder... | Find | ⇧⌘F | `AppCoordinator.showGrep()` |
+| `search.clearHistory` | Clear Search History | Find | — | `AppCoordinator.clearSearchHistory()` |
 | `view.toggleSidebar` | Toggle Sidebar | View | ⌘B | `AppCoordinator.toggleSidebar()` |
 
 All of them are enabled unconditionally right now (`isEnabled` always

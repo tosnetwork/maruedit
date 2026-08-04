@@ -48,4 +48,18 @@ final class GrepUITests: XCTestCase {
         )
         XCTAssertEqual(OutputPaneView.attributedRow(for: match).string, "a.txt:2: a needle here")
     }
+
+    func testGrepHistoryRecallUsesItsOwnList() {
+        let panel = GrepPanel()
+        panel.searchHistory = ["newest", "older"]
+        panel.folderURL = URL(fileURLWithPath: "/tmp")
+        let editor = NSTextView()
+
+        XCTAssertTrue(panel.control(panel.patternField, textView: editor, doCommandBy: #selector(NSResponder.moveUp(_:))))
+        XCTAssertEqual(panel.currentRequest?.query.pattern, "newest")
+        XCTAssertTrue(panel.control(panel.patternField, textView: editor, doCommandBy: #selector(NSResponder.moveUp(_:))))
+        XCTAssertEqual(panel.currentRequest?.query.pattern, "older")
+        XCTAssertTrue(panel.control(panel.patternField, textView: editor, doCommandBy: #selector(NSResponder.moveDown(_:))))
+        XCTAssertEqual(panel.currentRequest?.query.pattern, "newest")
+    }
 }
