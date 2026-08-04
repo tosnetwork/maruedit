@@ -3,23 +3,40 @@ import MaruEditCore
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let coordinator = AppCoordinator()
+    private let isUITestMode = ProcessInfo.processInfo.environment["MARUEDIT_UI_TEST_MODE"] == "1"
     private var recentMenu: NSMenu!
     private var reopenWithEncodingMenu: NSMenu!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         EditorShortcuts.install()
         buildMenu()
-        coordinator.ensureWindowControllerReady()
+        coordinator.ensureWindowControllerReady(restoreSession: !isUITestMode)
+        if isUITestMode,
+           let content = ProcessInfo.processInfo.environment["MARUEDIT_UI_TEST_CONTENT"] {
+            let ranges = ProcessInfo.processInfo.environment["MARUEDIT_UI_TEST_SELECTIONS"]?
+                .split(separator: ",").compactMap { token -> NSRange? in
+                    let parts = token.split(separator: ":")
+                    guard parts.count == 2, let location = Int(parts[0]), let length = Int(parts[1]) else { return nil }
+                    return NSRange(location: location, length: length)
+                } ?? []
+            // Wait until AppKit has finished installing the window's first
+            // responder; that transition otherwise collapses seeded multiple
+            // selections to the primary range before an IME UI test starts.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [coordinator] in
+                coordinator.prepareUITestDocument(content: content, selections: ranges)
+            }
+        }
         NSApp.activate(ignoringOtherApps: true)
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
     func applicationWillTerminate(_ notification: Notification) {
-        coordinator.saveActiveSession()
+        if !isUITestMode { coordinator.saveActiveSession() }
     }
 
     func application(_ sender: NSApplication, openFile filename: String) -> Bool {
+        guard !isUITestMode else { return false }
         coordinator.openFile(URL(fileURLWithPath: filename))
         return true
     }

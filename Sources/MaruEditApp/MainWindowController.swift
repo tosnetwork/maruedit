@@ -1080,6 +1080,17 @@ final class MainWindowController: NSWindowController,
     func previousBookmark() { editorVC.previousBookmark() }
     func clearBookmarks() { editorVC.clearBookmarks() }
 
+    func prepareUITestDocument(content: String, selections: [NSRange]) {
+        guard let document = curDoc else { return }
+        document.content = content
+        document.cachedTextStorage = nil
+        editorVC.reloadCurrentDocument()
+        if !selections.isEmpty {
+            editorVC.setSelections(selections, primaryRange: selections.first)
+            editorVC.isMultiEditActive = selections.count > 1
+        }
+    }
+
     // MARK: - Session persistence
     //
     // Backed by `SessionStore` (a JSON file under Application Support),

@@ -1820,7 +1820,7 @@ Every command must have applicable normal, selection, and multi-selection tests,
 ### M4 Gate
 
 - [x] No cross-window selection-state leakage. *(`SelectionSetTests.testTwoEditorsOwnIndependentSelectionSets` and document-owned `BookmarkSet` isolation.)*
-- [ ] IME manual tests pass.
+- [ ] IME manual tests pass. *(2026-08-04 Release-app verification passes Japanese Romaji and Simplified Chinese Pinyin candidate/commit/cancel/Undo/Redo flows; direct Japanese Kana input remains outstanding. The run found and fixed legacy `insertText`, unmark-only commit, and deferred cancellation paths; see `docs/ime-testing.md`.)*
 - [x] BOX behavior is predictable for tabs, full-width characters, and short lines. *(`BoxSelectionTests`, including virtual-space behavior.)*
 - [x] Undo/Redo preserves text and selection integrity. *(Multi-selection, IME commit, line-command, and bookmark snapshot tests cover text plus logical selections/anchors.)*
 - [x] Every editing capability executes through the Command Registry. *(All M4 selection, BOX, line-editing, and bookmark commands have stable IDs registered by `AppCommands`; ordinary text input remains correctly owned by TextKit.)*

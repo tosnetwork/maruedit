@@ -17,12 +17,12 @@ final class AppCoordinator {
     }
 
     @discardableResult
-    func ensureWindowControllerReady() -> MainWindowController {
+    func ensureWindowControllerReady(restoreSession: Bool = true) -> MainWindowController {
         if let wc = windowController { return wc }
         let wc = MainWindowController()
         windowController = wc
         wc.showWindow(nil)
-        wc.restoreSession()
+        if restoreSession { wc.restoreSession() }
         return wc
     }
 
@@ -64,6 +64,10 @@ final class AppCoordinator {
     func clearBookmarks()               { ensureWindowControllerReady().clearBookmarks() }
     func toggleSidebar()               { ensureWindowControllerReady().toggleSidebar() }
     func clearRecoveryData()           { ensureWindowControllerReady().clearRecoveryData() }
+    func prepareUITestDocument(content: String, selections: [NSRange]) {
+        ensureWindowControllerReady(restoreSession: false)
+            .prepareUITestDocument(content: content, selections: selections)
+    }
 
     /// Menu items for the File > Reopen with Encoding submenu, freshly
     /// built (so the "Recent" section and the checkmark on the current

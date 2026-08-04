@@ -27,6 +27,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     private var suppressAutoIndent = false
     private var isApplyingSelectionSet = false
     private var markedTextSnapshot: (text: String, ranges: [NSRange], primary: NSRange)?
+    private var isCompositionCommitScheduled = false
 
     /// Multi-cursor ("select all occurrences") edit-mode state. Owned by
     /// this instance — not a global dictionary keyed by identity, per
@@ -392,6 +393,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
 
     func textDidChange(_ n: Notification) {
         guard !suppressTextChange else { return }
+        if scheduleCompositionCommitAfterUnmarkIfNeeded() { return }
         let content = textView.string
         document?.bookmarks.normalize(in: content as NSString)
         document?.content = content
@@ -417,7 +419,11 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     }
 
     func textViewDidChangeSelection(_ n: Notification) {
-        guard !isApplyingSelectionSet, markedTextSnapshot == nil else { return }
+        if markedTextSnapshot != nil {
+            _ = scheduleCompositionCommitAfterUnmarkIfNeeded()
+            return
+        }
+        guard !isApplyingSelectionSet else { return }
         selectionSet.update(
             ranges: textView.selectedRanges.map(\.rangeValue),
             primaryRange: textView.selectedRange()
@@ -431,11 +437,13 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     func beginMarkedTextComposition() {
         guard markedTextSnapshot == nil, isMultiEditActive else { return }
         markedTextSnapshot = (textView.string, selectionSet.ranges, selectionSet.primaryRange)
+        pollMarkedTextUntilSettled()
     }
 
     func commitMarkedText(_ text: String) {
         guard let snapshot = markedTextSnapshot else { return }
         markedTextSnapshot = nil
+        isCompositionCommitScheduled = false
         restoreCompositionBaseline(snapshot)
         batchReplace(snapshot.ranges, with: text)
     }
@@ -443,7 +451,57 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     func cancelMarkedTextComposition() {
         guard let snapshot = markedTextSnapshot else { return }
         markedTextSnapshot = nil
+        isCompositionCommitScheduled = false
         restoreCompositionBaseline(snapshot)
+    }
+
+    /// Some system IMEs finalize marked text by mutating TextKit and ending
+    /// the marked range without calling either NSTextView insertText entry
+    /// point. Detect that state transition at the delegate boundary and
+    /// recover the committed candidate from the before/after UTF-16 diff.
+    private func scheduleCompositionCommitAfterUnmarkIfNeeded() -> Bool {
+        guard let snapshot = markedTextSnapshot,
+              !isCompositionCommitScheduled,
+              !textView.hasMarkedText() else { return false }
+        let old = snapshot.text as NSString
+        let new = textView.string as NSString
+        var prefix = 0
+        while prefix < old.length, prefix < new.length,
+              old.character(at: prefix) == new.character(at: prefix) { prefix += 1 }
+        var suffix = 0
+        while suffix < old.length - prefix, suffix < new.length - prefix,
+              old.character(at: old.length - suffix - 1) == new.character(at: new.length - suffix - 1) {
+            suffix += 1
+        }
+        let committed = new.substring(with: NSRange(
+            location: prefix, length: new.length - prefix - suffix))
+        if committed.isEmpty {
+            guard snapshot.text != textView.string else { return false }
+            isCompositionCommitScheduled = true
+            DispatchQueue.main.async { [weak self] in self?.cancelMarkedTextComposition() }
+            return true
+        }
+        isCompositionCommitScheduled = true
+        DispatchQueue.main.async { [weak self] in self?.commitMarkedText(committed) }
+        return true
+    }
+
+    func finalizeCompositionIfUnmarked() {
+        _ = scheduleCompositionCommitAfterUnmarkIfNeeded()
+    }
+
+    private func pollMarkedTextUntilSettled() {
+        guard markedTextSnapshot != nil else { return }
+        if !textView.hasMarkedText() {
+            if scheduleCompositionCommitAfterUnmarkIfNeeded() { return }
+            // Some IMEs briefly expose no marked range before their first
+            // actual marked-text mutation. An empty diff is not a commit;
+            // keep observing until text changes or cancellation clears the
+            // snapshot.
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) { [weak self] in
+            self?.pollMarkedTextUntilSettled()
+        }
     }
 
     private func restoreCompositionBaseline(
