@@ -13,6 +13,7 @@ final class MacroManager: NSObject, @unchecked Sendable {
     private let keyBindings: KeyBindingManager
     private let enablementStore: MacroEnablementStore
     private let authorizer: MacroPermissionAuthorizer
+    private let enableHidemaruCompatibility: Bool
     private let engine = MacroEngine()
     private(set) var catalog = MacroCatalog(macros: [], issues: [])
     private(set) var errors: [MacroErrorEntry] = []
@@ -24,12 +25,14 @@ final class MacroManager: NSObject, @unchecked Sendable {
     init(directory: URL = MacroManager.defaultDirectory,
          coordinator: AppCoordinator, keyBindings: KeyBindingManager,
          enablementStore: MacroEnablementStore = MacroEnablementStore(),
-         authorizer: MacroPermissionAuthorizer = MacroPermissionAuthorizer()) {
+         authorizer: MacroPermissionAuthorizer = MacroPermissionAuthorizer(),
+         enableHidemaruCompatibility: Bool = HidemaruCompatibility.isEnabled()) {
         self.directory = directory
         self.coordinator = coordinator
         self.keyBindings = keyBindings
         self.enablementStore = enablementStore
         self.authorizer = authorizer
+        self.enableHidemaruCompatibility = enableHidemaruCompatibility
     }
 
     static var defaultDirectory: URL {
@@ -40,7 +43,9 @@ final class MacroManager: NSObject, @unchecked Sendable {
     func reload() {
         for id in registeredIDs { coordinator.commandRegistry.unregister(id) }
         registeredIDs.removeAll()
-        catalog = MacroCatalogLoader.load(from: directory, disabledIDs: enablementStore.disabledIDs())
+        catalog = MacroCatalogLoader.load(
+            from: directory, disabledIDs: enablementStore.disabledIDs(),
+            enableHidemaruCompatibility: enableHidemaruCompatibility)
         for macro in catalog.macros {
             let definition = CommandDefinition(
                 id: macro.id, title: macro.metadata.name,

@@ -2011,21 +2011,21 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 
 ## M6-08: Experimental Macro Compatibility Layer
 
-- [ ] Create `docs/compatibility/macro-compatibility.md`.
-- [ ] Select only high-frequency, low-risk command subsets.
-- [ ] Implement a clean-room parser.
-- [ ] Protect the feature behind a flag.
-- [ ] Add public-behavior tests for every supported command.
-- [ ] Do not destabilize MaruEdit's native Macro API.
-- [ ] Label the compatibility layer experimental.
+- [x] Create `docs/compatibility/macro-compatibility.md`. *(The document defines enablement, syntax, explicit limits, security boundaries, and a command-by-command state matrix.)*
+- [x] Select only high-frequency, low-risk command subsets. *(Eight current-document/UI commands are supported; file, process, registry, network, flow-control, and unknown commands are rejected.)*
+- [x] Implement a clean-room parser. *(`HidemaruCompatibility` independently tokenizes the documented subset and translates it into the frozen `maru` API with line-numbered failures.)*
+- [x] Protect the feature behind a flag. *(`.mac` discovery defaults off and requires the environment or user-default experimental flag.)*
+- [x] Add public-behavior tests for every supported command. *(`HidemaruCompatibilityTests` executes select-all, top/end, insert, delete, upper/lower, and message through the real MacroEngine.)*
+- [x] Do not destabilize MaruEdit's native Macro API. *(Catalog tests prove native `.js` source is unchanged with the flag both off and on; translated macros receive only current-document capability.)*
+- [x] Label the compatibility layer experimental. *(Menu names/descriptions, command IDs, documentation, Undo label, and feature flag all explicitly say Experimental.)*
 
 ### M6 Gate
 
-- [ ] A sample macro reads a selection, transforms it, and reverses in one Undo.
-- [ ] A macro cannot read arbitrary files without authorization.
-- [ ] External commands are cancellable and streamed output does not block the UI.
-- [ ] Grep Replace has Preview and recovery records.
-- [ ] The Macro API is versioned and documented.
+- [x] A sample macro reads a selection, transforms it, and reverses in one Undo. *(`MacroCommandBridgeTests.testSelectionTransformClipboardPromptMessageAndSingleUndo` runs the sample through AppKit and restores the exact original text with one Undo.)*
+- [x] A macro cannot read arbitrary files without authorization. *(The default host exposes no file function; `MacroPermissionTests` proves other-file access requires an explicit scoped-directory grant and denial stops execution.)*
+- [x] External commands are cancellable and streamed output does not block the UI. *(`ExternalCommandTests` verifies concurrent stdout/stderr draining plus delayed and immediate cancellation; the controller streams off-main into the shared pane.)*
+- [x] Grep Replace has Preview and recovery records. *(`GrepReplacePreviewTests` verifies selectable before/after UI, while Core integration tests verify pre-write backups and the atomic transaction manifest.)*
+- [x] The Macro API is versioned and documented. *(`maru.apiVersion === 1` is enforced by `MacroEngineTests`; `docs/macro-api-v1.md` documents every surface and security boundary.)*
 
 ---
 

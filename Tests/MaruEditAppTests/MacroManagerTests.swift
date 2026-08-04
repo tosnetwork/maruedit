@@ -96,6 +96,26 @@ final class MacroManagerTests: XCTestCase {
         XCTAssertTrue(manager.errors.last?.message.contains("network access is never available") == true)
     }
 
+    func testExperimentalCompatibilityMustBeEnabledAndExecutesThroughNativeHost() throws {
+        let directory = try makeDirectory()
+        try "selectall; toupper;".write(
+            to: directory.appendingPathComponent("upper.mac"), atomically: true, encoding: .utf8)
+        let coordinator = AppCoordinator(preferencesStore: isolatedPreferences())
+        coordinator.prepareUITestDocument(content: "Mixed", selections: [NSRange(location: 0, length: 0)])
+        let disabled = MacroManager(directory: directory, coordinator: coordinator,
+                                    keyBindings: KeyBindingManager(), enableHidemaruCompatibility: false)
+        disabled.reload(); XCTAssertTrue(disabled.catalog.macros.isEmpty)
+        let enabled = MacroManager(directory: directory, coordinator: coordinator,
+                                   keyBindings: KeyBindingManager(), enableHidemaruCompatibility: true)
+        enabled.reload()
+        let macro = try XCTUnwrap(enabled.catalog.macros.first)
+        let finished = expectation(description: "compatibility macro")
+        enabled.executionDidFinish = { _, _ in finished.fulfill() }
+        enabled.runForTesting(macro.id); wait(for: [finished], timeout: 2)
+        XCTAssertEqual(coordinator.ensureWindowControllerReady().macroEditor.textView.string, "MIXED")
+        XCTAssertTrue(macro.metadata.name.contains("Experimental"))
+    }
+
     private func makeDirectory() throws -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
