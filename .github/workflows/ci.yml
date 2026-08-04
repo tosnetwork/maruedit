@@ -29,6 +29,9 @@ jobs:
       - name: Verify license files
         run: bash scripts/verify-licenses.sh
 
+      - name: Security and dependency audit
+        run: bash scripts/security-audit.sh
+
       - name: Package app bundle
         run: bash build.sh
 

@@ -2165,13 +2165,13 @@ Cover at least:
 
 ## M8-04: Security and Supply Chain
 
-- [ ] Add `SECURITY.md`.
-- [ ] Confirm the dependency list is empty or fully audited.
-- [ ] Document a Macro/Process threat model.
-- [ ] Describe release-artifact reproducibility.
-- [ ] Run a secrets scan.
-- [ ] Apply appropriate hardening options.
-- [ ] Include no test certificates or development secrets in the package.
+- [x] Add `SECURITY.md`. *(The policy defines supported branches, private reporting, response expectations, severity, and security boundaries.)*
+- [x] Confirm the dependency list is empty or fully audited. *(SwiftPM reports an empty package dependency array; `scripts/security-audit.sh` enforces it locally and in every CI matrix job.)*
+- [x] Document a Macro/Process threat model. *(`docs/security-threat-model.md` records assets, trust boundaries, capability limitations, process authority, residual risks, recovery, and release trust.)*
+- [x] Describe release-artifact reproducibility. *(`docs/reproducible-releases.md` gives source/tag commands, required recorded inputs, unsigned comparison, signature/notarization verification, and compiler-metadata limitations.)*
+- [x] Run a secrets scan. *(`scripts/security-audit.sh` passed against tracked files and checks AWS-key, private-key, credential-assignment, certificate, provisioning-profile, and keystore patterns.)*
+- [x] Apply appropriate hardening options. *(Macros use a fresh capability-only VM with network/Objective-C closed, processes default to direct argv with an environment allowlist, shell mode requires per-run consent, saves are atomic, and CI now blocks dependency/secret regressions; hardened-runtime signing is separately gated by M8-05.)*
+- [x] Include no test certificates or development secrets in the package. *(Tracked-file audit found no certificate, provisioning profile, private key, keystore, or matched credential; release credentials are intentionally external.)*
 
 ## M8-05: Signing, Notarization, and DMG
 

@@ -11,6 +11,10 @@ semantic version tags.
 - Added the 1.0 user, Search/Grep, migration, compatibility, FAQ, and troubleshooting guides; linked the existing key-binding, macro, and external-command references from the README.
 - Replaced stale sub-megabyte/20 MB and unsigned-download claims with reproducible M7 measurements and a Gatekeeper-safe release policy.
 
+### Security
+
+- Added the vulnerability-reporting policy, Macro/Process threat model, reproducible-release procedure, and a CI-enforced dependency/certificate/secret audit.
+
 ### Changed
 
 - Entered the 1.0 feature freeze; changes are now limited to release work and
