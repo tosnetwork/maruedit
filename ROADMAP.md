@@ -1946,14 +1946,14 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 
 ## M6-02: Macro Command Bridge
 
-- [ ] Implement `maru.commands.run`.
-- [ ] Add document and editor APIs.
-- [ ] Add selection and replacement APIs.
-- [ ] Add clipboard APIs.
-- [ ] Add message and prompt APIs.
-- [ ] Support asynchronous command completion.
-- [ ] Add an Undo-grouping API.
-- [ ] Publish an API reference.
+- [x] Implement `maru.commands.run`. *(Stable command-ID strings route through `CommandRegistry.execute`; unknown or disabled commands resolve `false`.)*
+- [x] Add document and editor APIs. *(`maru.document.getText/setText` and the value-only `maru.editor` surface are backed by the active editor on the main thread.)*
+- [x] Add selection and replacement APIs. *(`getSelections`, validated UTF-16 `setSelections`, and multi-selection-aware `replaceSelections` are covered by a real AppKit editor test.)*
+- [x] Add clipboard APIs. *(`readText` and `writeText` use the injected pasteboard; named-pasteboard tests avoid changing the user's clipboard.)*
+- [x] Add message and prompt APIs. *(`maru.ui.message/prompt` use injectable handlers, with the default prompt implemented as a native `NSAlert` text field.)*
+- [x] Support asynchronous command completion. *(`commands.run` returns a Promise after the synchronous registry command completes, and `MacroEngine` resolves a returned Promise before producing `MacroRunResult`.)*
+- [x] Add an Undo-grouping API. *(`maru.undo.group(name, callback)` brackets nested editor changes with `NSUndoManager`; the sample transformation reverses completely with one Undo.)*
+- [x] Publish an API reference. *(`docs/macro-api-v1.md` specifies types, UTF-16 coordinates, Promise behavior, errors, and examples.)*
 
 ## M6-03: Macro Manager
 

@@ -65,11 +65,12 @@ public final class MacroEngine: @unchecked Sendable {
     public func run(
         _ source: String,
         timeout: TimeInterval = MacroEngine.defaultTimeout,
+        host: MacroHost? = nil,
         completion: @escaping @Sendable (Result<MacroRunResult, MacroExecutionError>) -> Void
     ) -> MacroCancellationToken {
         let token = MacroCancellationToken()
         queue.async { [self] in
-            completion(execute(source, timeout: timeout, cancellation: token))
+            completion(execute(source, timeout: timeout, cancellation: token, host: host))
         }
         return token
     }
@@ -77,7 +78,8 @@ public final class MacroEngine: @unchecked Sendable {
     public func execute(
         _ source: String,
         timeout: TimeInterval = MacroEngine.defaultTimeout,
-        cancellation: MacroCancellationToken = MacroCancellationToken()
+        cancellation: MacroCancellationToken = MacroCancellationToken(),
+        host: MacroHost? = nil
     ) -> Result<MacroRunResult, MacroExecutionError> {
         let started = ProcessInfo.processInfo.systemUptime
         let deadline = started + max(0, timeout)
@@ -116,13 +118,27 @@ public final class MacroEngine: @unchecked Sendable {
         context.setObject(trim, forKeyedSubscript: "__maruTrim" as NSString)
         context.setObject(normalizeLineEndings,
                           forKeyedSubscript: "__maruNormalizeLineEndings" as NSString)
+        install(host: host, in: context)
 
         context.evaluateScript(Self.bootstrap)
         if let exception = capturedException {
             return .failure(.javascript(Self.describe(exception)))
         }
         capturedException = nil
-        let value = context.evaluateScript(source, withSourceURL: URL(string: "maru://macro.js"))
+        var value = context.evaluateScript(source, withSourceURL: URL(string: "maru://macro.js"))
+        if capturedException == nil, let promise = value,
+           promise.isObject, promise.hasProperty("then") {
+            var resolved: JSValue?
+            var rejected: JSValue?
+            let fulfill: @convention(block) (JSValue) -> Void = { resolved = $0 }
+            let reject: @convention(block) (JSValue) -> Void = { rejected = $0 }
+            promise.invokeMethod("then", withArguments: [fulfill, reject])
+            // JavaScriptCore drains jobs created by the immediately resolved
+            // host promise before this no-op evaluation returns.
+            context.evaluateScript("void 0")
+            if let rejected { capturedException = rejected }
+            value = resolved
+        }
         let duration = ProcessInfo.processInfo.systemUptime - started
 
         if let exception = capturedException {
@@ -136,6 +152,34 @@ public final class MacroEngine: @unchecked Sendable {
         return .success(MacroRunResult(value: Self.convert(value), duration: duration))
     }
 
+    private func install(host: MacroHost?, in context: JSContext) {
+        context.setObject(host != nil, forKeyedSubscript: "__maruHasHost" as NSString)
+        guard let host else { return }
+        let runCommand: @convention(block) (String) -> Bool = host.runCommand
+        let documentText: @convention(block) () -> String = host.documentText
+        let setDocumentText: @convention(block) (String) -> Void = host.setDocumentText
+        let selectionsJSON: @convention(block) () -> String = host.selectionsJSON
+        let setSelectionsJSON: @convention(block) (String) -> Bool = host.setSelectionsJSON
+        let replaceSelections: @convention(block) (String) -> Void = host.replaceSelections
+        let readClipboard: @convention(block) () -> String = host.readClipboard
+        let writeClipboard: @convention(block) (String) -> Void = host.writeClipboard
+        let showMessage: @convention(block) (String) -> Void = host.showMessage
+        let prompt: @convention(block) (String, String) -> String? = host.prompt
+        let beginUndo: @convention(block) (String) -> Void = host.beginUndoGroup
+        let endUndo: @convention(block) () -> Void = host.endUndoGroup
+        let entries: [(String, Any)] = [
+            ("__maruRunCommand", runCommand), ("__maruDocumentText", documentText),
+            ("__maruSetDocumentText", setDocumentText), ("__maruSelectionsJSON", selectionsJSON),
+            ("__maruSetSelectionsJSON", setSelectionsJSON),
+            ("__maruReplaceSelections", replaceSelections), ("__maruReadClipboard", readClipboard),
+            ("__maruWriteClipboard", writeClipboard), ("__maruShowMessage", showMessage),
+            ("__maruPrompt", prompt), ("__maruBeginUndo", beginUndo), ("__maruEndUndo", endUndo)
+        ]
+        for (name, value) in entries {
+            context.setObject(value, forKeyedSubscript: name as NSString)
+        }
+    }
+
     private static let bootstrap = #"""
     (() => {
       'use strict';
@@ -144,6 +188,7 @@ public final class MacroEngine: @unchecked Sendable {
       const nativeLowercase = __maruLowercase;
       const nativeTrim = __maruTrim;
       const nativeNormalizeLineEndings = __maruNormalizeLineEndings;
+      const hasHost = __maruHasHost;
       const check = () => {
         const state = nativeCheck();
         if (state === 'cancelled') {
@@ -166,8 +211,46 @@ public final class MacroEngine: @unchecked Sendable {
         trim: textCall(nativeTrim),
         normalizeLineEndings: textCall(nativeNormalizeLineEndings)
       });
+      const api = { apiVersion: 1, checkCancellation: check, text };
+      if (hasHost) {
+        const native = {
+          runCommand: __maruRunCommand, documentText: __maruDocumentText,
+          setDocumentText: __maruSetDocumentText, selectionsJSON: __maruSelectionsJSON,
+          setSelectionsJSON: __maruSetSelectionsJSON, replaceSelections: __maruReplaceSelections,
+          readClipboard: __maruReadClipboard, writeClipboard: __maruWriteClipboard,
+          showMessage: __maruShowMessage, prompt: __maruPrompt,
+          beginUndo: __maruBeginUndo, endUndo: __maruEndUndo
+        };
+        api.commands = Object.freeze({ run: (id) => {
+          check();
+          if (typeof id !== 'string') return Promise.reject(new TypeError('Expected a command ID'));
+          return Promise.resolve(native.runCommand(id));
+        }});
+        api.document = Object.freeze({
+          getText: () => { check(); return native.documentText(); },
+          setText: (value) => { check(); if (typeof value !== 'string') throw new TypeError('Expected a string'); native.setDocumentText(value); check(); }
+        });
+        api.editor = Object.freeze({
+          getSelections: () => { check(); return JSON.parse(native.selectionsJSON()); },
+          setSelections: (ranges) => { check(); return native.setSelectionsJSON(JSON.stringify(ranges)); },
+          replaceSelections: (value) => { check(); if (typeof value !== 'string') throw new TypeError('Expected a string'); native.replaceSelections(value); check(); }
+        });
+        api.clipboard = Object.freeze({
+          readText: () => { check(); return native.readClipboard(); },
+          writeText: (value) => { check(); if (typeof value !== 'string') throw new TypeError('Expected a string'); native.writeClipboard(value); }
+        });
+        api.ui = Object.freeze({
+          message: (value) => { check(); native.showMessage(String(value)); },
+          prompt: (message, initial = '') => { check(); return native.prompt(String(message), String(initial)); }
+        });
+        api.undo = Object.freeze({ group: (name, action) => {
+          if (typeof action !== 'function') throw new TypeError('Expected a function');
+          native.beginUndo(String(name));
+          try { return action(); } finally { native.endUndo(); }
+        }});
+      }
       Object.defineProperty(globalThis, 'maru', {
-        value: Object.freeze({ apiVersion: 1, checkCancellation: check, text }),
+        value: Object.freeze(api),
         writable: false, configurable: false, enumerable: true
       });
       delete globalThis.__maruCheck;
@@ -175,6 +258,11 @@ public final class MacroEngine: @unchecked Sendable {
       delete globalThis.__maruLowercase;
       delete globalThis.__maruTrim;
       delete globalThis.__maruNormalizeLineEndings;
+      delete globalThis.__maruHasHost;
+      for (const name of ['__maruRunCommand','__maruDocumentText','__maruSetDocumentText',
+        '__maruSelectionsJSON','__maruSetSelectionsJSON','__maruReplaceSelections',
+        '__maruReadClipboard','__maruWriteClipboard','__maruShowMessage','__maruPrompt',
+        '__maruBeginUndo','__maruEndUndo']) delete globalThis[name];
     })();
     """#
 

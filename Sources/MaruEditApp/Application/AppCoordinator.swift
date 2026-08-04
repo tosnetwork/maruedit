@@ -129,6 +129,16 @@ final class AppCoordinator {
         }
     }
     func clearRecoveryData()           { ensureWindowControllerReady().clearRecoveryData() }
+    func makeMacroHost(
+        pasteboard: NSPasteboard = .general,
+        message: ((String) -> Void)? = nil,
+        prompt: ((String, String) -> String?)? = nil
+    ) -> MacroHost {
+        let window = ensureWindowControllerReady()
+        return MacroCommandBridge(
+            coordinator: self, editor: window.macroEditor, pasteboard: pasteboard,
+            message: message, prompt: prompt).host
+    }
     func prepareUITestDocument(content: String, selections: [NSRange]) {
         ensureWindowControllerReady(restoreSession: false)
             .prepareUITestDocument(content: content, selections: selections)

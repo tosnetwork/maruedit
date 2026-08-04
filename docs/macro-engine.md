@@ -13,6 +13,11 @@ M6-01 provides deterministic pure text helpers:
 - `maru.text.trim(string)`
 - `maru.text.normalizeLineEndings(string)`
 
+When the application supplies an active-editor host, the M6-02 command,
+document, editor, clipboard, UI, and Undo capabilities described in
+`macro-api-v1.md` are added. The engine retains the bridge for the complete
+run, while every AppKit operation is marshalled to the main thread.
+
 JavaScript failures report their message, stack, line, and column when supplied
 by JavaScriptCore. Runs execute on a dedicated background queue by default.
 

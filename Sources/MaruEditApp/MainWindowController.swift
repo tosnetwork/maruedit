@@ -18,6 +18,7 @@ final class MainWindowController: NSWindowController,
     private var findBar: FindBarView!
     private var editorVC: EditorViewController!
     private var statusBar: StatusBarView!
+    var macroEditor: EditorViewController { editorVC }
 
     private var quickOpen: QuickOpenPanel?
 

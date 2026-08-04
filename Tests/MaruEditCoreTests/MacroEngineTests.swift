@@ -78,6 +78,39 @@ final class MacroEngineTests: XCTestCase {
         wait(for: [completed], timeout: 1)
     }
 
+    func testHostAPIsAreValueOnlyAndCommandPromiseCompletes() throws {
+        var calls: [String] = []
+        var document = "hello"
+        var clipboard = "clip"
+        let host = MacroHost(
+            runCommand: { calls.append("command:\($0)"); return $0 == "edit.test" },
+            documentText: { document }, setDocumentText: { document = $0 },
+            selectionsJSON: { #"[{"length":5,"location":0}]"# },
+            setSelectionsJSON: { calls.append("selections:\($0)"); return true },
+            replaceSelections: { calls.append("replace:\($0)") },
+            readClipboard: { clipboard }, writeClipboard: { clipboard = $0 },
+            showMessage: { calls.append("message:\($0)") },
+            prompt: { message, initial in calls.append("prompt:\(message):\(initial)"); return "answer" },
+            beginUndoGroup: { calls.append("begin:\($0)") }, endUndoGroup: { calls.append("end") })
+        let script = """
+        const command = maru.commands.run('edit.test');
+        maru.undo.group('Transform', () => {
+          maru.document.setText(maru.document.getText().toUpperCase());
+          maru.editor.replaceSelections(maru.ui.prompt('Question', 'initial'));
+          maru.editor.setSelections([{location: 1, length: 2}]);
+          maru.clipboard.writeText(maru.clipboard.readText() + '!');
+          maru.ui.message('done');
+        });
+        command;
+        """
+        XCTAssertEqual(try value(MacroEngine().execute(script, host: host)), .boolean(true))
+        XCTAssertEqual(document, "HELLO")
+        XCTAssertEqual(clipboard, "clip!")
+        XCTAssertEqual(calls, ["command:edit.test", "begin:Transform", "prompt:Question:initial",
+                               "replace:answer", "selections:[{\"location\":1,\"length\":2}]",
+                               "message:done", "end"])
+    }
+
     private func value(
         _ result: Result<MacroRunResult, MacroExecutionError>
     ) throws -> MacroValue {
