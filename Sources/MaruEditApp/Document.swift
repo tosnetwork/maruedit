@@ -26,6 +26,12 @@ final class Document {
     var fileIdentity: FileIdentity?
     var lastKnownModificationDate: Date?
     var posixPermissions: Int?
+    /// Whether the file at `fileURL` was not writable as of the last
+    /// check (open, reopen, or an explicit `refreshReadOnlyState()` call
+    /// — ROADMAP.md M2-08, "React to permission changes while the
+    /// document is open"). Always `false` for an unnamed document — the
+    /// concept doesn't apply until there's a real file to be locked.
+    var isReadOnly: Bool = false
     var cursorPosition: Int = 0
     var scrollOffset: NSPoint = .zero
     var cachedTextStorage: NSTextStorage?
@@ -84,7 +90,20 @@ final class Document {
         doc.fileIdentity = loaded.fileIdentity
         doc.lastKnownModificationDate = loaded.modificationDate
         doc.posixPermissions = loaded.posixPermissions
+        doc.isReadOnly = !FileManager.default.isWritableFile(atPath: url.path)
         return doc
+    }
+
+    /// Re-checks whether `fileURL` is currently writable, updating
+    /// `isReadOnly` in place. Returns whether the value changed, so
+    /// callers know whether to refresh any UI showing it.
+    @discardableResult
+    func refreshReadOnlyState() -> Bool {
+        guard let url = fileURL else { return false }
+        let current = !FileManager.default.isWritableFile(atPath: url.path)
+        guard current != isReadOnly else { return false }
+        isReadOnly = current
+        return true
     }
 
     /// Re-reads this document's file from disk using an explicitly chosen
@@ -101,6 +120,7 @@ final class Document {
         fileIdentity = loaded.fileIdentity
         lastKnownModificationDate = loaded.modificationDate
         posixPermissions = loaded.posixPermissions
+        isReadOnly = !FileManager.default.isWritableFile(atPath: url.path)
         cursorPosition = 0
         scrollOffset = .zero
         cachedTextStorage = nil

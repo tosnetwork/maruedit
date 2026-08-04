@@ -255,8 +255,32 @@ final class MainWindowController: NSWindowController,
     func saveDocument() {
         guard let doc = curDoc else { return }
         guard doc.fileURL != nil else { saveDocumentAs(); return }
+        // Checked before the mixed-line-ending prompt: no point asking the
+        // user to pick LF/CRLF/CR for a write that can't happen anyway
+        // (ROADMAP.md M2-08, "never presented as normally overwriteable").
+        if doc.isReadOnly {
+            presentReadOnlySaveBlocked(doc)
+            return
+        }
         guard resolveMixedLineEndingIfNeeded(for: doc) else { return }
         performSave(doc)
+    }
+
+    /// ROADMAP.md M2-08: intercepts Save on a read-only file before any
+    /// write is attempted. `TextFileSaver` would fail on its own too (the
+    /// OS denies the write), but surfacing this up front — with a "Save
+    /// As…" escape hatch — is friendlier than a bare I/O error after the
+    /// fact.
+    private func presentReadOnlySaveBlocked(_ doc: Document) {
+        let a = NSAlert()
+        a.alertStyle = .warning
+        a.messageText = "\(doc.displayName) Is Read-Only"
+        a.informativeText = "This file can't be overwritten because it's read-only on disk. Use Save As to save your changes to a new location."
+        a.addButton(withTitle: "Save As…")
+        a.addButton(withTitle: "Cancel")
+        if a.runModal() == .alertFirstButtonReturn {
+            saveDocumentAs()
+        }
     }
 
     func saveDocumentAs() {
@@ -393,7 +417,15 @@ final class MainWindowController: NSWindowController,
     // silently.
 
     @objc private func windowDidBecomeKey() {
-        guard let doc = curDoc, let url = doc.fileURL else { return }
+        guard let doc = curDoc else { return }
+        // ROADMAP.md M2-08: "React to permission changes while the
+        // document is open" — re-checked here alongside the external-
+        // modification revalidation below, on the same trigger (window
+        // regaining focus), rather than a separate live watcher.
+        if doc.refreshReadOnlyState() {
+            refreshStatus()
+        }
+        guard let url = doc.fileURL else { return }
         let status = ExternalChangeDetector.check(url: url, knownIdentity: doc.fileIdentity, knownModificationDate: doc.lastKnownModificationDate)
         guard status != .unchanged else { return }
         presentExternalChangeConflict(status, for: doc)
@@ -604,6 +636,7 @@ final class MainWindowController: NSWindowController,
             statusBar.updateLanguage(doc.language)
             statusBar.updateEncoding(doc.encoding)
             statusBar.updateLineEnding(doc.lineEnding)
+            statusBar.updateReadOnly(doc.isReadOnly)
         }
     }
 

@@ -1593,21 +1593,21 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M2-08: Read-Only, Locked, and Permission States
 
-- [ ] Detect files that are not writable.
-- [ ] Show an explicit read-only state.
-- [ ] Offer Duplicate or Save As.
-- [ ] Prevent users from editing extensively before discovering overwrite is impossible.
-- [ ] React to permission changes while the document is open.
+- [x] Detect files that are not writable. *(`Document.isReadOnly`, `Sources/MaruEditApp/Document.swift` — set from `FileManager.default.isWritableFile(atPath:)` in `open(url:)` and `reopen(forcing:)`. `false` for an unnamed document, where the concept doesn't apply.)*
+- [x] Show an explicit read-only state. *(`StatusBarView.updateReadOnly` — an orange "Read-Only" label next to the line-ending/encoding indicators, hidden unless the current document is read-only; wired from `MainWindowController.refreshStatus()`.)*
+- [x] Offer Duplicate or Save As. *(The read-only save-blocked alert offers "Save As…" — the task wording is "Duplicate **or** Save As," and MaruEdit has no separate Duplicate command yet to offer instead.)*
+- [x] Prevent users from editing extensively before discovering overwrite is impossible. *(The Read-Only indicator appears the moment the file is opened — before any typing — not only when a save is attempted, so the limitation is visible up front. Text editing itself is deliberately left enabled, matching common editor UX: the open-time indicator plus the save-time intercept below satisfy this without also disabling the text view.)*
+- [x] React to permission changes while the document is open. *(`Document.refreshReadOnlyState()`, called from `MainWindowController.windowDidBecomeKey()` on every focus regain — same revalidation trigger M2-06 already uses for external-change detection — and refreshes the status bar if the value changed.)*
 
-**Acceptance:** A read-only file is never presented as normally overwriteable.
+**Acceptance:** A read-only file is never presented as normally overwriteable. *(`MainWindowController.saveDocument()` intercepts before the mixed-line-ending prompt or any write attempt: if `doc.isReadOnly`, shows "‹file› Is Read-Only" with "Save As…" / "Cancel" instead of calling `performSave`. Verified live end-to-end on the real release build: `chmod 444` a file, opened it — Read-Only indicator visible immediately; typed a character, pressed Cmd+S — got the blocking alert, not a write attempt; clicked Cancel — file on disk byte-for-byte unchanged; `chmod 644`'d it back and refocused the window — indicator disappeared without reopening the file. 7 new tests in `DocumentTests.swift` cover `isReadOnly` detection on open/reopen and `refreshReadOnlyState()`'s change-detection return value, using real `chmod`'d temp files. No automated test exercises the alert itself, consistent with this session's established rule against letting a headless test process reach `NSAlert.runModal()`.)*
 
 ### M2 Gate
 
-- [ ] All encoding and line-ending fixtures pass.
-- [ ] Lossless-save tests pass.
-- [ ] External conflicts cannot overwrite silently.
-- [ ] Unsaved documents are recoverable.
-- [ ] Encoding, BOM, and line ending are visible and controllable.
+- [x] All encoding and line-ending fixtures pass. *(`TextFileLoaderTests` (13 tests: UTF-8/16, Windows-31J, Shift-JIS classic, EUC-JP, ISO-2022-JP, BOM) and `DocumentTests`' line-ending section (M2-03) all pass — 133/133 tests total as of this task's `swift test` run.)*
+- [x] Lossless-save tests pass. *(`SavePreflightTests` (7 tests) plus `DocumentTests.testSavingUnrepresentableCharacterThrowsInsteadOfCorrupting`/`testOpeningLegacyEncodedFilePreservesEncodingOnSave` — unrepresentable characters block the save with a detailed alert rather than silently corrupting, per M2-04.)*
+- [x] External conflicts cannot overwrite silently. *(M2-06's `ExternalChangeDetector`, checked in both `performSave()` before every same-file write and `windowDidBecomeKey()` on focus regain; every detected change surfaces `presentExternalChangeConflict` rather than applying anything automatically.)*
+- [x] Unsaved documents are recoverable. *(M2-07's `RecoveryStore`, verified live in that task's own report — force-quit with unsaved unnamed content, relaunch, content restored.)*
+- [x] Encoding, BOM, and line ending are visible and controllable. *(Status bar shows encoding/line-ending/read-only state live; the clickable encoding label opens "Reopen with Encoding…" (M2-02); `SaveAsFormatAccessoryView` controls encoding and BOM inclusion on Save As; mixed line endings force an explicit LF/CRLF/CR choice before save (M2-03).)*
 
 ---
 

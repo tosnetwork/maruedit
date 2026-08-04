@@ -320,4 +320,78 @@ final class DocumentTests: XCTestCase {
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: dir.path)
         XCTAssertEqual(try Data(contentsOf: url), Data("original".utf8))
     }
+
+    // MARK: - Read-only detection (M2-08)
+
+    func testNewUnnamedDocumentIsNeverReadOnly() {
+        XCTAssertFalse(Document().isReadOnly)
+    }
+
+    func testOpeningWritableFileLeavesIsReadOnlyFalse() throws {
+        let url = try write(Array("hello".utf8))
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let doc = try Document.open(url: url)
+        XCTAssertFalse(doc.isReadOnly)
+    }
+
+    func testOpeningReadOnlyFileSetsIsReadOnly() throws {
+        let url = try write(Array("hello".utf8))
+        try FileManager.default.setAttributes([.posixPermissions: 0o444], ofItemAtPath: url.path)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: url.path)
+            try? FileManager.default.removeItem(at: url)
+        }
+
+        let doc = try Document.open(url: url)
+        XCTAssertTrue(doc.isReadOnly)
+    }
+
+    func testRefreshReadOnlyStateDetectsPermissionChangeWhileOpen() throws {
+        let url = try write(Array("hello".utf8))
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: url.path)
+            try? FileManager.default.removeItem(at: url)
+        }
+
+        let doc = try Document.open(url: url)
+        XCTAssertFalse(doc.isReadOnly)
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o444], ofItemAtPath: url.path)
+        XCTAssertTrue(doc.refreshReadOnlyState(), "a real permission change must be reported")
+        XCTAssertTrue(doc.isReadOnly)
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: url.path)
+        XCTAssertTrue(doc.refreshReadOnlyState(), "flipping back to writable must also be reported")
+        XCTAssertFalse(doc.isReadOnly)
+    }
+
+    func testRefreshReadOnlyStateReturnsFalseWhenUnchanged() throws {
+        let url = try write(Array("hello".utf8))
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let doc = try Document.open(url: url)
+        XCTAssertFalse(doc.refreshReadOnlyState(), "no permission change happened, so nothing should be reported")
+    }
+
+    func testRefreshReadOnlyStateOnUnnamedDocumentIsNoOp() {
+        let doc = Document()
+        XCTAssertFalse(doc.refreshReadOnlyState())
+        XCTAssertFalse(doc.isReadOnly)
+    }
+
+    func testReopenForcingEncodingRefreshesReadOnlyState() throws {
+        let url = try write(Array("hello".utf8))
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: url.path)
+            try? FileManager.default.removeItem(at: url)
+        }
+
+        let doc = try Document.open(url: url)
+        XCTAssertFalse(doc.isReadOnly)
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o444], ofItemAtPath: url.path)
+        try doc.reopen(forcing: .utf8)
+        XCTAssertTrue(doc.isReadOnly)
+    }
 }

@@ -15,6 +15,9 @@ final class StatusBarView: NSView {
     private let encLabel         = NSTextField(labelWithString: "UTF-8")
     private let lineEndingLabel  = NSTextField(labelWithString: "LF")
     private let indentLabel      = NSTextField(labelWithString: "Spaces: 4")
+    /// ROADMAP.md M2-08: "Show an explicit read-only state." Hidden
+    /// unless the current document's file is not writable.
+    private let readOnlyLabel    = NSTextField(labelWithString: "Read-Only")
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -38,11 +41,13 @@ final class StatusBarView: NSView {
         encLabel.frame.origin = NSPoint(x: langLabel.frame.minX - 20 - encLabel.frame.width, y: midY)
         lineEndingLabel.sizeToFit()
         lineEndingLabel.frame.origin = NSPoint(x: encLabel.frame.minX - 16 - lineEndingLabel.frame.width, y: midY)
+        readOnlyLabel.sizeToFit()
+        readOnlyLabel.frame.origin = NSPoint(x: lineEndingLabel.frame.minX - 16 - readOnlyLabel.frame.width, y: midY)
         window?.invalidateCursorRects(for: self)
     }
 
     private func setup() {
-        let labels = [lineColLabel, langLabel, encLabel, lineEndingLabel, indentLabel]
+        let labels = [lineColLabel, langLabel, encLabel, lineEndingLabel, indentLabel, readOnlyLabel]
         for l in labels {
             l.font = Theme.uiFontSmall
             l.textColor = Theme.statusText
@@ -53,6 +58,9 @@ final class StatusBarView: NSView {
         }
         encLabel.textColor = Theme.accent
         encLabel.toolTip = "Click to reopen this file with a different encoding"
+        readOnlyLabel.textColor = .systemOrange
+        readOnlyLabel.toolTip = "This file is read-only on disk; use Save As to save changes"
+        readOnlyLabel.isHidden = true
     }
 
     func updateCursor(line: Int, col: Int) {
@@ -72,6 +80,12 @@ final class StatusBarView: NSView {
 
     func updateLineEnding(_ state: LineEndingState) {
         lineEndingLabel.stringValue = state.displayName
+        needsLayout = true
+    }
+
+    func updateReadOnly(_ isReadOnly: Bool) {
+        guard readOnlyLabel.isHidden == isReadOnly else { return }
+        readOnlyLabel.isHidden = !isReadOnly
         needsLayout = true
     }
 
