@@ -1631,15 +1631,15 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M3-02: Refactor the Find Bar
 
-- [ ] Restrict the Find Bar to input and presentation.
-- [ ] Delegate matching to `SearchEngine`.
-- [ ] Display current and total match counts.
-- [ ] Support incremental search.
-- [ ] Escape closes the bar and restores sensible focus.
-- [ ] Support search history.
-- [ ] Provide complete VoiceOver labels.
+- [x] Restrict the Find Bar to input and presentation. *(`FindBarView` now builds a `SearchQuery` and hands it to `FindBarDelegate.findBar(_:perform:query:)`, then displays the returned `FindOutcome`. It no longer touches `NSTextView` or counts anything itself; the old `findBarMatchCount`-style delegate methods are gone.)*
+- [x] Delegate matching to `SearchEngine`. *(`Sources/MaruEditApp/Search/EditorSearch.swift` is the only place that applies a query to the text view, and it calls `SearchEngine` exclusively. The ad-hoc `NSString.range(of:options:)` find/replace methods were deleted from `EditorViewController`.)*
+- [x] Display current and total match counts. *("3 of 12" when the selection is on a match, "12 matches" when it isn't, "No results", or the regex diagnostic. `FindBarViewTests.testStatusShowsCurrentAndTotalCounts` / `testStatusShowsNoResults` / `testInvalidPatternMessageReplacesTheCountAndKeepsInput`; verified live showing "1 of 4" while typing.)*
+- [x] Support incremental search. *(`controlTextDidChange` runs `.incremental`, which searches from the anchor captured when the bar opened (`EditorViewController.incrementalSearchAnchor`) so refining a pattern doesn't walk forward through the document. `EditorSearchTests.testIncrementalSearchStaysAnchoredWhileTyping`.)*
+- [x] Escape closes the bar and restores sensible focus. *(`control(_:textView:doCommandBy:)` → `doClose()` → `findBarDidDismiss`, which restores the split-view frame and makes the text view first responder. Verified live: Escape closed the bar and the following ⌘G acted on the document.)*
+- [x] Support search history. *(Up/Down recall in each field, with Find and Replace histories kept separate — `testUpAndDownRecallSearchHistory`, `testSearchAndReplaceHistoriesAreSeparate`. The bar only presents the lists; `MainWindowController` records them (deduplicated, capped at 20) in memory for now. Persistence, disabling, and clearing are M3-07's task, which replaces those two arrays with a real store.)*
+- [x] Provide complete VoiceOver labels. *(Labels on both fields, the status label, the bar itself, and all nine buttons; help text on the fields describing the keyboard model; option buttons also publish an accessibility value of "on"/"off". `testControlsCarryVoiceOverLabels` enumerates the view tree and fails if any button is unlabeled.)*
 
-**Acceptance:** A keyboard-only user can open Find, type, navigate, change options, and close it.
+**Acceptance:** A keyboard-only user can open Find, type, navigate, change options, and close it. *(Verified live on the release build, mouse untouched: ⌘F opened the bar → typed "alpha" → "1 of 4" with the first match selected → ⌥⌘W → "1 of 3" (whole word, "alphabet" excluded, the W control tinted) → ⌥⌘C → "1 of 1" → options off, typed "beta", Return → "2 of 2" with the second match selected → Escape closed the bar → ⌘G wrapped forward to the first match with the bar closed. Screenshots taken at each step. Note: the option shortcuts are handled in `FindBarView.performKeyEquivalent(with:)` — assigning them as `NSButton.keyEquivalent`s was tried first and verified live not to fire.)*
 
 ## M3-03: Replace and Replace All
 

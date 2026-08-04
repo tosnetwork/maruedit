@@ -12,6 +12,8 @@ extension CommandID {
     static let fileCloseTab     = CommandID("file.closeTab")
     static let fileClearRecoveryData = CommandID("file.clearRecoveryData")
     static let searchFind       = CommandID("search.find")
+    static let searchFindNext   = CommandID("search.findNext")
+    static let searchFindPrevious = CommandID("search.findPrevious")
     static let searchGoToLine   = CommandID("search.goToLine")
     static let searchQuickOpen  = CommandID("search.quickOpen")
     static let viewToggleSidebar = CommandID("view.toggleSidebar")
@@ -46,6 +48,12 @@ enum AppCommands {
         })
         registry.register(CommandDefinition(id: .searchFind, title: "Find...") { ctx in
             ctx.coordinator.showFind()
+        })
+        registry.register(CommandDefinition(id: .searchFindNext, title: "Find Next") { ctx in
+            ctx.coordinator.findNext()
+        })
+        registry.register(CommandDefinition(id: .searchFindPrevious, title: "Find Previous") { ctx in
+            ctx.coordinator.findPrevious()
         })
         registry.register(CommandDefinition(id: .searchGoToLine, title: "Go to Line...") { ctx in
             ctx.coordinator.showGoToLine()

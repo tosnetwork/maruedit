@@ -1,12 +1,23 @@
 import AppKit
+import MaruEditCore
 
+enum FindBarAction {
+    case findNext
+    case findPrevious
+    /// Re-run on every keystroke and option change.
+    case incremental
+    case replace
+    case replaceAll
+}
+
+/// The Find Bar is input and presentation only (ROADMAP.md M3-02): it
+/// builds a `SearchQuery` and asks its delegate to carry it out, then
+/// displays whatever the delegate reports back. It never touches text,
+/// never matches anything itself, and knows nothing about `NSTextView`.
 protocol FindBarDelegate: AnyObject {
-    func findBarNext(_ text: String, caseSensitive: Bool, regex: Bool)
-    func findBarPrev(_ text: String, caseSensitive: Bool)
-    func findBarReplace(_ search: String, with replacement: String, caseSensitive: Bool)
-    func findBarReplaceAll(_ search: String, with replacement: String, caseSensitive: Bool)
-    func findBarDismissed()
-    func findBarMatchCount(_ text: String, caseSensitive: Bool) -> Int
+    @discardableResult
+    func findBar(_ bar: FindBarView, perform action: FindBarAction, query: SearchQuery) -> FindOutcome
+    func findBarDidDismiss(_ bar: FindBarView)
 }
 
 final class FindBarView: NSView, NSTextFieldDelegate {
@@ -16,6 +27,7 @@ final class FindBarView: NSView, NSTextFieldDelegate {
     let replaceField = NSTextField()
     private let matchLabel  = NSTextField(labelWithString: "")
     private let caseBtn     = NSButton()
+    private let wordBtn     = NSButton()
     private let regexBtn    = NSButton()
     private let prevBtn     = NSButton()
     private let nextBtn     = NSButton()
@@ -25,6 +37,14 @@ final class FindBarView: NSView, NSTextFieldDelegate {
     private let expandBtn   = NSButton()
     private var showReplace  = false
     private var replaceRow: NSView!
+
+    /// Most-recent-first history, supplied by the owner and recalled with
+    /// Up/Down in the matching field. The bar only presents it; persistence
+    /// and limits belong to the owner (ROADMAP.md M3-07).
+    var searchHistory: [String] = []
+    var replacementHistory: [String] = []
+    private var searchHistoryIndex: Int?
+    private var replacementHistoryIndex: Int?
 
     override var intrinsicContentSize: NSSize {
         NSSize(width: NSView.noIntrinsicMetric, height: showReplace ? 66 : 34)
@@ -43,15 +63,17 @@ final class FindBarView: NSView, NSTextFieldDelegate {
     // MARK: - Build
 
     private func buildUI() {
-        func btn(_ title: String, _ tip: String, _ action: Selector) -> NSButton {
-            let b = NSButton(title: title, target: self, action: action)
-            b.bezelStyle = .inline
-            b.isBordered = false
-            b.font = Theme.uiFontSmall
-            b.contentTintColor = Theme.tabText
-            b.toolTip = tip
-            b.translatesAutoresizingMaskIntoConstraints = false
-            return b
+        func style(_ button: NSButton, title: String, tip: String, action: Selector, accessibility: String) {
+            button.title = title
+            button.bezelStyle = .inline
+            button.isBordered = false
+            button.font = Theme.uiFontSmall
+            button.contentTintColor = Theme.tabText
+            button.toolTip = tip
+            button.target = self
+            button.action = action
+            button.translatesAutoresizingMaskIntoConstraints = false
+            button.setAccessibilityLabel(accessibility)
         }
 
         searchField.placeholderString = "Find"
@@ -59,34 +81,40 @@ final class FindBarView: NSView, NSTextFieldDelegate {
         searchField.focusRingType = .none
         searchField.delegate = self
         searchField.translatesAutoresizingMaskIntoConstraints = false
+        searchField.setAccessibilityLabel("Find")
+        searchField.setAccessibilityHelp("Type to search. Return finds the next match, Shift-Return the previous one, Escape closes the find bar. Up and Down recall earlier searches.")
 
         replaceField.placeholderString = "Replace"
         replaceField.font = Theme.uiFontSmall
         replaceField.focusRingType = .none
+        replaceField.delegate = self
         replaceField.translatesAutoresizingMaskIntoConstraints = false
+        replaceField.setAccessibilityLabel("Replace with")
+        replaceField.setAccessibilityHelp("Replacement text. Up and Down recall earlier replacements.")
 
         matchLabel.font = Theme.uiFontSmall
         matchLabel.textColor = Theme.statusText
         matchLabel.translatesAutoresizingMaskIntoConstraints = false
+        matchLabel.setAccessibilityLabel("Search status")
 
-        let e = btn("⇅", "Toggle Replace", #selector(toggleReplace))
-        expandBtn.title = e.title; expandBtn.bezelStyle = e.bezelStyle
-        expandBtn.isBordered = e.isBordered; expandBtn.font = e.font
-        expandBtn.contentTintColor = e.contentTintColor; expandBtn.toolTip = e.toolTip
-        expandBtn.target = self; expandBtn.action = #selector(toggleReplace)
-        expandBtn.translatesAutoresizingMaskIntoConstraints = false
+        style(expandBtn, title: "⇅", tip: "Toggle Replace", action: #selector(toggleReplace), accessibility: "Toggle replace row")
+        style(caseBtn, title: "Aa", tip: "Case Sensitive (⌥⌘C)", action: #selector(toggleCase), accessibility: "Case sensitive")
+        style(wordBtn, title: "W", tip: "Whole Word (⌥⌘W)", action: #selector(toggleWholeWord), accessibility: "Whole word")
+        style(regexBtn, title: ".*", tip: "Regular Expression (⌥⌘R)", action: #selector(toggleRegex), accessibility: "Regular expression")
+        style(prevBtn, title: "▲", tip: "Previous (⇧⌘G)", action: #selector(doPrev), accessibility: "Find previous")
+        style(nextBtn, title: "▼", tip: "Next (⌘G)", action: #selector(doNext), accessibility: "Find next")
+        style(closeBtn, title: "✕", tip: "Close (Esc)", action: #selector(doClose), accessibility: "Close find bar")
+        style(replBtn, title: "Replace", tip: "Replace", action: #selector(doReplace), accessibility: "Replace this match")
+        style(replAllBtn, title: "All", tip: "Replace All", action: #selector(doReplaceAll), accessibility: "Replace all matches")
 
-        copyProps(from: btn("Aa", "Case Sensitive", #selector(toggleCase)), to: caseBtn)
-        copyProps(from: btn(".*", "Regex", #selector(toggleRegex)), to: regexBtn)
-        copyProps(from: btn("▲", "Previous", #selector(doPrev)), to: prevBtn)
-        copyProps(from: btn("▼", "Next", #selector(doNext)), to: nextBtn)
-        copyProps(from: btn("✕", "Close", #selector(doClose)), to: closeBtn)
-        copyProps(from: btn("Replace", "Replace", #selector(doReplace)), to: replBtn)
-        copyProps(from: btn("All", "Replace All", #selector(doReplaceAll)), to: replAllBtn)
+        // The option toggles are momentary buttons whose `state` the
+        // action methods flip by hand. A `.pushOnPushOff` button toggles
+        // its own state before sending the action, so the handler's flip
+        // would cancel it out and the option would never change.
 
         let searchRow = NSView()
         searchRow.translatesAutoresizingMaskIntoConstraints = false
-        for v: NSView in [expandBtn, searchField, matchLabel, caseBtn, regexBtn, prevBtn, nextBtn, closeBtn] {
+        for v: NSView in [expandBtn, searchField, matchLabel, caseBtn, wordBtn, regexBtn, prevBtn, nextBtn, closeBtn] {
             searchRow.addSubview(v)
         }
 
@@ -120,7 +148,10 @@ final class FindBarView: NSView, NSTextFieldDelegate {
             caseBtn.leadingAnchor.constraint(equalTo: matchLabel.trailingAnchor, constant: 8),
             caseBtn.centerYAnchor.constraint(equalTo: searchRow.centerYAnchor),
 
-            regexBtn.leadingAnchor.constraint(equalTo: caseBtn.trailingAnchor, constant: 4),
+            wordBtn.leadingAnchor.constraint(equalTo: caseBtn.trailingAnchor, constant: 4),
+            wordBtn.centerYAnchor.constraint(equalTo: searchRow.centerYAnchor),
+
+            regexBtn.leadingAnchor.constraint(equalTo: wordBtn.trailingAnchor, constant: 4),
             regexBtn.centerYAnchor.constraint(equalTo: searchRow.centerYAnchor),
 
             prevBtn.leadingAnchor.constraint(equalTo: regexBtn.trailingAnchor, constant: 8),
@@ -147,48 +178,98 @@ final class FindBarView: NSView, NSTextFieldDelegate {
             replAllBtn.leadingAnchor.constraint(equalTo: replBtn.trailingAnchor, constant: 6),
             replAllBtn.centerYAnchor.constraint(equalTo: replaceRow.centerYAnchor),
         ])
+
+        setAccessibilityLabel("Find bar")
     }
 
-    private func copyProps(from src: NSButton, to dst: NSButton) {
-        dst.title = src.title
-        dst.bezelStyle = src.bezelStyle
-        dst.isBordered = src.isBordered
-        dst.font = src.font
-        dst.contentTintColor = src.contentTintColor
-        dst.toolTip = src.toolTip
-        dst.target = src.target
-        dst.action = src.action
-        dst.translatesAutoresizingMaskIntoConstraints = false
+    /// Handles the option toggles' ⌥⌘ shortcuts directly instead of
+    /// assigning them as `NSButton.keyEquivalent`s, which were verified
+    /// live not to fire for these buttons. Changing options has to work
+    /// for a keyboard-only user (ROADMAP.md M3-02 acceptance) — it decides
+    /// what the current search means.
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        guard !isHidden,
+              event.modifierFlags.intersection(.deviceIndependentFlagsMask) == [.command, .option],
+              let key = event.charactersIgnoringModifiers?.lowercased()
+        else { return super.performKeyEquivalent(with: event) }
+
+        switch key {
+        case "c": toggleCase(); return true
+        case "w": toggleWholeWord(); return true
+        case "r": toggleRegex(); return true
+        default: return super.performKeyEquivalent(with: event)
+        }
     }
 
-    func activate() { window?.makeFirstResponder(searchField) }
+    func activate() {
+        window?.makeFirstResponder(searchField)
+        searchField.currentEditor()?.selectAll(nil)
+    }
+
+    // MARK: - Query
+
+    /// The query described by the bar's current input and toggles. Every
+    /// action sends this same value, so an option change can never apply
+    /// to Find but not to Replace All.
+    var currentQuery: SearchQuery {
+        SearchQuery(
+            pattern: searchField.stringValue,
+            replacement: replaceField.stringValue,
+            mode: regexBtn.state == .on ? .regularExpression : .literal,
+            isCaseSensitive: caseBtn.state == .on,
+            wholeWord: wordBtn.state == .on,
+            wraps: true,
+            scope: .document
+        )
+    }
+
+    /// Shows the replace row (used when Find is opened via a Replace
+    /// command rather than a plain Find).
+    func setReplaceRowVisible(_ visible: Bool) {
+        guard showReplace != visible else { return }
+        toggleReplace()
+    }
+
+    var isReplaceRowVisible: Bool { showReplace }
 
     // MARK: - Actions
 
-    @objc private func doNext() {
-        delegate?.findBarNext(searchField.stringValue, caseSensitive: caseBtn.state == .on, regex: regexBtn.state == .on)
-    }
-    @objc private func doPrev() {
-        delegate?.findBarPrev(searchField.stringValue, caseSensitive: caseBtn.state == .on)
-    }
+    @objc private func doNext() { run(.findNext) }
+    @objc private func doPrev() { run(.findPrevious) }
+    @objc private func doReplace() { run(.replace) }
+    @objc private func doReplaceAll() { run(.replaceAll) }
+
     @objc private func doClose() {
         isHidden = true
-        delegate?.findBarDismissed()
+        delegate?.findBarDidDismiss(self)
     }
-    @objc private func toggleCase() {
+
+    @objc func toggleCase() {
         caseBtn.state = caseBtn.state == .on ? .off : .on
-        refreshCount()
+        optionDidChange()
     }
-    @objc private func toggleRegex() {
+
+    @objc func toggleWholeWord() {
+        wordBtn.state = wordBtn.state == .on ? .off : .on
+        optionDidChange()
+    }
+
+    @objc func toggleRegex() {
         regexBtn.state = regexBtn.state == .on ? .off : .on
+        optionDidChange()
     }
-    @objc private func doReplace() {
-        delegate?.findBarReplace(searchField.stringValue, with: replaceField.stringValue, caseSensitive: caseBtn.state == .on)
+
+    /// Momentary buttons don't draw their `state`, so an enabled option
+    /// has to announce itself some other way — otherwise a keyboard user
+    /// who pressed ⌥⌘C has no way to tell whether it took effect.
+    private func optionDidChange() {
+        for button in [caseBtn, wordBtn, regexBtn] {
+            button.contentTintColor = button.state == .on ? Theme.accent : Theme.tabText
+            button.setAccessibilityValue(button.state == .on ? "on" : "off")
+        }
+        run(.incremental)
     }
-    @objc private func doReplaceAll() {
-        delegate?.findBarReplaceAll(searchField.stringValue, with: replaceField.stringValue, caseSensitive: caseBtn.state == .on)
-        refreshCount()
-    }
+
     @objc private func toggleReplace() {
         showReplace.toggle()
         replaceRow.isHidden = !showReplace
@@ -196,22 +277,110 @@ final class FindBarView: NSView, NSTextFieldDelegate {
         superview?.needsLayout = true
     }
 
-    private func refreshCount() {
-        let t = searchField.stringValue
-        if t.isEmpty { matchLabel.stringValue = ""; return }
-        let n = delegate?.findBarMatchCount(t, caseSensitive: caseBtn.state == .on) ?? 0
-        matchLabel.stringValue = "\(n) match\(n == 1 ? "" : "es")"
+    private func run(_ action: FindBarAction) {
+        guard let outcome = delegate?.findBar(self, perform: action, query: currentQuery) else { return }
+        present(outcome, for: action)
+    }
+
+    private func present(_ outcome: FindOutcome, for action: FindBarAction) {
+        if let message = outcome.errorMessage {
+            matchLabel.textColor = .systemRed
+            matchLabel.stringValue = message
+            matchLabel.toolTip = message
+            return
+        }
+        matchLabel.textColor = Theme.statusText
+        matchLabel.toolTip = nil
+
+        if action == .replaceAll {
+            let n = outcome.replacementCount
+            matchLabel.stringValue = "Replaced \(n)"
+            matchLabel.setAccessibilityValue("Replaced \(n) \(n == 1 ? "match" : "matches")")
+            return
+        }
+        if searchField.stringValue.isEmpty {
+            matchLabel.stringValue = ""
+            matchLabel.setAccessibilityValue("")
+            return
+        }
+        if outcome.totalMatches == 0 {
+            matchLabel.stringValue = "No results"
+            matchLabel.setAccessibilityValue("No results")
+            return
+        }
+        if let index = outcome.currentIndex {
+            matchLabel.stringValue = "\(index) of \(outcome.totalMatches)"
+            matchLabel.setAccessibilityValue("Match \(index) of \(outcome.totalMatches)")
+        } else {
+            let n = outcome.totalMatches
+            matchLabel.stringValue = "\(n) match\(n == 1 ? "" : "es")"
+            matchLabel.setAccessibilityValue("\(n) \(n == 1 ? "match" : "matches")")
+        }
+    }
+
+    /// The status text currently shown next to the search field ("3 of
+    /// 12", "No results", or a regex diagnostic). Read-only presentation
+    /// state, exposed so tests can assert what the user would see.
+    var statusText: String { matchLabel.stringValue }
+
+    /// Exposed for the owner to refresh the status line after an action it
+    /// initiated itself (e.g. the Find Next menu command while the bar is
+    /// open).
+    func showOutcome(_ outcome: FindOutcome) {
+        present(outcome, for: .findNext)
+    }
+
+    // MARK: - History recall
+
+    private func recallHistory(_ history: [String], index: inout Int?, into field: NSTextField, offset: Int) -> Bool {
+        guard !history.isEmpty else { return false }
+        let next: Int?
+        switch (index, offset) {
+        case (nil, 1): next = 0
+        case (nil, -1): next = nil
+        case (let current?, _):
+            let candidate = current + offset
+            next = candidate < 0 ? nil : min(candidate, history.count - 1)
+        default: next = nil
+        }
+        index = next
+        field.stringValue = next.map { history[$0] } ?? ""
+        field.currentEditor()?.selectAll(nil)
+        return true
     }
 
     // MARK: - NSTextFieldDelegate
 
     func controlTextDidChange(_ n: Notification) {
-        if (n.object as? NSTextField) === searchField { refreshCount() }
+        guard (n.object as? NSTextField) === searchField else { return }
+        // Typing invalidates the recall position: the field no longer
+        // shows a history entry.
+        searchHistoryIndex = nil
+        run(.incremental)
     }
 
     func control(_ control: NSControl, textView tv: NSTextView, doCommandBy sel: Selector) -> Bool {
-        if sel == #selector(insertNewline(_:)) { doNext(); return true }
+        let isSearchField = control === searchField
+
+        if sel == #selector(insertNewline(_:)) {
+            if isSearchField {
+                run(NSEvent.modifierFlags.contains(.shift) ? .findPrevious : .findNext)
+            } else {
+                run(.replace)
+            }
+            return true
+        }
         if sel == #selector(cancelOperation(_:)) { doClose(); return true }
+        if sel == #selector(moveUp(_:)) {
+            return isSearchField
+                ? recallHistory(searchHistory, index: &searchHistoryIndex, into: searchField, offset: 1)
+                : recallHistory(replacementHistory, index: &replacementHistoryIndex, into: replaceField, offset: 1)
+        }
+        if sel == #selector(moveDown(_:)) {
+            return isSearchField
+                ? recallHistory(searchHistory, index: &searchHistoryIndex, into: searchField, offset: -1)
+                : recallHistory(replacementHistory, index: &replacementHistoryIndex, into: replaceField, offset: -1)
+        }
         return false
     }
 }

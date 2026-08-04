@@ -35,6 +35,19 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     var isMultiEditActive = false
     var multiEditCursorRanges: [NSRange] = []
 
+    /// Where incremental Find restarts from on each keystroke — captured
+    /// when the Find Bar opens, so typing a longer pattern refines the
+    /// match at one place in the document instead of walking forward
+    /// through it (ROADMAP.md M3-02, "Support incremental search").
+    var incrementalSearchAnchor: Int?
+
+    /// Rehighlights the whole document (or just the viewport for large
+    /// ones). Used after a bulk edit such as Replace All, where per-line
+    /// rehighlighting can't describe what changed.
+    func rehighlightEntireDocument() {
+        rehighlightAll()
+    }
+
     var document: Document? {
         didSet { if isViewLoaded && document !== oldValue { loadDoc() } }
     }
@@ -306,92 +319,6 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         }
         let lineStart = ns.lineRange(for: NSRange(location: min(sel.location, ns.length), length: 0)).location
         delegate?.editorCursorMoved(self, line: line, col: sel.location - lineStart + 1)
-    }
-
-    // MARK: - Find / Replace
-
-    func findNext(_ text: String, caseSensitive: Bool = false, regex: Bool = false) -> Bool {
-        guard !text.isEmpty else { return false }
-        let ns = textView.string as NSString
-        let start = NSMaxRange(textView.selectedRange())
-        var opts: NSString.CompareOptions = []
-        if !caseSensitive { opts.insert(.caseInsensitive) }
-        if regex { opts.insert(.regularExpression) }
-        var r = ns.range(of: text, options: opts, range: NSRange(location: start, length: ns.length - start))
-        if r.location == NSNotFound {
-            r = ns.range(of: text, options: opts, range: NSRange(location: 0, length: ns.length))
-        }
-        if r.location != NSNotFound {
-            textView.setSelectedRange(r)
-            textView.scrollRangeToVisible(r)
-            textView.showFindIndicator(for: r)
-            return true
-        }
-        return false
-    }
-
-    func findPrev(_ text: String, caseSensitive: Bool = false) -> Bool {
-        guard !text.isEmpty else { return false }
-        let ns = textView.string as NSString
-        let end = textView.selectedRange().location
-        var opts: NSString.CompareOptions = [.backwards]
-        if !caseSensitive { opts.insert(.caseInsensitive) }
-        var r = ns.range(of: text, options: opts, range: NSRange(location: 0, length: end))
-        if r.location == NSNotFound {
-            r = ns.range(of: text, options: opts, range: NSRange(location: 0, length: ns.length))
-        }
-        if r.location != NSNotFound {
-            textView.setSelectedRange(r)
-            textView.scrollRangeToVisible(r)
-            textView.showFindIndicator(for: r)
-            return true
-        }
-        return false
-    }
-
-    func replaceCurrent(_ search: String, with repl: String, caseSensitive: Bool = false) -> Bool {
-        let sel = textView.selectedRange()
-        let selected = (textView.string as NSString).substring(with: sel)
-        let match = caseSensitive ? selected == search : selected.caseInsensitiveCompare(search) == .orderedSame
-        if match { textView.insertText(repl, replacementRange: sel) }
-        return findNext(search, caseSensitive: caseSensitive)
-    }
-
-    func replaceAll(_ search: String, with repl: String, caseSensitive: Bool = false) -> Int {
-        guard !search.isEmpty else { return 0 }
-        let ranges = allRanges(search, caseSensitive: caseSensitive)
-        guard !ranges.isEmpty else { return 0 }
-        var result = textView.string
-        for r in ranges.reversed() {
-            guard let sr = Range(r, in: result) else { continue }
-            result.replaceSubrange(sr, with: repl)
-        }
-        textView.string = result
-        document?.content = result
-        document?.markModified()
-        delegate?.editorTextDidChange(self)
-        rehighlightAll()
-        return ranges.count
-    }
-
-    func matchCount(_ text: String, caseSensitive: Bool = false) -> Int {
-        allRanges(text, caseSensitive: caseSensitive).count
-    }
-
-    private func allRanges(_ text: String, caseSensitive: Bool) -> [NSRange] {
-        guard !text.isEmpty else { return [] }
-        let ns = textView.string as NSString
-        var opts: NSString.CompareOptions = []
-        if !caseSensitive { opts.insert(.caseInsensitive) }
-        var results: [NSRange] = []
-        var pos = 0
-        while pos < ns.length {
-            let r = ns.range(of: text, options: opts, range: NSRange(location: pos, length: ns.length - pos))
-            if r.location == NSNotFound { break }
-            results.append(r)
-            pos = NSMaxRange(r)
-        }
-        return results
     }
 
     func goToLine(_ line: Int) {

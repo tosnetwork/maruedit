@@ -84,7 +84,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let findItem = NSMenuItem()
         let findMenu = NSMenu(title: "Find")
         findMenu.addItem(commandItem(.searchFind, "f"))
-        findMenu.addItem(commandItem(.searchGoToLine, "g"))
+        findMenu.addItem(commandItem(.searchFindNext, "g"))
+        findMenu.addItem(commandItem(.searchFindPrevious, "G"))
+        findMenu.addItem(.separator())
+        // Go to Line moves off ⌘G, which macOS reserves for Find Next.
+        findMenu.addItem(commandItem(.searchGoToLine, "l"))
         findMenu.addItem(.separator())
         findMenu.addItem(commandItem(.searchQuickOpen, "p"))
         findItem.submenu = findMenu

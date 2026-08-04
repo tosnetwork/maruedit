@@ -20,6 +20,12 @@ final class MainWindowController: NSWindowController,
     private var quickOpen: QuickOpenPanel?
     private var keyMonitor: Any?
 
+    /// The last query actually executed, so Find Next works after the bar
+    /// is closed.
+    private var lastQuery: SearchQuery?
+    private var findHistory: [String] = []
+    private var replaceHistory: [String] = []
+
     private let documentController = DocumentController()
     private let sessionStore = SessionStore()
     private let sessionSaveDebouncer = Debouncer(delay: 1.5)
@@ -562,7 +568,25 @@ final class MainWindowController: NSWindowController,
         findBar.isHidden = false
         findBar.frame = NSRect(x: 0, y: cv.bounds.height - tabH - findH, width: cv.bounds.width, height: findH)
         splitView.frame = NSRect(x: 0, y: statusH, width: cv.bounds.width, height: cv.bounds.height - tabH - findH - statusH)
+        // Incremental search restarts from wherever the caret was when the
+        // bar opened, not from the previous keystroke's match.
+        editorVC.incrementalSearchAnchor = editorVC.textView.selectedRange().location
+        findBar.searchHistory = findHistory
+        findBar.replacementHistory = replaceHistory
         findBar.activate()
+    }
+
+    /// Runs Find Next/Previous from the menu, whether or not the Find Bar
+    /// is open — the bar is an input surface, not a prerequisite for
+    /// searching (ROADMAP.md M3-02).
+    func findAgain(direction: SearchDirection) {
+        let query = findBar.isHidden ? lastQuery : findBar.currentQuery
+        guard let query = query, !query.pattern.isEmpty else {
+            showFind()
+            return
+        }
+        let outcome = editorVC.find(query, direction: direction)
+        if !findBar.isHidden { findBar.showOutcome(outcome) }
     }
 
     func showGoToLine() {
@@ -784,29 +808,51 @@ final class MainWindowController: NSWindowController,
 
     // MARK: - FindBarDelegate
 
-    func findBarNext(_ text: String, caseSensitive: Bool, regex: Bool) {
-        _ = editorVC.findNext(text, caseSensitive: caseSensitive, regex: regex)
+    func findBar(_ bar: FindBarView, perform action: FindBarAction, query: SearchQuery) -> FindOutcome {
+        if action != .incremental { lastQuery = query }
+
+        switch action {
+        case .incremental:
+            return editorVC.find(query, direction: .incremental)
+        case .findNext:
+            recordSearchHistory(query)
+            return editorVC.find(query, direction: .next)
+        case .findPrevious:
+            recordSearchHistory(query)
+            return editorVC.find(query, direction: .previous)
+        case .replace, .replaceAll:
+            // Wired in M3-03; until then the bar's Replace buttons stay
+            // inert rather than falling back to a second, inconsistent
+            // matching implementation.
+            return .empty
+        }
     }
-    func findBarPrev(_ text: String, caseSensitive: Bool) {
-        _ = editorVC.findPrev(text, caseSensitive: caseSensitive)
-    }
-    func findBarReplace(_ search: String, with replacement: String, caseSensitive: Bool) {
-        _ = editorVC.replaceCurrent(search, with: replacement, caseSensitive: caseSensitive)
-    }
-    func findBarReplaceAll(_ search: String, with replacement: String, caseSensitive: Bool) {
-        _ = editorVC.replaceAll(search, with: replacement, caseSensitive: caseSensitive)
-    }
-    func findBarDismissed() {
+
+    func findBarDidDismiss(_ bar: FindBarView) {
         guard let cv = window?.contentView else { return }
         let tabH: CGFloat = 32
         let statusH: CGFloat = 24
         findBar.isHidden = true
         findBar.frame.size.height = 0
         splitView.frame = NSRect(x: 0, y: statusH, width: cv.bounds.width, height: cv.bounds.height - tabH - statusH)
+        editorVC.incrementalSearchAnchor = nil
         window?.makeFirstResponder(editorVC.textView)
     }
-    func findBarMatchCount(_ text: String, caseSensitive: Bool) -> Int {
-        editorVC.matchCount(text, caseSensitive: caseSensitive)
+
+    /// In-memory for now: modeled separately per field and capped, but not
+    /// yet persisted or clearable — that's ROADMAP.md M3-07, which
+    /// replaces these two arrays with a real store.
+    private func recordSearchHistory(_ query: SearchQuery) {
+        func record(_ value: String, into history: inout [String]) {
+            guard !value.isEmpty else { return }
+            history.removeAll { $0 == value }
+            history.insert(value, at: 0)
+            if history.count > 20 { history.removeLast(history.count - 20) }
+        }
+        record(query.pattern, into: &findHistory)
+        if let replacement = query.replacement { record(replacement, into: &replaceHistory) }
+        findBar.searchHistory = findHistory
+        findBar.replacementHistory = replaceHistory
     }
 
     // MARK: - Session persistence

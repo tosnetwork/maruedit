@@ -24,14 +24,20 @@ significantly, replace this with a small script that generates it from
 | `file.closeTab` | Close Tab | File | ⌘W | `AppCoordinator.closeCurrentTab()` |
 | `file.clearRecoveryData` | Clear Recovery Data... | File | — | `AppCoordinator.clearRecoveryData()` |
 | `search.find` | Find... | Find | ⌘F | `AppCoordinator.showFind()` |
-| `search.goToLine` | Go to Line... | Find | ⌘G | `AppCoordinator.showGoToLine()` |
+| `search.findNext` | Find Next | Find | ⌘G | `AppCoordinator.findNext()` |
+| `search.findPrevious` | Find Previous | Find | ⇧⌘G | `AppCoordinator.findPrevious()` |
+| `search.goToLine` | Go to Line... | Find | ⌘L | `AppCoordinator.showGoToLine()` |
 | `search.quickOpen` | Quick Open... | Find | ⌘P | `AppCoordinator.showQuickOpen()` |
 | `view.toggleSidebar` | Toggle Sidebar | View | ⌘B | `AppCoordinator.toggleSidebar()` |
 
-All eleven are enabled unconditionally right now (`isEnabled` always
+All of them are enabled unconditionally right now (`isEnabled` always
 returns `true`) — the app has no state yet where one of them shouldn't be
 available. `CommandRegistryTests.testAppCommandsAreEnabledByDefault`
 guards this.
+
+M3-02 moved Go to Line off ⌘G, which macOS reserves for Find Next, onto
+⌘L. Its Command ID is unchanged, so nothing that refers to the command
+(menus, and later key bindings and macros) had to change.
 
 ## Not Yet Routed Through the Registry
 
@@ -46,6 +52,11 @@ guards this.
   don't map cleanly onto a single stable `CommandID`. They still go
   through `AppCoordinator`/`MainWindowController`, just not through
   `CommandRegistry.execute`.
+- The Find Bar's **option toggles** (⌥⌘C case sensitive, ⌥⌘W whole word,
+  ⌥⌘R regular expression, added in M3-02) are handled by
+  `FindBarView.performKeyEquivalent(with:)` and are local to that bar
+  rather than app-level commands: they change the state of one transient
+  input surface, and they only exist while it is visible.
 - The global **Cmd+P** key-monitor in `MainWindowController` (independent
   of the Find menu's Quick Open item) still calls `showQuickOpen()`
   directly rather than `CommandRegistry.execute(.searchQuickOpen, ...)`,
