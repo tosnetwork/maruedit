@@ -7,31 +7,6 @@ struct MacroErrorEntry: Equatable {
     let message: String
 }
 
-final class MacroErrorConsoleWindowController: NSWindowController {
-    private let textView = NSTextView()
-    convenience init() {
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 700, height: 360),
-                              styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
-        window.title = "Macro Error Console"
-        self.init(window: window)
-        let scroll = NSScrollView(frame: window.contentView!.bounds)
-        scroll.autoresizingMask = [.width, .height]
-        scroll.hasVerticalScroller = true
-        textView.isEditable = false
-        textView.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
-        scroll.documentView = textView
-        window.contentView?.addSubview(scroll)
-    }
-    func display(_ entries: [MacroErrorEntry]) {
-        let formatter = ISO8601DateFormatter()
-        textView.string = entries.map {
-            "[\(formatter.string(from: $0.date))] \($0.macroName)\n\($0.message)"
-        }.joined(separator: "\n\n")
-        textView.scrollToEndOfDocument(nil)
-    }
-    var displayedText: String { textView.string }
-}
-
 final class MacroManager: NSObject, @unchecked Sendable {
     let directory: URL
     private let coordinator: AppCoordinator
@@ -44,7 +19,6 @@ final class MacroManager: NSObject, @unchecked Sendable {
     var executionDidFinish: ((CommandID, Result<MacroRunResult, MacroExecutionError>) -> Void)?
     private var registeredIDs: Set<CommandID> = []
     private(set) lazy var menu = NSMenu(title: "Macro")
-    private var errorConsole: MacroErrorConsoleWindowController?
     private var permissionWindow: MacroPermissionWindowController?
 
     init(directory: URL = MacroManager.defaultDirectory,
@@ -147,7 +121,7 @@ final class MacroManager: NSObject, @unchecked Sendable {
         menu.items.last?.target = self
         menu.addItem(NSMenuItem(title: "Open Macro Folder", action: #selector(openFolder), keyEquivalent: ""))
         menu.items.last?.target = self
-        menu.addItem(NSMenuItem(title: "Show Error Console", action: #selector(showErrorConsole), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Show Macro Output", action: #selector(showErrorConsole), keyEquivalent: ""))
         menu.items.last?.target = self
         menu.addItem(NSMenuItem(title: "Manage Permissions", action: #selector(showPermissions), keyEquivalent: ""))
         menu.items.last?.target = self
@@ -169,10 +143,7 @@ final class MacroManager: NSObject, @unchecked Sendable {
         NSWorkspace.shared.open(directory)
     }
     @objc private func showErrorConsole() {
-        if errorConsole == nil { errorConsole = MacroErrorConsoleWindowController() }
-        errorConsole?.display(errors)
-        errorConsole?.showWindow(nil)
-        errorConsole?.window?.makeKeyAndOrderFront(nil)
+        coordinator.showOutputPane()
     }
     @objc private func showPermissions() {
         if permissionWindow == nil {
@@ -183,9 +154,10 @@ final class MacroManager: NSObject, @unchecked Sendable {
         permissionWindow?.window?.makeKeyAndOrderFront(nil)
     }
     private func appendError(name: String, message: String) {
-        errors.append(.init(date: Date(), macroName: name, message: message))
+        let date = Date()
+        errors.append(.init(date: date, macroName: name, message: message))
         if errors.count > 500 { errors.removeFirst(errors.count - 500) }
-        errorConsole?.display(errors)
+        coordinator.showMacroError(name: name, message: message, timestamp: date)
     }
 
     func runForTesting(_ id: CommandID) { runMacro(itemForTesting(id)) }
@@ -193,7 +165,7 @@ final class MacroManager: NSObject, @unchecked Sendable {
     func showErrorConsoleForTesting() { showErrorConsole() }
     func showPermissionsForTesting() { showPermissions() }
     var permissionWindowForTesting: MacroPermissionWindowController? { permissionWindow }
-    var errorConsoleTextForTesting: String { errorConsole?.displayedText ?? "" }
+    var errorConsoleTextForTesting: String { coordinator.outputTextForTesting }
     private func itemForTesting(_ id: CommandID) -> NSMenuItem {
         let item = NSMenuItem(); item.representedObject = id; return item
     }

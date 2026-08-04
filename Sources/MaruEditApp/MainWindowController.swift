@@ -764,6 +764,7 @@ final class MainWindowController: NSWindowController,
     private func runGrep(_ request: GrepRequest) {
         lastGrepRequest = request
         grepCancellation?.cancel()
+        externalCommandCancellation?.cancel()
         let token = CancellationToken()
         grepCancellation = token
 
@@ -791,11 +792,8 @@ final class MainWindowController: NSWindowController,
             break
         case .match(let match):
             pane.append(match)
-        case .skippedFile:
-            // Counted in the summary. Individual skips become visible rows
-            // when the Output Pane gains channels in M6-06; showing them
-            // inline now would bury the matches.
-            break
+        case .skippedFile(let url, let reason):
+            pane.appendSkipped(url, reason: reason)
         case .progress(let scannedFiles):
             pane.updateProgress(scannedFiles: scannedFiles)
         case .finished(let summary):
@@ -817,11 +815,13 @@ final class MainWindowController: NSWindowController,
         return pane
     }
 
-    func beginExternalCommandOutput(name: String, cancellation: ExternalCommandCancellation?) {
+    func beginExternalCommandOutput(name: String, workingDirectory: URL? = nil,
+                                    cancellation: ExternalCommandCancellation?) {
+        grepCancellation?.cancel()
         externalCommandCancellation?.cancel()
         externalCommandCancellation = cancellation
         let pane = ensureOutputPane()
-        pane.beginExternalCommand(name: name)
+        pane.beginExternalCommand(name: name, workingDirectory: workingDirectory)
         layoutContentViews()
     }
 
@@ -834,6 +834,18 @@ final class MainWindowController: NSWindowController,
         externalCommandCancellation = nil
     }
     var externalCommandOutputTextForTesting: String { outputPane?.resultsText ?? "" }
+
+    func appendMacroError(name: String, message: String, timestamp: Date = Date()) {
+        grepCancellation?.cancel()
+        externalCommandCancellation?.cancel()
+        let pane = ensureOutputPane()
+        pane.appendMacroError(name: name, message: message, timestamp: timestamp)
+        layoutContentViews()
+    }
+    func showOutputPane() {
+        ensureOutputPane().show(); layoutContentViews()
+    }
+    var outputTextForTesting: String { outputPane?.resultsText ?? "" }
 
     // MARK: - OutputPaneViewDelegate
 
@@ -849,6 +861,20 @@ final class MainWindowController: NSWindowController,
             length: min(match.range.length, length - match.range.location)
         )
         editorVC.select(clamped)
+        window?.makeFirstResponder(editorVC.textView)
+    }
+
+    func outputPane(_ pane: OutputPaneView, didActivate location: OutputLocation) {
+        openFile(location.url)
+        let text = editorVC.textView.string as NSString
+        var line = 1, offset = 0
+        while line < location.line, offset < text.length {
+            offset = NSMaxRange(text.lineRange(for: NSRange(location: offset, length: 0)))
+            line += 1
+        }
+        let lineRange = text.lineRange(for: NSRange(location: min(offset, text.length), length: 0))
+        offset = min(offset + location.column - 1, NSMaxRange(lineRange))
+        editorVC.select(NSRange(location: offset, length: 0))
         window?.makeFirstResponder(editorVC.textView)
     }
 
@@ -872,7 +898,7 @@ final class MainWindowController: NSWindowController,
     func outputPaneDidRequestSave(_ pane: OutputPaneView, text: String) {
         guard let window = window else { return }
         let save = NSSavePanel()
-        save.nameFieldStringValue = "search-results.txt"
+        save.nameFieldStringValue = "maruedit-output.txt"
         save.beginSheetModal(for: window) { response in
             guard response == .OK, let url = save.url else { return }
             do {
@@ -880,7 +906,7 @@ final class MainWindowController: NSWindowController,
             } catch {
                 let alert = NSAlert()
                 alert.alertStyle = .critical
-                alert.messageText = "Search Results Could Not Be Saved"
+                alert.messageText = "Output Could Not Be Saved"
                 alert.informativeText = "The results remain open and unchanged. Choose another location or check that the destination is writable."
                 alert.addButton(withTitle: "OK")
                 alert.beginSheetModal(for: window)

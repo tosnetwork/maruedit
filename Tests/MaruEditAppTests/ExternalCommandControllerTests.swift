@@ -47,7 +47,7 @@ final class ExternalCommandControllerTests: XCTestCase {
         wait(for: [pane], timeout: 3)
         let output = coordinator.ensureWindowControllerReady().externalCommandOutputTextForTesting
         XCTAssertTrue(output.contains("out"))
-        XCTAssertTrue(output.contains("stderr: bad"))
+        XCTAssertTrue(output.contains("[stderr] [error] bad"))
     }
 
     func testUnnamedDocumentWorkingDirectoryFailsExplicitly() {

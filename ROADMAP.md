@@ -1990,12 +1990,12 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 
 ## M6-06: Shared Output Pane
 
-- [ ] Use one output framework for Grep, macro errors, and external commands.
-- [ ] Support separate output channels.
-- [ ] Include timestamp and severity where relevant.
-- [ ] Copy, clear, and save output.
-- [ ] Detect `path:line:column` and navigate.
-- [ ] Enforce output and memory limits.
+- [x] Use one output framework for Grep, macro errors, and external commands. *(`SharedOutputBuffer` backs the single `OutputPaneView`; the former standalone Macro Error Console now opens the shared pane.)*
+- [x] Support separate output channels. *(Entries distinguish Grep, macro, stdout, stderr, and system channels; Grep skips and process streams remain distinct.)*
+- [x] Include timestamp and severity where relevant. *(Process and macro rows render `HH:mm:ss`, channel, and info/warning/error severity; errors and warnings receive distinct colors.)*
+- [x] Copy, clear, and save output. *(The shared toolbar copies all output, cancels then clears active output, and atomically saves it through the existing sheet workflow.)*
+- [x] Detect `path:line:column` and navigate. *(`OutputLocationParser` recognizes absolute and relative compiler-style locations; Return/double-click opens the file at its 1-based line and column, resolving process paths against its working directory.)*
+- [x] Enforce output and memory limits. *(`SharedOutputBuffer` caps storage at 10,000 entries and 4 MiB, evicts oldest entries, and inserts a visible truncation warning; Core tests verify both bounds.)*
 
 ## M6-07: Grep Replace Preview
 

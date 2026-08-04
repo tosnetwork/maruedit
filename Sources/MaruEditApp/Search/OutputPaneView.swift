@@ -4,34 +4,36 @@ import MaruEditCore
 protocol OutputPaneViewDelegate: AnyObject {
     /// The user chose a result — by double-click, Return, or the Enter key.
     func outputPane(_ pane: OutputPaneView, didActivate match: GrepMatch)
+    func outputPane(_ pane: OutputPaneView, didActivate location: OutputLocation)
     func outputPaneDidRequestRerun(_ pane: OutputPaneView)
     func outputPaneDidRequestClose(_ pane: OutputPaneView)
     func outputPaneDidRequestCancel(_ pane: OutputPaneView)
     func outputPaneDidRequestSave(_ pane: OutputPaneView, text: String)
 }
 
-/// A structured list of Grep results, not an editable text view
-/// (ROADMAP.md 11.3: "Grep results should use a structured Output Pane
-/// rather than pretending to be an ordinary editable document").
-///
-/// M6-06 turns this into the shared pane for macro and external-command
-/// output; the channel concept isn't built yet, but keeping the view free
-/// of Grep-specific logic beyond its row model is what makes that possible.
+/// The bounded shared presentation for structured Grep results, macro
+/// errors, and external-process channels.
 final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     private enum ContentMode { case grep, externalCommand }
+    private enum GrepRow { case match(GrepMatch), output(OutputEntry) }
     weak var delegate: OutputPaneViewDelegate?
 
     private let scrollView = NSScrollView()
     private let tableView = ResultTableView()
     private let statusLabel = NSTextField(labelWithString: "")
     private let rerunButton = NSButton()
+    private let copyButton = NSButton()
+    private let clearButton = NSButton()
     private let saveButton = NSButton()
     private let cancelButton = NSButton()
     private let closeButton = NSButton()
 
     private(set) var matches: [GrepMatch] = []
+    private var grepRows: [GrepRow] = []
     private var externalLines: [String] = []
     private var externalPending: [Bool: Data] = [:]
+    private var outputBuffer = SharedOutputBuffer()
+    private var outputBaseURL: URL?
     private var contentMode: ContentMode = .grep
     private var summary = GrepSummary()
     private var searchPattern = ""
@@ -50,7 +52,7 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     // MARK: - Build
 
     private func buildUI() {
-        setAccessibilityLabel("Search results")
+        setAccessibilityLabel("Output")
 
         func style(_ button: NSButton, _ title: String, _ action: Selector, _ label: String) {
             button.title = title
@@ -64,15 +66,17 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
             button.setAccessibilityLabel(label)
         }
         style(rerunButton, "Rerun", #selector(rerun), "Rerun this search")
+        style(copyButton, "Copy", #selector(copyAll), "Copy all output")
+        style(clearButton, "Clear", #selector(clearOutput), "Clear output")
         style(saveButton, "Save…", #selector(save), "Save these results")
-        style(cancelButton, "Stop", #selector(cancel), "Stop the running search")
-        style(closeButton, "✕", #selector(close), "Close search results")
+        style(cancelButton, "Stop", #selector(cancel), "Stop the running operation")
+        style(closeButton, "✕", #selector(close), "Close output")
         cancelButton.isHidden = true
 
         statusLabel.font = Theme.uiFontSmall
         statusLabel.textColor = Theme.statusText
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
-        statusLabel.setAccessibilityLabel("Search summary")
+        statusLabel.setAccessibilityLabel("Output summary")
 
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("result"))
         column.resizingMask = .autoresizingMask
@@ -99,6 +103,8 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         addSubview(scrollView)
         addSubview(statusLabel)
         addSubview(rerunButton)
+        addSubview(copyButton)
+        addSubview(clearButton)
         addSubview(saveButton)
         addSubview(cancelButton)
         addSubview(closeButton)
@@ -113,8 +119,14 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
             saveButton.centerYAnchor.constraint(equalTo: statusLabel.centerYAnchor),
             saveButton.trailingAnchor.constraint(equalTo: closeButton.leadingAnchor, constant: -12),
 
+            clearButton.centerYAnchor.constraint(equalTo: statusLabel.centerYAnchor),
+            clearButton.trailingAnchor.constraint(equalTo: saveButton.leadingAnchor, constant: -12),
+
+            copyButton.centerYAnchor.constraint(equalTo: statusLabel.centerYAnchor),
+            copyButton.trailingAnchor.constraint(equalTo: clearButton.leadingAnchor, constant: -12),
+
             rerunButton.centerYAnchor.constraint(equalTo: statusLabel.centerYAnchor),
-            rerunButton.trailingAnchor.constraint(equalTo: saveButton.leadingAnchor, constant: -12),
+            rerunButton.trailingAnchor.constraint(equalTo: copyButton.leadingAnchor, constant: -12),
 
             cancelButton.centerYAnchor.constraint(equalTo: statusLabel.centerYAnchor),
             cancelButton.trailingAnchor.constraint(equalTo: rerunButton.leadingAnchor, constant: -12),
@@ -144,9 +156,10 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
 
     func beginRun(pattern: String) {
         contentMode = .grep
+        outputBuffer.clear()
         rerunButton.isHidden = false
         searchPattern = pattern
-        matches = []
+        matches = []; grepRows = []
         summary = GrepSummary()
         isRunning = true
         cancelButton.isHidden = false
@@ -154,22 +167,22 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         tableView.reloadData()
     }
 
-    func beginExternalCommand(name: String) {
+    func beginExternalCommand(name: String, workingDirectory: URL? = nil) {
         contentMode = .externalCommand
-        matches = []; externalLines = []; externalPending = [:]; isRunning = true
+        matches = []; externalLines = []; externalPending = [:]; outputBuffer.clear(); isRunning = true
+        outputBaseURL = workingDirectory
         rerunButton.isHidden = true; cancelButton.isHidden = false
         statusLabel.stringValue = "Running \(name)…"
         tableView.reloadData()
     }
 
     func appendExternal(_ data: Data, isError: Bool) {
-        let prefix = isError ? "stderr: " : ""
         var pending = externalPending[isError, default: Data()]
         pending.append(data)
         while let newline = pending.firstIndex(of: 0x0A) {
             var line = pending[..<newline]
             if line.last == 0x0D { line = line.dropLast() }
-            externalLines.append(prefix + String(decoding: line, as: UTF8.self))
+            appendOutputLine(String(decoding: line, as: UTF8.self), isError: isError)
             pending.removeSubrange(...newline)
         }
         externalPending[isError] = pending
@@ -180,7 +193,7 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     func finishExternal(status: Int32, cancelled: Bool) {
         for isError in [false, true] {
             guard let pending = externalPending[isError], !pending.isEmpty else { continue }
-            externalLines.append((isError ? "stderr: " : "") + String(decoding: pending, as: UTF8.self))
+            appendOutputLine(String(decoding: pending, as: UTF8.self), isError: isError)
         }
         externalPending.removeAll(); tableView.reloadData()
         isRunning = false; cancelButton.isHidden = true
@@ -189,14 +202,53 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         statusLabel.setAccessibilityValue(statusLabel.stringValue)
     }
 
+    func appendMacroError(name: String, message: String, timestamp: Date) {
+        if contentMode == .grep || isRunning {
+            contentMode = .externalCommand; matches = []; externalLines = []; externalPending = [:]
+            outputBuffer.clear(); rerunButton.isHidden = true; cancelButton.isHidden = true
+        }
+        for (index, line) in message.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+            let text = index == 0 ? "\(name): \(line)" : String(line)
+            outputBuffer.append(
+                text, channel: .macro, severity: .error, timestamp: timestamp,
+                location: OutputLocationParser.parse(String(line)))
+        }
+        externalLines = outputBuffer.entries.map(Self.formatted)
+        statusLabel.stringValue = "Macro error: \(name)"
+        tableView.reloadData()
+    }
+
+    private func appendOutputLine(_ line: String, isError: Bool) {
+        outputBuffer.append(
+            line, channel: isError ? .standardError : .standardOutput,
+            severity: isError ? .error : .info,
+            location: OutputLocationParser.parse(line, relativeTo: outputBaseURL))
+        externalLines = outputBuffer.entries.map(Self.formatted)
+    }
+
     func append(_ match: GrepMatch) {
+        outputBuffer.append(
+            "\(match.relativePath):\(match.line):\(match.column): \(match.preview)",
+            channel: .grep,
+            location: OutputLocation(url: match.url, line: match.line, column: match.column))
+        if matches.count >= 9_999 { matches.removeFirst() }
         matches.append(match)
+        if grepRows.count >= 9_999 { grepRows.removeFirst() }
+        grepRows.append(.match(match))
         tableView.reloadData()
         // The first result is selected so Return works immediately,
         // without the user having to arrow into the list first.
         if matches.count == 1 {
             tableView.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
         }
+    }
+
+    func appendSkipped(_ url: URL, reason: SkipReason) {
+        let entry = outputBuffer.append(
+            "\(url.path): \(reason.describedReason)", channel: .grep, severity: .warning,
+            location: OutputLocation(url: url, line: 1))
+        if grepRows.count >= 9_999 { grepRows.removeFirst() }
+        grepRows.append(.output(entry)); tableView.reloadData()
     }
 
     func updateProgress(scannedFiles: Int) {
@@ -224,13 +276,13 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
 
     var selectedMatch: GrepMatch? {
         let row = tableView.selectedRow
-        guard row >= 0, row < matches.count else { return nil }
-        return matches[row]
+        guard row >= 0, row < grepRows.count, case .match(let match) = grepRows[row] else { return nil }
+        return match
     }
 
     var resultsText: String {
         if contentMode == .externalCommand { return externalLines.joined(separator: "\n") }
-        return GrepResultFormatter.plainText(matches: matches, summary: summary, pattern: searchPattern)
+        return outputBuffer.entries.map(Self.formatted).joined(separator: "\n")
     }
 
     // MARK: - Actions
@@ -239,10 +291,20 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     @objc private func close() { delegate?.outputPaneDidRequestClose(self) }
     @objc private func cancel() { delegate?.outputPaneDidRequestCancel(self) }
     @objc private func save() { delegate?.outputPaneDidRequestSave(self, text: resultsText) }
+    @objc private func copyAll() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(resultsText, forType: .string)
+    }
+    @objc private func clearOutput() {
+        if isRunning { delegate?.outputPaneDidRequestCancel(self) }
+        matches.removeAll(); grepRows.removeAll(); externalLines.removeAll(); externalPending.removeAll(); outputBuffer.clear()
+        isRunning = false; cancelButton.isHidden = true; statusLabel.stringValue = "Output cleared."
+        tableView.reloadData()
+    }
 
     @objc private func activateSelectedRow() {
-        guard let match = selectedMatch else { return }
-        delegate?.outputPane(self, didActivate: match)
+        if let match = selectedMatch { delegate?.outputPane(self, didActivate: match); return }
+        if let location = selectedOutputLocation { delegate?.outputPane(self, didActivate: location) }
     }
 
     @objc private func copyPathAction() { copyPath(to: .general) }
@@ -251,27 +313,57 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     /// Pasteboard passed in so tests don't have to write to the user's
     /// real clipboard to check what Copy produces.
     func copyPath(to pasteboard: NSPasteboard) {
-        guard let match = selectedMatch else { return }
+        guard let url = selectedMatch?.url ?? selectedOutputLocation?.url else { return }
         pasteboard.clearContents()
-        pasteboard.setString(match.url.path, forType: .string)
+        pasteboard.setString(url.path, forType: .string)
     }
 
     func copyLine(to pasteboard: NSPasteboard) {
-        guard let match = selectedMatch else { return }
+        let value: String
+        if let match = selectedMatch { value = GrepResultFormatter.line(for: match) }
+        else if contentMode == .externalCommand, tableView.selectedRow >= 0,
+                tableView.selectedRow < externalLines.count { value = externalLines[tableView.selectedRow] }
+        else { return }
         pasteboard.clearContents()
-        pasteboard.setString(GrepResultFormatter.line(for: match), forType: .string)
+        pasteboard.setString(value, forType: .string)
     }
 
     @objc private func revealInFinder() {
-        guard let match = selectedMatch else { return }
-        NSWorkspace.shared.activateFileViewerSelecting([match.url])
+        guard let url = selectedMatch?.url ?? selectedOutputLocation?.url else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
     // MARK: - NSTableViewDataSource / Delegate
 
     func numberOfRows(in tableView: NSTableView) -> Int {
-        contentMode == .grep ? matches.count : externalLines.count
+        contentMode == .grep ? grepRows.count : externalLines.count
     }
+
+    private var selectedOutputLocation: OutputLocation? {
+        guard tableView.selectedRow >= 0 else { return nil }
+        if contentMode == .grep, tableView.selectedRow < grepRows.count,
+           case .output(let entry) = grepRows[tableView.selectedRow] { return entry.location }
+        guard contentMode == .externalCommand,
+              tableView.selectedRow < outputBuffer.entries.count else { return nil }
+        return outputBuffer.entries[tableView.selectedRow].location
+    }
+
+    private static let outputTimestamp: DateFormatter = {
+        let value = DateFormatter(); value.locale = Locale(identifier: "en_US_POSIX")
+        value.dateFormat = "HH:mm:ss"; return value
+    }()
+    private static func formatted(_ entry: OutputEntry) -> String {
+        let channel: String
+        switch entry.channel {
+        case .standardOutput: channel = "stdout"
+        case .standardError: channel = "stderr"
+        default: channel = entry.channel.rawValue
+        }
+        return "[\(outputTimestamp.string(from: entry.timestamp))] [\(channel)] [\(entry.severity.rawValue)] \(entry.message)"
+    }
+
+    func clearForTesting() { clearOutput() }
+    func show() { isHidden = false }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         if contentMode == .externalCommand {
@@ -280,15 +372,22 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
             let cell = (tableView.makeView(withIdentifier: identifier, owner: self) as? NSTableCellView)
                 ?? Self.makeCell(identifier: identifier)
             cell.textField?.stringValue = externalLines[row]
-            cell.textField?.textColor = externalLines[row].hasPrefix("stderr: ") ? .systemRed : Theme.sidebarText
+            cell.textField?.textColor = outputBuffer.entries[row].severity == .error
+                ? .systemRed : Theme.sidebarText
             return cell
         }
-        guard row < matches.count else { return nil }
+        guard row < grepRows.count else { return nil }
         let identifier = NSUserInterfaceItemIdentifier("ResultCell")
         let cell = (tableView.makeView(withIdentifier: identifier, owner: self) as? NSTableCellView)
             ?? Self.makeCell(identifier: identifier)
-        cell.textField?.attributedStringValue = Self.attributedRow(for: matches[row])
-        cell.setAccessibilityLabel(Self.accessibilityDescription(for: matches[row]))
+        switch grepRows[row] {
+        case .match(let match):
+            cell.textField?.attributedStringValue = Self.attributedRow(for: match)
+            cell.setAccessibilityLabel(Self.accessibilityDescription(for: match))
+        case .output(let entry):
+            cell.textField?.stringValue = Self.formatted(entry)
+            cell.textField?.textColor = .systemOrange
+        }
         return cell
     }
 

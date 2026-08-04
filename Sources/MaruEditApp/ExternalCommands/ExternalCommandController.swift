@@ -109,7 +109,8 @@ final class ExternalCommandController: @unchecked Sendable {
                 }
             })
         if configuration.output == .outputPane {
-            window.beginExternalCommandOutput(name: configuration.name, cancellation: token)
+            window.beginExternalCommandOutput(
+                name: configuration.name, workingDirectory: workingDirectory, cancellation: token)
         }
         return token
     }

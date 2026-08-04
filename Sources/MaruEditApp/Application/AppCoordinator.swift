@@ -93,6 +93,11 @@ final class AppCoordinator {
     func showStatusMessage(_ message: String, duration: TimeInterval = 1.5) {
         ensureWindowControllerReady().showStatusMessage(message, duration: duration)
     }
+    func showMacroError(name: String, message: String, timestamp: Date = Date()) {
+        ensureWindowControllerReady().appendMacroError(name: name, message: message, timestamp: timestamp)
+    }
+    func showOutputPane() { ensureWindowControllerReady().showOutputPane() }
+    var outputTextForTesting: String { ensureWindowControllerReady().outputTextForTesting }
     func addCursorAbove()              { ensureWindowControllerReady().addCursorAbove() }
     func addCursorBelow()              { ensureWindowControllerReady().addCursorBelow() }
     func selectNextOccurrence()        { ensureWindowControllerReady().selectNextOccurrence() }
