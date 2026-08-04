@@ -5,14 +5,24 @@ let package = Package(
     name: "MaruEdit",
     platforms: [.macOS(.v13)],
     targets: [
+        .target(
+            name: "MaruEditCore",
+            path: "Sources/MaruEditCore"
+        ),
         .executableTarget(
-            name: "MaruEdit",
-            path: "Sources/MaruEdit"
+            name: "MaruEditApp",
+            dependencies: ["MaruEditCore"],
+            path: "Sources/MaruEditApp"
         ),
         .testTarget(
-            name: "MaruEditTests",
-            dependencies: ["MaruEdit"],
-            path: "Tests/MaruEditTests"
+            name: "MaruEditCoreTests",
+            dependencies: ["MaruEditCore"],
+            path: "Tests/MaruEditCoreTests"
+        ),
+        .testTarget(
+            name: "MaruEditAppTests",
+            dependencies: ["MaruEditApp"],
+            path: "Tests/MaruEditAppTests"
         )
     ]
 )

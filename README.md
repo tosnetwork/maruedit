@@ -163,26 +163,37 @@ lipo -info MaruEdit.app/Contents/MacOS/MaruEdit
 
 ## Project Structure
 
+MaruEdit is split into two SwiftPM targets per `ROADMAP.md` ADR-004:
+`MaruEditCore` (Foundation-only, unit-testable without launching AppKit)
+and `MaruEditApp` (the AppKit UI and executable). See `ROADMAP.md` section 7
+for where this is headed as more milestones land.
+
 ```
 maruedit/
 ├── Package.swift
 ├── build.sh
-├── Sources/MaruEdit/
-│   ├── main.swift                          # App entry point
-│   ├── AppDelegate.swift                   # Menu bar, app lifecycle
-│   ├── MainWindowController.swift          # Window, tabs, session persistence
-│   ├── EditorViewController.swift          # Text view, find/replace, cursor
-│   ├── EditorViewController+Shortcuts.swift # Line move, delete, multi-edit
-│   ├── SidebarViewController.swift         # File tree explorer
-│   ├── SyntaxHighlighter.swift             # Regex-based highlighting
-│   ├── Document.swift                      # File model
-│   ├── TabBarView.swift                    # Tab strip
-│   ├── FindBarView.swift                   # Find/replace bar
-│   ├── StatusBarView.swift                 # Bottom status bar
-│   ├── LineNumberView.swift                # Gutter with line numbers
-│   ├── QuickOpenPanel.swift                # Cmd+P fuzzy file picker
-│   ├── RecentItems.swift                   # Recent files/folders
-│   └── Theme.swift                         # Colors and fonts
+├── Sources/
+│   ├── MaruEditCore/
+│   │   └── Language.swift                  # File-language detection (pure model)
+│   └── MaruEditApp/
+│       ├── main.swift                          # App entry point
+│       ├── AppDelegate.swift                   # Menu bar, app lifecycle
+│       ├── MainWindowController.swift          # Window, tabs, session persistence
+│       ├── EditorViewController.swift          # Text view, find/replace, cursor
+│       ├── EditorViewController+Shortcuts.swift # Line move, delete, multi-edit
+│       ├── SidebarViewController.swift         # File tree explorer
+│       ├── SyntaxHighlighter.swift             # Regex-based highlighting
+│       ├── Document.swift                      # File model
+│       ├── TabBarView.swift                    # Tab strip
+│       ├── FindBarView.swift                   # Find/replace bar
+│       ├── StatusBarView.swift                 # Bottom status bar
+│       ├── LineNumberView.swift                # Gutter with line numbers
+│       ├── QuickOpenPanel.swift                # Cmd+P fuzzy file picker
+│       ├── RecentItems.swift                   # Recent files/folders
+│       └── Theme.swift                         # Colors and fonts
+├── Tests/
+│   ├── MaruEditCoreTests/
+│   └── MaruEditAppTests/
 └── .gitignore
 ```
 

@@ -1,7 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-APP="MaruEdit"
+APP="MaruEdit"        # user-visible app/bundle name (unchanged since M0)
+PRODUCT="MaruEditApp" # SwiftPM executable target name (see ROADMAP.md ADR-004)
 BUILD=".build/release"
 BUNDLE="${APP}.app"
 
@@ -13,7 +14,10 @@ rm -rf "${BUNDLE}"
 mkdir -p "${BUNDLE}/Contents/MacOS"
 mkdir -p "${BUNDLE}/Contents/Resources"
 
-cp "${BUILD}/${APP}" "${BUNDLE}/Contents/MacOS/"
+# The compiled binary is named after the SwiftPM product (MaruEditApp) but
+# ships inside the bundle under the CFBundleExecutable name (MaruEdit) so
+# the process name, Activity Monitor, etc. stay user-facing as "MaruEdit".
+cp "${BUILD}/${PRODUCT}" "${BUNDLE}/Contents/MacOS/${APP}"
 
 if [ -f "MaruEdit.icns" ]; then
   cp "MaruEdit.icns" "${BUNDLE}/Contents/Resources/AppIcon.icns"

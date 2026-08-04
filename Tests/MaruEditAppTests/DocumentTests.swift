@@ -1,5 +1,6 @@
 import XCTest
-@testable import MaruEdit
+import MaruEditCore
+@testable import MaruEditApp
 
 final class DocumentTests: XCTestCase {
 
@@ -22,13 +23,6 @@ final class DocumentTests: XCTestCase {
 
         doc.markSaved()
         XCTAssertFalse(doc.isModified)
-    }
-
-    func testDetectLanguageFromExtension() {
-        XCTAssertEqual(Document.detectLanguage(for: URL(fileURLWithPath: "main.swift")), .swift)
-        XCTAssertEqual(Document.detectLanguage(for: URL(fileURLWithPath: "script.py")), .python)
-        XCTAssertEqual(Document.detectLanguage(for: URL(fileURLWithPath: "notes.txt")), .plainText)
-        XCTAssertEqual(Document.detectLanguage(for: URL(fileURLWithPath: "no-extension")), .plainText)
     }
 
     func testSaveAndReopenRoundTrip() throws {

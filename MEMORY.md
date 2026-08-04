@@ -1,7 +1,7 @@
 # Project Memory
 
 ## Current State
-MaruEdit — native macOS code editor (~3,000 lines Swift/AppKit), built on top of the LiteEdit codebase (renamed 2026-08-04; upstream history below predates the rename). Single binary under 1 MB. Builds with `swift build`. Main branch, tagged v1.1.6.
+MaruEdit — native macOS code editor (~3,000 lines Swift/AppKit), built on top of the LiteEdit codebase (renamed 2026-08-04; upstream history below predates the rename). Now following `ROADMAP.md` as the engineering source of truth, milestone M0 (fork/brand/baseline) complete, M1-01 (split into `MaruEditCore` + `MaruEditApp` SwiftPM targets) done. Builds with `swift build`; `bash build.sh` packages a ~700 KB `.app`.
 
 ## Architecture Decisions
 - Pure AppKit + TextKit 1 (forced via `_ = textView.layoutManager`), no SwiftUI
@@ -18,11 +18,12 @@ MaruEdit — native macOS code editor (~3,000 lines Swift/AppKit), built on top 
 - Landing page: merged into awesome-mac (101k+ stars); remaining enhancement ideas: animated demo GIF/video, real cold-start benchmarks, honest "Not for you if..." section, mobile hamburger nav, JSON-LD structured data
 
 ## Key Files & Patterns
-- `Sources/MaruEdit/EditorViewController.swift` — main text view, delegate, find/replace, auto-indent
-- `Sources/MaruEdit/EditorViewController+Shortcuts.swift` — line move, delete, multi-cursor edit
-- `Sources/MaruEdit/SyntaxHighlighter.swift` — regex-based highlighting for 20+ languages
-- `Sources/MaruEdit/MainWindowController.swift` — window, tabs, session persistence
-- `Sources/MaruEdit/SidebarViewController.swift` — file tree explorer
+- `Sources/MaruEditCore/Language.swift` — pure Foundation file-language model + detection, no AppKit; the first extraction into the Core target (M1-01)
+- `Sources/MaruEditApp/EditorViewController.swift` — main text view, delegate, find/replace, auto-indent
+- `Sources/MaruEditApp/EditorViewController+Shortcuts.swift` — line move, delete, multi-cursor edit
+- `Sources/MaruEditApp/SyntaxHighlighter.swift` — regex-based highlighting for 20+ languages
+- `Sources/MaruEditApp/MainWindowController.swift` — window, tabs, session persistence
+- `Sources/MaruEditApp/SidebarViewController.swift` — file tree explorer
 
 ## Environment & Setup
 - Requires macOS 13+, Xcode Command Line Tools, Swift 5.9

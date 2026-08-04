@@ -1,9 +1,10 @@
 import AppKit
+import MaruEditCore
 
 final class SyntaxHighlighter {
     private let rules: [(NSRegularExpression, NSColor)]
 
-    init(language: Document.Language) {
+    init(language: Language) {
         rules = Self.buildRules(for: language)
     }
 
@@ -35,7 +36,7 @@ final class SyntaxHighlighter {
 
     // MARK: - Rule builder
 
-    private static func buildRules(for lang: Document.Language) -> [(NSRegularExpression, NSColor)] {
+    private static func buildRules(for lang: Language) -> [(NSRegularExpression, NSColor)] {
         let defs: [(String, NSColor)]
         switch lang {
         case .swift:

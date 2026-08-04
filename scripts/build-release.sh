@@ -9,7 +9,8 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-APP="MaruEdit"
+APP="MaruEdit"        # user-visible app/bundle name (unchanged since M0)
+PRODUCT="MaruEditApp" # SwiftPM executable target name (see ROADMAP.md ADR-004)
 BUILD=".build/apple/Products/Release"
 BUNDLE="${APP}.app"
 
@@ -17,14 +18,14 @@ echo "▸ Building ${APP} (release, arm64 + x86_64)…"
 swift build -c release --arch arm64 --arch x86_64 2>&1
 
 echo "▸ Verifying universal binary…"
-lipo -info "${BUILD}/${APP}"
+lipo -info "${BUILD}/${PRODUCT}"
 
 echo "▸ Packaging ${BUNDLE}…"
 rm -rf "${BUNDLE}"
 mkdir -p "${BUNDLE}/Contents/MacOS"
 mkdir -p "${BUNDLE}/Contents/Resources"
 
-cp "${BUILD}/${APP}" "${BUNDLE}/Contents/MacOS/"
+cp "${BUILD}/${PRODUCT}" "${BUNDLE}/Contents/MacOS/${APP}"
 
 if [ -f "MaruEdit.icns" ]; then
   cp "MaruEdit.icns" "${BUNDLE}/Contents/Resources/AppIcon.icns"

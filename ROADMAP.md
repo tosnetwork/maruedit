@@ -1372,8 +1372,8 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M0-05: Test and CI Skeleton
 
-- [x] Add a `MaruEditTests` target for the current module arrangement. *(Single `executableTarget` tested via `@testable import MaruEdit`, per Swift 5.5+ executable-target testing support.)*
-- [x] Add at least one smoke test. *(`Tests/MaruEditTests/DocumentTests.swift` — 4 tests covering defaults, modified/saved state, language detection, and a real save/open round-trip through the filesystem.)*
+- [x] Add a `MaruEditTests` target for the current module arrangement. *(At the time: single `executableTarget` tested via `@testable import MaruEdit`, per Swift 5.5+ executable-target testing support. Superseded by M1-01, which split this into `MaruEditCoreTests` + `MaruEditAppTests` alongside the `MaruEditCore`/`MaruEditApp` target split.)*
+- [x] Add at least one smoke test. *(At the time: `Tests/MaruEditTests/DocumentTests.swift` — 4 tests. After M1-01: split across `Tests/MaruEditAppTests/DocumentTests.swift` (3 tests) and `Tests/MaruEditCoreTests/LanguageTests.swift` (2 tests).)*
 - [x] Add GitHub Actions on a supported macOS runner for `swift build` and `swift test`. *(`.github/workflows/ci.yml`, `macos-latest`.)*
 - [x] Verify license files in CI. *(`ci.yml` runs `scripts/verify-licenses.sh`.)*
 - [x] Do not introduce a third-party lint dependency in M0. *(`Package.swift` has no dependencies.)*
@@ -1407,11 +1407,11 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M1-01: Split SwiftPM Targets
 
-- [ ] Add a `MaruEditCore` library target.
-- [ ] Make `MaruEditApp` depend on Core.
-- [ ] Keep Core Foundation-first and AppKit-free by default.
-- [ ] Move pure data models, session Codable types, and search models into Core.
-- [ ] Keep every migration commit buildable.
+- [x] Add a `MaruEditCore` library target.
+- [x] Make `MaruEditApp` depend on Core. *(Executable target renamed from `MaruEdit` to `MaruEditApp` per ADR-004; the shipped `.app`'s process/bundle name stays user-facing "MaruEdit" — `build.sh`/`scripts/build-release.sh` copy the `MaruEditApp` product into `Contents/MacOS/MaruEdit`, so this is purely an internal SwiftPM rename with no user-visible change.)*
+- [x] Keep Core Foundation-first and AppKit-free by default. *(Verified: `grep -r "import AppKit" Sources/MaruEditCore/` is empty.)*
+- [x] Move pure data models, session Codable types, and search models into Core. *(First extraction only: `Language` — the file-language enum + extension-based detection — moved out of `Document` into `Sources/MaruEditCore/Language.swift`. No session Codable types or search models exist in the codebase yet to move; `Document` itself stays in `MaruEditApp` per ADR-005, which explicitly keeps the custom document model in place through 1.0.)*
+- [x] Keep every migration commit buildable. *(This was done as one commit-sized batch with `swift build`/`swift test`/`bash build.sh` passing throughout, not multiple intermediate commits — see the batch report.)*
 
 **Acceptance:** Core tests run without launching an AppKit application.
 

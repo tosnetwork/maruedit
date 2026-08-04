@@ -1,4 +1,5 @@
 import AppKit
+import MaruEditCore
 
 final class StatusBarView: NSView {
     private let lineColLabel = NSTextField(labelWithString: "Ln 1, Col 1")
@@ -45,7 +46,7 @@ final class StatusBarView: NSView {
         needsLayout = true
     }
 
-    func updateLanguage(_ lang: Document.Language) {
+    func updateLanguage(_ lang: Language) {
         langLabel.stringValue = lang.displayName
         needsLayout = true
     }

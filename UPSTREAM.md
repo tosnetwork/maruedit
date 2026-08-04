@@ -76,14 +76,15 @@ is the only remote used for day-to-day pushes.
 ## Reviewing and Integrating Future Upstream Fixes
 
 Because MaruEdit has already renamed `Sources/LiteEdit/` to
-`Sources/MaruEdit/` (and will diverge further as the ROADMAP milestones
+`Sources/MaruEditApp/` (and split part of it into `Sources/MaruEditCore/`
+as of M1-01, with further divergence expected as the ROADMAP milestones
 proceed), upstream commits generally will **not** apply with a clean
 `git cherry-pick`. The expected workflow is manual review and porting, not
 automatic merging:
 
 1. `git fetch upstream`
 2. `git log HEAD..upstream/main --oneline` to see what changed upstream since the base commit (or since the last review).
-3. For each upstream commit that looks relevant (bug fix, correctness issue, non-branding behavior change), read the diff (`git show <sha>`) and manually port the equivalent change into `Sources/MaruEdit/`.
+3. For each upstream commit that looks relevant (bug fix, correctness issue, non-branding behavior change), read the diff (`git show <sha>`) and manually port the equivalent change into `Sources/MaruEditApp/` (or `Sources/MaruEditCore/` if the equivalent code has since moved there).
 4. Skip upstream commits that are LiteEdit-specific branding, landing-page, or release-process changes — MaruEdit's are independent.
 5. Reference the upstream commit SHA in the MaruEdit commit message (e.g. `Port fix from upstream 0787bd0`) so the provenance stays traceable.
 6. Record anything non-trivial in `NOTICE.md` or an ADR if it affects a foundational decision.

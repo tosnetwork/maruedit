@@ -1,4 +1,5 @@
 import AppKit
+import MaruEditCore
 
 protocol EditorViewControllerDelegate: AnyObject {
     func editorTextDidChange(_ vc: EditorViewController)
@@ -17,7 +18,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     private var lineNumbers: LineNumberView?
     private var highlighter: SyntaxHighlighter?
 
-    private static var highlighterCache: [Document.Language: SyntaxHighlighter] = [:]
+    private static var highlighterCache: [Language: SyntaxHighlighter] = [:]
     private static let fullHighlightThreshold = 100_000
     private var highlightWorkItem: DispatchWorkItem?
     private var scrollHighlightItem: DispatchWorkItem?
@@ -29,7 +30,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         didSet { if isViewLoaded && document !== oldValue { loadDoc() } }
     }
 
-    private static func cachedHighlighter(for language: Document.Language) -> SyntaxHighlighter {
+    private static func cachedHighlighter(for language: Language) -> SyntaxHighlighter {
         if let h = highlighterCache[language] { return h }
         let h = SyntaxHighlighter(language: language)
         highlighterCache[language] = h
