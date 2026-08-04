@@ -37,6 +37,7 @@ final class MacroManager: NSObject, @unchecked Sendable {
     private let coordinator: AppCoordinator
     private let keyBindings: KeyBindingManager
     private let enablementStore: MacroEnablementStore
+    private let authorizer: MacroPermissionAuthorizer
     private let engine = MacroEngine()
     private(set) var catalog = MacroCatalog(macros: [], issues: [])
     private(set) var errors: [MacroErrorEntry] = []
@@ -44,14 +45,17 @@ final class MacroManager: NSObject, @unchecked Sendable {
     private var registeredIDs: Set<CommandID> = []
     private(set) lazy var menu = NSMenu(title: "Macro")
     private var errorConsole: MacroErrorConsoleWindowController?
+    private var permissionWindow: MacroPermissionWindowController?
 
     init(directory: URL = MacroManager.defaultDirectory,
          coordinator: AppCoordinator, keyBindings: KeyBindingManager,
-         enablementStore: MacroEnablementStore = MacroEnablementStore()) {
+         enablementStore: MacroEnablementStore = MacroEnablementStore(),
+         authorizer: MacroPermissionAuthorizer = MacroPermissionAuthorizer()) {
         self.directory = directory
         self.coordinator = coordinator
         self.keyBindings = keyBindings
         self.enablementStore = enablementStore
+        self.authorizer = authorizer
     }
 
     static var defaultDirectory: URL {
@@ -81,7 +85,19 @@ final class MacroManager: NSObject, @unchecked Sendable {
     }
 
     private func execute(_ macro: UserMacro) {
-        engine.run(macro.source, host: coordinator.makeMacroHost()) { [weak self] result in
+        let authorization: AuthorizedMacroRun
+        switch authorizer.authorize(macro) {
+        case .success(let value): authorization = value
+        case .failure(let error):
+            let message = error.localizedDescription
+            appendError(name: macro.metadata.name, message: message)
+            executionDidFinish?(macro.id, .failure(.javascript(.init(
+                message: message, stack: nil, line: nil, column: nil))))
+            return
+        }
+        engine.run(macro.source, host: coordinator.makeMacroHost(
+            permissions: authorization.permissions)) { [weak self] result in
+            authorization.stopAccessing()
             DispatchQueue.main.async {
                 if case .failure(let error) = result {
                     let message: String
@@ -133,6 +149,8 @@ final class MacroManager: NSObject, @unchecked Sendable {
         menu.items.last?.target = self
         menu.addItem(NSMenuItem(title: "Show Error Console", action: #selector(showErrorConsole), keyEquivalent: ""))
         menu.items.last?.target = self
+        menu.addItem(NSMenuItem(title: "Manage Permissions", action: #selector(showPermissions), keyEquivalent: ""))
+        menu.items.last?.target = self
     }
 
     @objc private func runMacro(_ sender: NSMenuItem) {
@@ -156,6 +174,14 @@ final class MacroManager: NSObject, @unchecked Sendable {
         errorConsole?.showWindow(nil)
         errorConsole?.window?.makeKeyAndOrderFront(nil)
     }
+    @objc private func showPermissions() {
+        if permissionWindow == nil {
+            permissionWindow = MacroPermissionWindowController(store: authorizer.store)
+        }
+        permissionWindow?.reload()
+        permissionWindow?.showWindow(nil)
+        permissionWindow?.window?.makeKeyAndOrderFront(nil)
+    }
     private func appendError(name: String, message: String) {
         errors.append(.init(date: Date(), macroName: name, message: message))
         if errors.count > 500 { errors.removeFirst(errors.count - 500) }
@@ -165,6 +191,8 @@ final class MacroManager: NSObject, @unchecked Sendable {
     func runForTesting(_ id: CommandID) { runMacro(itemForTesting(id)) }
     func toggleForTesting(_ id: CommandID) { toggleMacro(itemForTesting(id)) }
     func showErrorConsoleForTesting() { showErrorConsole() }
+    func showPermissionsForTesting() { showPermissions() }
+    var permissionWindowForTesting: MacroPermissionWindowController? { permissionWindow }
     var errorConsoleTextForTesting: String { errorConsole?.displayedText ?? "" }
     private func itemForTesting(_ id: CommandID) -> NSMenuItem {
         let item = NSMenuItem(); item.representedObject = id; return item

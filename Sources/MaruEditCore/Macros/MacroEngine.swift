@@ -18,6 +18,9 @@ public struct MacroJavaScriptError: Error, Equatable, Sendable {
     public let stack: String?
     public let line: Int?
     public let column: Int?
+    public init(message: String, stack: String?, line: Int?, column: Int?) {
+        self.message = message; self.stack = stack; self.line = line; self.column = column
+    }
 }
 
 public enum MacroExecutionError: Error, Equatable, Sendable {
@@ -155,6 +158,10 @@ public final class MacroEngine: @unchecked Sendable {
     private func install(host: MacroHost?, in context: JSContext) {
         context.setObject(host != nil, forKeyedSubscript: "__maruHasHost" as NSString)
         guard let host else { return }
+        let permissions = host.allowedPermissions.map(\.rawValue).sorted()
+        let permissionData = try! JSONEncoder().encode(permissions)
+        context.setObject(String(decoding: permissionData, as: UTF8.self),
+                          forKeyedSubscript: "__maruPermissionsJSON" as NSString)
         let runCommand: @convention(block) (String) -> Bool = host.runCommand
         let documentText: @convention(block) () -> String = host.documentText
         let setDocumentText: @convention(block) (String) -> Void = host.setDocumentText
@@ -213,6 +220,7 @@ public final class MacroEngine: @unchecked Sendable {
       });
       const api = { apiVersion: 1, checkCancellation: check, text };
       if (hasHost) {
+        const permissions = new Set(JSON.parse(__maruPermissionsJSON));
         const native = {
           runCommand: __maruRunCommand, documentText: __maruDocumentText,
           setDocumentText: __maruSetDocumentText, selectionsJSON: __maruSelectionsJSON,
@@ -226,19 +234,21 @@ public final class MacroEngine: @unchecked Sendable {
           if (typeof id !== 'string') return Promise.reject(new TypeError('Expected a command ID'));
           return Promise.resolve(native.runCommand(id));
         }});
-        api.document = Object.freeze({
-          getText: () => { check(); return native.documentText(); },
-          setText: (value) => { check(); if (typeof value !== 'string') throw new TypeError('Expected a string'); native.setDocumentText(value); check(); }
-        });
-        api.editor = Object.freeze({
-          getSelections: () => { check(); return JSON.parse(native.selectionsJSON()); },
-          setSelections: (ranges) => { check(); return native.setSelectionsJSON(JSON.stringify(ranges)); },
-          replaceSelections: (value) => { check(); if (typeof value !== 'string') throw new TypeError('Expected a string'); native.replaceSelections(value); check(); }
-        });
-        api.clipboard = Object.freeze({
-          readText: () => { check(); return native.readClipboard(); },
-          writeText: (value) => { check(); if (typeof value !== 'string') throw new TypeError('Expected a string'); native.writeClipboard(value); }
-        });
+        if (permissions.has('currentDocument')) {
+          api.document = Object.freeze({
+            getText: () => { check(); return native.documentText(); },
+            setText: (value) => { check(); if (typeof value !== 'string') throw new TypeError('Expected a string'); native.setDocumentText(value); check(); }
+          });
+          api.editor = Object.freeze({
+            getSelections: () => { check(); return JSON.parse(native.selectionsJSON()); },
+            setSelections: (ranges) => { check(); return native.setSelectionsJSON(JSON.stringify(ranges)); },
+            replaceSelections: (value) => { check(); if (typeof value !== 'string') throw new TypeError('Expected a string'); native.replaceSelections(value); check(); }
+          });
+        }
+        if (permissions.has('clipboard')) api.clipboard = Object.freeze({
+            readText: () => { check(); return native.readClipboard(); },
+            writeText: (value) => { check(); if (typeof value !== 'string') throw new TypeError('Expected a string'); native.writeClipboard(value); }
+          });
         api.ui = Object.freeze({
           message: (value) => { check(); native.showMessage(String(value)); },
           prompt: (message, initial = '') => { check(); return native.prompt(String(message), String(initial)); }
@@ -259,10 +269,15 @@ public final class MacroEngine: @unchecked Sendable {
       delete globalThis.__maruTrim;
       delete globalThis.__maruNormalizeLineEndings;
       delete globalThis.__maruHasHost;
+      delete globalThis.__maruPermissionsJSON;
       for (const name of ['__maruRunCommand','__maruDocumentText','__maruSetDocumentText',
         '__maruSelectionsJSON','__maruSetSelectionsJSON','__maruReplaceSelections',
         '__maruReadClipboard','__maruWriteClipboard','__maruShowMessage','__maruPrompt',
         '__maruBeginUndo','__maruEndUndo']) delete globalThis[name];
+      // Standalone JavaScriptCore currently has none of these, but deleting
+      // them explicitly makes the no-network invariant resilient to future
+      // runtime additions.
+      for (const name of ['fetch','XMLHttpRequest','WebSocket','EventSource']) delete globalThis[name];
     })();
     """#
 

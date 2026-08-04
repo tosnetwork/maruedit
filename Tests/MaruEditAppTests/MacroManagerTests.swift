@@ -68,6 +68,34 @@ final class MacroManagerTests: XCTestCase {
         XCTAssertEqual(manager.catalog.macros, [])
     }
 
+    func testUnauthorizedNetworkMacroIsRejectedBeforeScriptRuns() throws {
+        let directory = try makeDirectory()
+        try """
+        // @maru-name: Network Attempt
+        // @maru-permissions: network
+        maru.document.setText('should not run');
+        """.write(to: directory.appendingPathComponent("network.js"), atomically: true, encoding: .utf8)
+        let coordinator = AppCoordinator(preferencesStore: isolatedPreferences())
+        coordinator.prepareUITestDocument(content: "safe", selections: [NSRange(location: 0, length: 0)])
+        let manager = MacroManager(directory: directory, coordinator: coordinator,
+                                   keyBindings: KeyBindingManager(),
+                                   enablementStore: MacroEnablementStore(defaults: isolatedDefaults()),
+                                   authorizer: MacroPermissionAuthorizer(
+                                    store: MacroPermissionStore(defaults: isolatedDefaults()),
+                                    chooseDirectory: { _ in nil }, confirmExternalCommands: { _ in false }))
+        manager.reload()
+        let id = try XCTUnwrap(manager.catalog.macros.first?.id)
+        let finished = expectation(description: "permission rejection")
+        manager.executionDidFinish = { _, result in
+            guard case .failure = result else { return XCTFail("Expected denial") }
+            finished.fulfill()
+        }
+        manager.runForTesting(id)
+        wait(for: [finished], timeout: 1)
+        XCTAssertEqual(coordinator.ensureWindowControllerReady().macroEditor.textView.string, "safe")
+        XCTAssertTrue(manager.errors.last?.message.contains("network access is never available") == true)
+    }
+
     private func makeDirectory() throws -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)

@@ -4,11 +4,20 @@ import MaruEditCore
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let coordinator = AppCoordinator()
     private let keyBindings = KeyBindingManager(profile: .macOSStandard)
+    private lazy var macroPermissionStore: MacroPermissionStore = {
+        guard isUITestMode else { return MacroPermissionStore() }
+        let suite = "network.tos.maruedit.MacroPermissionUITest.\(ProcessInfo.processInfo.processIdentifier)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        return MacroPermissionStore(defaults: defaults)
+    }()
     private lazy var macroManager: MacroManager = {
         let injected = ProcessInfo.processInfo.environment["MARUEDIT_MACRO_DIRECTORY"]
             .map { URL(fileURLWithPath: $0, isDirectory: true) }
-        return MacroManager(directory: injected ?? MacroManager.defaultDirectory,
-                            coordinator: coordinator, keyBindings: keyBindings)
+        return MacroManager(
+            directory: injected ?? MacroManager.defaultDirectory,
+            coordinator: coordinator, keyBindings: keyBindings,
+            authorizer: MacroPermissionAuthorizer(store: macroPermissionStore))
     }()
     private let isUITestMode = ProcessInfo.processInfo.environment["MARUEDIT_UI_TEST_MODE"] == "1"
     private var recentMenu: NSMenu!

@@ -111,9 +111,28 @@ final class MacroEngineTests: XCTestCase {
                                "message:done", "end"])
     }
 
+    func testCapabilitySurfaceAndNetworkGlobalsFailClosed() throws {
+        var host = inertHost()
+        host.allowedPermissions = [.currentDocument]
+        XCTAssertEqual(try value(MacroEngine().execute(
+            "typeof maru.document + ':' + typeof maru.clipboard + ':' + typeof fetch + ':' + typeof WebSocket",
+            host: host)), .string("object:undefined:undefined:undefined"))
+        host.allowedPermissions.insert(.clipboard)
+        XCTAssertEqual(try value(MacroEngine().execute("typeof maru.clipboard", host: host)),
+                       .string("object"))
+    }
+
     private func value(
         _ result: Result<MacroRunResult, MacroExecutionError>
     ) throws -> MacroValue {
         try result.get().value
+    }
+
+    private func inertHost() -> MacroHost {
+        MacroHost(runCommand: { _ in false }, documentText: { "" }, setDocumentText: { _ in },
+                  selectionsJSON: { "[]" }, setSelectionsJSON: { _ in false },
+                  replaceSelections: { _ in }, readClipboard: { "" }, writeClipboard: { _ in },
+                  showMessage: { _ in }, prompt: { _, _ in nil },
+                  beginUndoGroup: { _ in }, endUndoGroup: {})
     }
 }

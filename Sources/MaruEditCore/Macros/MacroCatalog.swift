@@ -13,6 +13,11 @@ public struct MacroMetadata: Equatable, Sendable {
     public var description: String
     public var shortcut: String?
     public var requiredPermissions: Set<MacroPermission>
+    public init(name: String, description: String, shortcut: String?,
+                requiredPermissions: Set<MacroPermission>) {
+        self.name = name; self.description = description; self.shortcut = shortcut
+        self.requiredPermissions = requiredPermissions
+    }
 }
 
 public struct UserMacro: Equatable, Sendable {
@@ -21,6 +26,10 @@ public struct UserMacro: Equatable, Sendable {
     public let source: String
     public let metadata: MacroMetadata
     public var isEnabled: Bool
+    public init(id: CommandID, url: URL, source: String, metadata: MacroMetadata, isEnabled: Bool) {
+        self.id = id; self.url = url; self.source = source; self.metadata = metadata
+        self.isEnabled = isEnabled
+    }
 }
 
 public struct MacroCatalogIssue: Equatable, Sendable {

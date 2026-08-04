@@ -7,18 +7,21 @@ final class MacroCommandBridge {
     private unowned let coordinator: AppCoordinator
     private unowned let editor: EditorViewController
     private let pasteboard: NSPasteboard
+    private let permissions: Set<MacroPermission>
     private let messageHandler: (String) -> Void
     private let promptHandler: (String, String) -> String?
 
     init(
         coordinator: AppCoordinator,
         editor: EditorViewController,
+        permissions: Set<MacroPermission> = [.currentDocument, .clipboard],
         pasteboard: NSPasteboard = .general,
         message: ((String) -> Void)? = nil,
         prompt: ((String, String) -> String?)? = nil
     ) {
         self.coordinator = coordinator
         self.editor = editor
+        self.permissions = permissions
         self.pasteboard = pasteboard
         messageHandler = message ?? { coordinator.showStatusMessage($0, duration: 2.5) }
         promptHandler = prompt ?? { message, initial in
@@ -35,8 +38,12 @@ final class MacroCommandBridge {
 
     var host: MacroHost {
         MacroHost(
+            allowedPermissions: permissions,
             runCommand: { [self] raw in onMain {
-                coordinator.commandRegistry.execute(
+                if raw.hasPrefix("external."), !permissions.contains(.externalCommands) {
+                    return false
+                }
+                return coordinator.commandRegistry.execute(
                     CommandID(raw), context: CommandContext(coordinator: coordinator))
             } },
             documentText: { [self] in onMain { editor.textView.string } },

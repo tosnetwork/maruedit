@@ -18,6 +18,24 @@ The name falls back to the filename. Permissions are typed values:
 M6-04 defines their authorization behavior; metadata does not itself grant a
 capability.
 
+## Permissions
+
+Every macro receives current-document access by default. Clipboard APIs appear
+only when `clipboard` is declared. `otherFiles` opens a native directory picker;
+the selected directory is remembered with a security-scoped bookmark and its
+scope is active only while that macro runs. `externalCommands` requires a
+separate warning confirmation. Allow and Deny decisions are remembered by
+stable macro Command ID.
+
+Choose **Macro > Manage Permissions** to inspect the remembered macro,
+capability, decision, and directory path, and revoke any entry. Revocation
+causes the next request to ask again.
+
+Network access is not grantable. A macro declaring `network` is rejected before
+execution, and JavaScript contexts expose no `fetch`, `XMLHttpRequest`,
+`WebSocket`, or `EventSource`. Permission rejection details are written to the
+Macro Error Console.
+
 Each file receives a stable `macro.user.…` Command ID derived from its relative
 path. Enabled macros appear in the Macro menu and their portable shortcut is
 installed as a dynamic KeyBinding routed through CommandRegistry. Dynamic

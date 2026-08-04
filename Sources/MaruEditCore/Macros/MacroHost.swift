@@ -3,6 +3,7 @@ import Foundation
 /// Narrow value/function bridge supplied by the application for one run.
 /// JavaScriptCore never receives the objects captured by these closures.
 public struct MacroHost: @unchecked Sendable {
+    public var allowedPermissions: Set<MacroPermission>
     public var runCommand: (String) -> Bool
     public var documentText: () -> String
     public var setDocumentText: (String) -> Void
@@ -17,6 +18,7 @@ public struct MacroHost: @unchecked Sendable {
     public var endUndoGroup: () -> Void
 
     public init(
+        allowedPermissions: Set<MacroPermission> = Set(MacroPermission.allCases),
         runCommand: @escaping (String) -> Bool,
         documentText: @escaping () -> String,
         setDocumentText: @escaping (String) -> Void,
@@ -30,6 +32,7 @@ public struct MacroHost: @unchecked Sendable {
         beginUndoGroup: @escaping (String) -> Void,
         endUndoGroup: @escaping () -> Void
     ) {
+        self.allowedPermissions = allowedPermissions
         self.runCommand = runCommand
         self.documentText = documentText
         self.setDocumentText = setDocumentText

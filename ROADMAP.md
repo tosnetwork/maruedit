@@ -1968,13 +1968,13 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 
 ## M6-04: Macro Permissions
 
-- [ ] Grant current-document capability by default.
-- [ ] Require authorization for other files or directories.
-- [ ] Require authorization for external commands.
-- [ ] Remember user decisions.
-- [ ] Provide a revocation UI.
-- [ ] Reject unauthorized requests explicitly.
-- [ ] Prevent silent network access.
+- [x] Grant current-document capability by default. *(`MacroPermissionAuthorizer` always grants only `currentDocument`; the JavaScript document/editor surface is capability-gated.)*
+- [x] Require authorization for other files or directories. *(An `NSOpenPanel` chooses one directory, stored as a security-scoped bookmark and accessed only for the duration of the run.)*
+- [x] Require authorization for external commands. *(A warning prompt independently grants or denies `externalCommands`; the command bridge rejects `external.*` IDs without that capability.)*
+- [x] Remember user decisions. *(`MacroPermissionStore` schema v1 persists per-macro Allow/Deny decisions and directory bookmarks, normalizes duplicates, and fails closed for corrupt/future data.)*
+- [x] Provide a revocation UI. *(Macro > Manage Permissions lists remembered decisions and paths with individual Revoke buttons; AppKit tests verify records disappear immediately.)*
+- [x] Reject unauthorized requests explicitly. *(Denials produce `MacroAuthorizationError`, stop execution before JavaScript runs, and are recorded in the Macro Error Console; the network-attempt integration test proves text remains unchanged.)*
+- [x] Prevent silent network access. *(Network metadata is always rejected, and `fetch`, `XMLHttpRequest`, `WebSocket`, and `EventSource` are explicitly removed from every context; capability tests verify they are undefined.)*
 
 ## M6-05: External Commands
 
