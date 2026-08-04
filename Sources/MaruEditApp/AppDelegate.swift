@@ -1,34 +1,24 @@
 import AppKit
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
-    private var windowController: MainWindowController?
+    private let coordinator = AppCoordinator()
     private var recentMenu: NSMenu!
-
-    @discardableResult
-    private func ensureWindowControllerReady() -> MainWindowController {
-        if let wc = windowController { return wc }
-        let wc = MainWindowController()
-        windowController = wc
-        wc.showWindow(nil)
-        wc.restoreSession()
-        return wc
-    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         EditorShortcuts.install()
         buildMenu()
-        _ = ensureWindowControllerReady()
+        coordinator.ensureWindowControllerReady()
         NSApp.activate(ignoringOtherApps: true)
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
     func applicationWillTerminate(_ notification: Notification) {
-        windowController?.saveSession()
+        coordinator.saveActiveSession()
     }
 
     func application(_ sender: NSApplication, openFile filename: String) -> Bool {
-        ensureWindowControllerReady().openFile(URL(fileURLWithPath: filename))
+        coordinator.openFile(URL(fileURLWithPath: filename))
         return true
     }
 
@@ -170,12 +160,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func openRecentFile(_ sender: NSMenuItem) {
         guard let url = sender.representedObject as? URL else { return }
-        ensureWindowControllerReady().openFile(url)
+        coordinator.openFile(url)
     }
 
     @objc private func openRecentFolder(_ sender: NSMenuItem) {
         guard let url = sender.representedObject as? URL else { return }
-        ensureWindowControllerReady().openFolderDirect(url)
+        coordinator.openFolder(url)
     }
 
     @objc private func doClearRecent() {
@@ -184,14 +174,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // MARK: - Actions
 
-    @objc func doNew()           { ensureWindowControllerReady().newDocument() }
-    @objc func doOpen()          { ensureWindowControllerReady().openDocument() }
-    @objc func doOpenFolder()    { ensureWindowControllerReady().openFolder() }
-    @objc func doSave()          { ensureWindowControllerReady().saveDocument() }
-    @objc func doSaveAs()        { ensureWindowControllerReady().saveDocumentAs() }
-    @objc func doClose()         { ensureWindowControllerReady().closeCurrentTab() }
-    @objc func doFind()          { ensureWindowControllerReady().showFind() }
-    @objc func doGoToLine()      { ensureWindowControllerReady().showGoToLine() }
-    @objc func doQuickOpen()     { ensureWindowControllerReady().showQuickOpen() }
-    @objc func doToggleSidebar() { ensureWindowControllerReady().toggleSidebar() }
+    @objc func doNew()           { coordinator.newDocument() }
+    @objc func doOpen()          { coordinator.openDocument() }
+    @objc func doOpenFolder()    { coordinator.openFolderPanel() }
+    @objc func doSave()          { coordinator.saveDocument() }
+    @objc func doSaveAs()        { coordinator.saveDocumentAs() }
+    @objc func doClose()         { coordinator.closeCurrentTab() }
+    @objc func doFind()          { coordinator.showFind() }
+    @objc func doGoToLine()      { coordinator.showGoToLine() }
+    @objc func doQuickOpen()     { coordinator.showQuickOpen() }
+    @objc func doToggleSidebar() { coordinator.toggleSidebar() }
 }

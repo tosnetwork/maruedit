@@ -18,14 +18,14 @@ final class MainWindowController: NSWindowController,
     private var quickOpen: QuickOpenPanel?
     private var keyMonitor: Any?
 
-    private var documents: [Document] = []
-    private var curIdx: Int = -1
+    private let documentController = DocumentController()
     private var sidebarManuallyCollapsed = false
 
-    private var curDoc: Document? {
-        guard curIdx >= 0, curIdx < documents.count else { return nil }
-        return documents[curIdx]
-    }
+    /// Convenience shims onto `documentController` so the UI-orchestration
+    /// code below (largely unchanged from before the M1-02 extraction)
+    /// doesn't need to spell out `documentController.` at every call site.
+    private var curIdx: Int { documentController.currentIndex }
+    private var curDoc: Document? { documentController.currentDocument }
 
     convenience init() {
         let w = NSWindow(
@@ -184,9 +184,7 @@ final class MainWindowController: NSWindowController,
     // MARK: - Document management
 
     func newDocument() {
-        let doc = Document()
-        documents.append(doc)
-        curIdx = documents.count - 1
+        let doc = documentController.newDocument()
         editorVC.document = doc
         refreshTabs()
         refreshStatus()
@@ -204,63 +202,36 @@ final class MainWindowController: NSWindowController,
     }
 
     func openFile(_ url: URL) {
-        if let i = documents.firstIndex(where: { $0.fileURL == url }) {
-            saveCursorPosition()
-            curIdx = i
-            editorVC.document = documents[i]
-            refreshTabs(); refreshStatus()
-            RecentItems.addFile(url)
-            sidebarVC.revealFile(url)
-            deferredRestoreCursor()
-            return
-        }
+        saveCursorPosition()
         do {
-            saveCursorPosition()
-            let doc = try Document.open(url: url)
-            documents.append(doc)
-            curIdx = documents.count - 1
-            editorVC.document = doc
+            let result = try documentController.open(url: url)
+            editorVC.document = result.document
             refreshTabs(); refreshStatus()
-            window?.title = "MaruEdit — \(doc.displayName)"
+            if !result.wasAlreadyOpen {
+                window?.title = "MaruEdit — \(result.document.displayName)"
+            }
             RecentItems.addFile(url)
             sidebarVC.revealFile(url)
+            if result.wasAlreadyOpen {
+                deferredRestoreCursor()
+            }
         } catch {
             NSAlert(error: error).runModal()
         }
     }
 
     private func openFileInCurrentTab(_ url: URL) {
-        if let i = documents.firstIndex(where: { $0.fileURL == url }) {
-            saveCursorPosition()
-            curIdx = i
-            editorVC.document = documents[i]
-            refreshTabs(); refreshStatus()
-            window?.title = "MaruEdit — \(documents[i].displayName)"
-            RecentItems.addFile(url)
-            sidebarVC.revealFile(url)
-            deferredRestoreCursor()
-            return
-        }
+        saveCursorPosition()
         do {
-            saveCursorPosition()
-            let doc = try Document.open(url: url)
-            if curIdx >= 0, curIdx < documents.count {
-                let cur = documents[curIdx]
-                if !cur.isModified && (cur.fileURL == nil || cur.fileURL == url) {
-                    documents[curIdx] = doc
-                } else {
-                    documents.append(doc)
-                    curIdx = documents.count - 1
-                }
-            } else {
-                documents.append(doc)
-                curIdx = documents.count - 1
-            }
-            editorVC.document = doc
+            let result = try documentController.openInCurrentTab(url: url)
+            editorVC.document = result.document
             refreshTabs(); refreshStatus()
-            window?.title = "MaruEdit — \(doc.displayName)"
+            window?.title = "MaruEdit — \(result.document.displayName)"
             RecentItems.addFile(url)
             sidebarVC.revealFile(url)
+            if result.wasAlreadyOpen {
+                deferredRestoreCursor()
+            }
         } catch {
             NSAlert(error: error).runModal()
         }
@@ -289,8 +260,8 @@ final class MainWindowController: NSWindowController,
     }
 
     func closeCurrentTab() {
-        guard curIdx >= 0, curIdx < documents.count else { return }
-        let doc = documents[curIdx]
+        guard let doc = curDoc else { return }
+        let indexToClose = curIdx
         if doc.isModified {
             let a = NSAlert()
             a.messageText = "Save changes to \(doc.displayName)?"
@@ -302,11 +273,10 @@ final class MainWindowController: NSWindowController,
             if resp == .alertFirstButtonReturn { saveDocument() }
             else if resp == .alertThirdButtonReturn { return }
         }
-        documents.remove(at: curIdx)
-        if documents.isEmpty { newDocument(); return }
-        curIdx = min(curIdx, documents.count - 1)
-        editorVC.document = documents[curIdx]
+        let emptiedAndReplaced = documentController.closeDocument(at: indexToClose)
+        editorVC.document = curDoc
         refreshTabs(); refreshStatus()
+        if emptiedAndReplaced { return }
         deferredRestoreCursor()
     }
 
@@ -427,7 +397,7 @@ final class MainWindowController: NSWindowController,
     // MARK: - Refresh
 
     private func refreshTabs() {
-        let items = documents.map { TabItem(title: $0.displayName, isModified: $0.isModified) }
+        let items = documentController.documents.map { TabItem(title: $0.displayName, isModified: $0.isModified) }
         tabBar.setTabs(items, selectedIndex: curIdx)
     }
 
@@ -473,20 +443,20 @@ final class MainWindowController: NSWindowController,
     // MARK: - TabBarViewDelegate
 
     func tabBarDidSelectTab(at index: Int) {
-        guard index >= 0, index < documents.count else { return }
+        guard let doc = documentController.document(at: index) else { return }
         saveCursorPosition()
-        curIdx = index
-        editorVC.document = documents[index]
-        tabBar.selectTab(at: curIdx)
+        documentController.selectDocument(at: index)
+        editorVC.document = doc
+        tabBar.selectTab(at: index)
         refreshStatus()
-        window?.title = "MaruEdit — \(curDoc?.displayName ?? "Untitled")"
-        if let url = documents[index].fileURL { sidebarVC.revealFile(url) }
+        window?.title = "MaruEdit — \(doc.displayName)"
+        if let url = doc.fileURL { sidebarVC.revealFile(url) }
         deferredRestoreCursor()
     }
 
     func tabBarDidCloseTab(at index: Int) {
         let prev = curIdx
-        curIdx = index
+        documentController.selectDocument(at: index)
         closeCurrentTab()
         if curIdx != prev { refreshTabs() }
     }
@@ -540,11 +510,11 @@ final class MainWindowController: NSWindowController,
         saveCursorPosition()
         let ud = UserDefaults.standard
         ud.set(sidebarVC.rootFolderURL?.path, forKey: Self.sessionFolderKey)
-        ud.set(documents.compactMap { $0.fileURL?.path }, forKey: Self.sessionFilesKey)
+        ud.set(documentController.documents.compactMap { $0.fileURL?.path }, forKey: Self.sessionFilesKey)
         ud.set(curIdx, forKey: Self.sessionIndexKey)
 
         var cursors: [String: Int] = [:]
-        for doc in documents {
+        for doc in documentController.documents {
             if let path = doc.fileURL?.path {
                 cursors[path] = doc.cursorPosition
             }
@@ -569,24 +539,19 @@ final class MainWindowController: NSWindowController,
             openFile(URL(fileURLWithPath: path))
         }
 
-        if let i = documents.firstIndex(where: { $0.fileURL == nil && !$0.isModified && $0.content.isEmpty }),
-           documents.count > 1 {
-            documents.remove(at: i)
-            if curIdx >= i && curIdx > 0 { curIdx -= 1 }
-            if curIdx >= documents.count { curIdx = documents.count - 1 }
-        }
+        documentController.pruneLeftoverBlankDocument()
 
         let cursors = ud.dictionary(forKey: Self.sessionCursorsKey) as? [String: Int] ?? [:]
-        for doc in documents {
+        for doc in documentController.documents {
             if let path = doc.fileURL?.path, let pos = cursors[path] {
                 doc.cursorPosition = pos
             }
         }
 
         let savedIdx = ud.integer(forKey: Self.sessionIndexKey)
-        curIdx = max(0, min(savedIdx, documents.count - 1))
-        if curIdx < documents.count {
-            editorVC.document = documents[curIdx]
+        documentController.selectDocumentClamped(to: savedIdx)
+        if let doc = curDoc {
+            editorVC.document = doc
         }
         refreshTabs()
         refreshStatus()

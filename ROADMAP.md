@@ -1417,13 +1417,13 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M1-02: AppCoordinator and DocumentController
 
-- [ ] Add `AppCoordinator` for application-scoped services.
-- [ ] Add `DocumentController` for opening, activating, closing, and coordinating documents.
-- [ ] Extract file open/close/save coordination from `MainWindowController`.
-- [ ] Define App, Window, Document, and Editor lifecycles explicitly.
-- [ ] Avoid new singletons; inject dependencies through initializers.
+- [x] Add `AppCoordinator` for application-scoped services. *(`Sources/MaruEditApp/Application/AppCoordinator.swift` — owns `ensureWindowControllerReady()` and the window controller; `AppDelegate` is now a thin `NSApplicationDelegate` shim that only builds the menu and forwards OS lifecycle events.)*
+- [x] Add `DocumentController` for opening, activating, closing, and coordinating documents. *(`Sources/MaruEditApp/Documents/DocumentController.swift` — owns `documents`/`currentIndex` and the open/openInCurrentTab/close/select/session-prune logic, faithfully extracted from `MainWindowController` with the same branching preserved. Covered by 11 new unit tests in `DocumentControllerTests.swift`.)*
+- [x] Extract file open/close/save coordination from `MainWindowController`. *(`MainWindowController` no longer holds `documents`/`curIdx` as stored state — `curIdx`/`curDoc` are now thin read-only shims onto `documentController`; it still owns UI orchestration — tab bar, window title, sidebar reveal, cursor persistence, panels/alerts — which is the correct scope per §5.4.)*
+- [x] Define App, Window, Document, and Editor lifecycles explicitly. *(App = `AppCoordinator`, Window = `MainWindowController`, Document = `DocumentController`, Editor = `EditorViewController`, already separate.)*
+- [x] Avoid new singletons; inject dependencies through initializers. *(`AppCoordinator` is a plain instance owned once by `AppDelegate`; `DocumentController` is a plain instance owned once per `MainWindowController`. Neither is `static`/shared.)*
 
-**Acceptance:** `MainWindowController` no longer owns the complete document lifecycle.
+**Acceptance:** `MainWindowController` no longer owns the complete document lifecycle. *(Verified: `documents`/`curIdx` no longer exist as its stored state; `grep -n "curIdx\s*=" MainWindowController.swift` only matches the read-only computed shim, not a mutation.)*
 
 ## M1-03: Command Registry v1
 
