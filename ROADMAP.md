@@ -2125,12 +2125,12 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 
 ## M8-01: Feature Freeze and Bug Classification
 
-- [ ] Freeze new features.
-- [ ] Define P0 as data loss, security failure, startup failure, or critical crash.
-- [ ] Define P1 as severe failure in core Save, Find, Grep, or text input.
-- [ ] Define P2 as a functional defect with a reasonable workaround.
-- [ ] Resolve all P0 and P1 issues before 1.0.
-- [ ] Publish known P2 issues.
+- [x] Freeze new features. *(`docs/release-policy.md` limits pre-1.0 changes to defects, security, accessibility, localization, tests, documentation, and release engineering.)*
+- [x] Define P0 as data loss, security failure, startup failure, or critical crash. *(Published policy and canonical `p0` GitHub label.)*
+- [x] Define P1 as severe failure in core Save, Find, Grep, or text input. *(Published policy and canonical `p1` GitHub label, extended to encoding/line-ending preservation.)*
+- [x] Define P2 as a functional defect with a reasonable workaround. *(Published policy and canonical `p2` GitHub label.)*
+- [x] Resolve all P0 and P1 issues before 1.0. *(M8-01 open-issue audit: P0 = 0, P1 = 0; the count must be rechecked before tagging.)*
+- [x] Publish known P2 issues. *(Performance limitations are public as issues #1–#3, labeled `p2`, and listed in `CHANGELOG.md`.)*
 
 ## M8-02: Beta Test Matrix
 
