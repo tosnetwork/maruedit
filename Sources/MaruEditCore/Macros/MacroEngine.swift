@@ -248,9 +248,9 @@ public final class MacroEngine: @unchecked Sendable {
           Object.defineProperty(promise, 'then', { value: (onFulfilled, onRejected) => {
             try {
               if (fulfilled) {
-                return settledPromise(true, typeof onFulfilled === 'function' ? onFulfilled(value) : value);
+                return settledPromise(true, onFulfilled ? onFulfilled(value) : value);
               }
-              if (typeof onRejected === 'function') return settledPromise(true, onRejected(value));
+              if (onRejected) return settledPromise(true, onRejected(value));
               return settledPromise(false, value);
             } catch (error) {
               return settledPromise(false, error);
