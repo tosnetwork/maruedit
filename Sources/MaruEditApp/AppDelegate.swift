@@ -3,12 +3,15 @@ import MaruEditCore
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let coordinator = AppCoordinator()
+    private let keyBindings = KeyBindingManager(profile: .macOSStandard)
     private let isUITestMode = ProcessInfo.processInfo.environment["MARUEDIT_UI_TEST_MODE"] == "1"
     private var recentMenu: NSMenu!
     private var reopenWithEncodingMenu: NSMenu!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        EditorShortcuts.install()
+        EditorShortcuts.install(keyBindings: keyBindings) { [coordinator] id in
+            coordinator.commandRegistry.execute(id, context: CommandContext(coordinator: coordinator))
+        }
         buildMenu()
         coordinator.ensureWindowControllerReady(restoreSession: !isUITestMode)
         if isUITestMode,
@@ -58,9 +61,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // File menu
         let fileItem = NSMenuItem()
         let fileMenu = NSMenu(title: "File")
-        fileMenu.addItem(commandItem(.fileNew, "n"))
-        fileMenu.addItem(commandItem(.fileOpen, "o"))
-        fileMenu.addItem(commandItem(.fileOpenFolder, "O"))
+        fileMenu.addItem(commandItem(.fileNew))
+        fileMenu.addItem(commandItem(.fileOpen))
+        fileMenu.addItem(commandItem(.fileOpenFolder))
 
         recentMenu = NSMenu(title: "Open Recent")
         recentMenu.delegate = self
@@ -75,12 +78,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         fileMenu.addItem(reopenItem)
 
         fileMenu.addItem(.separator())
-        fileMenu.addItem(commandItem(.fileSave, "s"))
-        fileMenu.addItem(commandItem(.fileSaveAs, "S"))
+        fileMenu.addItem(commandItem(.fileSave))
+        fileMenu.addItem(commandItem(.fileSaveAs))
         fileMenu.addItem(.separator())
-        fileMenu.addItem(commandItem(.fileCloseTab, "w"))
+        fileMenu.addItem(commandItem(.fileCloseTab))
         fileMenu.addItem(.separator())
-        fileMenu.addItem(commandItem(.fileClearRecoveryData, ""))
+        fileMenu.addItem(commandItem(.fileClearRecoveryData))
         fileItem.submenu = fileMenu
         main.addItem(fileItem)
 
@@ -95,12 +98,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         editMenu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
         editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
         editMenu.addItem(.separator())
-        editMenu.addItem(commandItem(.editAddCursorAbove, "\u{F700}", modifiers: [.command, .option]))
-        editMenu.addItem(commandItem(.editAddCursorBelow, "\u{F701}", modifiers: [.command, .option]))
-        editMenu.addItem(commandItem(.editSelectNextOccurrence, "d"))
-        editMenu.addItem(commandItem(.editSelectAllOccurrences, "l", modifiers: [.command, .shift]))
-        editMenu.addItem(commandItem(.editUndoLastAddedCursor, "u"))
-        editMenu.addItem(commandItem(.editBeginColumnSelection, ""))
+        editMenu.addItem(commandItem(.editAddCursorAbove))
+        editMenu.addItem(commandItem(.editAddCursorBelow))
+        editMenu.addItem(commandItem(.editSelectNextOccurrence))
+        editMenu.addItem(commandItem(.editSelectAllOccurrences))
+        editMenu.addItem(commandItem(.editUndoLastAddedCursor))
+        editMenu.addItem(commandItem(.editBeginColumnSelection))
         editMenu.addItem(.separator())
         let linesItem = NSMenuItem(title: "Lines", action: nil, keyEquivalent: "")
         let linesMenu = NSMenu(title: "Lines")
@@ -108,40 +111,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .editDeleteLine, .editDuplicateLine, .editMoveLineUp, .editMoveLineDown,
             .editJoinLines, .editTrimTrailingWhitespace, .editUppercase, .editLowercase,
             .editSortLines, .editReverseLines, .editIndent, .editOutdent, .editToggleComment,
-        ] { linesMenu.addItem(commandItem(id, "")) }
+        ] { linesMenu.addItem(commandItem(id)) }
         linesItem.submenu = linesMenu
         editMenu.addItem(linesItem)
         editMenu.addItem(.separator())
-        editMenu.addItem(commandItem(.navigateToggleBookmark, ""))
-        editMenu.addItem(commandItem(.navigateNextBookmark, ""))
-        editMenu.addItem(commandItem(.navigatePreviousBookmark, ""))
-        editMenu.addItem(commandItem(.navigateClearBookmarks, ""))
+        editMenu.addItem(commandItem(.navigateToggleBookmark))
+        editMenu.addItem(commandItem(.navigateNextBookmark))
+        editMenu.addItem(commandItem(.navigatePreviousBookmark))
+        editMenu.addItem(commandItem(.navigateClearBookmarks))
         editItem.submenu = editMenu
         main.addItem(editItem)
 
         // Find menu
         let findItem = NSMenuItem()
         let findMenu = NSMenu(title: "Find")
-        findMenu.addItem(commandItem(.searchFind, "f"))
-        findMenu.addItem(commandItem(.searchReplace, "f", modifiers: [.command, .option]))
-        findMenu.addItem(commandItem(.searchReplaceAll, ""))
-        findMenu.addItem(commandItem(.searchFindNext, "g"))
-        findMenu.addItem(commandItem(.searchFindPrevious, "G"))
+        findMenu.addItem(commandItem(.searchFind))
+        findMenu.addItem(commandItem(.searchReplace))
+        findMenu.addItem(commandItem(.searchReplaceAll))
+        findMenu.addItem(commandItem(.searchFindNext))
+        findMenu.addItem(commandItem(.searchFindPrevious))
         findMenu.addItem(.separator())
         // Go to Line moves off ⌘G, which macOS reserves for Find Next.
-        findMenu.addItem(commandItem(.searchGoToLine, "l"))
+        findMenu.addItem(commandItem(.searchGoToLine))
         findMenu.addItem(.separator())
-        findMenu.addItem(commandItem(.searchQuickOpen, "p"))
-        findMenu.addItem(commandItem(.searchGrep, "f", modifiers: [.command, .shift]))
+        findMenu.addItem(commandItem(.searchQuickOpen))
+        findMenu.addItem(commandItem(.searchGrep))
         findMenu.addItem(.separator())
-        findMenu.addItem(commandItem(.searchClearHistory, ""))
+        findMenu.addItem(commandItem(.searchClearHistory))
         findItem.submenu = findMenu
         main.addItem(findItem)
 
         // View menu
         let viewItem = NSMenuItem()
         let viewMenu = NSMenu(title: "View")
-        viewMenu.addItem(commandItem(.viewToggleSidebar, "b"))
+        viewMenu.addItem(commandItem(.viewToggleSidebar))
         viewItem.submenu = viewMenu
         main.addItem(viewItem)
 
@@ -155,21 +158,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         NSApp.mainMenu = main
         NSApp.windowsMenu = winMenu
+        syncCommandMenuBindings()
+    }
+
+    func activateKeyBindingProfile(_ profile: KeyBindingProfile) throws {
+        try keyBindings.activate(profile)
+        syncCommandMenuBindings()
+    }
+
+    private func syncCommandMenuBindings() {
+        func visit(_ menu: NSMenu) {
+            for item in menu.items {
+                if let id = item.representedObject as? CommandID {
+                    let gesture = keyBindings.keys(for: id).flatMap { $0.count == 1 ? $0[0] : nil }
+                    item.keyEquivalent = gesture?.menuKeyEquivalent ?? ""
+                    item.keyEquivalentModifierMask = gesture?.menuModifierFlags ?? []
+                }
+                if let submenu = item.submenu { visit(submenu) }
+            }
+        }
+        if let menu = NSApp.mainMenu { visit(menu) }
     }
 
     /// Builds a menu item that invokes `id` through the `CommandRegistry`
     /// rather than a dedicated `@objc` method per command (ROADMAP.md
     /// M1-03, "Route menus through the registry").
     private func commandItem(
-        _ id: CommandID,
-        _ key: String,
-        modifiers: NSEvent.ModifierFlags = .command
+        _ id: CommandID
     ) -> NSMenuItem {
         guard let definition = coordinator.commandRegistry.definition(for: id) else {
             preconditionFailure("No command registered for \(id.rawValue)")
         }
-        let mi = NSMenuItem(title: definition.title, action: #selector(performCommand(_:)), keyEquivalent: key)
-        mi.keyEquivalentModifierMask = modifiers
+        let gesture = keyBindings.keys(for: id).flatMap { $0.count == 1 ? $0[0] : nil }
+        let mi = NSMenuItem(
+            title: definition.title,
+            action: #selector(performCommand(_:)),
+            keyEquivalent: gesture?.menuKeyEquivalent ?? "")
+        mi.keyEquivalentModifierMask = gesture?.menuModifierFlags ?? []
         mi.target = self
         mi.representedObject = id
         return mi

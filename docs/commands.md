@@ -84,15 +84,10 @@ M3-02 moved Go to Line off ⌘G, which macOS reserves for Find Next, onto
   `FindBarView.performKeyEquivalent(with:)` and are local to that bar
   rather than app-level commands: they change the state of one transient
   input surface, and they only exist while it is visible.
-- The global **Cmd+P** key-monitor in `MainWindowController` (independent
-  of the Find menu's Quick Open item) still calls `showQuickOpen()`
-  directly rather than `CommandRegistry.execute(.searchQuickOpen, ...)`,
-  because `MainWindowController` has no reference back to `AppCoordinator`
-  or the registry. ROADMAP.md M1-03 explicitly allows shortcut *parsing* to
-  stay ad hoc for now ("may remain temporarily"); wiring this one
-  remaining case through the registry is deferred to M1-05
-  (`KeyBindingManager`), which will replace this ad-hoc `NSEvent` monitor
-  outright.
+- Configurable shortcuts are resolved by `KeyBindingManager` and execute the
+  resulting stable `CommandID` through this registry. Menu key equivalents are
+  synchronized from the same active profile, so Quick Open and every other
+  registered command no longer have a duplicate controller-level shortcut.
 
 Counting only MaruEdit's own static, non-dynamic menu actions (the ones
 listed above, excluding the standard-AppKit and dynamic-recent-items

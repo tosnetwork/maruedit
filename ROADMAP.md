@@ -1833,14 +1833,14 @@ Every command must have applicable normal, selection, and multi-selection tests,
 
 ## M5-01: KeyBindingManager
 
-- [ ] Implement JSON schema v1.
-- [ ] Ship a macOS Standard profile.
-- [ ] Ship a Maru Classic profile.
-- [ ] Detect conflicts.
-- [ ] Import and Export.
-- [ ] Restore Defaults.
-- [ ] Synchronize active bindings with menus.
-- [ ] Eliminate scattered hard-coded hardware key codes.
+- [x] Implement JSON schema v1. *(`KeyBindingProfile` encodes portable gesture strings and stable command IDs; version rejection and round-trip tests live in `KeyBindingManagerTests`.)*
+- [x] Ship a macOS Standard profile. *(`KeyBindingProfile.macOSStandard` is the default active profile and preserves the established Mac shortcuts.)*
+- [x] Ship a Maru Classic profile. *(`KeyBindingProfile.maruClassic` is an independent control/function-key-oriented profile.)*
+- [x] Detect conflicts. *(`KeyBindingManager.conflicts` reports every sequence assigned to multiple distinct commands.)*
+- [x] Import and Export. *(JSON data and atomic URL APIs are round-trip tested.)*
+- [x] Restore Defaults. *(`restoreDefaults` selects a fresh built-in profile.)*
+- [x] Synchronize active bindings with menus. *(`AppDelegate` derives command menu equivalents from the active profile and recursively resynchronizes them whenever a profile is activated.)*
+- [x] Eliminate scattered hard-coded hardware key codes. *(`KeyGesture(event:)` converts AppKit events to portable semantic keys; editor, Quick Open, Output Pane, menus, and the removed Quick Open monitor no longer dispatch on numeric hardware codes.)*
 
 ## M5-02: Two-Step Chorded Shortcuts
 

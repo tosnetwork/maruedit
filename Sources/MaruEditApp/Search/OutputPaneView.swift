@@ -294,8 +294,7 @@ private final class ResultTableView: NSTableView {
     var onActivate: (() -> Void)?
 
     override func keyDown(with event: NSEvent) {
-        // 36 = Return, 76 = Enter on the numeric keypad.
-        if event.keyCode == 36 || event.keyCode == 76 {
+        if KeyGesture(event: event)?.key == "enter" {
             onActivate?()
             return
         }

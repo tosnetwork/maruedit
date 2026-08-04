@@ -20,7 +20,6 @@ final class MainWindowController: NSWindowController,
     private var statusBar: StatusBarView!
 
     private var quickOpen: QuickOpenPanel?
-    private var keyMonitor: Any?
 
     /// The last query actually executed, so Find Next works after the bar
     /// is closed.
@@ -67,7 +66,6 @@ final class MainWindowController: NSWindowController,
         searchHistory = searchHistoryStore.load()
         syncSearchHistoryUI()
         newDocument()
-        installKeyMonitor()
         NotificationCenter.default.addObserver(
             self, selector: #selector(windowDidBecomeKey),
             name: NSWindow.didBecomeKeyNotification, object: w
@@ -79,20 +77,7 @@ final class MainWindowController: NSWindowController,
     }
 
     deinit {
-        if let monitor = keyMonitor { NSEvent.removeMonitor(monitor) }
         NotificationCenter.default.removeObserver(self)
-    }
-
-    private func installKeyMonitor() {
-        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self = self else { return event }
-            let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-            if flags == .command, event.charactersIgnoringModifiers == "p" {
-                self.showQuickOpen()
-                return nil
-            }
-            return event
-        }
     }
 
     // MARK: - UI setup

@@ -1,4 +1,5 @@
 import AppKit
+import MaruEditCore
 
 protocol QuickOpenDelegate: AnyObject {
     func quickOpenDidSelectFile(_ url: URL)
@@ -59,7 +60,7 @@ final class QuickOpenPanel: NSPanel, NSTextFieldDelegate, NSTableViewDataSource,
     }
 
     override func keyDown(with event: NSEvent) {
-        if event.keyCode == 53 { // Escape
+        if KeyGesture(event: event)?.key == "escape" {
             dismiss()
             return
         }

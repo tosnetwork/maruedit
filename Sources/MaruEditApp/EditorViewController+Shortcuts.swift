@@ -10,6 +10,7 @@
 // e.g. at the top of AppDelegate.applicationDidFinishLaunching(_:).
 
 import AppKit
+import MaruEditCore
 
 // MARK: - Global event monitors
 
@@ -25,13 +26,22 @@ enum EditorShortcuts {
     // to keep the block alive anyway.
     private static var keyMonitor: Any?
     private static var mouseMonitor: Any?
+    private static var keyBindings: KeyBindingManager?
+    private static var executeCommand: ((CommandID) -> Bool)?
 
-    static func install() {
+    static func install(keyBindings: KeyBindingManager, execute: @escaping (CommandID) -> Bool) {
         guard !installed else { return }
         installed = true
+        self.keyBindings = keyBindings
+        executeCommand = execute
 
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             guard let editor = activeEditor(for: event) else { return event }
+
+            if !editor.textView.hasMarkedText(), !editor.hasMarkedTextComposition,
+               let gesture = KeyGesture(event: event),
+               let command = keyBindings.command(for: [gesture]),
+               executeCommand?(command) == true { return nil }
 
             if editor.isMultiEditActive {
                 return editor.handleMultiEditKey(event) ? nil : event
@@ -65,16 +75,10 @@ enum EditorShortcuts {
 extension EditorViewController {
 
     fileprivate func handleShortcutEvent(_ event: NSEvent) -> Bool {
-        let mods = event.modifierFlags.intersection([.command, .shift, .option, .control])
-        let key  = event.keyCode
-
-        switch (mods, key) {
-        case (.option, 126):            performLineCommand(.moveUp); return true
-        case (.option, 125):            performLineCommand(.moveDown); return true
-        case ([.command, .shift], 40):  performLineCommand(.delete); return true
-        case ([.command, .shift], 37):  selectAllOccurrences();return true
-        case ([], 48):                  if indentSelectedLines() { return true }; return false
-        case (.shift, 48):              unindentSelectedLines(); return true
+        guard let gesture = KeyGesture(event: event) else { return false }
+        switch (gesture.modifiers, gesture.key) {
+        case ([], "tab"): if indentSelectedLines() { return true }; return false
+        case ([.shift], "tab"): unindentSelectedLines(); return true
         default:                        return false
         }
     }
@@ -200,11 +204,12 @@ extension EditorViewController {
     fileprivate func handleMultiEditKey(_ event: NSEvent) -> Bool {
         if textView.hasMarkedText() || hasMarkedTextComposition { return false }
         let mods = event.modifierFlags.intersection([.command, .shift, .option, .control])
-        let key  = event.keyCode
+        guard let gesture = KeyGesture(event: event) else { return false }
+        let key = gesture.key
 
-        if key == 53 { exitMultiEdit(); return true }
+        if key == "escape" { exitMultiEdit(); return true }
 
-        if [123, 124, 125, 126, 36, 76, 48].contains(key) {
+        if ["left", "right", "down", "up", "enter", "tab"].contains(key) {
             exitMultiEdit(); return false
         }
 
@@ -222,8 +227,8 @@ extension EditorViewController {
 
         if mods.contains(.command) { exitMultiEdit(); return false }
 
-        if key == 51  { multiEditBackspace();     return true }
-        if key == 117 { multiEditForwardDelete(); return true }
+        if key == "backspace" { multiEditBackspace(); return true }
+        if key == "delete" { multiEditForwardDelete(); return true }
 
         // Printable text, including the keystrokes that begin an IME
         // composition, must flow through NSTextInputClient. MaruTextView
