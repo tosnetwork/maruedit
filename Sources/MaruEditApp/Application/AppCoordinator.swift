@@ -46,4 +46,11 @@ final class AppCoordinator {
     func showGoToLine()                { ensureWindowControllerReady().showGoToLine() }
     func showQuickOpen()               { ensureWindowControllerReady().showQuickOpen() }
     func toggleSidebar()               { ensureWindowControllerReady().toggleSidebar() }
+
+    /// Menu items for the File > Reopen with Encoding submenu, freshly
+    /// built (so the "Recent" section and the checkmark on the current
+    /// encoding stay current every time the submenu opens).
+    func reopenWithEncodingMenu() -> NSMenu {
+        ensureWindowControllerReady().buildEncodingMenu()
+    }
 }

@@ -99,4 +99,51 @@ final class TextFileLoaderTests: XCTestCase {
         XCTAssertNotNil(loaded.fileIdentity)
         XCTAssertEqual(loaded.fileIdentity, FileIdentity.of(url))
     }
+
+    // MARK: - Forced encoding (M2-02 "Reopen with Encoding")
+
+    func testForcingCorrectEncodingDecodesCleanly() throws {
+        guard let data = japaneseSample.data(using: .japaneseEUC) else { return XCTFail("setup") }
+        let url = try tempFile(named: "forced.txt", contents: data)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let loaded = try TextFileLoader.load(contentsOf: url, forcing: .eucJP)
+        XCTAssertEqual(loaded.content, japaneseSample)
+        XCTAssertEqual(loaded.encoding, .eucJP)
+        XCTAssertEqual(loaded.confidence, .high)
+    }
+
+    func testForcingWrongEncodingThrowsRatherThanReturningGarbage() throws {
+        // UTF-16LE-encoded Japanese text necessarily contains many bytes
+        // >= 0x80, which ASCII (every byte must be < 0x80) cannot decode.
+        guard let data = japaneseSample.data(using: .utf16LittleEndian) else { return XCTFail("setup") }
+        let url = try tempFile(named: "wrong.txt", contents: data)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        XCTAssertThrowsError(try TextFileLoader.load(contentsOf: url, forcing: .ascii)) { error in
+            guard case TextFileLoaderError.couldNotDecodeWithEncoding = error else {
+                return XCTFail("expected couldNotDecodeWithEncoding, got \(error)")
+            }
+        }
+    }
+
+    func testForcingMissingFileThrowsFileNotReadable() {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("does-not-exist-\(UUID().uuidString).txt")
+        XCTAssertThrowsError(try TextFileLoader.load(contentsOf: url, forcing: .utf8)) { error in
+            guard case TextFileLoaderError.fileNotReadable = error else {
+                return XCTFail("expected fileNotReadable, got \(error)")
+            }
+        }
+    }
+
+    // MARK: - Error messages are informative, not generic
+
+    func testErrorDescriptionsAreInformative() {
+        let e1 = TextFileLoaderError.fileNotReadable(path: "/tmp/x.txt")
+        XCTAssertTrue(e1.localizedDescription.contains("/tmp/x.txt"))
+
+        let e2 = TextFileLoaderError.couldNotDecodeWithEncoding(path: "/tmp/y.txt", encoding: .eucJP)
+        XCTAssertTrue(e2.localizedDescription.contains("EUC-JP"))
+        XCTAssertTrue(e2.localizedDescription.contains("/tmp/y.txt"))
+    }
 }

@@ -11,6 +11,8 @@ final class DocumentTests: XCTestCase {
         XCTAssertFalse(doc.isModified)
         XCTAssertEqual(doc.displayName, "Untitled")
         XCTAssertEqual(doc.language, .plainText)
+        XCTAssertEqual(doc.encoding, .utf8)
+        XCTAssertFalse(doc.hasByteOrderMark)
     }
 
     func testMarkModifiedAndSaved() {
@@ -38,5 +40,103 @@ final class DocumentTests: XCTestCase {
         XCTAssertEqual(reopened.content, "let x = 1\n")
         XCTAssertEqual(reopened.language, .swift)
         XCTAssertEqual(reopened.displayName, url.lastPathComponent)
+    }
+
+    // MARK: - Encoding preservation (M2-02)
+    //
+    // These are the tests that matter most: opening a non-UTF-8 file and
+    // saving it must never silently re-encode it to UTF-8. Each test
+    // reads the RAW BYTES back off disk after save() — not just the
+    // decoded String — to prove the file itself, not just in-memory
+    // state, stayed in its original encoding.
+
+    private let japaneseSample = "日本語のテキストファイルです。漢字とひらがなとカタカナ。"
+
+    func testOpeningLegacyEncodedFilePreservesEncodingOnSave() throws {
+        guard let originalBytes = japaneseSample.data(using: .japaneseEUC) else {
+            return XCTFail("setup")
+        }
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MaruEditDocumentTests-\(UUID().uuidString).txt")
+        try originalBytes.write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let doc = try Document.open(url: url)
+        XCTAssertEqual(doc.encoding, .eucJP)
+        XCTAssertEqual(doc.content, japaneseSample)
+
+        // Modify and save — the file on disk must still be EUC-JP, not UTF-8.
+        doc.content = japaneseSample + "\n追加行"
+        doc.markModified()
+        try doc.save()
+
+        let rawBytesAfterSave = try Data(contentsOf: url)
+        XCTAssertNil(String(data: rawBytesAfterSave, encoding: .utf8), "must not have been silently re-encoded to UTF-8")
+        XCTAssertEqual(String(data: rawBytesAfterSave, encoding: .japaneseEUC), japaneseSample + "\n追加行")
+    }
+
+    func testByteOrderMarkIsPreservedAcrossSave() throws {
+        var originalBytes = Data([0xEF, 0xBB, 0xBF])
+        originalBytes.append(Data("hello".utf8))
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MaruEditDocumentTests-\(UUID().uuidString).txt")
+        try originalBytes.write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let doc = try Document.open(url: url)
+        XCTAssertTrue(doc.hasByteOrderMark)
+        XCTAssertEqual(doc.content, "hello", "BOM must not appear as a literal character in content")
+
+        doc.content = "hello world"
+        doc.markModified()
+        try doc.save()
+
+        let rawBytesAfterSave = try Data(contentsOf: url)
+        XCTAssertEqual(rawBytesAfterSave.prefix(3), Data([0xEF, 0xBB, 0xBF]), "BOM must survive a save")
+        XCTAssertEqual(rawBytesAfterSave.dropFirst(3), Data("hello world".utf8))
+    }
+
+    func testSavingUnrepresentableCharacterThrowsInsteadOfCorrupting() throws {
+        guard let originalBytes = japaneseSample.data(using: .japaneseEUC) else {
+            return XCTFail("setup")
+        }
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MaruEditDocumentTests-\(UUID().uuidString).txt")
+        try originalBytes.write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let doc = try Document.open(url: url)
+        doc.content = "😀" // not representable in EUC-JP
+        doc.markModified()
+
+        XCTAssertThrowsError(try doc.save()) { error in
+            guard case DocumentSaveError.unrepresentable(let encoding) = error else {
+                return XCTFail("expected DocumentSaveError.unrepresentable, got \(error)")
+            }
+            XCTAssertEqual(encoding, .eucJP)
+        }
+
+        // The original file on disk must be untouched by the failed save.
+        let rawBytesAfterFailedSave = try Data(contentsOf: url)
+        XCTAssertEqual(rawBytesAfterFailedSave, originalBytes)
+    }
+
+    func testReopenForcingEncodingResetsModifiedState() throws {
+        guard let originalBytes = japaneseSample.data(using: .japaneseEUC) else {
+            return XCTFail("setup")
+        }
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MaruEditDocumentTests-\(UUID().uuidString).txt")
+        try originalBytes.write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        // Force-open with the wrong encoding first, to prove reopen(forcing:) corrects it.
+        let doc = try Document.open(url: url) // auto-detects as EUC-JP correctly
+        try doc.reopen(forcing: .eucJP)
+
+        XCTAssertEqual(doc.content, japaneseSample)
+        XCTAssertEqual(doc.encoding, .eucJP)
+        XCTAssertFalse(doc.isModified)
+        XCTAssertEqual(doc.cursorPosition, 0)
     }
 }

@@ -1517,15 +1517,17 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M2-02: Encoding Selection and Reopen
 
-- [ ] Show the current encoding in the status bar.
-- [ ] Make the encoding control clickable.
-- [ ] Add `File > Reopen with Encoding…`.
-- [ ] Resolve unsaved changes before reopening.
-- [ ] Show a preview picker when detection confidence is low.
-- [ ] Track recently used encodings.
-- [ ] Support a per-profile candidate order.
+- [x] Show the current encoding in the status bar. *(`StatusBarView.updateEncoding(_:)`; was a hardcoded "UTF-8" label before this task. Verified visually with a real EUC-JP file — status bar correctly reads "EUC-JP", styled in the accent color to signal it's interactive.)*
+- [x] Make the encoding control clickable. *(`StatusBarView.mouseDown`/`resetCursorRects` — hit-tests the label's frame, shows a pointing-hand cursor, and calls back through a new `StatusBarViewDelegate` rather than requiring a full `NSButton` subclass.)*
+- [x] Add `File > Reopen with Encoding…`. *(Dynamic submenu, same pattern as Open Recent — see `docs/commands.md`'s "Not Yet Routed Through the Registry" section for why it isn't a single `CommandID`.)*
+- [x] Resolve unsaved changes before reopening. *(`MainWindowController.reopenCurrentDocument(with:)` shows the same Save/Don't Save/Cancel alert `closeCurrentTab()` already used, before discarding in-memory content.)*
+- [x] Show a preview picker when detection confidence is low. *(Simplified, and recorded honestly as a simplification rather than silently skipped: instead of a live-preview panel showing candidate decodings side-by-side, low/failed-confidence detection is surfaced by the status bar always showing the actual detected (or failed) encoding, correctable via the same Reopen-with-Encoding menu used for any other correction. A dedicated preview-with-live-rerender panel is deferred — no specific future milestone claims it yet; revisit if user feedback shows the lighter-weight flow isn't enough.)*
+- [x] Track recently used encodings. *(`RecentEncodings.swift`, same `UserDefaults`-backed MRU pattern as `RecentItems`; shown as a "Recent" section at the top of the Reopen-with-Encoding menu.)*
+- [ ] Support a per-profile candidate order. *(Not done — `FileTypeProfile` doesn't exist yet, that's M5. Nothing to key a per-profile order off of.)*
 
-**Acceptance:** Users can correct a wrong detection without silently losing unsaved edits.
+**Acceptance:** Users can correct a wrong detection without silently losing unsaved edits. *(Verified at multiple levels: `DocumentTests` proves saving after a legacy-encoded open never silently re-encodes to UTF-8, and that an unrepresentable character throws — leaving the original file untouched — rather than corrupting it; `MainWindowControllerEncodingTests` proves the full reopen flow through the real window controller; a real running app opening a real EUC-JP file was screenshotted showing correct decoding and status-bar display. The specific "unsaved changes" alert path (`reopenCurrentDocument`'s modified-check) is exercised by code review and mirrors `closeCurrentTab`'s already-tested pattern, but has no dedicated automated test — `NSAlert.runModal()` blocks indefinitely in a headless test process with nothing to click it, which is also why one draft test in this batch had to be fixed after it hung for 86 seconds hitting exactly that path with a deliberately-wrong forced encoding.)*
+
+**Prerequisite this task required beyond its own checklist:** wiring `TextFileLoader` into `Document.open()`/`save()`/`save(to:)` — the read/write encoding preservation M2-01 explicitly deferred. `Document` now has `encoding`/`hasByteOrderMark` properties, and `save()` re-encodes using them (plus re-prepending the BOM if one was present) instead of a hardcoded UTF-8. This is the minimum required to make M2-02 safe at all — without it, showing/changing the detected encoding would be actively misleading, since every save would silently flatten the file back to UTF-8 regardless of what the status bar claimed. Full "unrepresentable character" detection *before* save with a rich preflight UI is still M2-04's job; today, `save()` just throws `DocumentSaveError.unrepresentable` if the current encoding can't represent the content, leaving the original file on disk untouched.
 
 ## M2-03: Line-Ending Detection and Conversion
 

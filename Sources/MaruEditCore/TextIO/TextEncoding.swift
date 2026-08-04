@@ -35,6 +35,13 @@ extension TextEncoding {
         .windows31J, .shiftJISClassic, .eucJP, .iso2022JP
     ]
 
+    /// Encodings offered to the user for "Reopen with Encoding" (M2-02),
+    /// in menu display order.
+    public static let userSelectable: [TextEncoding] = [
+        .utf8, .utf16LittleEndian, .utf16BigEndian,
+        .windows31J, .shiftJISClassic, .eucJP, .iso2022JP
+    ]
+
     public var displayName: String {
         switch self {
         case .utf8:             return "UTF-8"
@@ -69,6 +76,18 @@ extension TextEncoding {
             return String.Encoding(rawValue: nsEncoding)
         default:
             return nil
+        }
+    }
+
+    /// The byte-order-mark bytes to prepend on save when a document was
+    /// loaded with a BOM present, for encodings that use one. `nil` for
+    /// encodings with no BOM convention (the legacy Japanese candidates).
+    public var byteOrderMark: Data? {
+        switch self {
+        case .utf8:              return Data([0xEF, 0xBB, 0xBF])
+        case .utf16LittleEndian: return Data([0xFF, 0xFE])
+        case .utf16BigEndian:    return Data([0xFE, 0xFF])
+        default:                 return nil
         }
     }
 }

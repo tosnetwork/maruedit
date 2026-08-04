@@ -4,6 +4,7 @@ import MaruEditCore
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let coordinator = AppCoordinator()
     private var recentMenu: NSMenu!
+    private var reopenWithEncodingMenu: NSMenu!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         EditorShortcuts.install()
@@ -49,6 +50,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let recentItem = NSMenuItem(title: "Open Recent", action: nil, keyEquivalent: "")
         recentItem.submenu = recentMenu
         fileMenu.addItem(recentItem)
+
+        reopenWithEncodingMenu = NSMenu(title: "Reopen with Encoding")
+        reopenWithEncodingMenu.delegate = self
+        let reopenItem = NSMenuItem(title: "Reopen with Encoding", action: nil, keyEquivalent: "")
+        reopenItem.submenu = reopenWithEncodingMenu
+        fileMenu.addItem(reopenItem)
 
         fileMenu.addItem(.separator())
         fileMenu.addItem(commandItem(.fileSave, "s"))
@@ -123,9 +130,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return coordinator.commandRegistry.isEnabled(id, context: CommandContext(coordinator: coordinator))
     }
 
-    // MARK: - NSMenuDelegate (Open Recent)
+    // MARK: - NSMenuDelegate (Open Recent, Reopen with Encoding)
 
     func menuNeedsUpdate(_ menu: NSMenu) {
+        if menu === reopenWithEncodingMenu {
+            let fresh = coordinator.reopenWithEncodingMenu()
+            menu.removeAllItems()
+            for item in fresh.items {
+                fresh.removeItem(item)
+                menu.addItem(item)
+            }
+            return
+        }
         guard menu === recentMenu else { return }
         menu.removeAllItems()
 

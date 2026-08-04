@@ -7,7 +7,8 @@ final class MainWindowController: NSWindowController,
     TabBarViewDelegate,
     SidebarDelegate,
     FindBarDelegate,
-    QuickOpenDelegate
+    QuickOpenDelegate,
+    StatusBarViewDelegate
 {
     private var splitView: NSSplitView!
     private var sidebarVC: SidebarViewController!
@@ -82,6 +83,7 @@ final class MainWindowController: NSWindowController,
         cv.addSubview(tabBar)
 
         statusBar = StatusBarView()
+        statusBar.delegate = self
         statusBar.autoresizingMask = [.width, .maxYMargin]
         statusBar.frame = NSRect(x: 0, y: 0, width: cv.bounds.width, height: statusH)
         cv.addSubview(statusBar)
@@ -411,7 +413,83 @@ final class MainWindowController: NSWindowController,
     }
 
     private func refreshStatus() {
-        if let doc = curDoc { statusBar.updateLanguage(doc.language) }
+        if let doc = curDoc {
+            statusBar.updateLanguage(doc.language)
+            statusBar.updateEncoding(doc.encoding)
+        }
+    }
+
+    // MARK: - Encoding selection and reopen (M2-02)
+
+    /// Builds the "Reopen with Encoding" menu — shared by the status bar's
+    /// clickable encoding label and `AppCoordinator.reopenWithEncodingMenu()`
+    /// (which `AppDelegate`'s File menu submenu rebuilds from). Not routed
+    /// through the Command Registry: like "Open Recent", this is a
+    /// dynamically-populated list of choices, not a single fixed action —
+    /// see docs/commands.md.
+    func buildEncodingMenu() -> NSMenu {
+        let menu = NSMenu()
+        let recent = RecentEncodings.encodings
+        if !recent.isEmpty {
+            let header = NSMenuItem(title: "Recent", action: nil, keyEquivalent: "")
+            header.isEnabled = false
+            menu.addItem(header)
+            for encoding in recent {
+                menu.addItem(encodingMenuItem(for: encoding))
+            }
+            menu.addItem(.separator())
+        }
+        for encoding in TextEncoding.userSelectable {
+            menu.addItem(encodingMenuItem(for: encoding))
+        }
+        return menu
+    }
+
+    private func encodingMenuItem(for encoding: TextEncoding) -> NSMenuItem {
+        let mi = NSMenuItem(title: encoding.displayName, action: #selector(didSelectEncodingMenuItem(_:)), keyEquivalent: "")
+        mi.target = self
+        mi.representedObject = encoding
+        mi.state = (curDoc?.encoding == encoding) ? .on : .off
+        return mi
+    }
+
+    @objc private func didSelectEncodingMenuItem(_ sender: NSMenuItem) {
+        guard let encoding = sender.representedObject as? TextEncoding else { return }
+        reopenCurrentDocument(with: encoding)
+    }
+
+    func statusBar(_ statusBar: StatusBarView, didClickEncodingAt point: NSPoint) {
+        guard curDoc?.fileURL != nil else { return } // nothing to reopen for an unsaved document
+        buildEncodingMenu().popUp(positioning: nil, at: point, in: statusBar)
+    }
+
+    /// Re-reads the current document's file with `encoding`, resolving
+    /// unsaved changes first (ROADMAP.md M2-02 acceptance: never silently
+    /// lose unsaved edits).
+    func reopenCurrentDocument(with encoding: TextEncoding) {
+        guard let doc = curDoc, doc.fileURL != nil else { return }
+
+        if doc.isModified {
+            let a = NSAlert()
+            a.messageText = "Save changes to \(doc.displayName) before reopening?"
+            a.informativeText = "Reopening with a different encoding will discard unsaved changes unless you save first."
+            a.addButton(withTitle: "Save")
+            a.addButton(withTitle: "Don't Save")
+            a.addButton(withTitle: "Cancel")
+            let resp = a.runModal()
+            if resp == .alertFirstButtonReturn { saveDocument() }
+            else if resp == .alertThirdButtonReturn { return }
+        }
+
+        do {
+            try doc.reopen(forcing: encoding)
+            editorVC.reloadCurrentDocument()
+            refreshTabs(); refreshStatus()
+            RecentEncodings.add(encoding)
+            scheduleSessionSave()
+        } catch {
+            NSAlert(error: error).runModal()
+        }
     }
 
     // MARK: - NSSplitViewDelegate

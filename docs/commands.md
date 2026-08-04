@@ -39,10 +39,11 @@ guards this.
   selectors (`cut:`, `copy:`, `miniaturize:`, ...) with no target set, so
   the first responder handles them directly. These aren't MaruEdit-specific
   commands, so they're intentionally left outside the registry.
-- **Open Recent** and **Clear Recent** are dynamically generated per
-  recent file/folder (parameterized by URL, rebuilt every time the submenu
-  opens), so they don't map cleanly onto a single stable `CommandID`. They
-  still go through `AppCoordinator`, just not through
+- **Open Recent**, **Clear Recent**, and (new in M2-02) **Reopen with
+  Encoding** are dynamically generated — per recent file/folder, or per
+  candidate `TextEncoding` — rebuilt every time the submenu opens, so they
+  don't map cleanly onto a single stable `CommandID`. They still go
+  through `AppCoordinator`/`MainWindowController`, just not through
   `CommandRegistry.execute`.
 - The global **Cmd+P** key-monitor in `MainWindowController` (independent
   of the Find menu's Quick Open item) still calls `showQuickOpen()`

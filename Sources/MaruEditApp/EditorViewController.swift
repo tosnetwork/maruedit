@@ -146,6 +146,17 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
 
     // MARK: - Document
 
+    /// Rebuilds the text view from `document.content`, discarding any
+    /// cached `NSTextStorage` first — for when the same `Document`
+    /// instance's content changed out from under the view (e.g.
+    /// "Reopen with Encoding…", ROADMAP.md M2-02) rather than a genuinely
+    /// different document being switched in, which `loadDoc()` alone
+    /// wouldn't pick up since it prefers `document.cachedTextStorage`.
+    func reloadCurrentDocument() {
+        document?.cachedTextStorage = nil
+        loadDoc()
+    }
+
     private func loadDoc() {
         guard let doc = document else { return }
         highlightWorkItem?.cancel()
