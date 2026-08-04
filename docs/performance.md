@@ -89,3 +89,57 @@ bash build.sh
 bash scripts/benchmark-launch.sh 7
 bash scripts/benchmark-open-file.sh 5
 ```
+
+---
+
+# M7-08 Performance Gate
+
+## Validation environment
+
+| Field | Value |
+|---|---|
+| Date | 2026-08-05 |
+| Commit measured | `dfa21d34d3a36cadbf1220868b77b6910a1986a6` plus the M7-08 benchmark-only test/script additions |
+| Hardware | MacBook Air, Mac14,2, Apple M2, 8 cores (4P+4E), 16 GB RAM |
+| OS | macOS 26.5.2 (build 25F84) |
+| Build | SwiftPM Release, host `arm64`; app packaged with `bash build.sh` |
+
+## Current results
+
+| Metric | 1.0 target | M0 | M7-08 | Result |
+|---|---:|---:|---:|---|
+| Release app bundle | ≤ 15 MB | 692 KB | **2.82 MiB** on disk; 2,778,520-byte executable | Pass |
+| Cold launch, median | ≤ 300 ms | 232 ms | **1,157.7 ms** (1,071.6–1,195.5, n=7) | Miss; [issue #1](https://github.com/tosnetwork/maruedit/issues/1) |
+| Idle RSS, one window | ≤ 80 MB | ~111 MB | **115.3 MB** (115.2–117.2, n=7) | Miss; [issue #3](https://github.com/tosnetwork/maruedit/issues/3) |
+| Open 1 MB UTF-8 | ≤ 200 ms | 2,235 ms | **598.6 ms** (494.6–647.7, n=5) | Improved 73%, still misses; [issue #2](https://github.com/tosnetwork/maruedit/issues/2) |
+| Open 10 MB UTF-8 | ≤ 1,000 ms | 12,680 ms | **463.0 ms** (196.0–490.9, n=5) | Pass; reduced-features mode avoids whole-file highlighting |
+| Literal Find Next in 10 MB | ≤ 100 ms | Not measured | **34.6 ms** (34.3–35.3, n=7) | Pass |
+| Grep 10 MB / 100 files | Responsive, cancellable, streaming | Not measured | **0.0 ms** first event, **14.0 ms** first match, **167.2 ms** total | Pass; runs off `MainActor` and cancellation is tested |
+| RSS, 10 × 1 MB documents | Record | Not measured | **130.3 MB** | Informational; incremental cost is ~15 MB over one window |
+
+The launch regression versus M0 is real under the same external CPU-idle
+method and is not hidden by selecting a faster sample. M3–M7 added settings,
+macro, command, recovery, and window initialization; issue #1 tracks profiling
+and deferral of nonessential startup work. One-window RSS remains above budget,
+while the relatively small ten-document increment suggests AppKit/window base
+state and eagerly-created controllers deserve investigation before text buffers.
+
+The intentionally earlier large-file threshold explains why 10 MB now opens
+faster than 1 MB: 10 MB enters reduced-features mode and skips expensive normal
+editor services. This satisfies the 10 MB safety budget, but does not excuse the
+normal-mode 1 MB miss recorded in issue #2.
+
+## Reproducing M7-08
+
+```bash
+bash build.sh
+bash scripts/benchmark-launch.sh 7
+bash scripts/benchmark-open-file.sh 5
+swift test -c release --filter PerformanceGateTests
+bash scripts/benchmark-multi-document-rss.sh
+```
+
+The app scripts use synthetic temporary fixtures and close their test process.
+`PerformanceGateTests` prints `M7_PERF` records and intentionally does not make
+wall-clock values into flaky CI assertions. The target comparison belongs in
+this dated measurement record.

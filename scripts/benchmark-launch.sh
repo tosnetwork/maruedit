@@ -67,7 +67,7 @@ for i in $(seq 1 "$RUNS"); do
     done
   fi
 
-  if [ "$settled" -eq 0 ] || [ -z "$pid" ]; then
+  if [ "$settled" -eq 0 ] || [ -z "$pid" ] || [ -z "$rss_kb" ] || [ "$rss_kb" -le 1000 ] 2>/dev/null; then
     echo "  run $i: did not settle within timeout, discarding" >&2
   else
     ms=$(python3 -c "print(f'{(${end} - ${start}) * 1000:.1f}')")
@@ -94,7 +94,7 @@ PY
 
 python3 - "${rss_values[@]}" <<'PY'
 import sys, statistics
-rss = [float(x) for x in sys.argv[1:] if float(x) > 0]
+rss = [float(x) for x in sys.argv[1:] if float(x) > 1000]
 if rss:
     print(f"Idle RSS (MB): median={statistics.median(rss)/1024:.1f} min={min(rss)/1024:.1f} max={max(rss)/1024:.1f} n={len(rss)}")
 PY

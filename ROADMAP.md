@@ -2099,15 +2099,15 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 
 ## M7-08: Performance Gate
 
-- [ ] Rerun M0 benchmarks.
-- [ ] Measure Release app size.
-- [ ] Measure launch time.
-- [ ] Measure 1 MB and 10 MB opening.
-- [ ] Measure Find.
-- [ ] Measure Grep responsiveness.
-- [ ] Measure idle and multi-document RSS.
-- [ ] Update `docs/performance.md`.
-- [ ] Create issues and explanations for targets that remain unmet.
+- [x] Rerun M0 benchmarks. *(The original launch/RSS/open scripts were rerun on the same M2 reference hardware and OS; full commands and raw ranges are recorded.)*
+- [x] Measure Release app size. *(2.82 MiB on disk; 2,778,520-byte executable, below the 15 MB target.)*
+- [x] Measure launch time. *(1,157.7 ms median, n=7; the regression is recorded rather than hidden.)*
+- [x] Measure 1 MB and 10 MB opening. *(598.6 ms and 463.0 ms medians respectively, n=5.)*
+- [x] Measure Find. *(Release literal Find Next over 10 MB: 34.6 ms median, n=7.)*
+- [x] Measure Grep responsiveness. *(10 MB/100 files: first event 0.0 ms, first match 14.0 ms, total 167.2 ms.)*
+- [x] Measure idle and multi-document RSS. *(115.3 MB one-window median; 130.3 MB with ten 1 MB documents.)*
+- [x] Update `docs/performance.md`. *(M0 history and the dated M7 comparison, method, commands, analysis, and limitations are retained together.)*
+- [x] Create issues and explanations for targets that remain unmet. *([#1](https://github.com/tosnetwork/maruedit/issues/1) launch, [#2](https://github.com/tosnetwork/maruedit/issues/2) 1 MB open, and [#3](https://github.com/tosnetwork/maruedit/issues/3) RSS.)*
 
 ### M7 Gate
 
