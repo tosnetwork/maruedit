@@ -10,6 +10,11 @@ import AppKit
 /// would be coordinated from.
 final class AppCoordinator {
     private var windowController: MainWindowController?
+    let commandRegistry = CommandRegistry()
+
+    init() {
+        AppCommands.registerAll(in: commandRegistry)
+    }
 
     @discardableResult
     func ensureWindowControllerReady() -> MainWindowController {

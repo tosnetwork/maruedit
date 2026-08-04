@@ -1,4 +1,5 @@
 import AppKit
+import MaruEditCore
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let coordinator = AppCoordinator()
@@ -39,9 +40,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // File menu
         let fileItem = NSMenuItem()
         let fileMenu = NSMenu(title: "File")
-        fileMenu.addItem(item("New File", #selector(doNew), "n"))
-        fileMenu.addItem(item("Open...", #selector(doOpen), "o"))
-        fileMenu.addItem(item("Open Folder...", #selector(doOpenFolder), "O"))
+        fileMenu.addItem(commandItem(.fileNew, "n"))
+        fileMenu.addItem(commandItem(.fileOpen, "o"))
+        fileMenu.addItem(commandItem(.fileOpenFolder, "O"))
 
         recentMenu = NSMenu(title: "Open Recent")
         recentMenu.delegate = self
@@ -50,10 +51,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         fileMenu.addItem(recentItem)
 
         fileMenu.addItem(.separator())
-        fileMenu.addItem(item("Save", #selector(doSave), "s"))
-        fileMenu.addItem(item("Save As...", #selector(doSaveAs), "S"))
+        fileMenu.addItem(commandItem(.fileSave, "s"))
+        fileMenu.addItem(commandItem(.fileSaveAs, "S"))
         fileMenu.addItem(.separator())
-        fileMenu.addItem(item("Close Tab", #selector(doClose), "w"))
+        fileMenu.addItem(commandItem(.fileCloseTab, "w"))
         fileItem.submenu = fileMenu
         main.addItem(fileItem)
 
@@ -73,17 +74,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // Find menu
         let findItem = NSMenuItem()
         let findMenu = NSMenu(title: "Find")
-        findMenu.addItem(item("Find...", #selector(doFind), "f"))
-        findMenu.addItem(item("Go to Line...", #selector(doGoToLine), "g"))
+        findMenu.addItem(commandItem(.searchFind, "f"))
+        findMenu.addItem(commandItem(.searchGoToLine, "g"))
         findMenu.addItem(.separator())
-        findMenu.addItem(item("Quick Open...", #selector(doQuickOpen), "p"))
+        findMenu.addItem(commandItem(.searchQuickOpen, "p"))
         findItem.submenu = findMenu
         main.addItem(findItem)
 
         // View menu
         let viewItem = NSMenuItem()
         let viewMenu = NSMenu(title: "View")
-        viewMenu.addItem(item("Toggle Sidebar", #selector(doToggleSidebar), "b"))
+        viewMenu.addItem(commandItem(.viewToggleSidebar, "b"))
         viewItem.submenu = viewMenu
         main.addItem(viewItem)
 
@@ -99,10 +100,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NSApp.windowsMenu = winMenu
     }
 
-    private func item(_ title: String, _ action: Selector, _ key: String) -> NSMenuItem {
-        let mi = NSMenuItem(title: title, action: action, keyEquivalent: key)
+    /// Builds a menu item that invokes `id` through the `CommandRegistry`
+    /// rather than a dedicated `@objc` method per command (ROADMAP.md
+    /// M1-03, "Route menus through the registry").
+    private func commandItem(_ id: CommandID, _ key: String) -> NSMenuItem {
+        guard let definition = coordinator.commandRegistry.definition(for: id) else {
+            preconditionFailure("No command registered for \(id.rawValue)")
+        }
+        let mi = NSMenuItem(title: definition.title, action: #selector(performCommand(_:)), keyEquivalent: key)
         mi.target = self
+        mi.representedObject = id
         return mi
+    }
+
+    @objc private func performCommand(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? CommandID else { return }
+        coordinator.commandRegistry.execute(id, context: CommandContext(coordinator: coordinator))
+    }
+
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        guard let id = menuItem.representedObject as? CommandID else { return true }
+        return coordinator.commandRegistry.isEnabled(id, context: CommandContext(coordinator: coordinator))
     }
 
     // MARK: - NSMenuDelegate (Open Recent)
@@ -171,17 +189,4 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func doClearRecent() {
         RecentItems.clearAll()
     }
-
-    // MARK: - Actions
-
-    @objc func doNew()           { coordinator.newDocument() }
-    @objc func doOpen()          { coordinator.openDocument() }
-    @objc func doOpenFolder()    { coordinator.openFolderPanel() }
-    @objc func doSave()          { coordinator.saveDocument() }
-    @objc func doSaveAs()        { coordinator.saveDocumentAs() }
-    @objc func doClose()         { coordinator.closeCurrentTab() }
-    @objc func doFind()          { coordinator.showFind() }
-    @objc func doGoToLine()      { coordinator.showGoToLine() }
-    @objc func doQuickOpen()     { coordinator.showQuickOpen() }
-    @objc func doToggleSidebar() { coordinator.toggleSidebar() }
 }

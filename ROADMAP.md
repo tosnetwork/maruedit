@@ -1427,12 +1427,17 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M1-03: Command Registry v1
 
-- [ ] Define stable `CommandID` values.
-- [ ] Register existing New, Open, Save, Close, Find, Replace, and related commands.
-- [ ] Route menus through the registry.
-- [ ] Existing shortcut parsing may remain temporarily, but execution must enter through the registry.
-- [ ] Add command-enabled-state tests.
-- [ ] Generate or maintain `docs/commands.md` from command definitions.
+- [x] Define stable `CommandID` values. *(`Sources/MaruEditCore/Commands/CommandID.swift` — a plain `Foundation`-only `RawRepresentable`/`Codable`/`Hashable` wrapper, per §9.5. The 10 concrete IDs — `file.new`, `file.open`, `file.openFolder`, `file.save`, `file.saveAs`, `file.closeTab`, `search.find`, `search.goToLine`, `search.quickOpen`, `view.toggleSidebar` — are declared in `AppCommands.swift`.)*
+- [x] Register existing New, Open, Save, Close, Find, Replace, and related commands. *(All 10 static app-level menu commands registered in `AppCommands.registerAll`. "Replace" has no menu item of its own yet — it's a Find-bar action, not a menu command — so there's nothing to register for it.)*
+- [x] Route menus through the registry. *(File/Find/View menu items are now built by `AppDelegate.commandItem(_:_:)`, which reads the title from the registry and dispatches through a single `performCommand(_:)` action + `validateMenuItem(_:)`, rather than one `@objc` method per command. The now-dead per-command `@objc doXxx()` methods were removed.)*
+- [x] Existing shortcut parsing may remain temporarily, but execution must enter through the registry. *(True for every menu item. One exception, called out explicitly rather than hidden: the global Cmd+P `NSEvent` monitor in `MainWindowController` still calls `showQuickOpen()` directly, since `MainWindowController` has no back-reference to `AppCoordinator`/the registry. Documented in `docs/commands.md`; deferred to M1-05's `KeyBindingManager`, which will replace that ad-hoc monitor outright.)*
+- [x] Add command-enabled-state tests. *(`CommandRegistryTests`: enabled commands run, disabled commands never run even if `execute` is called directly, unregistered IDs are a safe no-op, and all 10 real app commands are confirmed enabled by default.)*
+- [x] Generate or maintain `docs/commands.md` from command definitions. *(Hand-maintained for now — 10 rows doesn't yet justify a generator script; noted in the doc itself as the trigger for adding one.)*
+
+**Deviations from §7's target file layout (recorded here per §9's "material deviations require an ADR" allowance for this section):**
+1. `CommandDefinition`, `CommandContext`, and `CommandRegistry` live in `Sources/MaruEditApp/Commands/`, not `Sources/MaruEditCore/Commands/` as sketched in section 7. `CommandContext` needs to resolve the active window/document/editor, which are still AppKit/App-tier types with no Core-level abstraction (`Document` stays in `MaruEditApp` per ADR-005) — moving it to Core now would mean either an empty/premature protocol or duplicating AppKit-shaped concepts in Core. Only `CommandID` (genuinely pure) moved to Core. Revisit once Core grows real Document/Editor abstractions.
+2. `CommandDefinition.execute`/`isEnabled` are plain synchronous closures, not `@MainActor (CommandContext) async throws -> Void` as sketched in §9.5. Nothing today needs async or throwing commands, and introducing `@MainActor` isolation here would be the first use of Swift concurrency anywhere in the codebase for no present benefit. Revisit when macros (M6) need async execution.
+3. `titleKey`/localization and `defaultKeyBindings: [KeyBinding]` are omitted — no localization infrastructure or `KeyBinding` JSON schema exists yet (that's M5). `CommandDefinition.title` is a plain `String` for now.
 
 **Acceptance:** At least 90% of existing menu actions execute through the Command Registry.
 

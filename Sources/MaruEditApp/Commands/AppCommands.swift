@@ -1,0 +1,56 @@
+import MaruEditCore
+
+/// Stable command identifiers for MaruEdit's static, app-level menu
+/// commands. Naming follows the `domain.action` convention from
+/// ROADMAP.md ADR-006 (`file.new`, `search.find`, ...).
+extension CommandID {
+    static let fileNew          = CommandID("file.new")
+    static let fileOpen         = CommandID("file.open")
+    static let fileOpenFolder   = CommandID("file.openFolder")
+    static let fileSave         = CommandID("file.save")
+    static let fileSaveAs       = CommandID("file.saveAs")
+    static let fileCloseTab     = CommandID("file.closeTab")
+    static let searchFind       = CommandID("search.find")
+    static let searchGoToLine   = CommandID("search.goToLine")
+    static let searchQuickOpen  = CommandID("search.quickOpen")
+    static let viewToggleSidebar = CommandID("view.toggleSidebar")
+}
+
+/// The command definitions for MaruEdit's current static menu actions.
+/// Each one is a thin wrapper around the equivalent `AppCoordinator`
+/// method — the same method the menu called directly before M1-03,
+/// unchanged in behavior, just invoked through the registry now.
+enum AppCommands {
+    static func registerAll(in registry: CommandRegistry) {
+        registry.register(CommandDefinition(id: .fileNew, title: "New File") { ctx in
+            ctx.coordinator.newDocument()
+        })
+        registry.register(CommandDefinition(id: .fileOpen, title: "Open...") { ctx in
+            ctx.coordinator.openDocument()
+        })
+        registry.register(CommandDefinition(id: .fileOpenFolder, title: "Open Folder...") { ctx in
+            ctx.coordinator.openFolderPanel()
+        })
+        registry.register(CommandDefinition(id: .fileSave, title: "Save") { ctx in
+            ctx.coordinator.saveDocument()
+        })
+        registry.register(CommandDefinition(id: .fileSaveAs, title: "Save As...") { ctx in
+            ctx.coordinator.saveDocumentAs()
+        })
+        registry.register(CommandDefinition(id: .fileCloseTab, title: "Close Tab") { ctx in
+            ctx.coordinator.closeCurrentTab()
+        })
+        registry.register(CommandDefinition(id: .searchFind, title: "Find...") { ctx in
+            ctx.coordinator.showFind()
+        })
+        registry.register(CommandDefinition(id: .searchGoToLine, title: "Go to Line...") { ctx in
+            ctx.coordinator.showGoToLine()
+        })
+        registry.register(CommandDefinition(id: .searchQuickOpen, title: "Quick Open...") { ctx in
+            ctx.coordinator.showQuickOpen()
+        })
+        registry.register(CommandDefinition(id: .viewToggleSidebar, title: "Toggle Sidebar") { ctx in
+            ctx.coordinator.toggleSidebar()
+        })
+    }
+}
