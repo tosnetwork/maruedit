@@ -32,6 +32,8 @@ final class MainWindowController: NSWindowController,
     private var outputPane: OutputPaneView?
     private var lastGrepRequest: GrepRequest?
     private var grepCancellation: CancellationToken?
+    private var grepReplaceCancellation: CancellationToken?
+    private var grepReplacePreview: GrepReplacePreviewWindowController?
     var externalCommandCancellation: ExternalCommandCancellation?
     /// Grep reads and decodes every file it visits, so it never runs on
     /// the main thread (ROADMAP.md M3-04, "No main-actor traversal").
@@ -745,6 +747,13 @@ final class MainWindowController: NSWindowController,
         runGrep(request)
     }
 
+    func grepPanel(_ panel: GrepPanel, didRequestReplace request: GrepRequest, replacement: String) {
+        window?.endSheet(panel.window)
+        searchHistoryStore.record(request.query.pattern, in: .grep, state: &searchHistory)
+        syncSearchHistoryUI()
+        runGrepReplacePreview(request: request, replacement: replacement)
+    }
+
     func grepPanelDidCancel(_ panel: GrepPanel) {
         window?.endSheet(panel.window)
     }
@@ -781,6 +790,68 @@ final class MainWindowController: NSWindowController,
                     guard let self = self, self.grepCancellation === token else { return }
                     self.handle(event)
                 }
+            }
+        }
+    }
+
+    private func runGrepReplacePreview(request: GrepRequest, replacement: String) {
+        grepReplaceCancellation?.cancel()
+        let token = CancellationToken(); grepReplaceCancellation = token
+        beginOutputOperation("Building Grep Replace preview…")
+        grepQueue.async { [weak self] in
+            let result = Result { try GrepReplaceService.scan(
+                request: request, replacement: replacement, isCancelled: { token.isCancelled }) }
+            DispatchQueue.main.async {
+                guard let self, self.grepReplaceCancellation === token else { return }
+                self.grepReplaceCancellation = nil
+                switch result {
+                case .failure(let error):
+                    self.outputPane?.appendSystem(error.localizedDescription, severity: .error)
+                    self.outputPane?.finishOperation("Grep Replace preview failed.")
+                case .success(let set):
+                    guard !set.wasCancelled else {
+                        self.outputPane?.finishOperation("Grep Replace scan cancelled."); return
+                    }
+                    self.outputPane?.appendSystem(
+                        "Preview: \(set.selectedFileCount) files, \(set.selectedMatchCount) replacements.")
+                    self.outputPane?.finishOperation("Grep Replace preview ready.")
+                    let preview = GrepReplacePreviewWindowController(changeSet: set)
+                    preview.onCancel = { [weak self, weak preview] in
+                        if let sheet = preview?.window { self?.window?.endSheet(sheet) }
+                        self?.grepReplacePreview = nil
+                    }
+                    preview.onApply = { [weak self, weak preview] selected in
+                        guard let self else { return }
+                        if let sheet = preview?.window { self.window?.endSheet(sheet) }
+                        self.grepReplacePreview = nil
+                        self.applyGrepReplace(selected)
+                    }
+                    self.grepReplacePreview = preview
+                    if let sheet = preview.window { self.window?.beginSheet(sheet) }
+                }
+            }
+        }
+    }
+
+    private func applyGrepReplace(_ set: GrepReplaceChangeSet) {
+        let token = CancellationToken(); grepReplaceCancellation = token
+        beginOutputOperation("Applying Grep Replace…")
+        grepQueue.async { [weak self] in
+            let summary = GrepReplaceService.apply(set, isCancelled: { token.isCancelled })
+            DispatchQueue.main.async {
+                guard let self, self.grepReplaceCancellation === token else { return }
+                self.grepReplaceCancellation = nil
+                self.outputPane?.appendSystem(
+                    "Grep Replace: \(summary.writtenFiles) written, \(summary.failedFiles) not written.",
+                    severity: summary.failedFiles == 0 ? .info : .warning)
+                self.outputPane?.appendSystem("Recovery: \(summary.transactionDirectory.path)")
+                for (url, result) in summary.results where {
+                    if case .written = result { return false }; return true
+                }() {
+                    self.outputPane?.appendSystem("\(url.path): \(result)", severity: .error)
+                }
+                self.outputPane?.finishOperation(summary.wasCancelled
+                    ? "Grep Replace cancelled with partial results." : "Grep Replace finished.")
             }
         }
     }
@@ -845,6 +916,9 @@ final class MainWindowController: NSWindowController,
     func showOutputPane() {
         ensureOutputPane().show(); layoutContentViews()
     }
+    private func beginOutputOperation(_ title: String) {
+        let pane = ensureOutputPane(); pane.beginOperation(title); layoutContentViews()
+    }
     var outputTextForTesting: String { outputPane?.resultsText ?? "" }
 
     // MARK: - OutputPaneViewDelegate
@@ -885,6 +959,7 @@ final class MainWindowController: NSWindowController,
 
     func outputPaneDidRequestCancel(_ pane: OutputPaneView) {
         grepCancellation?.cancel()
+        grepReplaceCancellation?.cancel()
         externalCommandCancellation?.cancel()
     }
 

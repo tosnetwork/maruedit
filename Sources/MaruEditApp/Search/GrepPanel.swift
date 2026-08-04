@@ -3,6 +3,7 @@ import MaruEditCore
 
 protocol GrepPanelDelegate: AnyObject {
     func grepPanel(_ panel: GrepPanel, didSubmit request: GrepRequest)
+    func grepPanel(_ panel: GrepPanel, didRequestReplace request: GrepRequest, replacement: String)
     func grepPanelDidCancel(_ panel: GrepPanel)
     /// The panel needs a folder chosen; the host owns the open panel so
     /// this stays free of file-picker presentation.
@@ -18,6 +19,7 @@ final class GrepPanel: NSObject, NSTextFieldDelegate {
     let window: NSWindow
 
     let patternField = NSTextField()
+    let replacementField = NSTextField()
     private let folderField = NSTextField()
     private let includeField = NSTextField()
     private let excludeField = NSTextField()
@@ -30,7 +32,7 @@ final class GrepPanel: NSObject, NSTextFieldDelegate {
 
     override init() {
         window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: 300),
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 340),
             styleMask: [.titled], backing: .buffered, defer: true
         )
         super.init()
@@ -60,6 +62,7 @@ final class GrepPanel: NSObject, NSTextFieldDelegate {
         chooseButton.setAccessibilityLabel("Choose search folder")
         let searchButton = NSButton(title: "Search", target: self, action: #selector(submit))
         searchButton.keyEquivalent = "\r"
+        let replaceButton = NSButton(title: "Preview Replace…", target: self, action: #selector(previewReplace))
         let cancelButton = NSButton(title: "Cancel", target: self, action: #selector(cancel))
         cancelButton.keyEquivalent = "\u{1b}"
 
@@ -75,6 +78,7 @@ final class GrepPanel: NSObject, NSTextFieldDelegate {
 
         let grid = NSGridView(views: [
             [label("Find:"), input(patternField, "Text or pattern", "Search pattern")],
+            [label("Replace:"), input(replacementField, "Replacement text", "Replacement text")],
             [label("In:"), folderRow],
             [label("Include:"), input(includeField, "*.swift, *.txt (optional)", "Include file patterns")],
             [label("Exclude:"), input(excludeField, ".build, node_modules (optional)", "Exclude file patterns")],
@@ -83,7 +87,7 @@ final class GrepPanel: NSObject, NSTextFieldDelegate {
         grid.translatesAutoresizingMaskIntoConstraints = false
         grid.column(at: 1).width = 380
 
-        let buttons = NSStackView(views: [cancelButton, searchButton])
+        let buttons = NSStackView(views: [cancelButton, replaceButton, searchButton])
         buttons.orientation = .horizontal
         buttons.translatesAutoresizingMaskIntoConstraints = false
 
@@ -154,6 +158,12 @@ final class GrepPanel: NSObject, NSTextFieldDelegate {
     @objc private func submit() {
         guard let request = currentRequest else { return }
         delegate?.grepPanel(self, didSubmit: request)
+    }
+
+    @objc private func previewReplace() {
+        guard let request = currentRequest else { return }
+        let replacement = replacementField.currentEditor()?.string ?? replacementField.stringValue
+        delegate?.grepPanel(self, didRequestReplace: request, replacement: replacement)
     }
 
     @objc private func cancel() {

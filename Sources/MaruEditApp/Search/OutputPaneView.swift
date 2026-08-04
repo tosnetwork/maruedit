@@ -176,6 +176,23 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         tableView.reloadData()
     }
 
+    func beginOperation(_ title: String) {
+        contentMode = .externalCommand; matches = []; grepRows = []; externalLines = []
+        externalPending = [:]; outputBuffer.clear(); isRunning = true
+        rerunButton.isHidden = true; cancelButton.isHidden = false
+        statusLabel.stringValue = title; tableView.reloadData()
+    }
+
+    func appendSystem(_ message: String, severity: OutputSeverity = .info) {
+        outputBuffer.append(message, channel: .system, severity: severity,
+                            location: OutputLocationParser.parse(message))
+        externalLines = outputBuffer.entries.map(Self.formatted); tableView.reloadData()
+    }
+
+    func finishOperation(_ title: String) {
+        isRunning = false; cancelButton.isHidden = true; statusLabel.stringValue = title
+    }
+
     func appendExternal(_ data: Data, isError: Bool) {
         var pending = externalPending[isError, default: Data()]
         pending.append(data)

@@ -1999,15 +1999,15 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 
 ## M6-07: Grep Replace Preview
 
-- [ ] Scan and build a change set.
-- [ ] Group changes by file.
-- [ ] Show before/after previews.
-- [ ] Allow selecting or deselecting files and matches.
-- [ ] Recheck external modification before writing.
-- [ ] Save atomically.
-- [ ] Create backups or a transaction log.
-- [ ] Summarize cancellation and partial failures.
-- [ ] Test write-back across multiple encodings.
+- [x] Scan and build a change set. *(`GrepReplaceService.scan` compiles once, traverses off the UI thread, and captures value-only matches without writing.)*
+- [x] Group changes by file. *(`GrepReplaceChangeSet` owns sorted `GrepReplaceFileChange` groups with original metadata and match counts.)*
+- [x] Show before/after previews. *(`GrepReplacePreviewWindowController` presents side-by-side full-file before/after panes.)*
+- [x] Allow selecting or deselecting files and matches. *(File and match checkboxes recompute the preview and selected totals; App tests exercise both levels.)*
+- [x] Recheck external modification before writing. *(Apply compares the complete current bytes with the scan snapshot immediately before each file and reports conflicts without overwriting.)*
+- [x] Save atomically. *(`TextFileSaver` atomically replaces each verified file and restores its POSIX permissions.)*
+- [x] Create backups or a transaction log. *(Original bytes are atomically backed up and `transaction.json` is atomically updated with the source mapping before destination replacement.)*
+- [x] Summarize cancellation and partial failures. *(The shared Output Pane Stop action cancels scan/apply and reports written, conflict, encoding, write, and cancelled results plus the recovery directory.)*
+- [x] Test write-back across multiple encodings. *(`GrepReplaceServiceTests` writes UTF-8/CRLF and Windows-31J files, preserves their formats, and rejects an unrepresentable emoji.)*
 
 ## M6-08: Experimental Macro Compatibility Layer
 
