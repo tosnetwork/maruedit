@@ -51,6 +51,11 @@ final class AppCoordinator {
     func showQuickOpen()               { ensureWindowControllerReady().showQuickOpen() }
     func showGrep()                    { ensureWindowControllerReady().showGrep() }
     func clearSearchHistory()          { ensureWindowControllerReady().clearSearchHistory() }
+    func addCursorAbove()              { ensureWindowControllerReady().addCursorAbove() }
+    func addCursorBelow()              { ensureWindowControllerReady().addCursorBelow() }
+    func selectNextOccurrence()        { ensureWindowControllerReady().selectNextOccurrence() }
+    func selectAllOccurrences()        { ensureWindowControllerReady().selectAllOccurrences() }
+    func undoLastAddedCursor()         { ensureWindowControllerReady().undoLastAddedCursor() }
     func toggleSidebar()               { ensureWindowControllerReady().toggleSidebar() }
     func clearRecoveryData()           { ensureWindowControllerReady().clearRecoveryData() }
 

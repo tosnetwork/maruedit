@@ -21,6 +21,11 @@ extension CommandID {
     static let searchGrep       = CommandID("search.grep")
     static let searchClearHistory = CommandID("search.clearHistory")
     static let viewToggleSidebar = CommandID("view.toggleSidebar")
+    static let editAddCursorAbove = CommandID("edit.addCursorAbove")
+    static let editAddCursorBelow = CommandID("edit.addCursorBelow")
+    static let editSelectNextOccurrence = CommandID("edit.selectNextOccurrence")
+    static let editSelectAllOccurrences = CommandID("edit.selectAllOccurrences")
+    static let editUndoLastAddedCursor = CommandID("edit.undoLastAddedCursor")
 }
 
 /// The command definitions for MaruEdit's current static menu actions.
@@ -80,5 +85,10 @@ enum AppCommands {
         registry.register(CommandDefinition(id: .viewToggleSidebar, title: "Toggle Sidebar") { ctx in
             ctx.coordinator.toggleSidebar()
         })
+        registry.register(CommandDefinition(id: .editAddCursorAbove, title: "Add Cursor Above") { $0.coordinator.addCursorAbove() })
+        registry.register(CommandDefinition(id: .editAddCursorBelow, title: "Add Cursor Below") { $0.coordinator.addCursorBelow() })
+        registry.register(CommandDefinition(id: .editSelectNextOccurrence, title: "Select Next Occurrence") { $0.coordinator.selectNextOccurrence() })
+        registry.register(CommandDefinition(id: .editSelectAllOccurrences, title: "Select All Occurrences") { $0.coordinator.selectAllOccurrences() })
+        registry.register(CommandDefinition(id: .editUndoLastAddedCursor, title: "Undo Last Added Cursor") { $0.coordinator.undoLastAddedCursor() })
     }
 }

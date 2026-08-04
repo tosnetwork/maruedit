@@ -33,6 +33,11 @@ significantly, replace this with a small script that generates it from
 | `search.grep` | Find in Folder... | Find | ⇧⌘F | `AppCoordinator.showGrep()` |
 | `search.clearHistory` | Clear Search History | Find | — | `AppCoordinator.clearSearchHistory()` |
 | `view.toggleSidebar` | Toggle Sidebar | View | ⌘B | `AppCoordinator.toggleSidebar()` |
+| `edit.addCursorAbove` | Add Cursor Above | Edit | ⌥⌘↑ | `AppCoordinator.addCursorAbove()` |
+| `edit.addCursorBelow` | Add Cursor Below | Edit | ⌥⌘↓ | `AppCoordinator.addCursorBelow()` |
+| `edit.selectNextOccurrence` | Select Next Occurrence | Edit | ⌘D | `AppCoordinator.selectNextOccurrence()` |
+| `edit.selectAllOccurrences` | Select All Occurrences | Edit | ⇧⌘L | `AppCoordinator.selectAllOccurrences()` |
+| `edit.undoLastAddedCursor` | Undo Last Added Cursor | Edit | ⌘U | `AppCoordinator.undoLastAddedCursor()` |
 
 All of them are enabled unconditionally right now (`isEnabled` always
 returns `true`) — the app has no state yet where one of them shouldn't be

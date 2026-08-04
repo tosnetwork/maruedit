@@ -1752,13 +1752,13 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M4-02: Multi-Cursor Creation and Navigation
 
-- [ ] Add Cursor Above/Below.
-- [ ] Add Next Occurrence.
-- [ ] Select All Occurrences.
-- [ ] Undo Last Added Cursor.
-- [ ] Escape collapses to the primary selection.
-- [ ] Add stable Command IDs and default shortcuts.
-- [ ] Test selection preservation.
+- [x] Add Cursor Above/Below. *(`addCursorAbove`/`addCursorBelow` preserve the primary selection's UTF-16 column and clamp on shorter adjacent lines.)*
+- [x] Add Next Occurrence. *(`selectNextOccurrence` uses the shared literal `SearchEngine`, skips already-selected matches, and wraps.)*
+- [x] Select All Occurrences. *(The existing prototype now writes exclusively through `SelectionSet` and preserves the selection that initiated the command as primary.)*
+- [x] Undo Last Added Cursor. *(`selectionHistory` stores selection snapshots per editor; `undoLastAddedCursor` restores the most recent snapshot without touching document Undo.)*
+- [x] Escape collapses to the primary selection. *(`exitMultiEdit` retains exactly `selectionSet.primaryRange` and clears cursor-addition history.)*
+- [x] Add stable Command IDs and default shortcuts. *(`edit.addCursorAbove` ⌥⌘↑, `edit.addCursorBelow` ⌥⌘↓, `edit.selectNextOccurrence` ⌘D, `edit.selectAllOccurrences` ⇧⌘L, and `edit.undoLastAddedCursor` ⌘U; all registered, menu-routed, documented, and covered by Command Registry tests.)*
+- [x] Test selection preservation. *(`SelectionSetTests` covers vertical column clamping, primary preservation, next occurrence plus undo, Select All plus Escape, document switching, and editor isolation.)*
 
 ## M4-03: Multi-Selection Editing and Undo
 

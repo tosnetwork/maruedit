@@ -1065,6 +1065,12 @@ final class MainWindowController: NSWindowController,
         syncSearchHistoryUI()
     }
 
+    func addCursorAbove() { editorVC.addCursorAbove() }
+    func addCursorBelow() { editorVC.addCursorBelow() }
+    func selectNextOccurrence() { editorVC.selectNextOccurrence() }
+    func selectAllOccurrences() { editorVC.selectAllOccurrences() }
+    func undoLastAddedCursor() { editorVC.undoLastAddedCursor() }
+
     // MARK: - Session persistence
     //
     // Backed by `SessionStore` (a JSON file under Application Support),

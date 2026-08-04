@@ -76,4 +76,41 @@ final class SelectionSetTests: XCTestCase {
         XCTAssertEqual(editor.selectionSet.ranges, [NSRange(location: 6, length: 0)])
         XCTAssertEqual(editor.textView.selectedRange(), NSRange(location: 6, length: 0))
     }
+
+    func testCursorBelowPreservesColumnAndClampsToShortLine() {
+        let editor = EditorViewController()
+        editor.loadView()
+        editor.textView.string = "abc\nx\nabcdef"
+        editor.setSelections([NSRange(location: 2, length: 0)])
+        editor.addCursorBelow()
+        XCTAssertEqual(editor.selectionSet.ranges, [
+            NSRange(location: 2, length: 0), NSRange(location: 5, length: 0),
+        ])
+        XCTAssertEqual(editor.selectionSet.primaryRange, NSRange(location: 2, length: 0))
+    }
+
+    func testSelectNextOccurrenceAndUndoLastAddedCursor() {
+        let editor = EditorViewController()
+        editor.loadView()
+        editor.textView.string = "foo foo foo"
+        editor.setSelections([NSRange(location: 0, length: 3)])
+        editor.selectNextOccurrence()
+        XCTAssertEqual(editor.selectionSet.ranges, [
+            NSRange(location: 0, length: 3), NSRange(location: 4, length: 3),
+        ])
+        editor.undoLastAddedCursor()
+        XCTAssertEqual(editor.selectionSet.ranges, [NSRange(location: 0, length: 3)])
+    }
+
+    func testSelectAllOccurrencesAndEscapeCollapseToPrimary() {
+        let editor = EditorViewController()
+        editor.loadView()
+        editor.textView.string = "foo foo foo"
+        editor.setSelections([NSRange(location: 4, length: 3)], primaryRange: NSRange(location: 4, length: 3))
+        editor.selectAllOccurrences()
+        XCTAssertEqual(editor.selectionSet.ranges.count, 3)
+        XCTAssertEqual(editor.selectionSet.primaryRange, NSRange(location: 4, length: 3))
+        editor.exitMultiEdit()
+        XCTAssertEqual(editor.selectionSet.ranges, [NSRange(location: 4, length: 3)])
+    }
 }

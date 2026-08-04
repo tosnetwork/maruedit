@@ -166,7 +166,7 @@ extension EditorViewController {
 
 extension EditorViewController {
 
-    fileprivate func selectAllOccurrences() {
+    func selectAllOccurrences() {
         let sel = textView.selectedRange()
         guard sel.length > 0 else { return }
 
@@ -184,12 +184,11 @@ extension EditorViewController {
         }
 
         guard !ranges.isEmpty else { return }
-        textView.setSelectedRanges(ranges, affinity: .downstream, stillSelecting: false)
-        selectionSet.update(ranges: ranges.map(\.rangeValue), primaryRange: sel)
+        selectionHistory.append(selectionSet.ranges)
+        setSelections(ranges.map(\.rangeValue), primaryRange: sel)
 
         if ranges.count > 1 {
             isMultiEditActive = true
-            multiEditCursorRanges = ranges.map { $0.rangeValue }
         }
     }
 }
@@ -223,8 +222,9 @@ extension EditorViewController {
         return false
     }
 
-    fileprivate func exitMultiEdit() {
+    func exitMultiEdit() {
         isMultiEditActive = false
+        selectionHistory.removeAll()
         setSelections([selectionSet.primaryRange], primaryRange: selectionSet.primaryRange)
     }
 }

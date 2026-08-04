@@ -77,6 +77,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         editMenu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
         editMenu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
         editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editMenu.addItem(.separator())
+        editMenu.addItem(commandItem(.editAddCursorAbove, "\u{F700}", modifiers: [.command, .option]))
+        editMenu.addItem(commandItem(.editAddCursorBelow, "\u{F701}", modifiers: [.command, .option]))
+        editMenu.addItem(commandItem(.editSelectNextOccurrence, "d"))
+        editMenu.addItem(commandItem(.editSelectAllOccurrences, "l", modifiers: [.command, .shift]))
+        editMenu.addItem(commandItem(.editUndoLastAddedCursor, "u"))
         editItem.submenu = editMenu
         main.addItem(editItem)
 

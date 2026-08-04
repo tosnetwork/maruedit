@@ -35,6 +35,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     /// editor is deallocated instead of leaking in a module-level map.
     var isMultiEditActive = false
     let selectionSet = SelectionSet()
+    var selectionHistory: [[NSRange]] = []
 
     /// Compatibility access for the M1 prototype. M4-02/M4-03 remove the
     /// remaining direct uses as commands and editing move to SelectionSet.
