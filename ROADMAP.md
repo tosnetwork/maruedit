@@ -1936,13 +1936,13 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 
 ## M6-01: MacroEngine Foundation
 
-- [ ] Integrate JavaScriptCore.
-- [ ] Use a controlled context for each run.
-- [ ] Expose an API version.
-- [ ] Report errors and stacks.
-- [ ] Define cancellation and timeout behavior.
-- [ ] Expose no arbitrary Objective-C objects.
-- [ ] Unit-test pure text APIs.
+- [x] Integrate JavaScriptCore. *(`MaruEditCore` links Apple's JavaScriptCore framework and `MacroEngine` evaluates scripts off the calling thread.)*
+- [x] Use a controlled context for each run. *(Every execution creates a fresh `JSVirtualMachine` and `JSContext`; the isolation test proves globals cannot leak between runs.)*
+- [x] Expose an API version. *(`MacroEngine.apiVersion` and the immutable JavaScript value `maru.apiVersion` are both version 1.)*
+- [x] Report errors and stacks. *(`MacroJavaScriptError` captures message, stack, line, and column from JavaScriptCore; the throwing-function test verifies the stack.)*
+- [x] Define cancellation and timeout behavior. *(Runs check a lock-protected token and monotonic deadline before execution, at every host boundary, and after return; cooperative limitations of the public in-process JavaScriptCore API are explicit in `docs/macro-engine.md`.)*
+- [x] Expose no arbitrary Objective-C objects. *(Only private native function blocks are installed for bootstrap, captured behind frozen `maru` functions, and removed from the global object; no app/document/file/network object is exposed.)*
+- [x] Unit-test pure text APIs. *(`MacroEngineTests` covers uppercase, lowercase, trimming, line-ending normalization, isolation, errors, finite timeout, queued and running cancellation.)*
 
 ## M6-02: Macro Command Bridge
 

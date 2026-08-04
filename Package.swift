@@ -7,7 +7,8 @@ let package = Package(
     targets: [
         .target(
             name: "MaruEditCore",
-            path: "Sources/MaruEditCore"
+            path: "Sources/MaruEditCore",
+            linkerSettings: [.linkedFramework("JavaScriptCore")]
         ),
         .executableTarget(
             name: "MaruEditApp",
