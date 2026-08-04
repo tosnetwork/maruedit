@@ -136,9 +136,17 @@ public final class MacroEngine: @unchecked Sendable {
             let fulfill: @convention(block) (JSValue) -> Void = { resolved = $0 }
             let reject: @convention(block) (JSValue) -> Void = { rejected = $0 }
             promise.invokeMethod("then", withArguments: [fulfill, reject])
-            // JavaScriptCore drains jobs created by the immediately resolved
-            // host promise before this no-op evaluation returns.
-            context.evaluateScript("void 0")
+            // Newer JavaScriptCore drains immediately-resolved jobs before a
+            // no-op evaluation returns. macOS 14 may defer the Objective-C
+            // callback to this thread's run loop, so pump both mechanisms for
+            // a short, bounded period. Macro execution already owns this
+            // private serial queue; no UI run loop is involved.
+            let promiseDeadline = Date().addingTimeInterval(0.05)
+            repeat {
+                context.evaluateScript("void 0")
+                if resolved != nil || rejected != nil { break }
+                _ = RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.001))
+            } while Date() < promiseDeadline
             if let rejected { capturedException = rejected }
             value = resolved
         }

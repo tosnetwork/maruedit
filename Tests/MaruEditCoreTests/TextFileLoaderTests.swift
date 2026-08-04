@@ -114,13 +114,14 @@ final class TextFileLoaderTests: XCTestCase {
     }
 
     func testForcingWrongEncodingThrowsRatherThanReturningGarbage() throws {
-        // UTF-16LE-encoded Japanese text necessarily contains many bytes
-        // >= 0x80, which ASCII (every byte must be < 0x80) cannot decode.
-        guard let data = japaneseSample.data(using: .utf16LittleEndian) else { return XCTFail("setup") }
+        // Invalid UTF-8 is rejected consistently across Foundation versions.
+        // (Older macOS releases differ in how permissively `.ascii` decodes
+        // UTF-16 bytes, so that pairing was not a portable contract.)
+        let data = Data([0xF0, 0x28, 0x8C, 0x28])
         let url = try tempFile(named: "wrong.txt", contents: data)
         defer { try? FileManager.default.removeItem(at: url) }
 
-        XCTAssertThrowsError(try TextFileLoader.load(contentsOf: url, forcing: .ascii)) { error in
+        XCTAssertThrowsError(try TextFileLoader.load(contentsOf: url, forcing: .utf8)) { error in
             guard case TextFileLoaderError.couldNotDecodeWithEncoding = error else {
                 return XCTFail("expected couldNotDecodeWithEncoding, got \(error)")
             }
