@@ -10,10 +10,11 @@ protocol StatusBarViewDelegate: AnyObject {
 final class StatusBarView: NSView {
     weak var delegate: StatusBarViewDelegate?
 
-    private let lineColLabel = NSTextField(labelWithString: "Ln 1, Col 1")
-    private let langLabel    = NSTextField(labelWithString: "Plain Text")
-    private let encLabel     = NSTextField(labelWithString: "UTF-8")
-    private let indentLabel  = NSTextField(labelWithString: "Spaces: 4")
+    private let lineColLabel     = NSTextField(labelWithString: "Ln 1, Col 1")
+    private let langLabel        = NSTextField(labelWithString: "Plain Text")
+    private let encLabel         = NSTextField(labelWithString: "UTF-8")
+    private let lineEndingLabel  = NSTextField(labelWithString: "LF")
+    private let indentLabel      = NSTextField(labelWithString: "Spaces: 4")
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -35,11 +36,13 @@ final class StatusBarView: NSView {
         langLabel.frame.origin = NSPoint(x: bounds.width - 14 - langLabel.frame.width, y: midY)
         encLabel.sizeToFit()
         encLabel.frame.origin = NSPoint(x: langLabel.frame.minX - 20 - encLabel.frame.width, y: midY)
+        lineEndingLabel.sizeToFit()
+        lineEndingLabel.frame.origin = NSPoint(x: encLabel.frame.minX - 16 - lineEndingLabel.frame.width, y: midY)
         window?.invalidateCursorRects(for: self)
     }
 
     private func setup() {
-        let labels = [lineColLabel, langLabel, encLabel, indentLabel]
+        let labels = [lineColLabel, langLabel, encLabel, lineEndingLabel, indentLabel]
         for l in labels {
             l.font = Theme.uiFontSmall
             l.textColor = Theme.statusText
@@ -64,6 +67,11 @@ final class StatusBarView: NSView {
 
     func updateEncoding(_ encoding: TextEncoding) {
         encLabel.stringValue = encoding.displayName
+        needsLayout = true
+    }
+
+    func updateLineEnding(_ state: LineEndingState) {
+        lineEndingLabel.stringValue = state.displayName
         needsLayout = true
     }
 

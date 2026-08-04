@@ -12,6 +12,12 @@ final class Document {
     /// why M2-01's TextFileLoader wasn't wired in without this.
     var encoding: TextEncoding = .utf8
     var hasByteOrderMark: Bool = false
+    /// The line-ending style this document was loaded with. `content`
+    /// itself always uses `\n` only internally (ROADMAP.md section 10.3)
+    /// regardless of this value — `save()` re-applies it on write. A new,
+    /// never-saved document defaults to `.lf`, matching this app's
+    /// existing native behavior.
+    var lineEnding: LineEndingState = .lf
     var cursorPosition: Int = 0
     var scrollOffset: NSPoint = .zero
     var cachedTextStorage: NSTextStorage?
@@ -38,9 +44,14 @@ final class Document {
 
     static func open(url: URL) throws -> Document {
         let loaded = try TextFileLoader.load(contentsOf: url)
-        let doc = Document(fileURL: url, content: loaded.content, language: Language.detect(for: url))
+        let doc = Document(
+            fileURL: url,
+            content: LineEndingDetector.normalize(loaded.content),
+            language: Language.detect(for: url)
+        )
         doc.encoding = loaded.encoding
         doc.hasByteOrderMark = loaded.hasByteOrderMark
+        doc.lineEnding = LineEndingDetector.detect(loaded.content)
         return doc
     }
 
@@ -51,9 +62,10 @@ final class Document {
     func reopen(forcing encoding: TextEncoding) throws {
         guard let url = fileURL else { return }
         let loaded = try TextFileLoader.load(contentsOf: url, forcing: encoding)
-        content = loaded.content
+        content = LineEndingDetector.normalize(loaded.content)
         self.encoding = loaded.encoding
         hasByteOrderMark = loaded.hasByteOrderMark
+        lineEnding = LineEndingDetector.detect(loaded.content)
         cursorPosition = 0
         scrollOffset = .zero
         cachedTextStorage = nil
@@ -62,9 +74,25 @@ final class Document {
 
     func save() throws {
         guard let url = fileURL else { return }
-        guard let foundationEncoding = encoding.foundationEncoding,
-              let encoded = content.data(using: foundationEncoding)
-        else {
+        guard let foundationEncoding = encoding.foundationEncoding else {
+            throw DocumentSaveError.unrepresentable(encoding: encoding)
+        }
+        // `.mixed`/`.none` fall back to LF: callers that care about an
+        // informed choice for a mixed-ending file (MainWindowController's
+        // save flow) are expected to resolve `lineEnding` to a concrete
+        // kind before calling save() — see ROADMAP.md M2-03. This is a
+        // safe default, not a silent-corruption risk, since it only
+        // changes which separator bytes are written, never document text.
+        let targetKind: LineEndingKind
+        switch lineEnding {
+        case .lf: targetKind = .lf
+        case .crlf: targetKind = .crlf
+        case .cr: targetKind = .cr
+        case .mixed, .none: targetKind = .lf
+        }
+        let outputText = LineEndingDetector.applying(targetKind, to: content)
+
+        guard let encoded = outputText.data(using: foundationEncoding) else {
             throw DocumentSaveError.unrepresentable(encoding: encoding)
         }
         let data = (hasByteOrderMark ? (encoding.byteOrderMark ?? Data()) : Data()) + encoded

@@ -13,6 +13,7 @@ final class DocumentTests: XCTestCase {
         XCTAssertEqual(doc.language, .plainText)
         XCTAssertEqual(doc.encoding, .utf8)
         XCTAssertFalse(doc.hasByteOrderMark)
+        XCTAssertEqual(doc.lineEnding, .lf)
     }
 
     func testMarkModifiedAndSaved() {
@@ -138,5 +139,94 @@ final class DocumentTests: XCTestCase {
         XCTAssertEqual(doc.encoding, .eucJP)
         XCTAssertFalse(doc.isModified)
         XCTAssertEqual(doc.cursorPosition, 0)
+    }
+
+    // MARK: - Line endings (M2-03)
+    //
+    // Like the encoding tests above, these read raw bytes back off disk
+    // after save() — proving the file itself round-trips, not just that
+    // in-memory content parses back correctly.
+
+    private func write(_ bytes: [UInt8]) throws -> URL {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MaruEditDocumentTests-\(UUID().uuidString).txt")
+        try Data(bytes).write(to: url)
+        return url
+    }
+
+    func testOpeningNormalizesContentToLFInMemory() throws {
+        let url = try write(Array("a\r\nb\r\nc\r\n".utf8))
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let doc = try Document.open(url: url)
+        XCTAssertEqual(doc.content, "a\nb\nc\n", "in-memory content must always be \\n-normalized")
+        XCTAssertEqual(doc.lineEnding, .crlf)
+    }
+
+    func testUnmodifiedCRLFFileStaysCRLFAfterSave() throws {
+        let originalBytes = Array("a\r\nb\r\nc\r\n".utf8)
+        let url = try write(originalBytes)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let doc = try Document.open(url: url)
+        try doc.save() // no edits — must still preserve CRLF, not silently normalize to LF
+
+        let rawBytesAfterSave = try Data(contentsOf: url)
+        XCTAssertEqual(Array(rawBytesAfterSave), originalBytes)
+    }
+
+    func testUnmodifiedCRFileStaysCRAfterSave() throws {
+        let originalBytes = Array("a\rb\rc\r".utf8)
+        let url = try write(originalBytes)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let doc = try Document.open(url: url)
+        try doc.save()
+
+        let rawBytesAfterSave = try Data(contentsOf: url)
+        XCTAssertEqual(Array(rawBytesAfterSave), originalBytes)
+    }
+
+    func testEditingCRLFFileAndSavingKeepsCRLF() throws {
+        let url = try write(Array("a\r\nb\r\nc\r\n".utf8))
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let doc = try Document.open(url: url)
+        doc.content += "d\n" // edited in-memory (LF, as all in-memory edits are)
+        doc.markModified()
+        try doc.save()
+
+        let rawBytesAfterSave = try Data(contentsOf: url)
+        XCTAssertEqual(String(data: rawBytesAfterSave, encoding: .utf8), "a\r\nb\r\nc\r\nd\r\n")
+    }
+
+    func testNoTrailingNewlineIsNotAddedOnSave() throws {
+        let url = try write(Array("no trailing newline".utf8))
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let doc = try Document.open(url: url)
+        XCTAssertEqual(doc.lineEnding, .none)
+        try doc.save()
+
+        let rawBytesAfterSave = try Data(contentsOf: url)
+        XCTAssertEqual(String(data: rawBytesAfterSave, encoding: .utf8), "no trailing newline")
+    }
+
+    func testMixedLineEndingFileFallsBackToLFWhenSavedWithoutExplicitResolution() throws {
+        // Document.save() alone (no UI layer) defaults an unresolved
+        // .mixed lineEnding to LF — a safe, documented fallback. The
+        // *required user choice* this task's acceptance criterion refers
+        // to is enforced by MainWindowController's save flow, not here.
+        let url = try write(Array("a\nb\r\nc\rd\n".utf8))
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let doc = try Document.open(url: url)
+        guard case .mixed = doc.lineEnding else {
+            return XCTFail("expected .mixed, got \(doc.lineEnding)")
+        }
+        try doc.save()
+
+        let rawBytesAfterSave = try Data(contentsOf: url)
+        XCTAssertEqual(String(data: rawBytesAfterSave, encoding: .utf8), "a\nb\nc\nd\n")
     }
 }

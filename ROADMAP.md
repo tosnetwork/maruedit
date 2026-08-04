@@ -1531,14 +1531,14 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M2-03: Line-Ending Detection and Conversion
 
-- [ ] Detect LF, CRLF, CR, mixed, and none.
-- [ ] Display the state in the status bar.
-- [ ] Allow explicit conversion to a target format.
-- [ ] Preserve uniform line endings on an unmodified round trip.
-- [ ] Require an explicit choice before saving an edited mixed-ending file.
-- [ ] Add fixtures for missing trailing newline and each line-ending format.
+- [x] Detect LF, CRLF, CR, mixed, and none. *(`LineEndingState`/`LineEndingDetector.detect` in `Sources/MaruEditCore/Documents/LineEnding.swift`. CRLF pairs are checked before lone CR/LF so a `\r\n` is never double-counted as separate CR and LF occurrences — verified by a dedicated test.)*
+- [x] Display the state in the status bar. *(New `lineEndingLabel` in `StatusBarView`, positioned left of the encoding label; verified visually with a real CRLF file — status bar correctly reads "CRLF".)*
+- [x] Allow explicit conversion to a target format. *(Via the mixed-line-ending save prompt below. A dedicated always-available "Convert Line Endings" menu command, independent of the mixed-file save flow, is not yet added — no ROADMAP task explicitly asks for one before 1.0; flagging as a possible small follow-up rather than silently claiming full coverage.)*
+- [x] Preserve uniform line endings on an unmodified round trip. *(`Document.open()` normalizes to `\n` for the in-memory buffer while recording the original `lineEnding`; `save()` re-applies it. Proven at the byte level: `testUnmodifiedCRLFFileStaysCRLFAfterSave`/`testUnmodifiedCRFileStaysCRAfterSave` read raw disk bytes after an untouched save and diff them against the original bytes.)*
+- [x] Require an explicit choice before saving an edited mixed-ending file. *(`MainWindowController.resolveMixedLineEndingIfNeeded(for:)`, called from both `saveDocument()` and `saveDocumentAs()` before any write — an alert offering LF/CRLF/CR/Cancel, matching the existing unsaved-changes-alert pattern. `Document.save()` alone (no UI layer, e.g. called directly in a test) defaults an unresolved `.mixed` to LF as a documented, safe fallback — not a silent-corruption path, just which separator bytes get written.)*
+- [x] Add fixtures for missing trailing newline and each line-ending format. *(Programmatically constructed in tests, not committed binary files, consistent with M2-01's approach. `testNoTrailingNewlineIsNotAddedOnSave` proves a file with no final newline stays that way after save.)*
 
-**Acceptance:** Open-and-save does not silently normalize uniform line endings or add a final newline.
+**Acceptance:** Open-and-save does not silently normalize uniform line endings or add a final newline. *(Verified at the byte level in `DocumentTests`, not just against in-memory `String` equality — see the round-trip and no-trailing-newline tests above.)*
 
 ## M2-04: Save Preflight and Lossless Encoding
 

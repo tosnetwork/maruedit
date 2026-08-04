@@ -248,12 +248,14 @@ final class MainWindowController: NSWindowController,
     func saveDocument() {
         guard let doc = curDoc else { return }
         if doc.fileURL != nil {
-            do { try doc.save(); refreshTabs() } catch { NSAlert(error: error).runModal() }
+            guard resolveMixedLineEndingIfNeeded(for: doc) else { return }
+            do { try doc.save(); refreshTabs(); refreshStatus() } catch { NSAlert(error: error).runModal() }
         } else { saveDocumentAs() }
     }
 
     func saveDocumentAs() {
         guard let doc = curDoc else { return }
+        guard resolveMixedLineEndingIfNeeded(for: doc) else { return }
         let p = NSSavePanel()
         p.canCreateDirectories = true
         p.beginSheetModal(for: window!) { [weak self] r in
@@ -265,6 +267,31 @@ final class MainWindowController: NSWindowController,
                 RecentItems.addFile(url)
             } catch { NSAlert(error: error).runModal() }
         }
+    }
+
+    /// If `doc.lineEnding` is still `.mixed`, requires the user to pick a
+    /// single style to use going forward before any save proceeds
+    /// (ROADMAP.md M2-03 acceptance: never silently pick one). Returns
+    /// `false` if the user cancelled — callers must abort the save.
+    /// Uniform (`.lf`/`.crlf`/`.cr`) and `.none` documents need no prompt
+    /// and always return `true` immediately.
+    private func resolveMixedLineEndingIfNeeded(for doc: Document) -> Bool {
+        guard case .mixed = doc.lineEnding else { return true }
+
+        let a = NSAlert()
+        a.messageText = "Mixed Line Endings"
+        a.informativeText = "\(doc.displayName) mixes line-ending styles (LF, CRLF, CR). Choose one to use consistently when saving."
+        a.addButton(withTitle: "LF (Unix)")
+        a.addButton(withTitle: "CRLF (Windows)")
+        a.addButton(withTitle: "CR (Classic Mac)")
+        a.addButton(withTitle: "Cancel")
+        switch a.runModal() {
+        case .alertFirstButtonReturn: doc.lineEnding = .lf
+        case .alertSecondButtonReturn: doc.lineEnding = .crlf
+        case .alertThirdButtonReturn: doc.lineEnding = .cr
+        default: return false
+        }
+        return true
     }
 
     func closeCurrentTab() {
@@ -416,6 +443,7 @@ final class MainWindowController: NSWindowController,
         if let doc = curDoc {
             statusBar.updateLanguage(doc.language)
             statusBar.updateEncoding(doc.encoding)
+            statusBar.updateLineEnding(doc.lineEnding)
         }
     }
 
