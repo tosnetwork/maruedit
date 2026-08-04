@@ -30,7 +30,7 @@ cat > "${BUNDLE}/Contents/Info.plist" << 'PLIST'
   <key>CFBundleDisplayName</key>
   <string>MaruEdit</string>
   <key>CFBundleIdentifier</key>
-  <string>com.maruedit.app</string>
+  <string>network.tos.maruedit</string>
   <key>CFBundleVersion</key>
   <string>1.0.0</string>
   <key>CFBundleShortVersionString</key>

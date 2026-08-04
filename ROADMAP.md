@@ -1329,32 +1329,32 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M0-01: Record Upstream Provenance
 
-- [ ] Fork LiteEdit or import its complete Git history.
-- [ ] Record the upstream URL, exact base commit SHA, and import date in `UPSTREAM.md`.
-- [ ] Preserve original author and commit metadata.
-- [ ] Document the `upstream` remote configuration.
-- [ ] Document how future upstream fixes will be reviewed and selectively integrated.
+- [ ] Fork LiteEdit or import its complete Git history. *(Not done — this repo's history starts fresh at the branding-sync commit rather than a clone/fork; grafting upstream history would require a destructive rewrite of an already-pushed branch. See "Known Limitation" in `UPSTREAM.md`.)*
+- [x] Record the upstream URL, exact base commit SHA, and import date in `UPSTREAM.md`.
+- [x] Preserve original author and commit metadata. *(Recorded in `UPSTREAM.md`'s provenance table, not imported into Git history — see above.)*
+- [x] Document the `upstream` remote configuration.
+- [x] Document how future upstream fixes will be reviewed and selectively integrated.
 
 **Acceptance:** Any maintainer can identify the exact LiteEdit revision from which MaruEdit began.
 
 ## M0-02: License and Notice
 
-- [ ] Preserve LiteEdit's MIT copyright notice.
-- [ ] Keep the complete MIT License in the root `LICENSE` file.
-- [ ] Add `NOTICE.md` describing upstream attribution and MaruEdit modifications.
-- [ ] Add `scripts/verify-licenses.sh` to verify required license files.
-- [ ] Add the independent-project and non-affiliation statement to the README.
+- [x] Preserve LiteEdit's MIT copyright notice.
+- [x] Keep the complete MIT License in the root `LICENSE` file.
+- [x] Add `NOTICE.md` describing upstream attribution and MaruEdit modifications.
+- [x] Add `scripts/verify-licenses.sh` to verify required license files.
+- [x] Add the independent-project and non-affiliation statement to the README.
 
 **Acceptance:** Every release archive contains `LICENSE`, `NOTICE.md`, and upstream provenance.
 
 ## M0-03: Safe Renaming
 
-- [ ] Rename package, targets, executable, menu title, and visible application name to MaruEdit.
-- [ ] Use provisional bundle identifier `network.tos.maruedit`; isolate it in one build-configuration location.
-- [ ] Move Application Support, preferences, and session paths into a MaruEdit namespace.
-- [ ] Do not reuse LiteEdit or Hidemaru icons; use an original placeholder icon until branding is finalized.
-- [ ] Remove user-visible LiteEdit naming except required attribution.
-- [ ] Do not treat old LiteEdit sessions as MaruEdit configuration without an explicit migration.
+- [x] Rename package, targets, executable, menu title, and visible application name to MaruEdit.
+- [x] Use provisional bundle identifier `network.tos.maruedit`; isolate it in one build-configuration location.
+- [x] Move Application Support, preferences, and session paths into a MaruEdit namespace. *(The app only reads/writes `UserDefaults.standard`, which macOS already namespaces per bundle identifier — no hardcoded LiteEdit paths existed to move.)*
+- [x] Do not reuse LiteEdit or Hidemaru icons; use an original placeholder icon until branding is finalized.
+- [x] Remove user-visible LiteEdit naming except required attribution.
+- [x] Do not treat old LiteEdit sessions as MaruEdit configuration without an explicit migration. *(N/A — no shipped LiteEdit-named build of this fork exists to migrate from; the bundle identifier changed before any release.)*
 
 **Acceptance:** The application, menus, About panel, process, bundle, and support paths consistently identify MaruEdit.
 

@@ -9,6 +9,8 @@ The fastest way to open, browse, and quick-edit code on macOS — a native edito
 
 **[Download](https://github.com/tosnetwork/maruedit/releases/latest)** · **[Source](https://github.com/tosnetwork/maruedit)**
 
+> MaruEdit is an independent open-source project and is not affiliated with or endorsed by the developers of Hidemaru Editor. It began as a fork of [LiteEdit](https://github.com/arietan/lite-edit) (MIT licensed) — see [`NOTICE.md`](NOTICE.md) and [`UPSTREAM.md`](UPSTREAM.md) for attribution details, and [`ROADMAP.md`](ROADMAP.md) for where the project is headed.
+
 ---
 
 ## Screenshots
