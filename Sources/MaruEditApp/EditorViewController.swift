@@ -256,6 +256,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
 
     override func viewDidAppear() {
         super.viewDidAppear()
+        configureLargeFileEditingMode()
         DispatchQueue.main.async { [weak self] in
             self?.textView.window?.makeFirstResponder(self?.textView)
         }
@@ -305,6 +306,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
 
         suppressTextChange = false
         lineIndex = LineIndex(textView.string)
+        configureLargeFileEditingMode()
         let cursor = NSRange(location: min(doc.cursorPosition, lm.textStorage?.length ?? 0), length: 0)
         setSelections([cursor], primaryRange: cursor)
         refreshBookmarkGutter()
@@ -323,7 +325,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         var effectivePreferences = preferences
         effectivePreferences.tabWidth = document?.tabWidthOverride
             ?? document?.fileTypeProfile?.settings.tabWidth ?? preferences.tabWidth
-        effectivePreferences.wrapLines = document?.wrapLinesOverride
+        effectivePreferences.wrapLines = document?.largeFileMode.usesReducedFeatures == true ? false : document?.wrapLinesOverride
             ?? document?.fileTypeProfile?.settings.wrapLines ?? preferences.wrapLines
         let font = preferredEditorFont
         let paragraph = NSMutableParagraphStyle()
@@ -331,7 +333,8 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         paragraph.defaultTabInterval = " ".size(withAttributes: [.font: font]).width
             * CGFloat(max(1, effectivePreferences.tabWidth))
         textView.font = font
-        (textView as? MaruTextView)?.invisibleCharacters = preferences.invisibleCharacters
+        (textView as? MaruTextView)?.invisibleCharacters = document?.largeFileMode.usesReducedFeatures == true
+            ? .none : preferences.invisibleCharacters
         textView.defaultParagraphStyle = paragraph
         textView.typingAttributes[.font] = font
         textView.typingAttributes[.paragraphStyle] = paragraph
@@ -352,8 +355,23 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     }
 
     var effectiveWrapLines: Bool {
-        document?.wrapLinesOverride ?? document?.fileTypeProfile?.settings.wrapLines
+        if document?.largeFileMode.usesReducedFeatures == true { return false }
+        return document?.wrapLinesOverride ?? document?.fileTypeProfile?.settings.wrapLines
             ?? preferences.wrapLines
+    }
+
+    func enableAllLargeFileFeatures() {
+        guard let document, document.largeFileMode == .reducedFeatures else { return }
+        document.largeFileMode = .normal
+        document.hasExplicitlyEnabledLargeFileFeatures = true
+        configureLargeFileEditingMode()
+        applyPreferences(preferences)
+        deferredHighlightVisible()
+    }
+
+    private func configureLargeFileEditingMode() {
+        textView.isEditable = !(document?.isReadOnly ?? false)
+        textView.undoManager?.levelsOfUndo = document?.largeFileMode.usesReducedFeatures == true ? 20 : 0
     }
 
     var effectiveTabWidth: Int {
@@ -415,19 +433,22 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
             ? nil : visibleCharacterRange()
         syntaxHighlightCoordinator.schedule(
             storage: storage, language: isHighContrast ? .plainText : language, visibleRange: range,
-            font: preferredEditorFont, baseForeground: editorForeground, delay: 0.02)
+            font: preferredEditorFont, baseForeground: editorForeground, delay: 0.02,
+            allowLargeFileHighlighting: document?.hasExplicitlyEnabledLargeFileFeatures == true)
     }
 
     /// Highlights the visible range plus a buffer for smooth scrolling.
     private func highlightVisible(delay: TimeInterval = 0.05) {
         guard let ts = textView.textStorage, ts.length > 0,
               let language = document?.language else { return }
-        guard ts.length <= SyntaxHighlightCoordinator.largeFileThreshold else { return }
+        guard ts.length <= SyntaxHighlightCoordinator.largeFileThreshold
+                || document?.hasExplicitlyEnabledLargeFileFeatures == true else { return }
         let visible = visibleCharacterRange()
         guard visible.length > 0 else { return }
         syntaxHighlightCoordinator.schedule(
             storage: ts, language: isHighContrast ? .plainText : language, visibleRange: visible,
-            font: preferredEditorFont, baseForeground: editorForeground, delay: delay)
+            font: preferredEditorFont, baseForeground: editorForeground, delay: delay,
+            allowLargeFileHighlighting: document?.hasExplicitlyEnabledLargeFileFeatures == true)
     }
 
     private func visibleCharacterRange() -> NSRange {
@@ -444,7 +465,8 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
               let language = document?.language else { return }
         syntaxHighlightCoordinator.schedule(
             storage: ts, language: isHighContrast ? .plainText : language, visibleRange: nil,
-            font: preferredEditorFont, baseForeground: editorForeground, delay: 0)
+            font: preferredEditorFont, baseForeground: editorForeground, delay: 0,
+            allowLargeFileHighlighting: document?.hasExplicitlyEnabledLargeFileFeatures == true)
     }
 
     // MARK: - NSTextViewDelegate
@@ -510,7 +532,8 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
             syntaxHighlightCoordinator.schedule(
                 storage: ts, language: isHighContrast ? .plainText : language,
                 visibleRange: rehighlightRange, font: preferredEditorFont,
-                baseForeground: editorForeground)
+                baseForeground: editorForeground,
+                allowLargeFileHighlighting: document?.hasExplicitlyEnabledLargeFileFeatures == true)
         }
         endInputLatencySignpost()
     }

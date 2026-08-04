@@ -56,12 +56,15 @@ final class DocumentController {
     /// Activates the tab for `url` if it's already open, otherwise opens
     /// it as a new tab. Mirrors the prior `MainWindowController.openFile`.
     @discardableResult
-    func open(url: URL) throws -> (document: Document, wasAlreadyOpen: Bool) {
+    func open(
+        url: URL, largeFileMode: LargeFileMode? = nil
+    ) throws -> (document: Document, wasAlreadyOpen: Bool) {
         if let i = indexOfDocument(withURL: url) {
             currentIndex = i
             return (documents[i], true)
         }
-        let doc = try Document.open(url: url, resolver: fileTypeResolver)
+        let doc = try Document.open(
+            url: url, resolver: fileTypeResolver, largeFileMode: largeFileMode)
         documents.append(doc)
         currentIndex = documents.count - 1
         return (doc, false)
@@ -71,12 +74,15 @@ final class DocumentController {
     /// tab (or already showing the same file); otherwise appends a new
     /// tab. Mirrors the prior `MainWindowController.openFileInCurrentTab`.
     @discardableResult
-    func openInCurrentTab(url: URL) throws -> (document: Document, wasAlreadyOpen: Bool) {
+    func openInCurrentTab(
+        url: URL, largeFileMode: LargeFileMode? = nil
+    ) throws -> (document: Document, wasAlreadyOpen: Bool) {
         if let i = indexOfDocument(withURL: url) {
             currentIndex = i
             return (documents[i], true)
         }
-        let doc = try Document.open(url: url, resolver: fileTypeResolver)
+        let doc = try Document.open(
+            url: url, resolver: fileTypeResolver, largeFileMode: largeFileMode)
         if let cur = currentDocument, !cur.isModified, cur.fileURL == nil || cur.fileURL == url {
             documents[currentIndex] = doc
         } else {

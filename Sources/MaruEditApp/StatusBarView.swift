@@ -2,7 +2,7 @@ import AppKit
 import MaruEditCore
 
 enum StatusBarControl: CaseIterable {
-    case encoding, byteOrderMark, lineEnding, languageProfile
+    case largeFileMode, encoding, byteOrderMark, lineEnding, languageProfile
 }
 
 protocol StatusBarViewDelegate: AnyObject {
@@ -21,6 +21,7 @@ final class StatusBarView: NSView {
     private let bomLabel = NSTextField(labelWithString: "No BOM")
     private let lineEndingLabel = NSTextField(labelWithString: "LF")
     private let readOnlyLabel = NSTextField(labelWithString: "Read-Only")
+    private let largeFileModeLabel = NSTextField(labelWithString: "Reduced Features")
     private var cursorText = "Ln 1, Col 1"
     private var messageWorkItem: DispatchWorkItem?
 
@@ -30,6 +31,9 @@ final class StatusBarView: NSView {
     var displayedBOMText: String { bomLabel.stringValue }
     var displayedLineEndingText: String { lineEndingLabel.stringValue }
     var displayedLanguageProfileText: String { langLabel.stringValue }
+    var displayedLargeFileModeText: String? {
+        largeFileModeLabel.isHidden ? nil : largeFileModeLabel.stringValue
+    }
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -50,7 +54,7 @@ final class StatusBarView: NSView {
         indentLabel.frame = NSRect(x: 255, y: midY, width: 85, height: 16)
 
         var right = bounds.width - 14
-        for label in [langLabel, encLabel, bomLabel, lineEndingLabel] {
+        for label in [langLabel, encLabel, bomLabel, lineEndingLabel, largeFileModeLabel] {
             label.sizeToFit()
             right -= label.frame.width
             label.frame.origin = NSPoint(x: right, y: midY)
@@ -64,7 +68,7 @@ final class StatusBarView: NSView {
 
     private func setup() {
         let labels = [lineColLabel, selectionLabel, indentLabel, langLabel, encLabel,
-                      bomLabel, lineEndingLabel, readOnlyLabel]
+                      bomLabel, lineEndingLabel, readOnlyLabel, largeFileModeLabel]
         for label in labels {
             label.font = Theme.uiFontSmall
             label.textColor = Theme.statusText
@@ -90,6 +94,11 @@ final class StatusBarView: NSView {
         readOnlyLabel.textColor = .systemOrange
         readOnlyLabel.toolTip = "This file is read-only on disk; use Save As to save changes"
         readOnlyLabel.isHidden = true
+        largeFileModeLabel.textColor = .systemOrange
+        largeFileModeLabel.setAccessibilityRole(.button)
+        largeFileModeLabel.setAccessibilityLabel(SettingsLocalization.text("largeFileMode"))
+        largeFileModeLabel.toolTip = SettingsLocalization.text("largeFileTooltip")
+        largeFileModeLabel.isHidden = true
     }
 
     func updateCursor(_ state: EditorCursorState) {
@@ -159,6 +168,13 @@ final class StatusBarView: NSView {
         needsLayout = true
     }
 
+    func updateLargeFileMode(_ mode: LargeFileMode) {
+        largeFileModeLabel.stringValue = SettingsLocalization.text(
+            mode == .readOnly ? "largeReadOnly" : "reducedFeatures")
+        largeFileModeLabel.isHidden = mode == .normal
+        needsLayout = true
+    }
+
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
         guard let control = control(at: point), let frame = frame(for: control) else {
@@ -177,10 +193,12 @@ final class StatusBarView: NSView {
 
     func frame(for control: StatusBarControl) -> NSRect? {
         switch control {
-        case .encoding: encLabel.frame
-        case .byteOrderMark: bomLabel.frame
-        case .lineEnding: lineEndingLabel.frame
-        case .languageProfile: langLabel.frame
+        case .largeFileMode:
+            return largeFileModeLabel.isHidden ? nil : largeFileModeLabel.frame
+        case .encoding: return encLabel.frame
+        case .byteOrderMark: return bomLabel.frame
+        case .lineEnding: return lineEndingLabel.frame
+        case .languageProfile: return langLabel.frame
         }
     }
 

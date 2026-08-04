@@ -2062,13 +2062,13 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 
 ## M7-04: Large-File Mode
 
-- [ ] Define thresholds from benchmarks.
-- [ ] Inspect file size before loading.
-- [ ] Implement Reduced Features Mode.
-- [ ] Display a clear banner or status indicator.
-- [ ] Allow Cancel, Open Read-Only, or Continue where safe.
-- [ ] Prevent catastrophic allocations.
-- [ ] Keep Streaming Read-Only as an isolated experiment unless it meets the 1.0 bar.
+- [x] Define thresholds from benchmarks. *(`LargeFilePolicy` maps the measured M0 1/10 MB misses to 1 MiB reduced, 10 MiB confirmation, and 256 MiB materialization ceilings; M7-08 owns retuning.)*
+- [x] Inspect file size before loading. *(URL resource metadata is classified before `TextFileLoader` reads or decodes, including Reopen with Encoding.)*
+- [x] Implement Reduced Features Mode. *(It disables highlighting, wrapping, and invisible markers and caps Undo at 20; an explicit warned action restores all features.)*
+- [x] Display a clear banner or status indicator. *(A localized orange status item names Reduced Features or Large File · Read-Only, includes accessibility text, and opens the feature menu.)*
+- [x] Allow Cancel, Open Read-Only, or Continue where safe. *(Files from 10 through 256 MiB show all three localized choices before loading.)*
+- [x] Prevent catastrophic allocations. *(Files above 256 MiB are rejected from metadata before byte materialization; sparse-file tests prove the boundary.)*
+- [x] Keep Streaming Read-Only as an isolated experiment unless it meets the 1.0 bar. *(No streaming claim or code leaks into ordinary Document/TextKit; `docs/large-file-mode.md` records it as a separate post-1.0 experiment.)*
 
 ## M7-05: TextKit 2 Spike
 

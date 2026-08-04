@@ -36,6 +36,8 @@ final class Document {
     /// document is open"). Always `false` for an unnamed document — the
     /// concept doesn't apply until there's a real file to be locked.
     var isReadOnly: Bool = false
+    var largeFileMode: LargeFileMode = .normal
+    var hasExplicitlyEnabledLargeFileFeatures = false
     var cursorPosition: Int = 0
     var scrollOffset: NSPoint = .zero
     var cachedTextStorage: NSTextStorage?
@@ -89,7 +91,18 @@ final class Document {
         isModified = false
     }
 
-    static func open(url: URL, resolver: FileTypeProfileResolver = .builtIn) throws -> Document {
+    static func open(
+        url: URL,
+        resolver: FileTypeProfileResolver = .builtIn,
+        largeFileMode requestedMode: LargeFileMode? = nil
+    ) throws -> Document {
+        let size = try LargeFilePolicy.fileSize(at: url)
+        let recommendation = LargeFilePolicy.recommendation(forByteCount: size)
+        guard recommendation != .tooLarge else {
+            throw DocumentOpenError.fileTooLarge(
+                size: size, maximum: LargeFilePolicy.maximumMaterializedSize)
+        }
+        let mode = requestedMode ?? (recommendation == .normal ? .normal : .reducedFeatures)
         let profile = resolver.resolve(for: url)
         let loaded = try profile?.settings.encoding.map {
             try TextFileLoader.load(contentsOf: url, forcing: $0)
@@ -107,7 +120,8 @@ final class Document {
         doc.fileIdentity = loaded.fileIdentity
         doc.lastKnownModificationDate = loaded.modificationDate
         doc.posixPermissions = loaded.posixPermissions
-        doc.isReadOnly = !FileManager.default.isWritableFile(atPath: url.path)
+        doc.largeFileMode = mode
+        doc.isReadOnly = mode == .readOnly || !FileManager.default.isWritableFile(atPath: url.path)
         return doc
     }
 
@@ -117,7 +131,8 @@ final class Document {
     @discardableResult
     func refreshReadOnlyState() -> Bool {
         guard let url = fileURL else { return false }
-        let current = !FileManager.default.isWritableFile(atPath: url.path)
+        let current = largeFileMode == .readOnly
+            || !FileManager.default.isWritableFile(atPath: url.path)
         guard current != isReadOnly else { return false }
         isReadOnly = current
         return true
@@ -129,6 +144,11 @@ final class Document {
     /// first — this discards in-memory content unconditionally.
     func reopen(forcing encoding: TextEncoding) throws {
         guard let url = fileURL else { return }
+        let size = try LargeFilePolicy.fileSize(at: url)
+        guard LargeFilePolicy.recommendation(forByteCount: size) != .tooLarge else {
+            throw DocumentOpenError.fileTooLarge(
+                size: size, maximum: LargeFilePolicy.maximumMaterializedSize)
+        }
         let loaded = try TextFileLoader.load(contentsOf: url, forcing: encoding)
         content = LineEndingDetector.normalize(loaded.content)
         self.encoding = loaded.encoding
@@ -137,7 +157,8 @@ final class Document {
         fileIdentity = loaded.fileIdentity
         lastKnownModificationDate = loaded.modificationDate
         posixPermissions = loaded.posixPermissions
-        isReadOnly = !FileManager.default.isWritableFile(atPath: url.path)
+        isReadOnly = largeFileMode == .readOnly
+            || !FileManager.default.isWritableFile(atPath: url.path)
         cursorPosition = 0
         scrollOffset = .zero
         cachedTextStorage = nil
@@ -217,6 +238,17 @@ final class Document {
 enum DocumentSaveError: Error {
     case unrepresentable(encoding: TextEncoding, characters: [UnrepresentableCharacter])
     case writeFailed(underlying: TextFileSaverError)
+}
+
+enum DocumentOpenError: LocalizedError, Equatable {
+    case fileTooLarge(size: Int64, maximum: Int64)
+
+    var errorDescription: String? {
+        switch self {
+        case let .fileTooLarge(size, maximum):
+            return "The file is \(ByteCountFormatter.string(fromByteCount: size, countStyle: .file)). MaruEdit limits materialized editing to \(ByteCountFormatter.string(fromByteCount: maximum, countStyle: .file)) to prevent unsafe allocations."
+        }
+    }
 }
 
 extension DocumentSaveError: LocalizedError {

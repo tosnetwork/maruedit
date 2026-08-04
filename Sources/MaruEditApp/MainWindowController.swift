@@ -269,6 +269,42 @@ final class MainWindowController: NSWindowController,
 
     // MARK: - Document management
 
+    private enum LargeFileOpenChoice: Equatable {
+        case open(LargeFileMode?)
+        case cancel
+
+        var mode: LargeFileMode? {
+            guard case let .open(mode) = self else { return nil }
+            return mode
+        }
+    }
+
+    private func chooseLargeFileMode(for url: URL) throws -> LargeFileOpenChoice {
+        let size = try LargeFilePolicy.fileSize(at: url)
+        switch LargeFilePolicy.recommendation(forByteCount: size) {
+        case .normal:
+            return .open(nil)
+        case .reducedFeatures:
+            return .open(.reducedFeatures)
+        case .tooLarge:
+            throw DocumentOpenError.fileTooLarge(
+                size: size, maximum: LargeFilePolicy.maximumMaterializedSize)
+        case .confirmationRequired:
+            let alert = NSAlert()
+            alert.alertStyle = .warning
+            alert.messageText = SettingsLocalization.text("openLargeFile")
+            alert.informativeText = "\(ByteCountFormatter.string(fromByteCount: size, countStyle: .file)). \(SettingsLocalization.text("largeFileExplanation"))"
+            alert.addButton(withTitle: SettingsLocalization.text("continueReduced"))
+            alert.addButton(withTitle: SettingsLocalization.text("openReadOnly"))
+            alert.addButton(withTitle: SettingsLocalization.text("cancel"))
+            switch alert.runModal() {
+            case .alertFirstButtonReturn: return .open(.reducedFeatures)
+            case .alertSecondButtonReturn: return .open(.readOnly)
+            default: return .cancel
+            }
+        }
+    }
+
     func newDocument() {
         let doc = documentController.newDocument()
         editorVC.document = doc
@@ -291,7 +327,10 @@ final class MainWindowController: NSWindowController,
     func openFile(_ url: URL) {
         saveCursorPosition()
         do {
-            let result = try documentController.open(url: url)
+            let mode = documentController.indexOfDocument(withURL: url) == nil
+                ? try chooseLargeFileMode(for: url) : nil
+            if mode == .cancel { return }
+            let result = try documentController.open(url: url, largeFileMode: mode?.mode)
             editorVC.document = result.document
             refreshTabs(); refreshStatus()
             if !result.wasAlreadyOpen {
@@ -311,7 +350,11 @@ final class MainWindowController: NSWindowController,
     private func openFileInCurrentTab(_ url: URL) {
         saveCursorPosition()
         do {
-            let result = try documentController.openInCurrentTab(url: url)
+            let mode = documentController.indexOfDocument(withURL: url) == nil
+                ? try chooseLargeFileMode(for: url) : nil
+            if mode == .cancel { return }
+            let result = try documentController.openInCurrentTab(
+                url: url, largeFileMode: mode?.mode)
             editorVC.document = result.document
             refreshTabs(); refreshStatus()
             window?.title = "MaruEdit — \(result.document.displayName)"
@@ -1018,6 +1061,7 @@ final class MainWindowController: NSWindowController,
                 style: settings?.indentStyle ?? .spaces,
                 width: editorVC.effectiveTabWidth)
             statusBar.updateReadOnly(doc.isReadOnly)
+            statusBar.updateLargeFileMode(doc.largeFileMode)
         }
     }
 
@@ -1065,6 +1109,8 @@ final class MainWindowController: NSWindowController,
     ) {
         let menu: NSMenu
         switch control {
+        case .largeFileMode:
+            menu = buildLargeFileModeMenu()
         case .encoding:
             guard curDoc?.fileURL != nil else { return }
             menu = buildEncodingMenu()
@@ -1073,6 +1119,34 @@ final class MainWindowController: NSWindowController,
         case .languageProfile: menu = buildLanguageProfileMenu()
         }
         menu.popUp(positioning: nil, at: point, in: statusBar)
+    }
+
+    func buildLargeFileModeMenu() -> NSMenu {
+        let menu = NSMenu()
+        let current = NSMenuItem(
+            title: SettingsLocalization.text("reducedFeatures"), action: nil, keyEquivalent: "")
+        current.state = curDoc?.largeFileMode.usesReducedFeatures == true ? .on : .off
+        menu.addItem(current)
+        let enable = NSMenuItem(
+            title: SettingsLocalization.text("enableAllFeatures") + "…",
+            action: #selector(enableAllLargeFileFeatures),
+            keyEquivalent: "")
+        enable.target = self
+        enable.isEnabled = curDoc?.largeFileMode == .reducedFeatures
+        menu.addItem(enable)
+        return menu
+    }
+
+    @objc private func enableAllLargeFileFeatures() {
+        guard curDoc?.largeFileMode == .reducedFeatures else { return }
+        let alert = NSAlert()
+        alert.messageText = SettingsLocalization.text("enableAllLargeTitle")
+        alert.informativeText = SettingsLocalization.text("enableAllLargeExplanation")
+        alert.addButton(withTitle: SettingsLocalization.text("enableAllFeatures"))
+        alert.addButton(withTitle: SettingsLocalization.text("keepReduced"))
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        editorVC.enableAllLargeFileFeatures()
+        refreshStatus()
     }
 
     func buildByteOrderMarkMenu() -> NSMenu {

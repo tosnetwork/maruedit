@@ -53,12 +53,34 @@ final class StatusBarViewTests: XCTestCase {
         status.delegate = delegate
         status.layoutSubtreeIfNeeded()
 
-        for control in StatusBarControl.allCases {
+        let formatControls: [StatusBarControl] = [
+            .encoding, .byteOrderMark, .lineEnding, .languageProfile,
+        ]
+        for control in formatControls {
             XCTAssertNotNil(status.frame(for: control))
             status.activate(control)
         }
 
-        XCTAssertEqual(delegate.controls.count, StatusBarControl.allCases.count)
+        XCTAssertEqual(delegate.controls.count, formatControls.count)
+    }
+
+    func testLargeFileModeIsVisibleExplicitAndClickable() {
+        let status = StatusBarView(frame: NSRect(x: 0, y: 0, width: 900, height: 24))
+        let delegate = Delegate()
+        status.delegate = delegate
+        status.updateLargeFileMode(.reducedFeatures)
+        status.layoutSubtreeIfNeeded()
+
+        XCTAssertEqual(
+            status.displayedLargeFileModeText,
+            SettingsLocalization.text("reducedFeatures"))
+        XCTAssertNotNil(status.frame(for: .largeFileMode))
+        status.activate(.largeFileMode)
+        XCTAssertEqual(delegate.controls, [.largeFileMode])
+
+        status.updateLargeFileMode(.normal)
+        XCTAssertNil(status.displayedLargeFileModeText)
+        XCTAssertNil(status.frame(for: .largeFileMode))
     }
 }
 

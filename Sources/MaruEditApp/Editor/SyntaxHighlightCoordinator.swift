@@ -53,7 +53,8 @@ final class SyntaxHighlightCoordinator {
         baseForeground: NSColor = Theme.foreground,
         delay: TimeInterval = 0.05,
         highlighter: SyntaxHighlighter? = nil,
-        completion: (() -> Void)? = nil
+        completion: (() -> Void)? = nil,
+        allowLargeFileHighlighting: Bool = false
     ) {
         let requestedRevision = nextRevision()
         pendingDebounce?.cancel()
@@ -61,7 +62,7 @@ final class SyntaxHighlightCoordinator {
 
         let snapshot = storage.string
         let length = (snapshot as NSString).length
-        isLargeFileMode = length > Self.largeFileThreshold
+        isLargeFileMode = length > Self.largeFileThreshold && !allowLargeFileHighlighting
         lastWorkWasTruncated = false
         guard length > 0 else {
             lastAppliedRange = nil
