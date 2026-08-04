@@ -2102,7 +2102,7 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 - [x] Rerun M0 benchmarks. *(The original launch/RSS/open scripts were rerun on the same M2 reference hardware and OS; full commands and raw ranges are recorded.)*
 - [x] Measure Release app size. *(2.82 MiB on disk; 2,778,520-byte executable, below the 15 MB target.)*
 - [x] Measure launch time. *(1,157.7 ms median, n=7; the regression is recorded rather than hidden.)*
-- [x] Measure 1 MB and 10 MB opening. *(598.6 ms and 463.0 ms medians respectively, n=5.)*
+- [x] Measure 1 MB and 10 MB opening. *(Final M7 Gate build: 202.0 ms and 490.1 ms medians respectively, n=5.)*
 - [x] Measure Find. *(Release literal Find Next over 10 MB: 34.6 ms median, n=7.)*
 - [x] Measure Grep responsiveness. *(10 MB/100 files: first event 0.0 ms, first match 14.0 ms, total 167.2 ms.)*
 - [x] Measure idle and multi-document RSS. *(115.3 MB one-window median; 130.3 MB with ten 1 MB documents.)*
@@ -2111,11 +2111,11 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 
 ### M7 Gate
 
-- [ ] No known high-priority data-loss defects.
-- [ ] The main thread performs no directory traversal or large-file read.
-- [ ] Performance data is reproducible.
-- [ ] Large files cannot freeze the app without warning.
-- [ ] The TextKit direction has a written ADR.
+- [x] No known high-priority data-loss defects. *(M7-07 fault tests cover save failure, recovery interruption, external replacement, corruption, cancellation, and close ordering; the open issue list contains only measured performance gaps.)*
+- [x] The main thread performs no directory traversal or large-file read. *(Grep owns a worker queue; files at or above 1 MiB are decoded/normalized on the dedicated file-I/O queue and transferred once to `MainActor`.)*
+- [x] Performance data is reproducible. *(`docs/performance.md` records hardware, OS, commit, fixtures, commands, sample counts, ranges, and benchmark scripts.)*
+- [x] Large files cannot freeze the app without warning. *(Metadata preflight selects reduced/read-only mode, ≥10 MiB requires confirmation, >256 MiB is rejected, and accepted large reads run off the main actor with visible opening status.)*
+- [x] The TextKit direction has a written ADR. *(ADR-010 retains TextKit 1 for 1.0 based on the isolated M7-05 spike.)*
 
 ---
 

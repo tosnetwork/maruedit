@@ -39,6 +39,9 @@ final class MainWindowController: NSWindowController,
     /// Grep reads and decodes every file it visits, so it never runs on
     /// the main thread (ROADMAP.md M3-04, "No main-actor traversal").
     private let grepQueue = DispatchQueue(label: "com.maruedit.grep", qos: .userInitiated)
+    /// Files at or above the reduced-features threshold are decoded and
+    /// normalized here. Only the completed Document crosses to MainActor.
+    private let fileIOQueue = DispatchQueue(label: "com.maruedit.file-io", qos: .userInitiated)
 
     private var documentController = DocumentController()
     private let sessionStore = SessionStore()
@@ -328,21 +331,19 @@ final class MainWindowController: NSWindowController,
     func openFile(_ url: URL) {
         saveCursorPosition()
         do {
+            if documentController.indexOfDocument(withURL: url) != nil {
+                finishOpening(try documentController.open(url: url), url: url)
+                return
+            }
             let mode = documentController.indexOfDocument(withURL: url) == nil
                 ? try chooseLargeFileMode(for: url) : nil
             if mode == .cancel { return }
+            if try LargeFilePolicy.fileSize(at: url) >= LargeFilePolicy.reducedFeaturesThreshold {
+                loadLargeDocument(url, mode: mode?.mode, inCurrentTab: false)
+                return
+            }
             let result = try documentController.open(url: url, largeFileMode: mode?.mode)
-            editorVC.document = result.document
-            refreshTabs(); refreshStatus()
-            if !result.wasAlreadyOpen {
-                window?.title = "MaruEdit — \(result.document.displayName)"
-            }
-            RecentItems.addFile(url)
-            sidebarVC.revealFile(url)
-            if result.wasAlreadyOpen {
-                deferredRestoreCursor()
-            }
-            scheduleSessionSave()
+            finishOpening(result, url: url)
         } catch {
             NSAlert(error: error).runModal()
         }
@@ -354,20 +355,49 @@ final class MainWindowController: NSWindowController,
             let mode = documentController.indexOfDocument(withURL: url) == nil
                 ? try chooseLargeFileMode(for: url) : nil
             if mode == .cancel { return }
+            if documentController.indexOfDocument(withURL: url) == nil,
+               try LargeFilePolicy.fileSize(at: url) >= LargeFilePolicy.reducedFeaturesThreshold {
+                loadLargeDocument(url, mode: mode?.mode, inCurrentTab: true)
+                return
+            }
             let result = try documentController.openInCurrentTab(
                 url: url, largeFileMode: mode?.mode)
-            editorVC.document = result.document
-            refreshTabs(); refreshStatus()
-            window?.title = "MaruEdit — \(result.document.displayName)"
-            RecentItems.addFile(url)
-            sidebarVC.revealFile(url)
-            if result.wasAlreadyOpen {
-                deferredRestoreCursor()
-            }
-            scheduleSessionSave()
+            finishOpening(result, url: url)
         } catch {
             NSAlert(error: error).runModal()
         }
+    }
+
+    private func loadLargeDocument(
+        _ url: URL, mode: LargeFileMode?, inCurrentTab: Bool
+    ) {
+        showStatusMessage(SettingsLocalization.text("openingLargeFile"), duration: 30)
+        fileIOQueue.async { [self] in
+            let loaded = Result { try Document.open(url: url, largeFileMode: mode) }
+            Task { @MainActor in
+                switch loaded {
+                case .failure(let error):
+                    NSAlert(error: error).runModal()
+                case .success(let document):
+                    let result = inCurrentTab
+                        ? self.documentController.adoptOpenedDocumentInCurrentTab(document)
+                        : self.documentController.adoptOpenedDocument(document)
+                    self.finishOpening(result, url: url)
+                }
+            }
+        }
+    }
+
+    private func finishOpening(
+        _ result: (document: Document, wasAlreadyOpen: Bool), url: URL
+    ) {
+        editorVC.document = result.document
+        refreshTabs(); refreshStatus()
+        window?.title = "MaruEdit — \(result.document.displayName)"
+        RecentItems.addFile(url)
+        sidebarVC.revealFile(url)
+        if result.wasAlreadyOpen { deferredRestoreCursor() }
+        scheduleSessionSave()
     }
 
     func saveDocument() {

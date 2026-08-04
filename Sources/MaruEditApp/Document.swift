@@ -1,7 +1,10 @@
 import AppKit
 import MaruEditCore
 
-final class Document {
+/// A newly opened document may be constructed on the file-I/O queue and then
+/// transferred exactly once to `MainActor`. After adoption by a window, all
+/// mutation and all `cachedTextStorage` access are main-actor confined.
+final class Document: @unchecked Sendable {
     var fileURL: URL?
     var content: String
     var isModified: Bool = false

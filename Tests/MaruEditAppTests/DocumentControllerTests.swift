@@ -138,4 +138,40 @@ final class DocumentControllerTests: XCTestCase {
         XCTAssertEqual(firstWindow.documents.count, 1)
         XCTAssertEqual(secondWindow.documents.count, 1)
     }
+
+    func testAdoptsBackgroundLoadedDocumentWithoutReadingAgain() async throws {
+        let controller = DocumentController()
+        let url = try tempFile(named: "background.txt", content: "loaded off main")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let document = try await loadOffMain(url)
+
+        let result = controller.adoptOpenedDocument(document)
+
+        XCTAssertFalse(result.wasAlreadyOpen)
+        XCTAssertTrue(controller.currentDocument === document)
+        XCTAssertEqual(result.document.content, "loaded off main")
+    }
+
+    func testAdoptingSameBackgroundURLDoesNotDuplicateTab() async throws {
+        let controller = DocumentController()
+        let url = try tempFile(named: "duplicate.txt", content: "one")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let first = try await loadOffMain(url)
+        let second = try await loadOffMain(url)
+        _ = controller.adoptOpenedDocument(first)
+
+        let result = controller.adoptOpenedDocument(second)
+
+        XCTAssertTrue(result.wasAlreadyOpen)
+        XCTAssertTrue(result.document === first)
+        XCTAssertEqual(controller.documents.count, 1)
+    }
+
+    private func loadOffMain(_ url: URL) async throws -> Document {
+        try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue(label: "DocumentControllerTests.file-io").async {
+                continuation.resume(with: Result { try Document.open(url: url) })
+            }
+        }
+    }
 }

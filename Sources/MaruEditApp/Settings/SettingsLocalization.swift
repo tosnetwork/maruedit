@@ -39,6 +39,7 @@ enum SettingsLocalization {
             "largeFileMode": [.english: "Large-file feature mode", .japanese: "大容量ファイル機能モード", .simplifiedChinese: "大文件功能模式"],
             "largeFileTooltip": [.english: "Reduced Features Mode is active; click to enable all features", .japanese: "機能制限モードが有効です。クリックして全機能を有効にできます", .simplifiedChinese: "精简功能模式已启用；点按可启用全部功能"],
             "openLargeFile": [.english: "Open large file?", .japanese: "大容量ファイルを開きますか？", .simplifiedChinese: "打开大文件？"],
+            "openingLargeFile": [.english: "Opening large file…", .japanese: "大容量ファイルを開いています…", .simplifiedChinese: "正在打开大文件…"],
             "largeFileExplanation": [.english: "Reduced Features Mode disables syntax highlighting, wrapping, invisible characters, and limits Undo.", .japanese: "機能制限モードでは、構文強調、折り返し、不可視文字を無効にし、取り消し回数を制限します。", .simplifiedChinese: "精简功能模式会禁用语法高亮、自动换行和不可见字符，并限制撤销次数。"],
             "continueReduced": [.english: "Continue in Reduced Mode", .japanese: "機能制限モードで続ける", .simplifiedChinese: "以精简模式继续"],
             "openReadOnly": [.english: "Open Read-Only", .japanese: "読み取り専用で開く", .simplifiedChinese: "以只读方式打开"],

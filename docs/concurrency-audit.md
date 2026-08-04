@@ -14,8 +14,11 @@ This audit records the M7-06 execution boundaries and the checks performed on
   existing lock-protected `CancellationToken`. UI consumers explicitly hop to
   `MainActor` before updating controls.
 - File loading and saving remain synchronous Core operations. Callers own queue
-  selection; metadata preflight occurs before a large read. Directory traversal
-  is confined to Grep's worker queue. No Core file API captures UI objects.
+  selection; metadata preflight occurs before a read. Files at or above the
+  reduced-features threshold are decoded and normalized on the window's
+  dedicated file-I/O queue, then the completed document is transferred once to
+  `MainActor`. Directory traversal is confined to Grep's worker queue. No Core
+  file API captures UI objects.
 - Each macro runs in a fresh JavaScriptCore context on the macro engine's serial
   queue. `MacroCommandBridge` is the only UI bridge and synchronously confines
   every AppKit access to the main queue. Completion handling and permission
@@ -62,4 +65,3 @@ the actor-isolated code on the correct executor.
   `GrepServiceTests.testSwiftTaskCancellationBridgesIntoGrepToken`, which
   cancels an in-flight async scan and verifies a cancelled summary before all
   files are scanned.
-

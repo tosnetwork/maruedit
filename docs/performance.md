@@ -111,8 +111,8 @@ bash scripts/benchmark-open-file.sh 5
 | Release app bundle | ≤ 15 MB | 692 KB | **2.82 MiB** on disk; 2,778,520-byte executable | Pass |
 | Cold launch, median | ≤ 300 ms | 232 ms | **1,157.7 ms** (1,071.6–1,195.5, n=7) | Miss; [issue #1](https://github.com/tosnetwork/maruedit/issues/1) |
 | Idle RSS, one window | ≤ 80 MB | ~111 MB | **115.3 MB** (115.2–117.2, n=7) | Miss; [issue #3](https://github.com/tosnetwork/maruedit/issues/3) |
-| Open 1 MB UTF-8 | ≤ 200 ms | 2,235 ms | **598.6 ms** (494.6–647.7, n=5) | Improved 73%, still misses; [issue #2](https://github.com/tosnetwork/maruedit/issues/2) |
-| Open 10 MB UTF-8 | ≤ 1,000 ms | 12,680 ms | **463.0 ms** (196.0–490.9, n=5) | Pass; reduced-features mode avoids whole-file highlighting |
+| Open 1 MB UTF-8 | ≤ 200 ms | 2,235 ms | **202.0 ms** (165.7–486.0, n=5) | Improved 91%, narrowly misses; [issue #2](https://github.com/tosnetwork/maruedit/issues/2) |
+| Open 10 MB UTF-8 | ≤ 1,000 ms | 12,680 ms | **490.1 ms** (195.2–502.5, n=5) | Pass; reduced-features mode avoids whole-file highlighting and reads off-main |
 | Literal Find Next in 10 MB | ≤ 100 ms | Not measured | **34.6 ms** (34.3–35.3, n=7) | Pass |
 | Grep 10 MB / 100 files | Responsive, cancellable, streaming | Not measured | **0.0 ms** first event, **14.0 ms** first match, **167.2 ms** total | Pass; runs off `MainActor` and cancellation is tested |
 | RSS, 10 × 1 MB documents | Record | Not measured | **130.3 MB** | Informational; incremental cost is ~15 MB over one window |

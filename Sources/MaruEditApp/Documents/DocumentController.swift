@@ -70,6 +70,19 @@ final class DocumentController {
         return (doc, false)
     }
 
+    /// Adopts a document that was fully loaded on a background file-I/O queue.
+    /// Re-checking the URL closes the race with another open request that may
+    /// have completed while this document was loading.
+    func adoptOpenedDocument(_ document: Document) -> (document: Document, wasAlreadyOpen: Bool) {
+        if let url = document.fileURL, let index = indexOfDocument(withURL: url) {
+            currentIndex = index
+            return (documents[index], true)
+        }
+        documents.append(document)
+        currentIndex = documents.count - 1
+        return (document, false)
+    }
+
     /// Opens `url`, replacing the current tab if it's an unmodified blank
     /// tab (or already showing the same file); otherwise appends a new
     /// tab. Mirrors the prior `MainWindowController.openFileInCurrentTab`.
@@ -90,6 +103,25 @@ final class DocumentController {
             currentIndex = documents.count - 1
         }
         return (doc, false)
+    }
+
+    /// Current-tab counterpart of `adoptOpenedDocument(_:)`.
+    func adoptOpenedDocumentInCurrentTab(
+        _ document: Document
+    ) -> (document: Document, wasAlreadyOpen: Bool) {
+        if let url = document.fileURL, let index = indexOfDocument(withURL: url) {
+            currentIndex = index
+            return (documents[index], true)
+        }
+        if let current = currentDocument,
+           !current.isModified,
+           current.fileURL == nil || current.fileURL == document.fileURL {
+            documents[currentIndex] = document
+        } else {
+            documents.append(document)
+            currentIndex = documents.count - 1
+        }
+        return (document, false)
     }
 
     /// Removes the document at `index`. If that empties the list, creates
