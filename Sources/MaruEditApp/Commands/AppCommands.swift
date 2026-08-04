@@ -4,6 +4,7 @@ import MaruEditCore
 /// commands. Naming follows the `domain.action` convention from
 /// ROADMAP.md ADR-006 (`file.new`, `search.find`, ...).
 extension CommandID {
+    static let appSettings      = CommandID("app.settings")
     static let fileNew          = CommandID("file.new")
     static let fileOpen         = CommandID("file.open")
     static let fileOpenFolder   = CommandID("file.openFolder")
@@ -52,6 +53,9 @@ extension CommandID {
 /// unchanged in behavior, just invoked through the registry now.
 enum AppCommands {
     static func registerAll(in registry: CommandRegistry) {
+        registry.register(CommandDefinition(id: .appSettings, title: "Settings...") { ctx in
+            ctx.coordinator.showSettings()
+        })
         registry.register(CommandDefinition(id: .fileNew, title: "New File") { ctx in
             ctx.coordinator.newDocument()
         })

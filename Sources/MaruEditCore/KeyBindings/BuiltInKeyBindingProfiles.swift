@@ -2,6 +2,7 @@ import Foundation
 
 public extension KeyBindingProfile {
     static let macOSStandard = KeyBindingProfile(name: "macOS Standard", bindings: bindings([
+        ("cmd+,", "app.settings"),
         ("cmd+n", "file.new"), ("cmd+o", "file.open"), ("cmd+shift+o", "file.openFolder"),
         ("cmd+s", "file.save"), ("cmd+shift+s", "file.saveAs"), ("cmd+w", "file.closeTab"),
         ("cmd+f", "search.find"), ("cmd+opt+f", "search.replace"),
@@ -15,6 +16,7 @@ public extension KeyBindingProfile {
     ]))
 
     static let maruClassic = KeyBindingProfile(name: "Maru Classic", bindings: bindings([
+        ("cmd+,", "app.settings"),
         ("cmd+n", "file.new"), ("cmd+o", "file.open"), ("cmd+s", "file.save"),
         ("cmd+w", "file.closeTab"), ("ctrl+f", "search.find"),
         ("f3", "search.findNext"), ("shift+f3", "search.findPrevious"),

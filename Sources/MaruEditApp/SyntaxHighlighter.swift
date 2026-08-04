@@ -8,7 +8,7 @@ final class SyntaxHighlighter {
         rules = Self.buildRules(for: language)
     }
 
-    func highlight(_ storage: NSTextStorage, in editedRange: NSRange) {
+    func highlight(_ storage: NSTextStorage, in editedRange: NSRange, font: NSFont = Theme.editorFont) {
         let string = storage.string as NSString
         guard string.length > 0 else { return }
 
@@ -23,7 +23,7 @@ final class SyntaxHighlighter {
 
         storage.addAttributes([
             .foregroundColor: Theme.foreground,
-            .font: Theme.editorFont
+            .font: font
         ], range: range)
 
         for (regex, color) in rules {

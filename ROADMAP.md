@@ -1860,13 +1860,13 @@ Recommended groups:
 General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advanced
 ```
 
-- [ ] Build a native AppKit settings window.
-- [ ] Bind controls to typed Preferences.
-- [ ] Restore defaults per settings group.
-- [ ] Apply settings immediately or explicitly state that they affect new documents only.
-- [ ] Add settings search.
-- [ ] Provide keyboard and accessibility support.
-- [ ] Localize English, Japanese, and Simplified Chinese.
+- [x] Build a native AppKit settings window. *(`SettingsWindowController` provides the eight recommended native sidebar groups and is opened through `app.settings` / ⌘,.)*
+- [x] Bind controls to typed Preferences. *(Font, size, tab width, wrapping, and line-number controls edit the versioned `Preferences` value persisted by `PreferencesStore`.)*
+- [x] Restore defaults per settings group. *(Editor and Appearance reset only their own typed fields; `testRestoreDefaultsAffectsOnlySelectedGroupAndNotifies` guards isolation.)*
+- [x] Apply settings immediately or explicitly state that they affect new documents only. *(Changes persist immediately and update the active editor's font, tab stops, wrapping, and gutter without changing text; future document loads reuse the current preferences.)*
+- [x] Add settings search. *(The accessible `NSSearchField` filters the eight groups and selects the first result.)*
+- [x] Provide keyboard and accessibility support. *(Native controls participate in key-view navigation and every search/group/control surface has an accessibility label; covered by `SettingsWindowTests`.)*
+- [x] Localize English, Japanese, and Simplified Chinese. *(`SettingsLocalization` contains all Settings group, control, status, search, and reset strings for the three locales with deterministic coverage.)*
 
 ## M5-04: FileType Profiles
 

@@ -1,4 +1,5 @@
 import AppKit
+import MaruEditCore
 
 /// Owns application-scoped state — currently just the (single) window
 /// controller — so `AppDelegate` can stay a thin `NSApplicationDelegate`
@@ -10,9 +11,13 @@ import AppKit
 /// would be coordinated from.
 final class AppCoordinator {
     private var windowController: MainWindowController?
+    private var settingsWindowController: SettingsWindowController?
+    private let preferencesStore = PreferencesStore()
+    private(set) var preferences: Preferences
     let commandRegistry = CommandRegistry()
 
     init() {
+        preferences = preferencesStore.load()
         AppCommands.registerAll(in: commandRegistry)
     }
 
@@ -22,8 +27,23 @@ final class AppCoordinator {
         let wc = MainWindowController()
         windowController = wc
         wc.showWindow(nil)
+        wc.applyPreferences(preferences)
         if restoreSession { wc.restoreSession() }
         return wc
+    }
+
+    func showSettings() {
+        if settingsWindowController == nil {
+            settingsWindowController = SettingsWindowController(preferences: preferences) { [weak self] updated in
+                guard let self else { return }
+                self.preferences = updated
+                self.preferencesStore.save(updated)
+                self.windowController?.applyPreferences(updated)
+            }
+        }
+        settingsWindowController?.showWindow(nil)
+        settingsWindowController?.window?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     func saveActiveSession() {

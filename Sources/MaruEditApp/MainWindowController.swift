@@ -143,6 +143,10 @@ final class MainWindowController: NSWindowController,
         statusBar.showTransientMessage(message, duration: duration)
     }
 
+    func applyPreferences(_ preferences: Preferences) {
+        editorVC.applyPreferences(preferences)
+    }
+
     /// Positions the tab bar, Find Bar, Output Pane, split view, and status
     /// bar from the current visibility state. One place to compute these
     /// frames, because as of M3-06 three different things can appear and

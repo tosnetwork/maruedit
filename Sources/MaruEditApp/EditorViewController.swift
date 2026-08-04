@@ -28,6 +28,15 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     private var isApplyingSelectionSet = false
     private var markedTextSnapshot: (text: String, ranges: [NSRange], primary: NSRange)?
     private var isCompositionCommitScheduled = false
+    private var preferences = Preferences.defaults
+    var appliedPreferences: Preferences { preferences }
+    var areLineNumbersHidden: Bool { lineNumbers?.isHidden ?? false }
+    private var preferredEditorFont: NSFont {
+        preferences.fontName == "SF Mono"
+            ? NSFont.monospacedSystemFont(ofSize: preferences.fontSize, weight: .regular)
+            : (NSFont(name: preferences.fontName, size: preferences.fontSize)
+                ?? NSFont.monospacedSystemFont(ofSize: preferences.fontSize, weight: .regular))
+    }
 
     /// Multi-cursor ("select all occurrences") edit-mode state. Owned by
     /// this instance — not a global dictionary keyed by identity, per
@@ -295,11 +304,40 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         setSelections([cursor], primaryRange: cursor)
         refreshBookmarkGutter()
         lineNumbers?.needsDisplay = true
+        applyPreferences(preferences)
         deferredHighlightVisible()
     }
 
     func refreshBookmarkGutter() {
         lineNumbers?.bookmarkOffsets = document?.bookmarks.offsets ?? []
+    }
+
+    func applyPreferences(_ preferences: Preferences) {
+        self.preferences = preferences
+        guard isViewLoaded else { return }
+        let font = preferredEditorFont
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.tabStops = []
+        paragraph.defaultTabInterval = " ".size(withAttributes: [.font: font]).width
+            * CGFloat(max(1, preferences.tabWidth))
+        textView.font = font
+        textView.defaultParagraphStyle = paragraph
+        textView.typingAttributes[.font] = font
+        textView.typingAttributes[.paragraphStyle] = paragraph
+        if let storage = textView.textStorage, storage.length > 0 {
+            storage.addAttributes([.font: font, .paragraphStyle: paragraph],
+                                  range: NSRange(location: 0, length: storage.length))
+        }
+        lineNumbers?.setVisible(preferences.showLineNumbers)
+        textView.textContainer?.widthTracksTextView = preferences.wrapLines
+        textView.isHorizontallyResizable = !preferences.wrapLines
+        scrollView.hasHorizontalScroller = !preferences.wrapLines
+        if preferences.wrapLines {
+            textView.textContainer?.containerSize.width = scrollView.contentSize.width
+        } else {
+            textView.textContainer?.containerSize.width = CGFloat.greatestFiniteMagnitude
+        }
+        lineNumbers?.needsDisplay = true
     }
 
     /// Deferred to next run-loop so the scroll view geometry is settled
@@ -313,11 +351,11 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
             let visible = self.visibleCharacterRange()
             if ts.length <= Self.fullHighlightThreshold {
                 ts.beginEditing()
-                self.highlighter?.highlight(ts, in: NSRange(location: 0, length: ts.length))
+                self.highlighter?.highlight(ts, in: NSRange(location: 0, length: ts.length), font: self.preferredEditorFont)
                 ts.endEditing()
             } else if visible.length > 0 {
                 ts.beginEditing()
-                self.highlighter?.highlight(ts, in: visible)
+                self.highlighter?.highlight(ts, in: visible, font: self.preferredEditorFont)
                 ts.endEditing()
             }
         }
@@ -337,7 +375,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         let range = NSRange(location: start, length: end - start)
 
         ts.beginEditing()
-        highlighter?.highlight(ts, in: range)
+        highlighter?.highlight(ts, in: range, font: preferredEditorFont)
         ts.endEditing()
     }
 
@@ -357,7 +395,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
             return
         }
         ts.beginEditing()
-        highlighter?.highlight(ts, in: NSRange(location: 0, length: ts.length))
+        highlighter?.highlight(ts, in: NSRange(location: 0, length: ts.length), font: preferredEditorFont)
         ts.endEditing()
     }
 
@@ -413,7 +451,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
                 rehighlightRange = ns.lineRange(for: NSRange(location: min(sel.location, ns.length), length: 0))
             }
             ts.beginEditing()
-            highlighter?.highlight(ts, in: rehighlightRange)
+            highlighter?.highlight(ts, in: rehighlightRange, font: preferredEditorFont)
             ts.endEditing()
         }
     }

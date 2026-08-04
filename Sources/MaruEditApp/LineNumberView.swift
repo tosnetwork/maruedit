@@ -5,6 +5,7 @@ import AppKit
 /// NSTextView rendering on macOS 15+.
 final class LineNumberView: NSView {
     private weak var textView: NSTextView?
+    private var gutterWidth: NSLayoutConstraint!
     var bookmarkOffsets: Set<Int> = [] { didSet { needsDisplay = true } }
     override var isFlipped: Bool { true }
 
@@ -12,11 +13,17 @@ final class LineNumberView: NSView {
         self.textView = textView
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
-        widthAnchor.constraint(equalToConstant: 48).isActive = true
+        gutterWidth = widthAnchor.constraint(equalToConstant: 48)
+        gutterWidth.isActive = true
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError() }
+
+    func setVisible(_ visible: Bool) {
+        isHidden = !visible
+        gutterWidth.constant = visible ? 48 : 0
+    }
 
     override func draw(_ dirtyRect: NSRect) {
         Theme.gutterBg.setFill()

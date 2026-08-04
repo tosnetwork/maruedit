@@ -16,6 +16,7 @@ significantly, replace this with a small script that generates it from
 
 | Command ID | Title | Menu | Default Shortcut | Implementation |
 |---|---|---|---|---|
+| `app.settings` | Settings... | MaruEdit | ⌘, | `AppCoordinator.showSettings()` |
 | `file.new` | New File | File | ⌘N | `AppCoordinator.newDocument()` |
 | `file.open` | Open... | File | ⌘O | `AppCoordinator.openDocument()` |
 | `file.openFolder` | Open Folder... | File | ⌘⇧O | `AppCoordinator.openFolderPanel()` |
