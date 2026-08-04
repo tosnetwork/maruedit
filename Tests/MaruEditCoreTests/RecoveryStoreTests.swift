@@ -101,4 +101,34 @@ final class RecoveryStoreTests: XCTestCase {
         let b = RecoveryID()
         XCTAssertNotEqual(a, b)
     }
+
+    func testInterruptedWriteArtifactCannotReplaceLastCompleteRecovery() throws {
+        let (store, dir) = makeStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let complete = record(content: "last complete snapshot")
+        store.save(complete)
+
+        // Models termination after a same-directory temporary file was
+        // created but before AtomicFileWriter's rename commit. RecoveryStore
+        // considers only complete, decodable .json records.
+        try Data(#"{"schemaVersion":1,"content":"partial""#.utf8)
+            .write(to: dir.appendingPathComponent(".interrupted-write.tmp"))
+
+        XCTAssertEqual(store.load(complete.recoveryID), complete)
+        XCTAssertEqual(store.loadAll(), [complete])
+    }
+
+    func testRecoverySnapshotNeverWritesThroughToSourceFile() throws {
+        let (store, dir) = makeStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let source = dir.deletingLastPathComponent()
+            .appendingPathComponent("RecoverySource-\(UUID().uuidString).txt")
+        defer { try? FileManager.default.removeItem(at: source) }
+        try Data("source on disk".utf8).write(to: source)
+
+        store.save(record(content: "newer unsaved text"))
+
+        XCTAssertEqual(try String(contentsOf: source, encoding: .utf8), "source on disk")
+        XCTAssertEqual(store.loadAll().map(\.content), ["newer unsaved text"])
+    }
 }

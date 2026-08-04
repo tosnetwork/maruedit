@@ -75,6 +75,23 @@ final class ExternalChangeDetectorTests: XCTestCase {
         XCTAssertEqual(status, .deletedOrMoved)
     }
 
+    func testAtomicReplacementAtSamePathIsDetectedByIdentity() throws {
+        let url = try tempFile(contents: "original")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let knownDate = try modificationDate(of: url)
+        let knownIdentity = FileIdentity.of(url)
+        let replacement = url.deletingLastPathComponent()
+            .appendingPathComponent("ExternalChangeDetectorTests-replacement-\(UUID().uuidString).txt")
+        try Data("replacement".utf8).write(to: replacement)
+        try FileManager.default.removeItem(at: url)
+        try FileManager.default.moveItem(at: replacement, to: url)
+
+        let status = ExternalChangeDetector.check(
+            url: url, knownIdentity: knownIdentity, knownModificationDate: knownDate)
+
+        XCTAssertEqual(status, .modified)
+    }
+
     func testNoBaselineIsTreatedAsUnchanged() throws {
         let url = try tempFile()
         defer { try? FileManager.default.removeItem(at: url) }

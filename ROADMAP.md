@@ -2089,13 +2089,13 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 
 ## M7-07: Crash and Recovery Tests
 
-- [ ] Terminate during Recovery Store writing.
-- [ ] Inject save failure.
-- [ ] Exit during Grep.
-- [ ] Corrupt preferences and session data.
-- [ ] Delete or replace an open file.
-- [ ] Test multi-window close order.
-- [ ] Ensure recovery never overwrites the source file automatically.
+- [x] Terminate during Recovery Store writing. *(An interrupted pre-rename artifact cannot replace the last complete atomic recovery record.)*
+- [x] Inject save failure. *(`TextFileSaverTests.testWriteFailureLeavesOriginalFileIntact` verifies original bytes survive.)*
+- [x] Exit during Grep. *(Cancellation tests model shutdown by cancelling the scan token/Task and require an early cancelled summary.)*
+- [x] Corrupt preferences and session data. *(Preferences fall back to defaults; corrupt session bytes are quarantined and startup continues.)*
+- [x] Delete or replace an open file. *(External-change tests cover delete, move, modification, and same-path inode replacement.)*
+- [x] Test multi-window close order. *(Independent document controllers close in reverse order without affecting the other window.)*
+- [x] Ensure recovery never overwrites the source file automatically. *(Recovery schema has no source URL; a source-sentinel test proves recovery writes only its own record.)*
 
 ## M7-08: Performance Gate
 

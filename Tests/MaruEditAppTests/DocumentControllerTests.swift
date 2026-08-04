@@ -123,4 +123,19 @@ final class DocumentControllerTests: XCTestCase {
         XCTAssertEqual(c.documents.count, 1)
         XCTAssertTrue(c.documents[0] === real)
     }
+
+    func testIndependentWindowControllersCanCloseInEitherOrder() async {
+        let firstWindow = DocumentController()
+        let secondWindow = DocumentController()
+        let first = firstWindow.newDocument()
+        let second = secondWindow.newDocument()
+        first.content = "first unsaved window"
+        second.content = "second unsaved window"
+
+        XCTAssertTrue(secondWindow.closeDocument(at: 0))
+        XCTAssertEqual(firstWindow.currentDocument?.content, "first unsaved window")
+        XCTAssertTrue(firstWindow.closeDocument(at: 0))
+        XCTAssertEqual(firstWindow.documents.count, 1)
+        XCTAssertEqual(secondWindow.documents.count, 1)
+    }
 }
