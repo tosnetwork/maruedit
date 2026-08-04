@@ -1443,13 +1443,15 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M1-04: PreferencesStore and Schema
 
-- [ ] Define a versioned preferences schema.
-- [ ] Add typed settings for font, size, theme, line numbers, wrapping, and tab width.
-- [ ] Eliminate scattered string keys.
-- [ ] Implement defaults and a migration entry point.
-- [ ] Unit-test defaults and recovery from corrupt preferences.
+- [x] Define a versioned preferences schema. *(`Sources/MaruEditCore/Settings/Preferences.swift` — `Codable`, `schemaVersion: Int`.)*
+- [x] Add typed settings for font, size, theme, line numbers, wrapping, and tab width. *(`fontName`, `fontSize`, `theme: ThemeName`, `showLineNumbers`, `wrapLines`, `tabWidth` — defaults match the values currently hardcoded in `Theme.swift`/`EditorViewController`, so this is a no-behavior-change addition.)*
+- [x] Eliminate scattered string keys. *(One `UserDefaults` key (`"MaruEditPreferences"`) holding one JSON-encoded blob, not per-field keys.)*
+- [x] Implement defaults and a migration entry point. *(`Preferences.defaults`; `PreferencesStore.migrate(_:)` re-stamps `schemaVersion` — currently the identity function beyond that since there is only one version so far, but it's the real entry point future version bumps will extend.)*
+- [x] Unit-test defaults and recovery from corrupt preferences. *(`PreferencesStoreTests`, 6 tests: no-data defaults, save/load round-trip, corrupt-bytes fallback, reset, unknown-future-field tolerance, migration version-stamping. Each test uses its own throwaway `UserDefaults` suite so nothing touches real user data.)*
 
-**Acceptance:** Deleting preferences restores deterministic defaults; unknown fields do not crash the app.
+**Acceptance:** Deleting preferences restores deterministic defaults; unknown fields do not crash the app. *(Verified by `testResetToDefaultsRemovesStoredPreferences` and `testUnknownFutureFieldsDoNotCrashDecoding`.)*
+
+**Deferred (intentionally, per M1's own goal of "without changing normal editor behavior"):** nothing in the editor UI reads from `PreferencesStore` yet — `Theme.swift` and `EditorViewController`'s hardcoded font/tab-width stay exactly as they are. Wiring the editor to live preferences, and building an actual Preferences UI, belongs to M5 ("Key bindings, settings, file profiles, display, and themes"). `AppCoordinator` does not yet own a `PreferencesStore` instance since nothing consumes it yet — add that when M5 does.
 
 ## M1-05: Session Schema v1
 
