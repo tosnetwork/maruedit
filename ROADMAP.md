@@ -2224,10 +2224,20 @@ The following work must not displace 1.0 P0 or P1 tasks.
 
 ## 1.1–1.3 Candidates
 
+- Maru Classic workspace: native toolbar, compact tabs, pane switcher,
+  character ruler, current-heading bar, function/favorite strip, segmented
+  status bar, and an original Classic Light theme;
 - outline and symbol navigation;
 - code folding;
+- overwrite mode;
+- editor split and optional linked scrolling;
+- word completion and user dictionaries;
+- multiline Find/Replace fields and color markers;
+- Grep over current/open documents and result refinement;
 - file comparison and diff;
 - tag navigation;
+- native print and page setup;
+- expanded per-file-type settings and searchable Basic/Advanced preferences;
 - clipboard history;
 - richer menu customization;
 - exact preservation of mixed line endings;

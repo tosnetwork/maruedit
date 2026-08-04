@@ -20,3 +20,6 @@ compatibility.
 
 Names and shortcuts are intentionally not copied where doing so would imply an
 official relationship. See [NOTICE](../NOTICE.md) and [UPSTREAM](../UPSTREAM.md).
+
+The broader product/UI comparison and prioritized compatibility backlog are in
+[MaruEdit / Hidemaru Product Gap Analysis](hidemaru-gap-analysis.md).
