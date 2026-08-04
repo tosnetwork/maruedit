@@ -98,6 +98,22 @@ final class LineEditingCommandsTests: XCTestCase {
         XCTAssertEqual(comment.textView.string, "  let a = 1\nlet b = 2\n")
     }
 
+    func testFileTypeProfileControlsIndentAndCommentDelimiter() {
+        let subject = editor("a\nb\n", ranges: [NSRange(location: 0, length: 3)])
+        subject.document?.fileTypeProfile = FileTypeProfile(
+            id: "user.custom", name: "Custom", extensions: ["custom"],
+            settings: FileTypeSettings(
+                tabWidth: 6, indentWidth: 2, indentStyle: .spaces, wrapLines: true,
+                syntax: .plainText, lineComment: ";;"))
+
+        subject.performLineCommand(.indent)
+        XCTAssertEqual(subject.textView.string, "  a\n  b\n")
+        subject.performLineCommand(.outdent)
+        XCTAssertEqual(subject.textView.string, "a\nb\n")
+        subject.performLineCommand(.toggleComment)
+        XCTAssertEqual(subject.textView.string, ";; a\n;; b\n")
+    }
+
     func testGoToLineAndColumnClampsToLineEnd() {
         let editor = editor("abc\nx\nlast")
         editor.goTo(line: 2, column: 9)

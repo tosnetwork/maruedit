@@ -1,4 +1,5 @@
 import Foundation
+import MaruEditCore
 
 /// Owns the set of open documents and which one is current, for one
 /// window. Extracted from `MainWindowController` (ROADMAP.md M1-02) so
@@ -11,8 +12,13 @@ import Foundation
 /// this extraction — the goal here is ownership of state and file I/O
 /// coordination, not a new UI-update delegate protocol.
 final class DocumentController {
+    private let fileTypeResolver: FileTypeProfileResolver
     private(set) var documents: [Document] = []
     private(set) var currentIndex: Int = -1
+
+    init(fileTypeResolver: FileTypeProfileResolver = .builtIn) {
+        self.fileTypeResolver = fileTypeResolver
+    }
 
     var currentDocument: Document? {
         document(at: currentIndex)
@@ -55,7 +61,7 @@ final class DocumentController {
             currentIndex = i
             return (documents[i], true)
         }
-        let doc = try Document.open(url: url)
+        let doc = try Document.open(url: url, resolver: fileTypeResolver)
         documents.append(doc)
         currentIndex = documents.count - 1
         return (doc, false)
@@ -70,7 +76,7 @@ final class DocumentController {
             currentIndex = i
             return (documents[i], true)
         }
-        let doc = try Document.open(url: url)
+        let doc = try Document.open(url: url, resolver: fileTypeResolver)
         if let cur = currentDocument, !cur.isModified, cur.fileURL == nil || cur.fileURL == url {
             documents[currentIndex] = doc
         } else {

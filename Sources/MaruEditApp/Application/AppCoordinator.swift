@@ -13,6 +13,7 @@ final class AppCoordinator {
     private var windowController: MainWindowController?
     private var settingsWindowController: SettingsWindowController?
     private let preferencesStore = PreferencesStore()
+    private let fileTypeProfileStore = FileTypeProfileStore()
     private(set) var preferences: Preferences
     let commandRegistry = CommandRegistry()
 
@@ -24,7 +25,7 @@ final class AppCoordinator {
     @discardableResult
     func ensureWindowControllerReady(restoreSession: Bool = true) -> MainWindowController {
         if let wc = windowController { return wc }
-        let wc = MainWindowController()
+        let wc = MainWindowController(fileTypeResolver: fileTypeProfileStore.resolver())
         windowController = wc
         wc.showWindow(nil)
         wc.applyPreferences(preferences)

@@ -315,11 +315,16 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     func applyPreferences(_ preferences: Preferences) {
         self.preferences = preferences
         guard isViewLoaded else { return }
+        var effectivePreferences = preferences
+        if let settings = document?.fileTypeProfile?.settings {
+            effectivePreferences.tabWidth = settings.tabWidth
+            effectivePreferences.wrapLines = settings.wrapLines
+        }
         let font = preferredEditorFont
         let paragraph = NSMutableParagraphStyle()
         paragraph.tabStops = []
         paragraph.defaultTabInterval = " ".size(withAttributes: [.font: font]).width
-            * CGFloat(max(1, preferences.tabWidth))
+            * CGFloat(max(1, effectivePreferences.tabWidth))
         textView.font = font
         textView.defaultParagraphStyle = paragraph
         textView.typingAttributes[.font] = font
@@ -328,11 +333,11 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
             storage.addAttributes([.font: font, .paragraphStyle: paragraph],
                                   range: NSRange(location: 0, length: storage.length))
         }
-        lineNumbers?.setVisible(preferences.showLineNumbers)
-        textView.textContainer?.widthTracksTextView = preferences.wrapLines
-        textView.isHorizontallyResizable = !preferences.wrapLines
-        scrollView.hasHorizontalScroller = !preferences.wrapLines
-        if preferences.wrapLines {
+        lineNumbers?.setVisible(effectivePreferences.showLineNumbers)
+        textView.textContainer?.widthTracksTextView = effectivePreferences.wrapLines
+        textView.isHorizontallyResizable = !effectivePreferences.wrapLines
+        scrollView.hasHorizontalScroller = !effectivePreferences.wrapLines
+        if effectivePreferences.wrapLines {
             textView.textContainer?.containerSize.width = scrollView.contentSize.width
         } else {
             textView.textContainer?.containerSize.width = CGFloat.greatestFiniteMagnitude

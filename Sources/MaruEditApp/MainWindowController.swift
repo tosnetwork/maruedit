@@ -35,7 +35,7 @@ final class MainWindowController: NSWindowController,
     /// the main thread (ROADMAP.md M3-04, "No main-actor traversal").
     private let grepQueue = DispatchQueue(label: "com.maruedit.grep", qos: .userInitiated)
 
-    private let documentController = DocumentController()
+    private var documentController = DocumentController()
     private let sessionStore = SessionStore()
     private let sessionSaveDebouncer = Debouncer(delay: 1.5)
     private let recoveryStore = RecoveryStore()
@@ -49,6 +49,10 @@ final class MainWindowController: NSWindowController,
     private var curDoc: Document? { documentController.currentDocument }
 
     convenience init() {
+        self.init(fileTypeResolver: .builtIn)
+    }
+
+    convenience init(fileTypeResolver: FileTypeProfileResolver) {
         let w = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1100, height: 720),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
@@ -62,6 +66,7 @@ final class MainWindowController: NSWindowController,
         w.backgroundColor = Theme.background
 
         self.init(window: w)
+        documentController = DocumentController(fileTypeResolver: fileTypeResolver)
         buildUI()
         searchHistory = searchHistoryStore.load()
         syncSearchHistoryUI()

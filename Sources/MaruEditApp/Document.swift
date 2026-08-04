@@ -6,6 +6,8 @@ final class Document {
     var content: String
     var isModified: Bool = false
     var language: Language
+    var fileTypeProfile: FileTypeProfile?
+    private var fileTypeResolver: FileTypeProfileResolver = .builtIn
     /// The encoding this document was loaded with (or `.utf8` for a new,
     /// never-saved document). `save()`/`save(to:)` re-encode using this
     /// same value, not a hardcoded UTF-8 — see ROADMAP.md M2-02's note on
@@ -78,13 +80,18 @@ final class Document {
         isModified = false
     }
 
-    static func open(url: URL) throws -> Document {
-        let loaded = try TextFileLoader.load(contentsOf: url)
+    static func open(url: URL, resolver: FileTypeProfileResolver = .builtIn) throws -> Document {
+        let profile = resolver.resolve(for: url)
+        let loaded = try profile?.settings.encoding.map {
+            try TextFileLoader.load(contentsOf: url, forcing: $0)
+        } ?? TextFileLoader.load(contentsOf: url)
         let doc = Document(
             fileURL: url,
             content: LineEndingDetector.normalize(loaded.content),
-            language: Language.detect(for: url)
+            language: profile?.settings.syntax ?? Language.detect(for: url)
         )
+        doc.fileTypeProfile = profile
+        doc.fileTypeResolver = resolver
         doc.encoding = loaded.encoding
         doc.hasByteOrderMark = loaded.hasByteOrderMark
         doc.lineEnding = LineEndingDetector.detect(loaded.content)
@@ -182,7 +189,9 @@ final class Document {
 
     func save(to url: URL) throws {
         fileURL = url
-        language = Language.detect(for: url)
+        let profile = fileTypeResolver.resolve(for: url)
+        fileTypeProfile = profile
+        language = profile?.settings.syntax ?? Language.detect(for: url)
         // Save As to a path that already has a file at it should preserve
         // *that* file's permissions, not the permissions of whatever file
         // this Document was previously associated with.

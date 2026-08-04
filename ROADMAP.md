@@ -1870,13 +1870,13 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 
 ## M5-04: FileType Profiles
 
-- [ ] Define a versioned profile schema.
-- [ ] Match by filename and extension.
-- [ ] Define precedence and conflict resolution.
-- [ ] Support tab, indent, wrap, encoding, syntax, and comment settings.
-- [ ] Include minimal built-in profiles for Plain Text, Swift, C/C++, Go, Rust, JavaScript, JSON, Markdown, and Shell.
-- [ ] Never overwrite user profiles during application updates.
-- [ ] Support Import and Export.
+- [x] Define a versioned profile schema. *(`FileTypeProfile` schema v1 is Codable and round-tripped by `testSchemaRoundTripIncludesAllEditorSettings`.)*
+- [x] Match by filename and extension. *(`FileTypeProfileResolver` normalizes case and leading dots; exact `Makefile`, extension, and fallback cases are covered by `FileTypeProfileTests`.)*
+- [x] Define precedence and conflict resolution. *(Exact filename > extension > fallback, then user > built-in, priority, and stable ID; `testExactFilenameBeatsExtensionThenUserBeatsBuiltInThenPriorityAndID` locks the ordering.)*
+- [x] Support tab, indent, wrap, encoding, syntax, and comment settings. *(`Document.open`, `EditorViewController.applyPreferences`, and line-edit commands consume the typed settings; focused app tests cover each path.)*
+- [x] Include minimal built-in profiles for Plain Text, Swift, C/C++, Go, Rust, JavaScript, JSON, Markdown, and Shell. *(`BuiltInFileTypeProfiles.all`; every required profile and representative resolution are tested.)*
+- [x] Never overwrite user profiles during application updates. *(Code-owned built-ins and Application Support user JSON remain separate; a same-ID user profile wins resolution without mutating the built-in.)*
+- [x] Support Import and Export. *(`FileTypeProfileStore` performs version-checked import, atomic pretty/sorted JSON export, and has a round-trip test.)*
 
 ## M5-05: SyntaxHighlightCoordinator
 

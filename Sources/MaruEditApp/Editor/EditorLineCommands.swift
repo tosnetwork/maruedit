@@ -113,14 +113,25 @@ extension EditorViewController {
         case .lowercase: return (range, original, original.lowercased())
         case .sort: return (range, original, reorderLines(original) { $0.sorted() })
         case .reverse: return (range, original, reorderLines(original) { Array($0.reversed()) })
-        case .indent: return (range, original, transformLines(original) { "\t" + $0 })
+        case .indent:
+            let settings = document?.fileTypeProfile?.settings
+            let unit: String
+            if let settings {
+                unit = settings.indentStyle == .tabs
+                    ? "\t" : String(repeating: " ", count: max(1, settings.indentWidth))
+            } else {
+                unit = "\t"
+            }
+            return (range, original, transformLines(original) { unit + $0 })
         case .outdent:
+            let width = max(1, document?.fileTypeProfile?.settings.indentWidth ?? 4)
             return (range, original, transformLines(original) { line in
                 if line.hasPrefix("\t") { return String(line.dropFirst()) }
-                return String(line.dropFirst(min(4, line.prefix { $0 == " " }.count)))
+                return String(line.dropFirst(min(width, line.prefix { $0 == " " }.count)))
             })
         case .toggleComment:
-            guard let delimiter = document?.language.lineCommentDelimiter else { return (range, original, original) }
+            guard let delimiter = document?.fileTypeProfile?.settings.lineComment
+                    ?? document?.language.lineCommentDelimiter else { return (range, original, original) }
             let lines = logicalLines(original)
             let meaningful = lines.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
             let remove = !meaningful.isEmpty && meaningful.allSatisfy {

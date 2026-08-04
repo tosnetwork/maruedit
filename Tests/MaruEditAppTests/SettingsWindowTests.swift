@@ -54,6 +54,27 @@ final class SettingsWindowTests: XCTestCase {
         XCTAssertEqual(editor.appliedPreferences, preferences)
     }
 
+    func testFileTypeProfileOverridesGlobalTabWidthAndWrapping() throws {
+        let editor = EditorViewController()
+        _ = editor.view
+        let document = Document(content: "a\tb")
+        document.fileTypeProfile = FileTypeProfile(
+            id: "user.profile", name: "Profile", extensions: ["profile"],
+            settings: FileTypeSettings(tabWidth: 7, wrapLines: true))
+        editor.document = document
+        var preferences = Preferences.defaults
+        preferences.tabWidth = 2
+        preferences.wrapLines = false
+        editor.applyPreferences(preferences)
+
+        XCTAssertTrue(editor.textView.textContainer?.widthTracksTextView == true)
+        let paragraph = try XCTUnwrap(editor.textView.defaultParagraphStyle)
+        let spaceWidth = " ".size(withAttributes: [.font: try XCTUnwrap(editor.textView.font)]).width
+        XCTAssertEqual(paragraph.defaultTabInterval, spaceWidth * 7, accuracy: 0.01)
+        XCTAssertEqual(editor.appliedPreferences, preferences,
+                       "the persisted global preference must remain unchanged")
+    }
+
     func testSearchAndControlsHaveAccessibilityLabels() throws {
         let controller = SettingsWindowController(preferences: .defaults) { _ in }
         let root = try XCTUnwrap(controller.window?.contentView)

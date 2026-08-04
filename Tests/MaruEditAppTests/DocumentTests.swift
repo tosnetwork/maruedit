@@ -43,6 +43,29 @@ final class DocumentTests: XCTestCase {
         XCTAssertEqual(reopened.displayName, url.lastPathComponent)
     }
 
+    func testOpenAppliesFileTypeProfileEncodingAndSyntax() throws {
+        let sample = "日本語"
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MaruEditDocumentTests-\(UUID().uuidString).legacy")
+        try XCTUnwrap(sample.data(using: .shiftJIS)).write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let profile = FileTypeProfile(
+            id: "user.legacy", name: "Legacy Script", extensions: ["legacy"],
+            settings: FileTypeSettings(
+                tabWidth: 8, indentWidth: 2, indentStyle: .spaces, wrapLines: true,
+                encoding: .windows31J, syntax: .shell, lineComment: ";;"))
+        let resolver = FileTypeProfileResolver(profiles: [
+            SourcedFileTypeProfile(profile, source: .user),
+        ])
+
+        let document = try Document.open(url: url, resolver: resolver)
+
+        XCTAssertEqual(document.content, sample)
+        XCTAssertEqual(document.encoding, .windows31J)
+        XCTAssertEqual(document.language, .shell)
+        XCTAssertEqual(document.fileTypeProfile, profile)
+    }
+
     // MARK: - Encoding preservation (M2-02)
     //
     // These are the tests that matter most: opening a non-UTF-8 file and

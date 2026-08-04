@@ -3,7 +3,7 @@ import Foundation
 /// A file's detected source language. Pure Foundation — no AppKit — so it
 /// can be shared between MaruEditCore and MaruEditApp, and unit-tested
 /// without launching an AppKit application.
-public enum Language: String, CaseIterable, Sendable {
+public enum Language: String, Codable, CaseIterable, Sendable {
     case swift, python, javascript, typescript, html, css, json, markdown
     case rust, go, c, cpp, java, ruby, shell, xml, yaml, sql, toml, plainText
 
