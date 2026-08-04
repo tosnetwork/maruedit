@@ -139,6 +139,10 @@ final class MainWindowController: NSWindowController,
         }
     }
 
+    func showStatusMessage(_ message: String, duration: TimeInterval = 1.5) {
+        statusBar.showTransientMessage(message, duration: duration)
+    }
+
     /// Positions the tab bar, Find Bar, Output Pane, split view, and status
     /// bar from the current visibility state. One place to compute these
     /// frames, because as of M3-06 three different things can appear and

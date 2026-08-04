@@ -9,9 +9,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var reopenWithEncodingMenu: NSMenu!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        EditorShortcuts.install(keyBindings: keyBindings) { [coordinator] id in
-            coordinator.commandRegistry.execute(id, context: CommandContext(coordinator: coordinator))
-        }
+        EditorShortcuts.install(
+            keyBindings: keyBindings,
+            execute: { [coordinator] id in
+                coordinator.commandRegistry.execute(id, context: CommandContext(coordinator: coordinator))
+            },
+            showStatus: { [coordinator] message, duration in
+                coordinator.showStatusMessage(message, duration: duration)
+            })
         buildMenu()
         coordinator.ensureWindowControllerReady(restoreSession: !isUITestMode)
         if isUITestMode,

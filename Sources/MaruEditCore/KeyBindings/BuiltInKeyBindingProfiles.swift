@@ -23,7 +23,9 @@ public extension KeyBindingProfile {
         ("ctrl+shift+d", "edit.duplicateLine"), ("opt+up", "edit.moveLineUp"),
         ("opt+down", "edit.moveLineDown"), ("ctrl+b", "navigate.toggleBookmark"),
         ("f2", "navigate.nextBookmark"), ("shift+f2", "navigate.previousBookmark"),
-    ]))
+    ]) + [KeyBinding(
+        keys: [KeyGesture("ctrl+k")!, KeyGesture("ctrl+c")!],
+        command: CommandID("edit.toggleComment"))])
 
     private static func bindings(_ values: [(String, String)]) -> [KeyBinding] {
         values.map { notation, command in

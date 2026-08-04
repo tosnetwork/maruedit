@@ -28,20 +28,66 @@ enum EditorShortcuts {
     private static var mouseMonitor: Any?
     private static var keyBindings: KeyBindingManager?
     private static var executeCommand: ((CommandID) -> Bool)?
+    private static var showStatus: ((String, TimeInterval) -> Void)?
+    private static let chordMachine = ChordStateMachine(timeout: 1.5)
+    private static var chordTimeoutWorkItem: DispatchWorkItem?
 
-    static func install(keyBindings: KeyBindingManager, execute: @escaping (CommandID) -> Bool) {
+    static func install(
+        keyBindings: KeyBindingManager,
+        execute: @escaping (CommandID) -> Bool,
+        showStatus: @escaping (String, TimeInterval) -> Void
+    ) {
         guard !installed else { return }
         installed = true
         self.keyBindings = keyBindings
         executeCommand = execute
+        self.showStatus = showStatus
 
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             guard let editor = activeEditor(for: event) else { return event }
 
-            if !editor.textView.hasMarkedText(), !editor.hasMarkedTextComposition,
-               let gesture = KeyGesture(event: event),
-               let command = keyBindings.command(for: [gesture]),
-               executeCommand?(command) == true { return nil }
+            if editor.textView.hasMarkedText() || editor.hasMarkedTextComposition {
+                if chordMachine.pendingPrefix != nil {
+                    chordMachine.cancel()
+                    chordTimeoutWorkItem?.cancel()
+                }
+            } else if let gesture = KeyGesture(event: event) {
+                switch chordMachine.handle(gesture, bindings: keyBindings.activeProfile.bindings) {
+                case .command(let command):
+                    chordTimeoutWorkItem?.cancel()
+                    EditorShortcuts.showStatus?("", 0)
+                    if executeCommand?(command) == true { return nil }
+                case .waiting(let prefix):
+                    EditorShortcuts.showStatus?("Chord: \(prefix.description) …", chordMachine.timeout)
+                    chordTimeoutWorkItem?.cancel()
+                    let item = DispatchWorkItem {
+                        if chordMachine.expire() { EditorShortcuts.showStatus?("Chord timed out", 1) }
+                    }
+                    chordTimeoutWorkItem = item
+                    DispatchQueue.main.asyncAfter(deadline: .now() + chordMachine.timeout, execute: item)
+                    return nil
+                case .cancelled:
+                    chordTimeoutWorkItem?.cancel()
+                    EditorShortcuts.showStatus?("Chord cancelled", 1)
+                    return nil
+                case .invalid:
+                    chordTimeoutWorkItem?.cancel()
+                    if gesture.modifiers.isEmpty, gesture.key.count == 1 {
+                        // Never eat ordinary text merely because a chord was
+                        // pending; this is also the event that may begin IME
+                        // composition before AppKit exposes marked text.
+                        EditorShortcuts.showStatus?("Chord cancelled", 1)
+                        break
+                    }
+                    EditorShortcuts.showStatus?("Unknown chord", 1)
+                    return nil
+                case .timedOut:
+                    chordTimeoutWorkItem?.cancel()
+                    EditorShortcuts.showStatus?("Chord timed out", 1)
+                    return nil
+                case .ignored: break
+                }
+            }
 
             if editor.isMultiEditActive {
                 return editor.handleMultiEditKey(event) ? nil : event

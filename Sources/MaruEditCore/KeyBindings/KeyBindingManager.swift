@@ -88,6 +88,17 @@ public final class KeyBindingManager {
             .sorted { $0.keys.map(\.description).joined() < $1.keys.map(\.description).joined() }
     }
 
+    /// A one-step command cannot also be the prefix of a chord: dispatch
+    /// would otherwise have to guess whether to run now or wait.
+    public var prefixConflicts: [KeyBindingConflict] {
+        let singles = activeProfile.bindings.filter { $0.keys.count == 1 }
+        return activeProfile.bindings.compactMap { binding in
+            guard binding.keys.count == 2,
+                  let single = singles.first(where: { $0.keys[0] == binding.keys[0] }) else { return nil }
+            return KeyBindingConflict(keys: [binding.keys[0]], commands: [single.command, binding.command])
+        }
+    }
+
     public func exportJSON() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]

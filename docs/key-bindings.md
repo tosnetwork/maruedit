@@ -28,5 +28,20 @@ The built-in profiles are:
 
 `KeyBindingManager` validates the schema, reports duplicate sequences, imports
 and exports JSON atomically, and restores either built-in profile. Activating a
-profile updates every Command Registry menu item's displayed shortcut. Chord
-prefix conflicts and runtime chord dispatch are added in M5-02.
+profile updates every Command Registry menu item's displayed shortcut.
+
+## Two-step chords
+
+`ChordStateMachine` waits 1.5 seconds for the second gesture. While pending,
+the status bar shows the normalized prefix. Escape cancels, an unknown second
+gesture reports an invalid chord, and timeout clears the state. A completed
+sequence executes its stable command through `CommandRegistry`.
+
+The key router does not inspect chord input while AppKit reports marked text or
+MaruEdit owns an IME composition snapshot. An unmodified character after a
+pending prefix cancels the chord but is still delivered to TextKit, covering
+the first event that begins an IME before AppKit exposes marked text. Thus
+ordinary Latin or CJK input is never consumed as an invalid chord suffix.
+Profiles report both duplicate full sequences and ambiguous cases where a
+single-step command is also a two-step prefix. Maru Classic includes
+`ctrl+k`, `ctrl+c` for Toggle Comment as the built-in chord example.

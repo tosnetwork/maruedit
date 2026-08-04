@@ -1844,13 +1844,13 @@ Every command must have applicable normal, selection, and multi-selection tests,
 
 ## M5-02: Two-Step Chorded Shortcuts
 
-- [ ] Implement `ChordStateMachine`.
-- [ ] Define timeout behavior.
-- [ ] Escape cancels a pending chord.
-- [ ] Show a status message or lightweight HUD while waiting for the second key.
-- [ ] Isolate chord handling from IME composition and ordinary text input.
-- [ ] Validate prefix and command conflicts.
-- [ ] Test success, timeout, cancellation, and invalid second-key paths.
+- [x] Implement `ChordStateMachine`. *(The Core state machine resolves single gestures and two-step sequences independently of AppKit.)*
+- [x] Define timeout behavior. *(A pending prefix expires after 1.5 seconds and reports “Chord timed out”.)*
+- [x] Escape cancels a pending chord. *(`ChordResult.cancelled`; covered by `testEscapeCancelsAndInvalidSecondKeyClears`.)*
+- [x] Show a status message or lightweight HUD while waiting for the second key. *(The status bar shows the normalized prefix and restores its cursor text after completion/timeout.)*
+- [x] Isolate chord handling from IME composition and ordinary text input. *(The event router bypasses and cancels chord state whenever AppKit marked text or the editor composition snapshot is active; unmatched input continues to TextKit.)*
+- [x] Validate prefix and command conflicts. *(`conflicts` finds duplicate complete sequences and `prefixConflicts` finds ambiguous single-command/chord prefixes.)*
+- [x] Test success, timeout, cancellation, and invalid second-key paths. *(`ChordStateMachineTests` covers all paths deterministically with an injected monotonic time.)*
 
 ## M5-03: Settings Window
 

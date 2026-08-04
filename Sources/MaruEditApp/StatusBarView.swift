@@ -18,6 +18,9 @@ final class StatusBarView: NSView {
     /// ROADMAP.md M2-08: "Show an explicit read-only state." Hidden
     /// unless the current document's file is not writable.
     private let readOnlyLabel    = NSTextField(labelWithString: "Read-Only")
+    private var cursorText = "Ln 1, Col 1"
+    private var messageWorkItem: DispatchWorkItem?
+    var displayedLeadingText: String { lineColLabel.stringValue }
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -33,7 +36,7 @@ final class StatusBarView: NSView {
         super.layout()
         let h = bounds.height
         let midY = (h - 16) / 2
-        lineColLabel.frame = NSRect(x: 14, y: midY, width: 100, height: 16)
+        lineColLabel.frame = NSRect(x: 14, y: midY, width: messageWorkItem == nil ? 100 : 280, height: 16)
         indentLabel.frame = NSRect(x: 120, y: midY, width: 80, height: 16)
         langLabel.sizeToFit()
         langLabel.frame.origin = NSPoint(x: bounds.width - 14 - langLabel.frame.width, y: midY)
@@ -64,7 +67,27 @@ final class StatusBarView: NSView {
     }
 
     func updateCursor(line: Int, col: Int) {
-        lineColLabel.stringValue = "Ln \(line), Col \(col)"
+        cursorText = "Ln \(line), Col \(col)"
+        if messageWorkItem == nil { lineColLabel.stringValue = cursorText }
+        needsLayout = true
+    }
+
+    func showTransientMessage(_ message: String, duration: TimeInterval = 1.5) {
+        messageWorkItem?.cancel()
+        if message.isEmpty {
+            messageWorkItem = nil
+            lineColLabel.stringValue = cursorText
+            needsLayout = true
+            return
+        }
+        lineColLabel.stringValue = message
+        let item = DispatchWorkItem { [weak self] in
+            self?.messageWorkItem = nil
+            self?.lineColLabel.stringValue = self?.cursorText ?? ""
+            self?.needsLayout = true
+        }
+        messageWorkItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration, execute: item)
         needsLayout = true
     }
 
