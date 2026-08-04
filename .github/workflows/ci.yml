@@ -8,7 +8,15 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    name: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # GitHub retired macOS 13 hosted images. macOS 14 is the oldest
+        # currently available runtime; macos-15-intel supplies the x86_64
+        # coverage required by the 1.0 beta matrix.
+        runner: [macos-14, macos-15, macos-15-intel, macos-26]
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
 
@@ -23,3 +31,6 @@ jobs:
 
       - name: Package app bundle
         run: bash build.sh
+
+      - name: Beta smoke suite
+        run: bash scripts/beta-smoke.sh
