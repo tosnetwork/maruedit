@@ -35,6 +35,18 @@ final class DocumentController {
         return doc
     }
 
+    /// Appends an already-constructed `Document` as a new tab and selects
+    /// it — used to restore an unnamed document from a crash-recovery
+    /// record (ROADMAP.md M2-07), where the document already carries
+    /// content, encoding, and a specific `recoveryID` that must be
+    /// preserved rather than generating a new blank `Document()`.
+    @discardableResult
+    func addRecoveredDocument(_ doc: Document) -> Document {
+        documents.append(doc)
+        currentIndex = documents.count - 1
+        return doc
+    }
+
     /// Activates the tab for `url` if it's already open, otherwise opens
     /// it as a new tab. Mirrors the prior `MainWindowController.openFile`.
     @discardableResult

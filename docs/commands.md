@@ -22,13 +22,14 @@ significantly, replace this with a small script that generates it from
 | `file.save` | Save | File | ⌘S | `AppCoordinator.saveDocument()` |
 | `file.saveAs` | Save As... | File | ⌘⇧S | `AppCoordinator.saveDocumentAs()` |
 | `file.closeTab` | Close Tab | File | ⌘W | `AppCoordinator.closeCurrentTab()` |
+| `file.clearRecoveryData` | Clear Recovery Data... | File | — | `AppCoordinator.clearRecoveryData()` |
 | `search.find` | Find... | Find | ⌘F | `AppCoordinator.showFind()` |
 | `search.goToLine` | Go to Line... | Find | ⌘G | `AppCoordinator.showGoToLine()` |
 | `search.quickOpen` | Quick Open... | Find | ⌘P | `AppCoordinator.showQuickOpen()` |
 | `view.toggleSidebar` | Toggle Sidebar | View | ⌘B | `AppCoordinator.toggleSidebar()` |
 
-All ten are enabled unconditionally right now (`isEnabled` always returns
-`true`) — the app has no state yet where one of them shouldn't be
+All eleven are enabled unconditionally right now (`isEnabled` always
+returns `true`) — the app has no state yet where one of them shouldn't be
 available. `CommandRegistryTests.testAppCommandsAreEnabledByDefault`
 guards this.
 
@@ -55,7 +56,7 @@ guards this.
   (`KeyBindingManager`), which will replace this ad-hoc `NSEvent` monitor
   outright.
 
-Counting only MaruEdit's own static, non-dynamic menu actions (the ten
+Counting only MaruEdit's own static, non-dynamic menu actions (the eleven
 above, excluding the standard-AppKit and dynamic-recent-items cases), all
 of them — 100% — execute through the registry, exceeding M1-03's ≥90%
 acceptance target.

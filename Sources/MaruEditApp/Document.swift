@@ -29,13 +29,34 @@ final class Document {
     var cursorPosition: Int = 0
     var scrollOffset: NSPoint = .zero
     var cachedTextStorage: NSTextStorage?
+    /// Stable for this document's lifetime, used to key its crash-
+    /// recovery record while it's unnamed (ROADMAP.md M2-07). Kept even
+    /// after the document gains a file — `MainWindowController` deletes
+    /// the recovery record at that point rather than the ID changing
+    /// meaning.
+    let recoveryID: RecoveryID
     private var savedContent: String
 
-    init(fileURL: URL? = nil, content: String = "", language: Language = .plainText) {
+    init(fileURL: URL? = nil, content: String = "", language: Language = .plainText, recoveryID: RecoveryID = RecoveryID()) {
         self.fileURL = fileURL
         self.content = content
         self.language = language
         self.savedContent = content
+        self.recoveryID = recoveryID
+    }
+
+    /// Reconstructs an unnamed document from a crash-recovery record
+    /// (ROADMAP.md M2-07), reusing its `recoveryID` so further edits keep
+    /// updating the same record rather than creating a duplicate. Always
+    /// marked modified: this content exists only in memory until the
+    /// user saves it somewhere, so it must never look "clean."
+    static func recovered(from record: RecoveryRecord) -> Document {
+        let doc = Document(content: record.content, language: .plainText, recoveryID: record.recoveryID)
+        doc.encoding = record.encoding
+        doc.cursorPosition = record.selectionLocation
+        doc.savedContent = "" // guaranteed to differ: scheduleRecoverySaveIfUnnamed never persists empty content
+        doc.isModified = true
+        return doc
     }
 
     var displayName: String { fileURL?.lastPathComponent ?? "Untitled" }

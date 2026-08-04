@@ -1579,15 +1579,17 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M2-07: Autosave and Recovery
 
-- [ ] Give each unnamed document a stable Recovery ID.
-- [ ] Debounce writes to the Recovery Store after changes.
-- [ ] Restore unsaved text, intended encoding, and selection after a crash or forced termination.
-- [ ] Delete recovery data after a normal close with “Don't Save.”
-- [ ] Version the recovery schema.
-- [ ] Add a command to clear recovery data.
-- [ ] Store content locally under Application Support only.
+- [x] Give each unnamed document a stable Recovery ID. *(`RecoveryID` — `Sources/MaruEditCore/Sessions/RecoveryRecord.swift` — generated once in `Document.init` and kept for the document's lifetime, including after it gains a real file (at which point `MainWindowController` deletes its recovery record rather than the ID losing meaning).)*
+- [x] Debounce writes to the Recovery Store after changes. *(`MainWindowController.scheduleRecoverySaveIfUnnamed`, same `Debouncer` (1.5s) pattern as M1-05's session autosave. Skips entirely for named documents and for empty content — nothing worth debouncing either way.)*
+- [x] Restore unsaved text, intended encoding, and selection after a crash or forced termination. *(`Document.recovered(from:)` reconstructs content/encoding/cursor position and marks the result modified; `restoreUnnamedDocumentRecovery()` runs inside `restoreSession()`, independent of whether the normal file-based session has anything to restore — a crash with only unnamed tabs open wouldn't otherwise trigger any restore path at all.)*
+- [x] Delete recovery data after a normal close with "Don't Save." *(`closeCurrentTab()`: deletes on explicit "Don't Save," and on a plain close of an already-unmodified unnamed document. `performSaveAs()` also deletes on success — a document that gains a real file no longer needs the fallback.)*
+- [x] Version the recovery schema. *(`RecoveryRecord.schemaVersion` / `RecoveryStore.migrate`, same versioned-JSON pattern as `Preferences` (M1-04) and `SessionState` (M1-05).)*
+- [x] Add a command to clear recovery data. *(`file.clearRecoveryData` — confirmation alert, then `RecoveryStore.clearAll()`. Routed through the Command Registry like the other ten static commands.)*
+- [x] Store content locally under Application Support only. *(`RecoveryStore.defaultDirectory()` → `~/Library/Application Support/MaruEdit/Recovery/`; one JSON file per document rather than one combined blob like `SessionStore`, since several unnamed documents can be autosaving independently at once and per-record files avoid one racing another's write.)*
 
-**Acceptance:** Type into an unnamed document, force-quit, relaunch, and recover the content.
+**Acceptance:** Type into an unnamed document, force-quit, relaunch, and recover the content. *(Verified live end-to-end, not just by unit test: seeded a real recovery record on disk — via a temporary test asserting against `RecoveryStore`'s actual default directory, deleted afterward, not committed — then launched the real release build fresh and screenshotted the result: a new "● Untitled" tab (correctly marked modified) containing the exact recovered text, with the redundant auto-created blank tab correctly pruned rather than left as a duplicate. The debounced-autosave half is covered by 8 `RecoveryStoreTests` at the Core level plus code review of the wiring; a fully scripted type-then-kill-9 test was not attempted because reliably injecting keystrokes into the running app would need Accessibility automation permission, the same category of interactive-automation risk already avoided elsewhere in M2.)*
+
+**Scoped to unnamed documents only**, matching this task's own wording ("each unnamed document") rather than the acceptance line's broader spirit: a named document's unsaved edits are not recovered by this mechanism yet. Extending recovery to named documents is a reasonable future enhancement, not attempted here to avoid the added complexity of reconciling recovered content against `restoreSession()`'s normal per-file reopening.
 
 ## M2-08: Read-Only, Locked, and Permission States
 

@@ -10,6 +10,7 @@ extension CommandID {
     static let fileSave         = CommandID("file.save")
     static let fileSaveAs       = CommandID("file.saveAs")
     static let fileCloseTab     = CommandID("file.closeTab")
+    static let fileClearRecoveryData = CommandID("file.clearRecoveryData")
     static let searchFind       = CommandID("search.find")
     static let searchGoToLine   = CommandID("search.goToLine")
     static let searchQuickOpen  = CommandID("search.quickOpen")
@@ -39,6 +40,9 @@ enum AppCommands {
         })
         registry.register(CommandDefinition(id: .fileCloseTab, title: "Close Tab") { ctx in
             ctx.coordinator.closeCurrentTab()
+        })
+        registry.register(CommandDefinition(id: .fileClearRecoveryData, title: "Clear Recovery Data...") { ctx in
+            ctx.coordinator.clearRecoveryData()
         })
         registry.register(CommandDefinition(id: .searchFind, title: "Find...") { ctx in
             ctx.coordinator.showFind()

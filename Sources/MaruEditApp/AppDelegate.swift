@@ -62,6 +62,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         fileMenu.addItem(commandItem(.fileSaveAs, "S"))
         fileMenu.addItem(.separator())
         fileMenu.addItem(commandItem(.fileCloseTab, "w"))
+        fileMenu.addItem(.separator())
+        fileMenu.addItem(commandItem(.fileClearRecoveryData, ""))
         fileItem.submenu = fileMenu
         main.addItem(fileItem)
 

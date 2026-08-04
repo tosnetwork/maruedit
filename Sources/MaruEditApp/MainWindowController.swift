@@ -23,6 +23,8 @@ final class MainWindowController: NSWindowController,
     private let documentController = DocumentController()
     private let sessionStore = SessionStore()
     private let sessionSaveDebouncer = Debouncer(delay: 1.5)
+    private let recoveryStore = RecoveryStore()
+    private let recoverySaveDebouncer = Debouncer(delay: 1.5)
     private var sidebarManuallyCollapsed = false
 
     /// Convenience shims onto `documentController` so the UI-orchestration
@@ -304,11 +306,18 @@ final class MainWindowController: NSWindowController,
     }
 
     private func performSaveAs(_ doc: Document, to url: URL) {
+        let wasUnnamed = doc.fileURL == nil
         do {
             try doc.save(to: url)
             refreshTabs(); refreshStatus()
             window?.title = "MaruEdit — \(doc.displayName)"
             RecentItems.addFile(url)
+            if wasUnnamed {
+                // This document now has a real file, which is its own
+                // recovery mechanism from here on — the crash-recovery
+                // record for its unnamed life is no longer needed.
+                recoveryStore.delete(doc.recoveryID)
+            }
         } catch let DocumentSaveError.unrepresentable(encoding, characters) {
             offerUTF8Conversion(for: doc, encoding: encoding, characters: characters) { [weak self] in
                 self?.performSaveAs(doc, to: url)
@@ -451,6 +460,13 @@ final class MainWindowController: NSWindowController,
             let resp = a.runModal()
             if resp == .alertFirstButtonReturn { saveDocument() }
             else if resp == .alertThirdButtonReturn { return }
+            else if resp == .alertSecondButtonReturn, doc.fileURL == nil {
+                // Explicitly discarded (ROADMAP.md M2-07: "Delete recovery
+                // data after a normal close with 'Don't Save.'").
+                recoveryStore.delete(doc.recoveryID)
+            }
+        } else if doc.fileURL == nil {
+            recoveryStore.delete(doc.recoveryID)
         }
         let emptiedAndReplaced = documentController.closeDocument(at: indexToClose)
         editorVC.document = curDoc
@@ -695,6 +711,7 @@ final class MainWindowController: NSWindowController,
     func editorTextDidChange(_ vc: EditorViewController) {
         if let doc = curDoc {
             tabBar.updateTab(at: curIdx, item: TabItem(title: doc.displayName, isModified: doc.isModified))
+            scheduleRecoverySaveIfUnnamed(doc)
         }
         scheduleSessionSave()
     }
@@ -802,8 +819,13 @@ final class MainWindowController: NSWindowController,
     func restoreSession() {
         let state = sessionStore.load()
         let existingFiles = state.openFiles.filter { FileManager.default.fileExists(atPath: $0.path) }
+        let recoveredCount = restoreUnnamedDocumentRecovery()
 
-        guard state.rootFolderPath != nil || !existingFiles.isEmpty else { return }
+        // Recovery can have something to restore even when the normal
+        // file-based session doesn't (e.g. a crash with only unnamed
+        // Untitled tabs open, which the session never tracked) — checked
+        // independently rather than folded into the guard below.
+        guard state.rootFolderPath != nil || !existingFiles.isEmpty || recoveredCount > 0 else { return }
 
         if let fp = state.rootFolderPath, FileManager.default.fileExists(atPath: fp) {
             openFolderDirect(URL(fileURLWithPath: fp))
@@ -851,5 +873,58 @@ final class MainWindowController: NSWindowController,
                 self.updateTabBarFrame()
             }
         }
+    }
+
+    // MARK: - Autosave and crash recovery (M2-07)
+    //
+    // Scoped to unnamed documents only — a document with a real file
+    // already has one on save, and extending this to named documents'
+    // *unsaved* edits is a reasonable future enhancement but not what
+    // this task's checklist asks for ("Give each unnamed document a
+    // stable Recovery ID").
+
+    /// Debounced so normal typing doesn't write to disk on every
+    /// keystroke. Never persists empty content — an empty Untitled tab
+    /// has nothing worth recovering, and `Document.recovered(from:)`
+    /// relies on every real record being non-empty to reliably mark the
+    /// restored document as modified.
+    private func scheduleRecoverySaveIfUnnamed(_ doc: Document) {
+        guard doc.fileURL == nil, !doc.content.isEmpty else { return }
+        recoverySaveDebouncer.schedule { [weak self, weak doc] in
+            guard let doc = doc else { return }
+            self?.recoveryStore.save(RecoveryRecord(
+                recoveryID: doc.recoveryID,
+                content: doc.content,
+                encoding: doc.encoding,
+                selectionLocation: doc.cursorPosition,
+                selectionLength: 0
+            ))
+        }
+    }
+
+    /// Restores every recovery record found on disk as a new unsaved tab.
+    /// Returns how many were restored.
+    @discardableResult
+    private func restoreUnnamedDocumentRecovery() -> Int {
+        let records = recoveryStore.loadAll()
+        for record in records {
+            documentController.addRecoveredDocument(.recovered(from: record))
+        }
+        return records.count
+    }
+
+    /// ROADMAP.md M2-07: "Add a command to clear recovery data." Only
+    /// removes saved snapshots on disk — does not touch any currently
+    /// open document, which will simply write a fresh one on its next
+    /// debounced autosave if it's still unnamed and modified.
+    func clearRecoveryData() {
+        let a = NSAlert()
+        a.alertStyle = .informational
+        a.messageText = "Clear Recovery Data?"
+        a.informativeText = "This removes saved recovery snapshots for unsaved, unnamed documents from previous crashes or forced quits. Currently open documents are not affected."
+        a.addButton(withTitle: "Clear")
+        a.addButton(withTitle: "Cancel")
+        guard a.runModal() == .alertFirstButtonReturn else { return }
+        recoveryStore.clearAll()
     }
 }

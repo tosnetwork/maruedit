@@ -46,6 +46,7 @@ final class AppCoordinator {
     func showGoToLine()                { ensureWindowControllerReady().showGoToLine() }
     func showQuickOpen()               { ensureWindowControllerReady().showQuickOpen() }
     func toggleSidebar()               { ensureWindowControllerReady().toggleSidebar() }
+    func clearRecoveryData()           { ensureWindowControllerReady().clearRecoveryData() }
 
     /// Menu items for the File > Reopen with Encoding submenu, freshly
     /// built (so the "Recent" section and the checkmark on the current
