@@ -1922,11 +1922,11 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 
 ### M5 Gate
 
-- [ ] Key bindings and menus do not depend on localized command titles.
-- [ ] Chorded shortcuts coexist with IME input.
-- [ ] FileType Profiles apply to newly opened documents.
-- [ ] User settings can be exported, restored, and migrated.
-- [ ] Syntax highlighting does not noticeably block ordinary typing.
+- [x] Key bindings and menus do not depend on localized command titles. *(`KeyBindingProfile` and `MenuCustomization` persist `CommandID`; the AppKit customization test changes a displayed title and still hides the intended ID.)*
+- [x] Chorded shortcuts coexist with IME input. *(`EditorShortcuts` cancels/bypasses pending chords for both AppKit marked text and the editor composition snapshot, never consumes an ordinary unmatched character, and the deterministic chord plus eight CJK composition tests pass together.)*
+- [x] FileType Profiles apply to newly opened documents. *(`DocumentTests.testOpenAppliesFileTypeProfileEncodingAndSyntax` verifies profile resolution affects decoding and syntax as part of `Document.open`.)*
+- [x] User settings can be exported, restored, and migrated. *(`PreferencesStoreTests` round-trip versioned JSON, migrate v1, reject future schemas, and restore defaults; the Advanced settings-window flow is also tested.)*
+- [x] Syntax highlighting does not noticeably block ordinary typing. *(`SyntaxHighlightCoordinator` debounces on the main queue then matches on a dedicated background queue, cancels revisions, limits work to buffered visible lines, and the real Swift viewport benchmark averages approximately 4 ms.)*
 
 ---
 
