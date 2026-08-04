@@ -237,10 +237,32 @@ public final class MacroEngine: @unchecked Sendable {
           showMessage: __maruShowMessage, prompt: __maruPrompt,
           beginUndo: __maruBeginUndo, endUndo: __maruEndUndo
         };
+        // Commands execute synchronously in the native registry, but expose a
+        // Promise-compatible value to macros.  Give the settled Promise its
+        // own `then` so chains are observable before the enclosing native
+        // JavaScriptCore call returns.  Older JavaScriptCore releases (notably
+        // macOS 14) otherwise leave an already-resolved Promise's Objective-C
+        // callback queued until after JSContext has been torn down.
+        const settledPromise = (fulfilled, value) => {
+          const promise = fulfilled ? Promise.resolve(value) : Promise.reject(value);
+          Object.defineProperty(promise, 'then', { value: (onFulfilled, onRejected) => {
+            try {
+              if (fulfilled) {
+                return settledPromise(true, typeof onFulfilled === 'function' ? onFulfilled(value) : value);
+              }
+              if (typeof onRejected === 'function') return settledPromise(true, onRejected(value));
+              return settledPromise(false, value);
+            } catch (error) {
+              return settledPromise(false, error);
+            }
+          }});
+          Object.defineProperty(promise, 'catch', { value: (onRejected) => promise.then(undefined, onRejected) });
+          return promise;
+        };
         api.commands = Object.freeze({ run: (id) => {
           check();
-          if (typeof id !== 'string') return Promise.reject(new TypeError('Expected a command ID'));
-          return Promise.resolve(native.runCommand(id));
+          if (typeof id !== 'string') return settledPromise(false, new TypeError('Expected a command ID'));
+          return settledPromise(true, native.runCommand(id));
         }});
         if (permissions.has('currentDocument')) {
           api.document = Object.freeze({

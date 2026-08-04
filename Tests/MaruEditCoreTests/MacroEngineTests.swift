@@ -94,6 +94,7 @@ final class MacroEngineTests: XCTestCase {
             beginUndoGroup: { calls.append("begin:\($0)") }, endUndoGroup: { calls.append("end") })
         let script = """
         const command = maru.commands.run('edit.test');
+        if (!(command instanceof Promise)) throw new Error('commands.run must return a Promise');
         maru.undo.group('Transform', () => {
           maru.document.setText(maru.document.getText().toUpperCase());
           maru.editor.replaceSelections(maru.ui.prompt('Question', 'initial'));
