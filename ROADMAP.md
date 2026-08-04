@@ -2072,11 +2072,11 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 
 ## M7-05: TextKit 2 Spike
 
-- [ ] Build an isolated branch or target.
-- [ ] Compare multiple selection, BOX, IME, layout, line numbers, and performance.
-- [ ] Document migration cost and known defects.
-- [ ] Write an ADR to remain on TextKit 1 or plan a 2.0 migration.
-- [ ] Do not merge merely because TextKit 2 is newer.
+- [x] Build an isolated branch or target. *(`MaruEditTextKit2Spike` and its tests have no dependency edge into the production App/Core targets.)*
+- [x] Compare multiple selection, BOX, IME, layout, line numbers, and performance. *(`docs/textkit2-spike.md` records executable probes and component-by-component gaps; a 1 MiB Debug run measured TK1 0.308s vs TK2 0.521s.)*
+- [x] Document migration cost and known defects. *(The spike lists required adapter work and exit criteria for selections, BOX geometry, real IME, gutter/bookmarks, syntax, screenshots, and Release benchmarks.)*
+- [x] Write an ADR to remain on TextKit 1 or plan a 2.0 migration. *(ADR-010 retains TextKit 1 for 1.0 and defines a gated TextKit 2.0 investigation.)*
+- [x] Do not merge merely because TextKit 2 is newer. *(The decision follows measured lack of a performance win and unclosed correctness gaps; no production dependency or runtime switch was added.)*
 
 ## M7-06: Concurrency and Cancellation Audit
 

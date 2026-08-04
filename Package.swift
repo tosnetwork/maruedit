@@ -15,6 +15,11 @@ let package = Package(
             dependencies: ["MaruEditCore"],
             path: "Sources/MaruEditApp"
         ),
+        .target(
+            name: "MaruEditTextKit2Spike",
+            dependencies: ["MaruEditCore"],
+            path: "Spikes/TextKit2"
+        ),
         .testTarget(
             name: "MaruEditCoreTests",
             dependencies: ["MaruEditCore"],
@@ -24,6 +29,11 @@ let package = Package(
             name: "MaruEditAppTests",
             dependencies: ["MaruEditApp"],
             path: "Tests/MaruEditAppTests"
+        ),
+        .testTarget(
+            name: "MaruEditTextKit2SpikeTests",
+            dependencies: ["MaruEditTextKit2Spike"],
+            path: "Tests/MaruEditTextKit2SpikeTests"
         )
     ]
 )
