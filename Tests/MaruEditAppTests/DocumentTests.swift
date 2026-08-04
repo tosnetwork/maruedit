@@ -232,4 +232,92 @@ final class DocumentTests: XCTestCase {
         let rawBytesAfterSave = try Data(contentsOf: url)
         XCTAssertEqual(String(data: rawBytesAfterSave, encoding: .utf8), "a\nb\nc\nd\n")
     }
+
+    // MARK: - Atomic save and attributes (M2-05)
+
+    func testSavePreservesUnusualPermissions() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MaruEditDocumentTests-\(UUID().uuidString).txt")
+        try Data("original".utf8).write(to: url)
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let doc = try Document.open(url: url)
+        XCTAssertEqual(doc.posixPermissions, 0o600)
+
+        doc.content = "changed"
+        doc.markModified()
+        try doc.save()
+
+        let attrs = try FileManager.default.attributesOfItem(atPath: url.path)
+        XCTAssertEqual((attrs[.posixPermissions] as? NSNumber)?.intValue, 0o600)
+    }
+
+    func testFileIdentityAndModificationDateRefreshAfterSave() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MaruEditDocumentTests-\(UUID().uuidString).txt")
+        try Data("original".utf8).write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let doc = try Document.open(url: url)
+        XCTAssertNotNil(doc.fileIdentity)
+        XCTAssertNotNil(doc.lastKnownModificationDate)
+
+        doc.content = "changed"
+        doc.markModified()
+        try doc.save()
+
+        XCTAssertEqual(doc.fileIdentity, FileIdentity.of(url), "identity must reflect the just-saved file")
+        XCTAssertNotNil(doc.lastKnownModificationDate)
+    }
+
+    func testSaveAsToExistingFilePreservesThatFilesPermissionsNotTheOriginals() throws {
+        let sourceURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MaruEditDocumentTests-\(UUID().uuidString).txt")
+        try Data("source".utf8).write(to: sourceURL)
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: sourceURL.path)
+        defer { try? FileManager.default.removeItem(at: sourceURL) }
+
+        let destinationURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MaruEditDocumentTests-\(UUID().uuidString).txt")
+        try Data("destination, pre-existing".utf8).write(to: destinationURL)
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: destinationURL.path)
+        defer { try? FileManager.default.removeItem(at: destinationURL) }
+
+        let doc = try Document.open(url: sourceURL)
+        XCTAssertEqual(doc.posixPermissions, 0o600)
+
+        try doc.save(to: destinationURL)
+
+        let attrs = try FileManager.default.attributesOfItem(atPath: destinationURL.path)
+        XCTAssertEqual((attrs[.posixPermissions] as? NSNumber)?.intValue, 0o644, "Save As onto an existing file must preserve *that* file's permissions, not the source document's")
+    }
+
+    func testWriteFailureThrowsWriteFailedAndLeavesDocumentUnmarkedAsSaved() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MaruEditDocumentTests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appendingPathComponent("file.txt")
+        try Data("original".utf8).write(to: url)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: dir.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+
+        let doc = try Document.open(url: url)
+        doc.content = "changed"
+        doc.markModified()
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: dir.path)
+
+        XCTAssertThrowsError(try doc.save()) { error in
+            guard case DocumentSaveError.writeFailed = error else {
+                return XCTFail("expected writeFailed, got \(error)")
+            }
+        }
+        XCTAssertTrue(doc.isModified, "a failed save must not mark the document as saved")
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: dir.path)
+        XCTAssertEqual(try Data(contentsOf: url), Data("original".utf8))
+    }
 }

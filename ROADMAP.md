@@ -1554,15 +1554,17 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M2-05: Atomic Save and Attributes
 
-- [ ] Implement `TextFileSaver`.
-- [ ] Write a temporary file on the same file system and replace atomically.
-- [ ] Preserve POSIX permissions where practical.
-- [ ] Ensure write failure leaves the original intact.
-- [ ] Refresh file identity and modification metadata after success.
-- [ ] Add failure-injection or unwritable-directory tests.
-- [ ] Use system overwrite confirmation for Save As.
+- [x] Implement `TextFileSaver`. *(`Sources/MaruEditCore/TextIO/TextFileSaver.swift` — formalizes what was inline in `Document.save()` since M2-01 into a reusable, independently-tested Core type.)*
+- [x] Write a temporary file on the same file system and replace atomically. *(`Data.write(options: .atomic)`, unchanged mechanism since before M2 — Foundation already does this correctly; M2-05's contribution is wrapping it in a real abstraction with tests proving the guarantee, not re-implementing it.)*
+- [x] Preserve POSIX permissions where practical. *(New: previously, saving a file silently reset it to default umask-derived permissions — a real, previously-unaddressed gap, not just unverified. `TextFileSaver.save(preservingPermissionsFrom:)` restores the captured value after writing. `Document` now tracks `posixPermissions`, captured on open via `TextFileLoader` and refreshed after every save.)*
+- [x] Ensure write failure leaves the original intact. *(Proven, not assumed: `TextFileSaverTests.testWriteFailureLeavesOriginalFileIntact` chmods the containing directory read-only — a real filesystem failure, not a mock — and confirms the original bytes are untouched afterward.)*
+- [x] Refresh file identity and modification metadata after success. *(`Document.fileIdentity`/`lastKnownModificationDate` — both new — are set from `TextFileLoader` on open/reopen and from `TextFileSaver`'s `SavedFileInfo` after every save. Lays groundwork for M2-06's external-modification detection.)*
+- [x] Add failure-injection or unwritable-directory tests. *(5 new `TextFileSaverTests` plus 2 new `DocumentTests` exercising the same failure through the real `Document.save()` path, confirming `isModified` correctly stays `true` after a failed save.)*
+- [x] Use system overwrite confirmation for Save As. *(Verified by inspection rather than new code: `saveDocumentAs()` uses a bare `NSSavePanel()` with no property that suppresses its default overwrite-confirmation behavior — nothing to implement, `NSSavePanel` already does this.)*
 
-**Acceptance:** Simulated write failure leaves the original file intact.
+**Acceptance:** Simulated write failure leaves the original file intact. *(`TextFileSaverTests.testWriteFailureLeavesOriginalFileIntact` and `DocumentTests.testWriteFailureThrowsWriteFailedAndLeavesDocumentUnmarkedAsSaved`, both against a real read-only-directory failure, not a mock. 111/111 total tests pass.)*
+
+**Also fixed while wiring Save As's permission handling:** `save(to:)` (Save As) now checks whether the destination path already has a file and, if so, preserves *that* file's permissions rather than carrying over the original document's old file's permissions — a distinct correctness question this task's checklist didn't spell out but that fell directly out of "preserve POSIX permissions where practical." Covered by `testSaveAsToExistingFilePreservesThatFilesPermissionsNotTheOriginals`.
 
 ## M2-06: External-Modification Detection
 

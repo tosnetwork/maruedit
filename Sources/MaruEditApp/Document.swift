@@ -18,6 +18,14 @@ final class Document {
     /// never-saved document defaults to `.lf`, matching this app's
     /// existing native behavior.
     var lineEnding: LineEndingState = .lf
+    /// File metadata captured on open/reopen and refreshed after every
+    /// successful save (ROADMAP.md M2-05), so later work (M2-06 external-
+    /// modification detection) doesn't need to re-`stat` separately.
+    /// `nil` for a document that has never corresponded to a file on disk
+    /// (a brand-new, never-saved document, or before the first save-to).
+    var fileIdentity: FileIdentity?
+    var lastKnownModificationDate: Date?
+    var posixPermissions: Int?
     var cursorPosition: Int = 0
     var scrollOffset: NSPoint = .zero
     var cachedTextStorage: NSTextStorage?
@@ -52,6 +60,9 @@ final class Document {
         doc.encoding = loaded.encoding
         doc.hasByteOrderMark = loaded.hasByteOrderMark
         doc.lineEnding = LineEndingDetector.detect(loaded.content)
+        doc.fileIdentity = loaded.fileIdentity
+        doc.lastKnownModificationDate = loaded.modificationDate
+        doc.posixPermissions = loaded.posixPermissions
         return doc
     }
 
@@ -66,6 +77,9 @@ final class Document {
         self.encoding = loaded.encoding
         hasByteOrderMark = loaded.hasByteOrderMark
         lineEnding = LineEndingDetector.detect(loaded.content)
+        fileIdentity = loaded.fileIdentity
+        lastKnownModificationDate = loaded.modificationDate
+        posixPermissions = loaded.posixPermissions
         cursorPosition = 0
         scrollOffset = .zero
         cachedTextStorage = nil
@@ -111,19 +125,38 @@ final class Document {
             throw DocumentSaveError.unrepresentable(encoding: encoding, characters: preflight.unrepresentableCharacters)
         }
         let data = (hasByteOrderMark ? (encoding.byteOrderMark ?? Data()) : Data()) + encoded
-        try data.write(to: url, options: .atomic)
+
+        let info: SavedFileInfo
+        do {
+            info = try TextFileSaver.save(data, to: url, preservingPermissionsFrom: posixPermissions)
+        } catch let error as TextFileSaverError {
+            throw DocumentSaveError.writeFailed(underlying: error)
+        }
+        fileIdentity = info.fileIdentity
+        lastKnownModificationDate = info.modificationDate
+        posixPermissions = info.posixPermissions
         markSaved()
     }
 
     func save(to url: URL) throws {
         fileURL = url
         language = Language.detect(for: url)
+        // Save As to a path that already has a file at it should preserve
+        // *that* file's permissions, not the permissions of whatever file
+        // this Document was previously associated with.
+        if let existingAttributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+           let existingPermissions = (existingAttributes[.posixPermissions] as? NSNumber)?.intValue {
+            posixPermissions = existingPermissions
+        } else {
+            posixPermissions = nil
+        }
         try save()
     }
 }
 
 enum DocumentSaveError: Error {
     case unrepresentable(encoding: TextEncoding, characters: [UnrepresentableCharacter])
+    case writeFailed(underlying: TextFileSaverError)
 }
 
 extension DocumentSaveError: LocalizedError {
@@ -136,6 +169,8 @@ extension DocumentSaveError: LocalizedError {
             let count = characters.count
             let noun = count == 1 ? "character" : "characters"
             return "\(count) \(noun) cannot be represented in \(encoding.displayName). Save as UTF-8 or another encoding instead."
+        case .writeFailed(let underlying):
+            return underlying.errorDescription
         }
     }
 }
