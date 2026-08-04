@@ -2035,12 +2035,12 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 
 ## M7-01: LineIndex
 
-- [ ] Build an incremental line index.
-- [ ] Update only affected ranges after edits.
-- [ ] Support line ↔ character offset conversion.
-- [ ] Add display-column helpers.
-- [ ] Add randomized edit property tests.
-- [ ] Replace known full-document scanning hotspots.
+- [x] Build an incremental line index. *(`LineIndex` stores sorted UTF-16 line starts without retaining a duplicate document string.)*
+- [x] Update only affected ranges after edits. *(`applyEdit` removes starts inside the old edit, shifts the untouched suffix, and scans only the replacement.)*
+- [x] Support line ↔ character offset conversion. *(Binary-search offset lookup plus line-start/content-range APIs cover EOF and trailing-empty-line semantics.)*
+- [x] Add display-column helpers. *(Tab stops, combining characters, CJK width, and astral emoji are covered in both conversion directions.)*
+- [x] Add randomized edit property tests. *(`LineIndexTests` compares 2,000 deterministic random incremental edits with a fresh index after every operation.)*
+- [x] Replace known full-document scanning hotspots. *(Editor cursor status and Go to Line use the document index; Grep builds one index per file instead of scanning lines per match.)*
 
 ## M7-02: Memory and Buffer Audit
 

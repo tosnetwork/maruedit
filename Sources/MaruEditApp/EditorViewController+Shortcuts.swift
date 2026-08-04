@@ -376,6 +376,9 @@ extension EditorViewController {
     func batchReplace(_ targetRanges: [NSRange], with replacements: [String]) {
         guard let ts = textView.textStorage else { return }
         guard targetRanges.count == replacements.count else { return }
+        if lineIndex.utf16Length != ts.length {
+            lineIndex = LineIndex(textView.string)
+        }
 
         var operations: [(range: NSRange, replacement: String)] = []
         for index in targetRanges.indices {
@@ -417,6 +420,7 @@ extension EditorViewController {
         ts.beginEditing()
         for operation in merged.reversed() {
             document?.bookmarks.applyEdit(range: operation.range, replacement: operation.replacement)
+            lineIndex.applyEdit(range: operation.range, replacement: operation.replacement)
             ts.replaceCharacters(in: operation.range, with: operation.replacement)
         }
         ts.endEditing()

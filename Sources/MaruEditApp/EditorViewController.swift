@@ -28,6 +28,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     private var isApplyingSelectionSet = false
     private var markedTextSnapshot: (text: String, ranges: [NSRange], primary: NSRange)?
     private var isCompositionCommitScheduled = false
+    var lineIndex = LineIndex()
     private var preferences = Preferences.defaults
     private(set) var isHighContrast = false
     var appliedPreferences: Preferences { preferences }
@@ -300,6 +301,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         }
 
         suppressTextChange = false
+        lineIndex = LineIndex(textView.string)
         let cursor = NSRange(location: min(doc.cursorPosition, lm.textStorage?.length ?? 0), length: 0)
         setSelections([cursor], primaryRange: cursor)
         refreshBookmarkGutter()
@@ -447,8 +449,12 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     func textView(_ textView: NSTextView, shouldChangeTextIn range: NSRange,
                   replacementString text: String?) -> Bool {
         let replacement = text ?? ""
+        if lineIndex.utf16Length != (textView.string as NSString).length {
+            lineIndex = LineIndex(textView.string)
+        }
         if suppressAutoIndent || replacement != "\n" {
             document?.bookmarks.applyEdit(range: range, replacement: replacement)
+            lineIndex.applyEdit(range: range, replacement: replacement)
             return true
         }
 
@@ -463,6 +469,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         }
         guard !indent.isEmpty else {
             document?.bookmarks.applyEdit(range: range, replacement: replacement)
+            lineIndex.applyEdit(range: range, replacement: replacement)
             return true
         }
 
@@ -476,6 +483,9 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         guard !suppressTextChange else { return }
         if scheduleCompositionCommitAfterUnmarkIfNeeded() { return }
         let content = textView.string
+        if lineIndex.utf16Length != (content as NSString).length {
+            lineIndex = LineIndex(content)
+        }
         document?.bookmarks.normalize(in: content as NSString)
         document?.content = content
         document?.markModified()
@@ -594,6 +604,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         storage.beginEditing()
         storage.replaceCharacters(in: NSRange(location: 0, length: storage.length), with: snapshot.text)
         storage.endEditing()
+        lineIndex = LineIndex(snapshot.text)
         textView.undoManager?.enableUndoRegistration()
         document?.content = snapshot.text
         document?.markModified()
@@ -605,12 +616,13 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         let ns = textView.string as NSString
         let offset = min(sel.location, ns.length)
         let tabWidth = document?.fileTypeProfile?.settings.tabWidth ?? preferences.tabWidth
-        let coordinate = BoxSelectionModel.coordinate(
+        let line = lineIndex.line(atUTF16Offset: offset)
+        let displayColumn = lineIndex.displayColumn(
             atUTF16Offset: offset, in: textView.string, tabWidth: tabWidth)
         let ranges = textView.selectedRanges.map(\.rangeValue)
         delegate?.editorCursorMoved(self, state: EditorCursorState(
-            lineNumber: coordinate.line + 1,
-            displayColumn: coordinate.visualColumn + 1,
+            lineNumber: line + 1,
+            displayColumn: displayColumn + 1,
             utf16Offset: offset,
             selectedCharacterCount: ranges.reduce(0) {
                 $0 + ns.substring(with: NSIntersectionRange(
@@ -623,12 +635,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
 
     func goToLine(_ line: Int) {
         let ns = textView.string as NSString
-        var cur = 1, idx = 0
-        while cur < line && idx < ns.length {
-            if ns.character(at: idx) == 0x0A { cur += 1 }
-            idx += 1
-        }
-        if cur == line {
+        if let idx = lineIndex.utf16Offset(forLine: line - 1) {
             let lr = ns.lineRange(for: NSRange(location: idx, length: 0))
             textView.setSelectedRange(NSRange(location: lr.location, length: 0))
             textView.scrollRangeToVisible(lr)

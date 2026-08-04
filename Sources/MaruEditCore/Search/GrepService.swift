@@ -186,30 +186,18 @@ public enum GrepService {
         var results: [GrepMatch] = []
         results.reserveCapacity(matches.count)
 
-        var line = 1
-        var scanned = 0
+        let lineIndex = LineIndex(text)
 
         for match in matches {
             let location = min(match.range.location, ns.length)
-            while scanned < location {
-                if ns.character(at: scanned) == 0x0A { line += 1 }
-                scanned += 1
-            }
+            let line = lineIndex.line(atUTF16Offset: location)
+            let previewRange = lineIndex.contentRange(forLine: line)!
 
-            let lineRange = ns.lineRange(for: NSRange(location: location, length: 0))
-            var previewRange = lineRange
-            // Drop the trailing newline so a preview is one visible line.
-            while previewRange.length > 0 {
-                let last = ns.character(at: NSMaxRange(previewRange) - 1)
-                guard last == 0x0A || last == 0x0D else { break }
-                previewRange.length -= 1
-            }
-
-            let column = location - lineRange.location
+            let column = location - previewRange.location
             results.append(GrepMatch(
                 url: url,
                 relativePath: relativePath,
-                line: line,
+                line: line + 1,
                 column: column + 1,
                 range: match.range,
                 preview: ns.substring(with: previewRange),
