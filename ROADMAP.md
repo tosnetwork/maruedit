@@ -2175,8 +2175,8 @@ Cover at least:
 
 ## M8-05: Signing, Notarization, and DMG
 
-- [ ] Create a Release build.
-- [ ] Build a Universal Binary.
+- [x] Create a Release build. *(A clean SwiftPM Release build completed locally on 2026-08-05 with Xcode 26.5/macOS 26.5.2.)*
+- [x] Build a Universal Binary. *(`scripts/build-release.sh` completed and `lipo` reported both `x86_64` and `arm64` in `MaruEdit.app/Contents/MacOS/MaruEdit`.)*
 - [ ] Sign with Developer ID.
 - [ ] Enable Hardened Runtime.
 - [ ] Submit for notarization.

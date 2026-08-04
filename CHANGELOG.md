@@ -15,6 +15,10 @@ semantic version tags.
 
 - Added the vulnerability-reporting policy, Macro/Process threat model, reproducible-release procedure, and a CI-enforced dependency/certificate/secret audit.
 
+### Release engineering
+
+- Added a fail-closed Developer ID, Hardened Runtime, notarization, stapling, Gatekeeper, DMG, and SHA-256 pipeline plus drafted 1.0 release notes.
+
 ### Changed
 
 - Entered the 1.0 feature freeze; changes are now limited to release work and
