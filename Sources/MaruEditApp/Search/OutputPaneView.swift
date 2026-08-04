@@ -18,6 +18,7 @@ protocol OutputPaneViewDelegate: AnyObject {
 /// output; the channel concept isn't built yet, but keeping the view free
 /// of Grep-specific logic beyond its row model is what makes that possible.
 final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
+    private enum ContentMode { case grep, externalCommand }
     weak var delegate: OutputPaneViewDelegate?
 
     private let scrollView = NSScrollView()
@@ -29,6 +30,9 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     private let closeButton = NSButton()
 
     private(set) var matches: [GrepMatch] = []
+    private var externalLines: [String] = []
+    private var externalPending: [Bool: Data] = [:]
+    private var contentMode: ContentMode = .grep
     private var summary = GrepSummary()
     private var searchPattern = ""
     private(set) var isRunning = false
@@ -139,6 +143,8 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     // MARK: - Content
 
     func beginRun(pattern: String) {
+        contentMode = .grep
+        rerunButton.isHidden = false
         searchPattern = pattern
         matches = []
         summary = GrepSummary()
@@ -146,6 +152,41 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         cancelButton.isHidden = false
         statusLabel.stringValue = "Searching for “\(pattern)”…"
         tableView.reloadData()
+    }
+
+    func beginExternalCommand(name: String) {
+        contentMode = .externalCommand
+        matches = []; externalLines = []; externalPending = [:]; isRunning = true
+        rerunButton.isHidden = true; cancelButton.isHidden = false
+        statusLabel.stringValue = "Running \(name)…"
+        tableView.reloadData()
+    }
+
+    func appendExternal(_ data: Data, isError: Bool) {
+        let prefix = isError ? "stderr: " : ""
+        var pending = externalPending[isError, default: Data()]
+        pending.append(data)
+        while let newline = pending.firstIndex(of: 0x0A) {
+            var line = pending[..<newline]
+            if line.last == 0x0D { line = line.dropLast() }
+            externalLines.append(prefix + String(decoding: line, as: UTF8.self))
+            pending.removeSubrange(...newline)
+        }
+        externalPending[isError] = pending
+        tableView.reloadData()
+        if !externalLines.isEmpty { tableView.scrollRowToVisible(externalLines.count - 1) }
+    }
+
+    func finishExternal(status: Int32, cancelled: Bool) {
+        for isError in [false, true] {
+            guard let pending = externalPending[isError], !pending.isEmpty else { continue }
+            externalLines.append((isError ? "stderr: " : "") + String(decoding: pending, as: UTF8.self))
+        }
+        externalPending.removeAll(); tableView.reloadData()
+        isRunning = false; cancelButton.isHidden = true
+        statusLabel.stringValue = cancelled ? "External command cancelled."
+            : "External command exited with status \(status)."
+        statusLabel.setAccessibilityValue(statusLabel.stringValue)
     }
 
     func append(_ match: GrepMatch) {
@@ -188,7 +229,8 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     }
 
     var resultsText: String {
-        GrepResultFormatter.plainText(matches: matches, summary: summary, pattern: searchPattern)
+        if contentMode == .externalCommand { return externalLines.joined(separator: "\n") }
+        return GrepResultFormatter.plainText(matches: matches, summary: summary, pattern: searchPattern)
     }
 
     // MARK: - Actions
@@ -227,9 +269,20 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
 
     // MARK: - NSTableViewDataSource / Delegate
 
-    func numberOfRows(in tableView: NSTableView) -> Int { matches.count }
+    func numberOfRows(in tableView: NSTableView) -> Int {
+        contentMode == .grep ? matches.count : externalLines.count
+    }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
+        if contentMode == .externalCommand {
+            guard row < externalLines.count else { return nil }
+            let identifier = NSUserInterfaceItemIdentifier("ExternalOutputCell")
+            let cell = (tableView.makeView(withIdentifier: identifier, owner: self) as? NSTableCellView)
+                ?? Self.makeCell(identifier: identifier)
+            cell.textField?.stringValue = externalLines[row]
+            cell.textField?.textColor = externalLines[row].hasPrefix("stderr: ") ? .systemRed : Theme.sidebarText
+            return cell
+        }
         guard row < matches.count else { return nil }
         let identifier = NSUserInterfaceItemIdentifier("ResultCell")
         let cell = (tableView.makeView(withIdentifier: identifier, owner: self) as? NSTableCellView)

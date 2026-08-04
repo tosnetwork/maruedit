@@ -32,6 +32,7 @@ final class MainWindowController: NSWindowController,
     private var outputPane: OutputPaneView?
     private var lastGrepRequest: GrepRequest?
     private var grepCancellation: CancellationToken?
+    var externalCommandCancellation: ExternalCommandCancellation?
     /// Grep reads and decodes every file it visits, so it never runs on
     /// the main thread (ROADMAP.md M3-04, "No main-actor traversal").
     private let grepQueue = DispatchQueue(label: "com.maruedit.grep", qos: .userInitiated)
@@ -816,6 +817,24 @@ final class MainWindowController: NSWindowController,
         return pane
     }
 
+    func beginExternalCommandOutput(name: String, cancellation: ExternalCommandCancellation?) {
+        externalCommandCancellation?.cancel()
+        externalCommandCancellation = cancellation
+        let pane = ensureOutputPane()
+        pane.beginExternalCommand(name: name)
+        layoutContentViews()
+    }
+
+    func appendExternalCommandOutput(_ data: Data, isError: Bool) {
+        outputPane?.appendExternal(data, isError: isError)
+    }
+
+    func finishExternalCommandOutput(status: Int32, cancelled: Bool) {
+        outputPane?.finishExternal(status: status, cancelled: cancelled)
+        externalCommandCancellation = nil
+    }
+    var externalCommandOutputTextForTesting: String { outputPane?.resultsText ?? "" }
+
     // MARK: - OutputPaneViewDelegate
 
     func outputPane(_ pane: OutputPaneView, didActivate match: GrepMatch) {
@@ -840,6 +859,7 @@ final class MainWindowController: NSWindowController,
 
     func outputPaneDidRequestCancel(_ pane: OutputPaneView) {
         grepCancellation?.cancel()
+        externalCommandCancellation?.cancel()
     }
 
     func outputPaneDidRequestClose(_ pane: OutputPaneView) {

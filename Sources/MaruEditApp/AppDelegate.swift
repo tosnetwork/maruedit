@@ -19,6 +19,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             coordinator: coordinator, keyBindings: keyBindings,
             authorizer: MacroPermissionAuthorizer(store: macroPermissionStore))
     }()
+    private lazy var externalCommandManager: ExternalCommandManager = {
+        let injected = ProcessInfo.processInfo.environment["MARUEDIT_EXTERNAL_COMMANDS_CONFIGURATION"]
+            .map { URL(fileURLWithPath: $0) }
+        return ExternalCommandManager(
+            configurationURL: injected ?? ExternalCommandManager.defaultConfigurationURL,
+            coordinator: coordinator)
+    }()
     private let isUITestMode = ProcessInfo.processInfo.environment["MARUEDIT_UI_TEST_MODE"] == "1"
     private var recentMenu: NSMenu!
     private var reopenWithEncodingMenu: NSMenu!
@@ -46,6 +53,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 coordinator.showStatusMessage(message, duration: duration)
             })
         macroManager.reload()
+        externalCommandManager.reload()
         buildMenu()
         coordinator.ensureWindowControllerReady(restoreSession: !isUITestMode)
         if isUITestMode,
@@ -192,6 +200,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         findMenu.addItem(commandItem(.searchClearHistory))
         findItem.submenu = findMenu
         main.addItem(findItem)
+
+        let toolsItem = NSMenuItem(title: "Tools", action: nil, keyEquivalent: "")
+        toolsItem.submenu = externalCommandManager.menu
+        main.addItem(toolsItem)
 
         let macroItem = NSMenuItem(title: "Macro", action: nil, keyEquivalent: "")
         macroItem.submenu = macroManager.menu

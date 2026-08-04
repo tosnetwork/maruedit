@@ -1978,15 +1978,15 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 
 ## M6-05: External Commands
 
-- [ ] Define a versioned command configuration.
-- [ ] Support executable, arguments, working directory, and an environment allowlist.
-- [ ] Inputs: none, current document, or selection.
-- [ ] Outputs: new document, replace selection, Output Pane, or clipboard.
-- [ ] Stream stdout and stderr.
-- [ ] Allow process cancellation.
-- [ ] Clearly mark shell mode as higher risk.
-- [ ] Escape paths and arguments correctly.
-- [ ] Define behavior for unnamed or unsaved documents.
+- [x] Define a versioned command configuration. *(`ExternalCommandConfiguration` schema v1 validates and round-trips JSON; future schemas fail closed.)*
+- [x] Support executable, arguments, working directory, and an environment allowlist. *(Direct execution supports absolute executables, argument arrays, document/explicit working directories, explicit environment values, and opt-in inherited variables.)*
+- [x] Inputs: none, current document, or selection. *(`ExternalCommandControllerTests` exercises primary-selection and current in-memory document stdin.)*
+- [x] Outputs: new document, replace selection, Output Pane, or clipboard. *(All four routes are implemented; mutating routes apply only successful process output and selection replacement is one editor transaction.)*
+- [x] Stream stdout and stderr. *(`ExternalCommandRunner` drains both pipes concurrently and emits ordered per-stream data chunks; the Output Pane preserves split UTF-8 sequences and labels stderr.)*
+- [x] Allow process cancellation. *(The Output Pane Stop action terminates the active process and runner tests verify cancellation.)*
+- [x] Clearly mark shell mode as higher risk. *(Shell entries show `⚠︎ … (Shell)`, have a risk tooltip, and require a warning confirmation on every run.)*
+- [x] Escape paths and arguments correctly. *(Direct mode passes the argument array to `Process`/`execve` without a shell; an injection regression test proves spaces and substitution-looking text remain literal.)*
+- [x] Define behavior for unnamed or unsaved documents. *(In-memory inputs and every output remain available; document-directory mode fails before launch without a saved file URL, documented in `docs/external-commands.md` and covered by App tests.)*
 
 ## M6-06: Shared Output Pane
 
