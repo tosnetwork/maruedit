@@ -72,11 +72,26 @@ final class Document {
         markSaved()
     }
 
+    /// Checks whether `content` can be losslessly saved in `encoding`
+    /// without writing anything (ROADMAP.md M2-04). `save()` calls this
+    /// itself, but `MainWindowController` also calls it directly to show
+    /// a detailed alert instead of only learning about the problem from
+    /// a caught error after `save()` already tried and failed.
+    func preflightSave() -> SavePreflightResult {
+        SavePreflight.check(content, encoding: encoding)
+    }
+
     func save() throws {
         guard let url = fileURL else { return }
         guard let foundationEncoding = encoding.foundationEncoding else {
-            throw DocumentSaveError.unrepresentable(encoding: encoding)
+            throw DocumentSaveError.unrepresentable(encoding: encoding, characters: [])
         }
+
+        let preflight = preflightSave()
+        guard preflight.isRepresentable else {
+            throw DocumentSaveError.unrepresentable(encoding: encoding, characters: preflight.unrepresentableCharacters)
+        }
+
         // `.mixed`/`.none` fall back to LF: callers that care about an
         // informed choice for a mixed-ending file (MainWindowController's
         // save flow) are expected to resolve `lineEnding` to a concrete
@@ -93,7 +108,7 @@ final class Document {
         let outputText = LineEndingDetector.applying(targetKind, to: content)
 
         guard let encoded = outputText.data(using: foundationEncoding) else {
-            throw DocumentSaveError.unrepresentable(encoding: encoding)
+            throw DocumentSaveError.unrepresentable(encoding: encoding, characters: preflight.unrepresentableCharacters)
         }
         let data = (hasByteOrderMark ? (encoding.byteOrderMark ?? Data()) : Data()) + encoded
         try data.write(to: url, options: .atomic)
@@ -108,14 +123,19 @@ final class Document {
 }
 
 enum DocumentSaveError: Error {
-    case unrepresentable(encoding: TextEncoding)
+    case unrepresentable(encoding: TextEncoding, characters: [UnrepresentableCharacter])
 }
 
 extension DocumentSaveError: LocalizedError {
     var errorDescription: String? {
         switch self {
-        case .unrepresentable(let encoding):
-            return "This document contains characters that cannot be represented in \(encoding.displayName). Save As UTF-8 or another encoding instead."
+        case .unrepresentable(let encoding, let characters):
+            if characters.isEmpty {
+                return "This document contains characters that cannot be represented in \(encoding.displayName). Save as UTF-8 or another encoding instead."
+            }
+            let count = characters.count
+            let noun = count == 1 ? "character" : "characters"
+            return "\(count) \(noun) cannot be represented in \(encoding.displayName). Save as UTF-8 or another encoding instead."
         }
     }
 }

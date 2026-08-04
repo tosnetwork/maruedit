@@ -247,26 +247,87 @@ final class MainWindowController: NSWindowController,
 
     func saveDocument() {
         guard let doc = curDoc else { return }
-        if doc.fileURL != nil {
-            guard resolveMixedLineEndingIfNeeded(for: doc) else { return }
-            do { try doc.save(); refreshTabs(); refreshStatus() } catch { NSAlert(error: error).runModal() }
-        } else { saveDocumentAs() }
+        guard doc.fileURL != nil else { saveDocumentAs(); return }
+        guard resolveMixedLineEndingIfNeeded(for: doc) else { return }
+        performSave(doc)
     }
 
     func saveDocumentAs() {
         guard let doc = curDoc else { return }
         guard resolveMixedLineEndingIfNeeded(for: doc) else { return }
+
         let p = NSSavePanel()
         p.canCreateDirectories = true
+        let accessory = SaveAsFormatAccessoryView(initialEncoding: doc.encoding, initialHasByteOrderMark: doc.hasByteOrderMark)
+        p.accessoryView = accessory
         p.beginSheetModal(for: window!) { [weak self] r in
-            guard r == .OK, let url = p.url else { return }
-            do {
-                try doc.save(to: url)
-                self?.refreshTabs(); self?.refreshStatus()
-                self?.window?.title = "MaruEdit — \(doc.displayName)"
-                RecentItems.addFile(url)
-            } catch { NSAlert(error: error).runModal() }
+            guard let self = self, r == .OK, let url = p.url else { return }
+            doc.encoding = accessory.selectedEncoding
+            doc.hasByteOrderMark = accessory.includesByteOrderMark
+            self.performSaveAs(doc, to: url)
         }
+    }
+
+    /// Saves `doc` to its existing `fileURL`. If the content can't be
+    /// represented in `doc.encoding`, shows the ROADMAP.md M2-04
+    /// unrepresentable-character alert (with line/column detail) and
+    /// offers to convert to UTF-8 and retry, rather than a bare error.
+    private func performSave(_ doc: Document) {
+        do {
+            try doc.save()
+            refreshTabs(); refreshStatus()
+        } catch let DocumentSaveError.unrepresentable(encoding, characters) {
+            offerUTF8Conversion(for: doc, encoding: encoding, characters: characters) { [weak self] in
+                self?.performSave(doc)
+            }
+        } catch {
+            NSAlert(error: error).runModal()
+        }
+    }
+
+    private func performSaveAs(_ doc: Document, to url: URL) {
+        do {
+            try doc.save(to: url)
+            refreshTabs(); refreshStatus()
+            window?.title = "MaruEdit — \(doc.displayName)"
+            RecentItems.addFile(url)
+        } catch let DocumentSaveError.unrepresentable(encoding, characters) {
+            offerUTF8Conversion(for: doc, encoding: encoding, characters: characters) { [weak self] in
+                self?.performSaveAs(doc, to: url)
+            }
+        } catch {
+            NSAlert(error: error).runModal()
+        }
+    }
+
+    /// Shows the unrepresentable-character detail (character, line,
+    /// column — up to a handful, with a count of any remainder) and, if
+    /// the user chooses to proceed, converts `doc` to UTF-8 (which can
+    /// represent everything) and calls `retry`. Lossy save is
+    /// deliberately not offered as an option here — only Save as UTF-8
+    /// or Cancel, per ROADMAP.md M2-04 ("disable lossy save by default").
+    private func offerUTF8Conversion(
+        for doc: Document,
+        encoding: TextEncoding,
+        characters: [UnrepresentableCharacter],
+        retry: @escaping () -> Void
+    ) {
+        let a = NSAlert()
+        a.alertStyle = .warning
+        a.messageText = "Cannot Save in \(encoding.displayName)"
+        let shown = characters.prefix(5)
+            .map { "Line \($0.line), Col \($0.column): \u{201C}\($0.character)\u{201D}" }
+            .joined(separator: "\n")
+        let remainder = characters.count > 5 ? "\n…and \(characters.count - 5) more" : ""
+        a.informativeText = characters.isEmpty
+            ? "This document contains characters that cannot be represented in \(encoding.displayName)."
+            : "\(characters.count) character\(characters.count == 1 ? "" : "s") cannot be represented in \(encoding.displayName):\n\n\(shown)\(remainder)"
+        a.addButton(withTitle: "Save as UTF-8")
+        a.addButton(withTitle: "Cancel")
+        guard a.runModal() == .alertFirstButtonReturn else { return }
+        doc.encoding = .utf8
+        doc.hasByteOrderMark = false
+        retry()
     }
 
     /// If `doc.lineEnding` is still `.mixed`, requires the user to pick a

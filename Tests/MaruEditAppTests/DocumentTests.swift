@@ -111,10 +111,13 @@ final class DocumentTests: XCTestCase {
         doc.markModified()
 
         XCTAssertThrowsError(try doc.save()) { error in
-            guard case DocumentSaveError.unrepresentable(let encoding) = error else {
+            guard case DocumentSaveError.unrepresentable(let encoding, let characters) = error else {
                 return XCTFail("expected DocumentSaveError.unrepresentable, got \(error)")
             }
             XCTAssertEqual(encoding, .eucJP)
+            XCTAssertEqual(characters.map { $0.character }, ["😀"])
+            XCTAssertEqual(characters.first?.line, 1)
+            XCTAssertEqual(characters.first?.column, 1)
         }
 
         // The original file on disk must be untouched by the failed save.

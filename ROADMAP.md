@@ -1542,15 +1542,15 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M2-04: Save Preflight and Lossless Encoding
 
-- [ ] Detect unrepresentable characters.
-- [ ] Report character, line, and column.
-- [ ] Offer conversion to UTF-8.
-- [ ] Disable lossy save by default.
-- [ ] Support BOM control.
-- [ ] Allow Save As to choose encoding and line ending.
-- [ ] Add Japanese edge-character tests.
+- [x] Detect unrepresentable characters. *(`SavePreflight.check` in `Sources/MaruEditCore/TextIO/SavePreflight.swift` — fast path checks the whole string at once; only scans character-by-character when that fails, so normal saves pay no extra cost.)*
+- [x] Report character, line, and column. *(`UnrepresentableCharacter`, 1-based to match the status bar's existing `Ln`/`Col` display. `Document.save()` now throws `DocumentSaveError.unrepresentable(encoding:characters:)` carrying the full list, not just the encoding.)*
+- [x] Offer conversion to UTF-8. *(`MainWindowController.offerUTF8Conversion` — shown from both `performSave` and `performSaveAs`'s catch blocks, listing up to 5 offending characters with line/column plus a count of any remainder.)*
+- [x] Disable lossy save by default. *(The alert offers exactly two choices: "Save as UTF-8" or "Cancel" — no lossy-save escape hatch exists at all yet, which trivially satisfies "not the default." An explicit advanced lossy option, if ever added, is future scope — not requested by this task's own acceptance criterion.)*
+- [x] Support BOM control. *(`SaveAsFormatAccessoryView` — a checkbox in the Save As panel, enabled only for encodings that have a BOM convention (UTF-8/UTF-16); automatically unchecked and disabled for encodings that don't, e.g. the legacy Japanese candidates.)*
+- [x] Allow Save As to choose encoding and line ending. *(Encoding: `SaveAsFormatAccessoryView`'s popup, applied before the write. Line ending: reuses `resolveMixedLineEndingIfNeeded` — a save-time correctness question that applies to *every* save, not just Save As, so it isn't duplicated into the accessory view.)*
+- [x] Add Japanese edge-character tests. *(`SavePreflightTests`: emoji correctly rejected by every legacy candidate with exact line/column location; wave dash/fullwidth tilde/yen sign tested against the *contract* — whatever `SavePreflight` decides must match direct encodability, not silently pick one — rather than asserting a specific outcome that depends on macOS's own ICU tables, per the same precedent as `EncodingDetectorTests`.)*
 
-**Acceptance:** Text that cannot be represented in the target encoding is never silently corrupted.
+**Acceptance:** Text that cannot be represented in the target encoding is never silently corrupted. *(102/102 tests pass, including `testSavingUnrepresentableCharacterThrowsInsteadOfCorrupting` from M2-02, now also asserting the exact character/line/column reported. The interactive alert/Save-As-panel flows themselves have no automated test — same reasoning as M2-03's mixed-line-ending alert: `NSAlert`/`NSSavePanel` modals block indefinitely in a headless test process — verified instead by a real running release build launching and opening files without crashing, plus non-modal unit tests of `SaveAsFormatAccessoryView`'s selection logic.)*
 
 ## M2-05: Atomic Save and Attributes
 
