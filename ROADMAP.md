@@ -441,6 +441,35 @@ A separate App Store variant may be evaluated after 1.0, but it must not weaken 
 - any future update checker must be explicit, documented, and disable-able;
 - keep the privacy statement short and auditable.
 
+## ADR-009: Long-Running Work Streams Through Callbacks, Not `AsyncThrowingStream`
+
+*Recorded during M3-05.*
+
+Section 11.3 sketches `GrepService` as an actor exposing
+`AsyncThrowingStream<GrepEvent>`. `GrepService` instead takes an
+`onEvent` callback and a `CancellationToken`, and callers dispatch it to a
+background queue.
+
+Reasons:
+
+- every I/O path in this codebase is synchronous and queue-based
+  (`TextFileLoader`, `TextFileSaver`, `DirectoryTraversal`), and M1-03
+  already recorded the same choice for `CommandDefinition`. Introducing
+  Swift concurrency for one feature would mean either an actor boundary
+  around AppKit view controllers that are not `@MainActor`-annotated, or
+  ad-hoc `MainActor.run` hops around non-`Sendable` UI state;
+- the *observable* contract 11.3 asks for is unchanged: results stream as
+  they are found, progress and skips are reported, and cancellation takes
+  effect within one file;
+- it is reversible. `GrepService.run` is a single static entry point, so
+  wrapping it in an `AsyncThrowingStream` later — when the app adopts
+  structured concurrency as a whole — is a local change with no callers
+  to rewrite.
+
+This applies to the same shape of problem elsewhere (external commands in
+M6-05). Adopting Swift concurrency across the app is a separate decision,
+to be taken once rather than feature by feature.
+
 ---
 
 # 7. Target Repository Structure
@@ -1667,14 +1696,14 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M3-05: Grep Search and Encoding
 
-- [ ] Reuse `TextFileLoader` and `EncodingDetector` for each file.
-- [ ] Support literal, regex, and shared search options.
-- [ ] Return URL, line, column, preview, and match range.
-- [ ] Stream matches progressively.
-- [ ] Report scanned, matched, and skipped counts.
-- [ ] Stop promptly after cancellation.
+- [x] Reuse `TextFileLoader` and `EncodingDetector` for each file. *(`GrepService.run` loads every file through `TextFileLoader.load(contentsOf:)` — the same auto-detection the editor uses on open — and reports the detected encoding on each match, so the UI can show it and M6-07 can write back in it.)*
+- [x] Support literal, regex, and shared search options. *(The request carries the same `SearchQuery` the Find Bar builds, and matching calls `SearchEngine`, so options behave identically in a document and across a tree. The regex is compiled once for the whole run and reused per file. `testSharedSearchOptionsApply` checks case sensitivity, whole word, and regex mode.)*
+- [x] Return URL, line, column, preview, and match range. *(`GrepMatch` also carries `relativePath` and `previewRange` so a result row can highlight the match inside its line. Offsets are into the line-ending-normalized text — the text the editor shows once the file is opened — which `testCRLFFileOffsetsMatchTheNormalizedTextTheEditorWouldShow` pins so jumping to a result in a CRLF file lands correctly.)*
+- [x] Stream matches progressively. *(`GrepEvent.started` / `.match` / `.skippedFile` / `.progress` / `.finished`, emitted as the scan runs. `testStreamsMatchesBeforeFinishing` asserts the event order rather than just the final result. Callback-based rather than `AsyncThrowingStream` — recorded as ADR-009 in section 6.)*
+- [x] Report scanned, matched, and skipped counts. *(`GrepSummary`; `testSummaryCountsScannedMatchedAndSkipped`.)*
+- [x] Stop promptly after cancellation. *(Checked before each file, between matches within a file, and inside traversal. `testCancellationStopsPromptlyAndIsReported` cancels after the second match of 40 files and asserts both that emission stops and that `wasCancelled` is reported so a partial result is never presented as complete.)*
 
-**Acceptance:** Correct matches are found across UTF-8, Windows-31J, and EUC-JP fixtures.
+**Acceptance:** Correct matches are found across UTF-8, Windows-31J, and EUC-JP fixtures. *(`testFindsMatchesAcrossUTF8Windows31JAndEUCJPFixtures` writes the same Japanese text in all three encodings as real files, then asserts all three are found with the correct line, column, and preview, and that three distinct encodings were detected. 12 `GrepServiceTests` in total; full suite 227/227.)*
 
 ## M3-06: Grep UI and Output Pane
 
