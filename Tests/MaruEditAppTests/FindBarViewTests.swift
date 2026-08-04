@@ -1,11 +1,13 @@
 import XCTest
 import AppKit
 import MaruEditCore
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
 /// The Find Bar's contract after M3-02: it builds queries, routes keyboard
 /// input to actions, and displays whatever outcome it is handed — and does
 /// no matching of its own.
+
+@preconcurrency @MainActor
 final class FindBarViewTests: XCTestCase {
 
     private final class StubDelegate: FindBarDelegate {
@@ -35,7 +37,7 @@ final class FindBarViewTests: XCTestCase {
 
     // MARK: - Query construction
 
-    func testQueryReflectsFieldsAndToggles() {
+    func testQueryReflectsFieldsAndToggles() async {
         let (bar, _) = makeBar()
         bar.searchField.stringValue = "needle"
         bar.replaceField.stringValue = "pin"
@@ -55,7 +57,7 @@ final class FindBarViewTests: XCTestCase {
         XCTAssertEqual(bar.currentQuery.mode, .regularExpression)
     }
 
-    func testTogglingAnOptionReRunsTheSearchImmediately() {
+    func testTogglingAnOptionReRunsTheSearchImmediately() async {
         let (bar, delegate) = makeBar()
         bar.searchField.stringValue = "a"
         bar.toggleCase()
@@ -65,7 +67,7 @@ final class FindBarViewTests: XCTestCase {
 
     // MARK: - Keyboard
 
-    func testReturnRunsFindNextAndEscapeDismisses() {
+    func testReturnRunsFindNextAndEscapeDismisses() async {
         let (bar, delegate) = makeBar()
         bar.searchField.stringValue = "a"
 
@@ -79,14 +81,14 @@ final class FindBarViewTests: XCTestCase {
         XCTAssertTrue(bar.isHidden)
     }
 
-    func testReturnInTheReplaceFieldReplaces() {
+    func testReturnInTheReplaceFieldReplaces() async {
         let (bar, delegate) = makeBar()
         _ = bar.control(bar.replaceField, textView: fieldEditor,
                         doCommandBy: #selector(NSResponder.insertNewline(_:)))
         XCTAssertEqual(delegate.actions, [.replace])
     }
 
-    func testUpAndDownRecallSearchHistory() {
+    func testUpAndDownRecallSearchHistory() async {
         let (bar, _) = makeBar()
         bar.searchHistory = ["newest", "older", "oldest"]
 
@@ -107,14 +109,14 @@ final class FindBarViewTests: XCTestCase {
         XCTAssertEqual(bar.searchField.stringValue, "", "stepping past the newest entry clears the field")
     }
 
-    func testHistoryRecallIsIgnoredWhenThereIsNoHistory() {
+    func testHistoryRecallIsIgnoredWhenThereIsNoHistory() async {
         let (bar, _) = makeBar()
         XCTAssertFalse(bar.control(bar.searchField, textView: fieldEditor,
                                    doCommandBy: #selector(NSResponder.moveUp(_:))),
                        "with no history the field editor must keep its normal Up behavior")
     }
 
-    func testSearchAndReplaceHistoriesAreSeparate() {
+    func testSearchAndReplaceHistoriesAreSeparate() async {
         let (bar, _) = makeBar()
         bar.searchHistory = ["find-me"]
         bar.replacementHistory = ["replace-me"]
@@ -128,7 +130,7 @@ final class FindBarViewTests: XCTestCase {
         XCTAssertEqual(bar.replaceField.stringValue, "replace-me")
     }
 
-    func testOptionShortcutsToggleSearchOptions() throws {
+    func testOptionShortcutsToggleSearchOptions() async throws {
         let (bar, delegate) = makeBar()
 
         func send(_ character: String) throws {
@@ -154,7 +156,7 @@ final class FindBarViewTests: XCTestCase {
                        "each option change re-runs the search")
     }
 
-    func testHiddenFindBarIgnoresOptionShortcuts() throws {
+    func testHiddenFindBarIgnoresOptionShortcuts() async throws {
         let (bar, _) = makeBar()
         bar.isHidden = true
         let event = try XCTUnwrap(NSEvent.keyEvent(
@@ -169,7 +171,7 @@ final class FindBarViewTests: XCTestCase {
 
     // MARK: - Presentation
 
-    func testStatusShowsCurrentAndTotalCounts() {
+    func testStatusShowsCurrentAndTotalCounts() async {
         let (bar, delegate) = makeBar()
         bar.searchField.stringValue = "a"
         delegate.outcome = FindOutcome(totalMatches: 12, currentIndex: 3)
@@ -178,7 +180,7 @@ final class FindBarViewTests: XCTestCase {
         XCTAssertEqual(bar.statusText, "3 of 12")
     }
 
-    func testStatusShowsNoResults() {
+    func testStatusShowsNoResults() async {
         let (bar, delegate) = makeBar()
         bar.searchField.stringValue = "zzz"
         delegate.outcome = FindOutcome(totalMatches: 0)
@@ -187,7 +189,7 @@ final class FindBarViewTests: XCTestCase {
         XCTAssertEqual(bar.statusText, "No results")
     }
 
-    func testInvalidPatternMessageReplacesTheCountAndKeepsInput() {
+    func testInvalidPatternMessageReplacesTheCountAndKeepsInput() async {
         let (bar, delegate) = makeBar()
         bar.searchField.stringValue = "a("
         delegate.outcome = .failure("The pattern is invalid.")
@@ -199,7 +201,7 @@ final class FindBarViewTests: XCTestCase {
 
     // MARK: - Accessibility
 
-    func testControlsCarryVoiceOverLabels() {
+    func testControlsCarryVoiceOverLabels() async {
         let (bar, _) = makeBar()
         XCTAssertEqual(bar.searchField.accessibilityLabel(), "Find")
         XCTAssertEqual(bar.replaceField.accessibilityLabel(), "Replace with")

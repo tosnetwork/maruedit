@@ -1,10 +1,12 @@
 import AppKit
 import XCTest
 import MaruEditCore
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
+
+@preconcurrency @MainActor
 final class MacroCommandBridgeTests: XCTestCase {
-    func testSelectionTransformClipboardPromptMessageAndSingleUndo() throws {
+    func testSelectionTransformClipboardPromptMessageAndSingleUndo() async throws {
         let coordinator = AppCoordinator(preferencesStore: isolatedPreferences())
         coordinator.prepareUITestDocument(
             content: "one two one", selections: [
@@ -43,7 +45,7 @@ final class MacroCommandBridgeTests: XCTestCase {
         XCTAssertEqual(editor.textView.string, "one two one")
     }
 
-    func testCommandsRunThroughRegistryAndInvalidRangesAreRejected() throws {
+    func testCommandsRunThroughRegistryAndInvalidRangesAreRejected() async throws {
         let coordinator = AppCoordinator(preferencesStore: isolatedPreferences())
         coordinator.prepareUITestDocument(content: "abc", selections: [NSRange(location: 0, length: 0)])
         let host = coordinator.makeMacroHost(

@@ -5,6 +5,7 @@ import MaruEditCore
 /// command palette, and macros must all execute commands through here —
 /// never by calling a controller method directly — so there is exactly
 /// one place that decides whether a command can run right now.
+@MainActor
 final class CommandRegistry {
     private var definitionsByID: [CommandID: CommandDefinition] = [:]
 

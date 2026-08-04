@@ -1,6 +1,6 @@
 import XCTest
 import MaruEditCore
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
 /// Only tests the *no-conflict* path through `MainWindowController`'s
 /// save flow. Deliberately does not exercise the "file changed
@@ -10,9 +10,11 @@ import MaruEditCore
 /// ending alert and M2-04's unrepresentable-character alert. The
 /// underlying detection logic itself is fully covered by
 /// `ExternalChangeDetectorTests` at the Core level.
+
+@preconcurrency @MainActor
 final class MainWindowControllerExternalChangeTests: XCTestCase {
 
-    func testSavingAnUnchangedFileProceedsWithoutFalsePositive() throws {
+    func testSavingAnUnchangedFileProceedsWithoutFalsePositive() async throws {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("MainWindowControllerExternalChangeTests-\(UUID().uuidString).txt")
         try Data("original".utf8).write(to: url)

@@ -7,6 +7,7 @@ import MaruEditCore
 /// localization/key-binding backing store yet (section 9's preamble
 /// explicitly allows this: "direction, not byte-for-byte requirements").
 /// Revisit when macros (M6) or key-binding profiles (M5) need more.
+@MainActor
 struct CommandDefinition {
     let id: CommandID
     let title: String

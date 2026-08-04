@@ -14,6 +14,7 @@ import MaruEditCore
 
 // MARK: - Global event monitors
 
+@MainActor
 enum EditorShortcuts {
     private static var installed = false
 

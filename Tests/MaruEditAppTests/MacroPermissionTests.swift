@@ -1,9 +1,11 @@
 import XCTest
 import MaruEditCore
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
+
+@preconcurrency @MainActor
 final class MacroPermissionTests: XCTestCase {
-    func testCurrentDocumentDefaultExternalDecisionRememberAndRevokeUI() throws {
+    func testCurrentDocumentDefaultExternalDecisionRememberAndRevokeUI() async throws {
         let store = MacroPermissionStore(defaults: isolatedDefaults())
         var prompts = 0
         let authorizer = MacroPermissionAuthorizer(
@@ -25,7 +27,7 @@ final class MacroPermissionTests: XCTestCase {
         XCTAssertEqual(window.displayedRowsForTesting, 0)
     }
 
-    func testDeniedExternalAndNetworkFailExplicitly() {
+    func testDeniedExternalAndNetworkFailExplicitly() async {
         let store = MacroPermissionStore(defaults: isolatedDefaults())
         let authorizer = MacroPermissionAuthorizer(
             store: store, chooseDirectory: { _ in nil }, confirmExternalCommands: { _ in false })
@@ -42,7 +44,7 @@ final class MacroPermissionTests: XCTestCase {
         XCTAssertTrue(network.localizedDescription.contains("never available"))
     }
 
-    func testDirectoryDecisionIsRememberedWithSecurityBookmark() throws {
+    func testDirectoryDecisionIsRememberedWithSecurityBookmark() async throws {
         let store = MacroPermissionStore(defaults: isolatedDefaults())
         let directory = FileManager.default.temporaryDirectory
         var choices = 0

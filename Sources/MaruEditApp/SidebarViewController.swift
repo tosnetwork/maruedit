@@ -1,5 +1,6 @@
 import AppKit
 
+@MainActor
 protocol SidebarDelegate: AnyObject {
     func sidebarDidSelectFile(_ url: URL, inNewTab: Bool)
 }

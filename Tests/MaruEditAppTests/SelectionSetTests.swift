@@ -1,8 +1,10 @@
 import XCTest
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
+
+@preconcurrency @MainActor
 final class SelectionSetTests: XCTestCase {
-    func testNormalizesSortsDeduplicatesAndMergesOverlaps() {
+    func testNormalizesSortsDeduplicatesAndMergesOverlaps() async {
         let set = SelectionSet(ranges: [
             NSRange(location: 10, length: 3),
             NSRange(location: 2, length: 4),
@@ -15,7 +17,7 @@ final class SelectionSetTests: XCTestCase {
         ])
     }
 
-    func testAdjacentSelectionsRemainDistinct() {
+    func testAdjacentSelectionsRemainDistinct() async {
         let set = SelectionSet(ranges: [
             NSRange(location: 0, length: 2),
             NSRange(location: 2, length: 2),
@@ -23,7 +25,7 @@ final class SelectionSetTests: XCTestCase {
         XCTAssertEqual(set.ranges.count, 2)
     }
 
-    func testPrimarySelectionSurvivesSorting() {
+    func testPrimarySelectionSurvivesSorting() async {
         let primary = NSRange(location: 20, length: 2)
         let set = SelectionSet(ranges: [primary, NSRange(location: 2, length: 1)], primaryIndex: 0)
         set.update(ranges: [primary, NSRange(location: 2, length: 1)], primaryRange: primary)
@@ -31,13 +33,13 @@ final class SelectionSetTests: XCTestCase {
         XCTAssertEqual(set.primaryIndex, 1)
     }
 
-    func testEmptyInputFallsBackToOneInsertionPoint() {
+    func testEmptyInputFallsBackToOneInsertionPoint() async {
         let set = SelectionSet(ranges: [])
         XCTAssertEqual(set.ranges, [NSRange(location: 0, length: 0)])
         XCTAssertEqual(set.primaryIndex, 0)
     }
 
-    func testEditorAndTextViewSynchronizeInBothDirections() {
+    func testEditorAndTextViewSynchronizeInBothDirections() async {
         let editor = EditorViewController()
         editor.loadView()
         let programmatic = [NSRange(location: 0, length: 1), NSRange(location: 2, length: 1)]
@@ -52,7 +54,7 @@ final class SelectionSetTests: XCTestCase {
         XCTAssertEqual(editor.selectionSet.ranges, [NSRange(location: 1, length: 1)])
     }
 
-    func testTwoEditorsOwnIndependentSelectionSets() {
+    func testTwoEditorsOwnIndependentSelectionSets() async {
         let first = EditorViewController()
         let second = EditorViewController()
         first.setSelections([NSRange(location: 5, length: 0)])
@@ -60,7 +62,7 @@ final class SelectionSetTests: XCTestCase {
         XCTAssertEqual(second.selectionSet.primaryRange.location, 0)
     }
 
-    func testSwitchingDocumentsResetsMultiSelectionToDocumentsCursor() {
+    func testSwitchingDocumentsResetsMultiSelectionToDocumentsCursor() async {
         let editor = EditorViewController()
         editor.loadView()
         let first = Document(content: "first document")
@@ -77,7 +79,7 @@ final class SelectionSetTests: XCTestCase {
         XCTAssertEqual(editor.textView.selectedRange(), NSRange(location: 6, length: 0))
     }
 
-    func testCursorBelowPreservesColumnAndClampsToShortLine() {
+    func testCursorBelowPreservesColumnAndClampsToShortLine() async {
         let editor = EditorViewController()
         editor.loadView()
         editor.textView.string = "abc\nx\nabcdef"
@@ -89,7 +91,7 @@ final class SelectionSetTests: XCTestCase {
         XCTAssertEqual(editor.selectionSet.primaryRange, NSRange(location: 2, length: 0))
     }
 
-    func testSelectNextOccurrenceAndUndoLastAddedCursor() {
+    func testSelectNextOccurrenceAndUndoLastAddedCursor() async {
         let editor = EditorViewController()
         editor.loadView()
         editor.textView.string = "foo foo foo"
@@ -102,7 +104,7 @@ final class SelectionSetTests: XCTestCase {
         XCTAssertEqual(editor.selectionSet.ranges, [NSRange(location: 0, length: 3)])
     }
 
-    func testSelectAllOccurrencesAndEscapeCollapseToPrimary() {
+    func testSelectAllOccurrencesAndEscapeCollapseToPrimary() async {
         let editor = EditorViewController()
         editor.loadView()
         editor.textView.string = "foo foo foo"

@@ -1,6 +1,8 @@
 import XCTest
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
+
+@preconcurrency @MainActor
 final class MultiSelectionEditingTests: XCTestCase {
     private var windows: [NSWindow] = []
 
@@ -24,7 +26,7 @@ final class MultiSelectionEditingTests: XCTestCase {
         return editor
     }
 
-    func testInsertAppliesFromEndAndLeavesOneCursorPerEdit() {
+    func testInsertAppliesFromEndAndLeavesOneCursorPerEdit() async {
         let editor = editor("ab cd", ranges: [
             NSRange(location: 0, length: 0), NSRange(location: 3, length: 0),
         ])
@@ -35,7 +37,7 @@ final class MultiSelectionEditingTests: XCTestCase {
         ])
     }
 
-    func testDeleteSelectionsAndBackspaceCursors() {
+    func testDeleteSelectionsAndBackspaceCursors() async {
         let selected = editor("ab cd", ranges: [
             NSRange(location: 0, length: 2), NSRange(location: 3, length: 2),
         ])
@@ -52,7 +54,7 @@ final class MultiSelectionEditingTests: XCTestCase {
         ])
     }
 
-    func testPasteMapsEqualFragmentCountOrRepeatsWholeClipboard() {
+    func testPasteMapsEqualFragmentCountOrRepeatsWholeClipboard() async {
         let mapped = editor("ab cd", ranges: [
             NSRange(location: 0, length: 2), NSRange(location: 3, length: 2),
         ])
@@ -66,7 +68,7 @@ final class MultiSelectionEditingTests: XCTestCase {
         XCTAssertEqual(repeated.textView.string, "Z Z")
     }
 
-    func testOneUndoAndRedoRestoreTextAndSelections() {
+    func testOneUndoAndRedoRestoreTextAndSelections() async {
         let original = [NSRange(location: 0, length: 2), NSRange(location: 3, length: 2)]
         let editor = editor("ab cd", ranges: original)
         editor.multiEditInsert("word")
@@ -82,7 +84,7 @@ final class MultiSelectionEditingTests: XCTestCase {
         XCTAssertEqual(editor.selectionSet.ranges, editedSelections)
     }
 
-    func testOverlapsMergeAndEarliestReplacementWins() {
+    func testOverlapsMergeAndEarliestReplacementWins() async {
         let editor = editor("abcdef", ranges: [NSRange(location: 0, length: 1)])
         editor.batchReplace(
             [NSRange(location: 0, length: 3), NSRange(location: 2, length: 3)],
@@ -92,7 +94,7 @@ final class MultiSelectionEditingTests: XCTestCase {
         XCTAssertEqual(editor.selectionSet.ranges, [NSRange(location: 1, length: 0)])
     }
 
-    func testHighlightingDoesNotClearLogicalCursors() {
+    func testHighlightingDoesNotClearLogicalCursors() async {
         let editor = editor("let a = 1\nlet b = 2", ranges: [
             NSRange(location: 4, length: 1), NSRange(location: 14, length: 1),
         ])

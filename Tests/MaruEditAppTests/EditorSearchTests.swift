@@ -1,11 +1,13 @@
 import XCTest
 import AppKit
 import MaruEditCore
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
 /// Covers the editor-side glue between `SearchEngine` and the text view
 /// (ROADMAP.md M3-02). Uses a real, window-less `EditorViewController`;
 /// nothing here opens a panel or an alert.
+
+@preconcurrency @MainActor
 final class EditorSearchTests: XCTestCase {
 
     /// Windows created here are never ordered front and never run modal;
@@ -31,7 +33,7 @@ final class EditorSearchTests: XCTestCase {
         return vc
     }
 
-    func testFindNextSelectsTheFollowingMatch() {
+    func testFindNextSelectsTheFollowingMatch() async {
         let editor = makeEditor("cat dog cat")
         editor.textView.setSelectedRange(NSRange(location: 0, length: 0))
 
@@ -45,7 +47,7 @@ final class EditorSearchTests: XCTestCase {
         XCTAssertEqual(second.currentIndex, 2)
     }
 
-    func testFindNextWrapsAroundTheDocument() {
+    func testFindNextWrapsAroundTheDocument() async {
         let editor = makeEditor("cat dog cat")
         editor.textView.setSelectedRange(NSRange(location: 8, length: 3))
         let outcome = editor.find(SearchQuery(pattern: "cat"), direction: .next)
@@ -53,7 +55,7 @@ final class EditorSearchTests: XCTestCase {
         XCTAssertEqual(outcome.currentIndex, 1)
     }
 
-    func testFindPreviousMovesBackwards() {
+    func testFindPreviousMovesBackwards() async {
         let editor = makeEditor("cat dog cat")
         editor.textView.setSelectedRange(NSRange(location: 8, length: 3))
         _ = editor.find(SearchQuery(pattern: "cat"), direction: .previous)
@@ -63,7 +65,7 @@ final class EditorSearchTests: XCTestCase {
     /// The point of incremental search: refining the pattern must keep
     /// matching at the place the user started from, not step forward once
     /// per keystroke.
-    func testIncrementalSearchStaysAnchoredWhileTyping() {
+    func testIncrementalSearchStaysAnchoredWhileTyping() async {
         let editor = makeEditor("alpha alpine alps")
         editor.textView.setSelectedRange(NSRange(location: 0, length: 0))
         editor.incrementalSearchAnchor = 0
@@ -77,7 +79,7 @@ final class EditorSearchTests: XCTestCase {
                        "the first match at or after the anchor, not after the previous match")
     }
 
-    func testMatchStatusReportsCountsWithoutMovingTheSelection() {
+    func testMatchStatusReportsCountsWithoutMovingTheSelection() async {
         let editor = makeEditor("cat cat cat")
         editor.textView.setSelectedRange(NSRange(location: 4, length: 3))
 
@@ -87,7 +89,7 @@ final class EditorSearchTests: XCTestCase {
         XCTAssertEqual(editor.textView.selectedRange(), NSRange(location: 4, length: 3))
     }
 
-    func testNoMatchesLeavesSelectionAloneAndReportsZero() {
+    func testNoMatchesLeavesSelectionAloneAndReportsZero() async {
         let editor = makeEditor("cat")
         editor.textView.setSelectedRange(NSRange(location: 1, length: 0))
         let outcome = editor.find(SearchQuery(pattern: "zebra"), direction: .next)
@@ -96,7 +98,7 @@ final class EditorSearchTests: XCTestCase {
         XCTAssertEqual(editor.textView.selectedRange(), NSRange(location: 1, length: 0))
     }
 
-    func testInvalidRegexIsReportedAsAMessageNotACrash() {
+    func testInvalidRegexIsReportedAsAMessageNotACrash() async {
         let editor = makeEditor("abc")
         let outcome = editor.find(
             SearchQuery(pattern: "a(", mode: .regularExpression), direction: .next)
@@ -104,7 +106,7 @@ final class EditorSearchTests: XCTestCase {
         XCTAssertEqual(outcome.totalMatches, 0)
     }
 
-    func testSelectAllMatchesSelectsEveryOccurrence() {
+    func testSelectAllMatchesSelectsEveryOccurrence() async {
         let editor = makeEditor("cat dog cat cat")
         let outcome = editor.selectAllMatches(for: SearchQuery(pattern: "cat"))
         XCTAssertEqual(outcome.totalMatches, 3)
@@ -117,7 +119,7 @@ final class EditorSearchTests: XCTestCase {
 
     // MARK: - Replace (M3-03)
 
-    func testReplaceCurrentReplacesTheSelectedMatchAndAdvances() {
+    func testReplaceCurrentReplacesTheSelectedMatchAndAdvances() async {
         let editor = makeEditor("cat dog cat")
         editor.textView.setSelectedRange(NSRange(location: 0, length: 3))
 
@@ -128,7 +130,7 @@ final class EditorSearchTests: XCTestCase {
                        "after replacing, the next match is selected")
     }
 
-    func testReplaceOnANonMatchingSelectionOnlyFinds() {
+    func testReplaceOnANonMatchingSelectionOnlyFinds() async {
         let editor = makeEditor("cat dog cat")
         editor.textView.setSelectedRange(NSRange(location: 4, length: 3)) // "dog"
 
@@ -138,7 +140,7 @@ final class EditorSearchTests: XCTestCase {
         XCTAssertEqual(editor.textView.selectedRange(), NSRange(location: 8, length: 3))
     }
 
-    func testReplaceAllReportsItsCount() {
+    func testReplaceAllReportsItsCount() async {
         let editor = makeEditor("cat cat cat")
         let outcome = editor.replaceAll(SearchQuery(pattern: "cat", replacement: "dog"))
         XCTAssertEqual(editor.textView.string, "dog dog dog")
@@ -146,7 +148,7 @@ final class EditorSearchTests: XCTestCase {
     }
 
     /// M3-03's acceptance criterion.
-    func testOneUndoRestoresTheDocumentAfterReplaceAll() {
+    func testOneUndoRestoresTheDocumentAfterReplaceAll() async {
         let editor = makeEditor("cat cat cat cat")
         let original = editor.textView.string
 
@@ -157,7 +159,7 @@ final class EditorSearchTests: XCTestCase {
         XCTAssertEqual(editor.textView.string, original, "a single Undo must restore the whole Replace All")
     }
 
-    func testReplaceAllExpandsCaptureGroups() {
+    func testReplaceAllExpandsCaptureGroups() async {
         let editor = makeEditor("width=100\nheight=250")
         let query = SearchQuery(
             pattern: "(\\w+)=(\\d+)", replacement: "$2 is the $1", mode: .regularExpression)
@@ -165,7 +167,7 @@ final class EditorSearchTests: XCTestCase {
         XCTAssertEqual(editor.textView.string, "100 is the width\n250 is the height")
     }
 
-    func testReplacementEscapesAreHonored() {
+    func testReplacementEscapesAreHonored() async {
         let editor = makeEditor("price")
         let query = SearchQuery(
             pattern: "(price)", replacement: "\\$100 for $1", mode: .regularExpression)
@@ -174,14 +176,14 @@ final class EditorSearchTests: XCTestCase {
                        "a backslash-escaped dollar sign is literal, an unescaped one is a group reference")
     }
 
-    func testLiteralModeInsertsTheReplacementVerbatim() {
+    func testLiteralModeInsertsTheReplacementVerbatim() async {
         let editor = makeEditor("a a")
         _ = editor.replaceAll(SearchQuery(pattern: "a", replacement: "$1"))
         XCTAssertEqual(editor.textView.string, "$1 $1",
                        "in literal mode '$1' is two characters, not a group reference")
     }
 
-    func testReplaceAllWithinTheSelectionScopeLeavesTheRestAlone() {
+    func testReplaceAllWithinTheSelectionScopeLeavesTheRestAlone() async {
         let editor = makeEditor("cat cat cat cat")
         editor.searchScopeSelection = NSRange(location: 0, length: 7) // first two "cat"s
 
@@ -190,7 +192,7 @@ final class EditorSearchTests: XCTestCase {
         XCTAssertEqual(outcome.replacementCount, 2)
     }
 
-    func testReplaceAllWithAZeroLengthPatternTerminates() {
+    func testReplaceAllWithAZeroLengthPatternTerminates() async {
         let editor = makeEditor("a\nb\nc")
         let outcome = editor.replaceAll(
             SearchQuery(pattern: "^", replacement: "> ", mode: .regularExpression))
@@ -198,14 +200,14 @@ final class EditorSearchTests: XCTestCase {
         XCTAssertEqual(outcome.replacementCount, 3)
     }
 
-    func testReplaceAllWithNoMatchesChangesNothing() {
+    func testReplaceAllWithNoMatchesChangesNothing() async {
         let editor = makeEditor("cat")
         let outcome = editor.replaceAll(SearchQuery(pattern: "zebra", replacement: "x"))
         XCTAssertEqual(editor.textView.string, "cat")
         XCTAssertEqual(outcome.replacementCount, 0)
     }
 
-    func testReplaceAllWithAnInvalidRegexReportsAnError() {
+    func testReplaceAllWithAnInvalidRegexReportsAnError() async {
         let editor = makeEditor("cat")
         let outcome = editor.replaceAll(
             SearchQuery(pattern: "(", replacement: "x", mode: .regularExpression))
@@ -213,13 +215,13 @@ final class EditorSearchTests: XCTestCase {
         XCTAssertEqual(editor.textView.string, "cat")
     }
 
-    func testReplaceAllOnlyRewritesTheSpanBetweenTheFirstAndLastMatch() {
+    func testReplaceAllOnlyRewritesTheSpanBetweenTheFirstAndLastMatch() async {
         let editor = makeEditor("keep cat keep cat keep")
         _ = editor.replaceAll(SearchQuery(pattern: "cat", replacement: "dog"))
         XCTAssertEqual(editor.textView.string, "keep dog keep dog keep")
     }
 
-    func testSearchOptionsReachTheEngine() {
+    func testSearchOptionsReachTheEngine() async {
         let editor = makeEditor("Cat cat category")
         XCTAssertEqual(editor.matchStatus(for: SearchQuery(pattern: "cat")).totalMatches, 3)
         XCTAssertEqual(

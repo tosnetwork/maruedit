@@ -2080,12 +2080,12 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 
 ## M7-06: Concurrency and Cancellation Audit
 
-- [ ] Keep all UI state on `MainActor`.
-- [ ] Define Grep, I/O, and macro execution boundaries.
-- [ ] Test Task cancellation.
-- [ ] Avoid detached tasks that capture UI objects.
-- [ ] Record a Thread Sanitizer run.
-- [ ] Audit `Sendable` warnings.
+- [x] Keep all UI state on `MainActor`. *(AppKit owners, UI delegates, commands, permissions, and UI-facing managers are explicitly isolated; actor-aware App tests exercise the boundary.)*
+- [x] Define Grep, I/O, and macro execution boundaries. *(`docs/concurrency-audit.md` records worker, I/O, callback, and main-actor ownership.)*
+- [x] Test Task cancellation. *(`GrepService.collect(_:)` bridges cancellation to the scanner token; its 100-file test verifies early cancellation.)*
+- [x] Avoid detached tasks that capture UI objects. *(The audit found no `Task.detached`; callbacks carry values and explicitly enter `MainActor`.)*
+- [x] Record a Thread Sanitizer run. *(`swift test --sanitize=thread`: 394 tests, zero failures and no race reports.)*
+- [x] Audit `Sendable` warnings. *(A clean strict-concurrency build completed with zero warnings; synchronized unchecked conformances are documented.)*
 
 ## M7-07: Crash and Recovery Tests
 

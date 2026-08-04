@@ -1,8 +1,10 @@
 import AppKit
 import MaruEditCore
 import XCTest
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
+
+@preconcurrency @MainActor
 final class StatusBarViewTests: XCTestCase {
     private final class Delegate: StatusBarViewDelegate {
         var controls: [StatusBarControl] = []
@@ -13,7 +15,7 @@ final class StatusBarViewTests: XCTestCase {
         }
     }
 
-    func testTransientMessageRestoresCursorText() {
+    func testTransientMessageRestoresCursorText() async {
         let status = StatusBarView(frame: NSRect(x: 0, y: 0, width: 600, height: 24))
         status.updateCursor(EditorCursorState(
             lineNumber: 4, displayColumn: 9, utf16Offset: 42,
@@ -26,10 +28,10 @@ final class StatusBarViewTests: XCTestCase {
             XCTAssertEqual(status.displayedLeadingText, "Ln 4, Col 9")
             restored.fulfill()
         }
-        wait(for: [restored], timeout: 1)
+        await fulfillment(of: [restored], timeout: 1)
     }
 
-    func testCursorSelectionAndFormatFieldsAreExplicit() {
+    func testCursorSelectionAndFormatFieldsAreExplicit() async {
         let status = StatusBarView(frame: NSRect(x: 0, y: 0, width: 900, height: 24))
         status.updateCursor(EditorCursorState(
             lineNumber: 2, displayColumn: 7, utf16Offset: 4,
@@ -47,7 +49,7 @@ final class StatusBarViewTests: XCTestCase {
         XCTAssertEqual(status.displayedLanguageProfileText, "Swift · Swift")
     }
 
-    func testEveryFormatFieldRoutesAsAClickableControl() {
+    func testEveryFormatFieldRoutesAsAClickableControl() async {
         let status = StatusBarView(frame: NSRect(x: 0, y: 0, width: 900, height: 24))
         let delegate = Delegate()
         status.delegate = delegate
@@ -64,7 +66,7 @@ final class StatusBarViewTests: XCTestCase {
         XCTAssertEqual(delegate.controls.count, formatControls.count)
     }
 
-    func testLargeFileModeIsVisibleExplicitAndClickable() {
+    func testLargeFileModeIsVisibleExplicitAndClickable() async {
         let status = StatusBarView(frame: NSRect(x: 0, y: 0, width: 900, height: 24))
         let delegate = Delegate()
         status.delegate = delegate
@@ -84,6 +86,8 @@ final class StatusBarViewTests: XCTestCase {
     }
 }
 
+
+@preconcurrency @MainActor
 final class EditorCursorStateTests: XCTestCase {
     private final class Delegate: EditorViewControllerDelegate {
         var state: EditorCursorState?
@@ -93,7 +97,7 @@ final class EditorCursorStateTests: XCTestCase {
         }
     }
 
-    func testDisplayColumnIsNotUTF16OffsetAndSelectionCountsAllRanges() {
+    func testDisplayColumnIsNotUTF16OffsetAndSelectionCountsAllRanges() async {
         let editor = EditorViewController()
         _ = editor.view
         editor.document = Document(content: "\t日e\u{301}\nnext")

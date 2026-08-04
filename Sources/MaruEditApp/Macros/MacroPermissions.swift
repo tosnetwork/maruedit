@@ -2,11 +2,13 @@ import AppKit
 import MaruEditCore
 import ObjectiveC
 
+@MainActor
 struct AuthorizedMacroRun {
     let permissions: Set<MacroPermission>
     let stopAccessing: () -> Void
 }
 
+@MainActor
 final class MacroPermissionAuthorizer {
     let store: MacroPermissionStore
     private let chooseDirectory: (UserMacro) -> URL?
@@ -150,7 +152,7 @@ final class MacroPermissionWindowController: NSWindowController {
     }
 }
 
-private var grantKey: UInt8 = 0
+@MainActor private var grantKey: UInt8 = 0
 private extension NSButton {
     var representedGrant: MacroPermissionGrant? {
         get { objc_getAssociatedObject(self, &grantKey) as? MacroPermissionGrant }

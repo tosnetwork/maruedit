@@ -7,7 +7,8 @@ struct MacroErrorEntry: Equatable {
     let message: String
 }
 
-final class MacroManager: NSObject, @unchecked Sendable {
+@MainActor
+final class MacroManager: NSObject {
     let directory: URL
     private let coordinator: AppCoordinator
     private let keyBindings: KeyBindingManager
@@ -25,17 +26,17 @@ final class MacroManager: NSObject, @unchecked Sendable {
     init(directory: URL = MacroManager.defaultDirectory,
          coordinator: AppCoordinator, keyBindings: KeyBindingManager,
          enablementStore: MacroEnablementStore = MacroEnablementStore(),
-         authorizer: MacroPermissionAuthorizer = MacroPermissionAuthorizer(),
+         authorizer: MacroPermissionAuthorizer? = nil,
          enableHidemaruCompatibility: Bool = HidemaruCompatibility.isEnabled()) {
         self.directory = directory
         self.coordinator = coordinator
         self.keyBindings = keyBindings
         self.enablementStore = enablementStore
-        self.authorizer = authorizer
+        self.authorizer = authorizer ?? MacroPermissionAuthorizer()
         self.enableHidemaruCompatibility = enableHidemaruCompatibility
     }
 
-    static var defaultDirectory: URL {
+    nonisolated static var defaultDirectory: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         return base.appendingPathComponent("MaruEdit/Macros", isDirectory: true)
     }
@@ -75,9 +76,9 @@ final class MacroManager: NSObject, @unchecked Sendable {
             return
         }
         engine.run(macro.source, host: coordinator.makeMacroHost(
-            permissions: authorization.permissions)) { [weak self] result in
-            authorization.stopAccessing()
-            DispatchQueue.main.async {
+            permissions: authorization.permissions)) { [self] result in
+            Task { @MainActor in
+                authorization.stopAccessing()
                 if case .failure(let error) = result {
                     let message: String
                     switch error {
@@ -86,9 +87,9 @@ final class MacroManager: NSObject, @unchecked Sendable {
                     case .javascript(let js):
                         message = [js.message, js.stack].compactMap { $0 }.joined(separator: "\n")
                     }
-                    self?.appendError(name: macro.metadata.name, message: message)
+                    self.appendError(name: macro.metadata.name, message: message)
                 }
-                self?.executionDidFinish?(macro.id, result)
+                self.executionDidFinish?(macro.id, result)
             }
         }
     }

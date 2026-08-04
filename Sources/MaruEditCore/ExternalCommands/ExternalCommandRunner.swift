@@ -86,17 +86,14 @@ public final class ExternalCommandRunner: @unchecked Sendable {
             cancellation.attach(process)
 
             let group = DispatchGroup()
-            let outputLock = NSLock()
-            var output = Data(), errorOutput = Data()
+            let collectedOutput = LockedExternalCommandOutput()
             func read(_ handle: FileHandle, stream: ExternalCommandStream) {
                 group.enter()
                 self.ioQueue.async {
                     while true {
                         let data = handle.availableData
                         if data.isEmpty { break }
-                        outputLock.lock()
-                        if stream == .standardOutput { output.append(data) } else { errorOutput.append(data) }
-                        outputLock.unlock()
+                        collectedOutput.append(data, to: stream)
                         group.enter()
                         self.callbackQueue.async {
                             onChunk(.init(stream: stream, data: data))
@@ -115,11 +112,34 @@ public final class ExternalCommandRunner: @unchecked Sendable {
                 group.leave()
             }
             process.waitUntilExit(); group.wait()
+            let output = collectedOutput.snapshot()
             completion(.success(.init(
                 terminationStatus: process.terminationStatus,
-                standardOutput: output, standardError: errorOutput,
+                standardOutput: output.standardOutput, standardError: output.standardError,
                 wasCancelled: cancellation.isCancelled)))
         }
         return cancellation
+    }
+}
+
+/// Mutable process output shared only by the two pipe-reader queues. The lock
+/// protects both buffers and snapshots them atomically before completion.
+private final class LockedExternalCommandOutput: @unchecked Sendable {
+    private let lock = NSLock()
+    private var standardOutput = Data()
+    private var standardError = Data()
+
+    func append(_ data: Data, to stream: ExternalCommandStream) {
+        lock.withLock {
+            if stream == .standardOutput {
+                standardOutput.append(data)
+            } else {
+                standardError.append(data)
+            }
+        }
+    }
+
+    func snapshot() -> (standardOutput: Data, standardError: Data) {
+        lock.withLock { (standardOutput, standardError) }
     }
 }

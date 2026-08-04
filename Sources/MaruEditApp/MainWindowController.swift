@@ -1,8 +1,9 @@
 import AppKit
 import MaruEditCore
 
+@MainActor
 final class MainWindowController: NSWindowController,
-    NSSplitViewDelegate,
+    @preconcurrency NSSplitViewDelegate,
     EditorViewControllerDelegate,
     TabBarViewDelegate,
     SidebarDelegate,
@@ -824,13 +825,13 @@ final class MainWindowController: NSWindowController,
         pane.beginRun(pattern: request.query.pattern)
         layoutContentViews()
 
-        grepQueue.async { [weak self] in
+        grepQueue.async { [self] in
             GrepService.run(request, isCancelled: { token.isCancelled }) { event in
                 // Every event hops back to the main thread; the search
                 // itself — traversal, decoding, matching — stays here on
                 // the background queue.
-                DispatchQueue.main.async {
-                    guard let self = self, self.grepCancellation === token else { return }
+                Task { @MainActor in
+                    guard self.grepCancellation === token else { return }
                     self.handle(event)
                 }
             }
@@ -841,11 +842,11 @@ final class MainWindowController: NSWindowController,
         grepReplaceCancellation?.cancel()
         let token = CancellationToken(); grepReplaceCancellation = token
         beginOutputOperation("Building Grep Replace preview…")
-        grepQueue.async { [weak self] in
+        grepQueue.async { [self] in
             let result = Result { try GrepReplaceService.scan(
                 request: request, replacement: replacement, isCancelled: { token.isCancelled }) }
-            DispatchQueue.main.async {
-                guard let self, self.grepReplaceCancellation === token else { return }
+            Task { @MainActor in
+                guard self.grepReplaceCancellation === token else { return }
                 self.grepReplaceCancellation = nil
                 switch result {
                 case .failure(let error):
@@ -879,10 +880,10 @@ final class MainWindowController: NSWindowController,
     private func applyGrepReplace(_ set: GrepReplaceChangeSet) {
         let token = CancellationToken(); grepReplaceCancellation = token
         beginOutputOperation("Applying Grep Replace…")
-        grepQueue.async { [weak self] in
+        grepQueue.async { [self] in
             let summary = GrepReplaceService.apply(set, isCancelled: { token.isCancelled })
-            DispatchQueue.main.async {
-                guard let self, self.grepReplaceCancellation === token else { return }
+            Task { @MainActor in
+                guard self.grepReplaceCancellation === token else { return }
                 self.grepReplaceCancellation = nil
                 self.outputPane?.appendSystem(
                     "Grep Replace: \(summary.writtenFiles) written, \(summary.failedFiles) not written.",

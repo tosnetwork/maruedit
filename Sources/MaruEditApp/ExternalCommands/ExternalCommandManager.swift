@@ -1,6 +1,7 @@
 import AppKit
 import MaruEditCore
 
+@MainActor
 final class ExternalCommandManager: NSObject {
     let configurationURL: URL
     private let coordinator: AppCoordinator
@@ -27,7 +28,7 @@ final class ExternalCommandManager: NSObject {
         }
     }
 
-    static var defaultConfigurationURL: URL {
+    nonisolated static var defaultConfigurationURL: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("MaruEdit/ExternalCommands.json")
     }

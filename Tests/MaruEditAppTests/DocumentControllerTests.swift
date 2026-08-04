@@ -1,6 +1,8 @@
 import XCTest
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
+
+@preconcurrency @MainActor
 final class DocumentControllerTests: XCTestCase {
 
     private func tempFile(named name: String, content: String = "") throws -> URL {
@@ -10,7 +12,7 @@ final class DocumentControllerTests: XCTestCase {
         return url
     }
 
-    func testNewDocumentBecomesCurrent() {
+    func testNewDocumentBecomesCurrent() async {
         let c = DocumentController()
         let doc = c.newDocument()
         XCTAssertEqual(c.documents.count, 1)
@@ -18,7 +20,7 @@ final class DocumentControllerTests: XCTestCase {
         XCTAssertTrue(c.currentDocument === doc)
     }
 
-    func testOpenAppendsNewTabForUnseenFile() throws {
+    func testOpenAppendsNewTabForUnseenFile() async throws {
         let c = DocumentController()
         _ = c.newDocument()
         let url = try tempFile(named: "a.txt", content: "hello")
@@ -30,7 +32,7 @@ final class DocumentControllerTests: XCTestCase {
         XCTAssertEqual(result.document.content, "hello")
     }
 
-    func testOpenActivatesExistingTabInsteadOfDuplicating() throws {
+    func testOpenActivatesExistingTabInsteadOfDuplicating() async throws {
         let c = DocumentController()
         let url = try tempFile(named: "a.txt", content: "hello")
         _ = try c.open(url: url)
@@ -42,7 +44,7 @@ final class DocumentControllerTests: XCTestCase {
         XCTAssertEqual(c.currentIndex, 0)
     }
 
-    func testOpenInCurrentTabReplacesUnmodifiedBlankTab() throws {
+    func testOpenInCurrentTabReplacesUnmodifiedBlankTab() async throws {
         let c = DocumentController()
         _ = c.newDocument() // blank, unmodified
         let url = try tempFile(named: "a.txt", content: "hello")
@@ -53,7 +55,7 @@ final class DocumentControllerTests: XCTestCase {
         XCTAssertEqual(c.currentDocument?.fileURL, url)
     }
 
-    func testOpenInCurrentTabAppendsWhenCurrentTabIsModified() throws {
+    func testOpenInCurrentTabAppendsWhenCurrentTabIsModified() async throws {
         let c = DocumentController()
         let blank = c.newDocument()
         blank.content = "unsaved work"
@@ -64,7 +66,7 @@ final class DocumentControllerTests: XCTestCase {
         XCTAssertEqual(c.documents.count, 2, "must not discard modified content")
     }
 
-    func testCloseDocumentRecreatesBlankWhenListEmptied() {
+    func testCloseDocumentRecreatesBlankWhenListEmptied() async {
         let c = DocumentController()
         _ = c.newDocument()
         let emptiedAndReplaced = c.closeDocument(at: 0)
@@ -73,7 +75,7 @@ final class DocumentControllerTests: XCTestCase {
         XCTAssertNil(c.currentDocument?.fileURL)
     }
 
-    func testCloseDocumentSelectsNeighborWhenNotEmptied() {
+    func testCloseDocumentSelectsNeighborWhenNotEmptied() async {
         let c = DocumentController()
         _ = c.newDocument()
         _ = c.newDocument()
@@ -86,14 +88,14 @@ final class DocumentControllerTests: XCTestCase {
         XCTAssertEqual(c.currentIndex, 1)
     }
 
-    func testSelectDocumentIgnoresOutOfRangeIndex() {
+    func testSelectDocumentIgnoresOutOfRangeIndex() async {
         let c = DocumentController()
         _ = c.newDocument()
         c.selectDocument(at: 99)
         XCTAssertEqual(c.currentIndex, 0, "out-of-range selection must be a no-op, not corrupt state")
     }
 
-    func testSelectDocumentClampedHandlesOutOfRangeSavedIndex() {
+    func testSelectDocumentClampedHandlesOutOfRangeSavedIndex() async {
         let c = DocumentController()
         _ = c.newDocument()
         _ = c.newDocument()
@@ -103,14 +105,14 @@ final class DocumentControllerTests: XCTestCase {
         XCTAssertEqual(c.currentIndex, 0)
     }
 
-    func testPruneLeftoverBlankDocumentKeepsSoleDocument() {
+    func testPruneLeftoverBlankDocumentKeepsSoleDocument() async {
         let c = DocumentController()
         _ = c.newDocument() // the leftover blank from window init; nothing else was restored
         c.pruneLeftoverBlankDocument()
         XCTAssertEqual(c.documents.count, 1, "must not prune the last remaining document")
     }
 
-    func testPruneLeftoverBlankDocumentRemovesBlankWhenRealDocumentExists() {
+    func testPruneLeftoverBlankDocumentRemovesBlankWhenRealDocumentExists() async {
         let c = DocumentController()
         _ = c.newDocument() // leftover blank from window init
         let real = c.newDocument()

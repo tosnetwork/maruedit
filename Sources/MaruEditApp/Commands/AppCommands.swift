@@ -61,6 +61,7 @@ extension CommandID {
 /// Each one is a thin wrapper around the equivalent `AppCoordinator`
 /// method — the same method the menu called directly before M1-03,
 /// unchanged in behavior, just invoked through the registry now.
+@MainActor
 enum AppCommands {
     static func registerAll(in registry: CommandRegistry) {
         registry.register(CommandDefinition(id: .appSettings, title: "Settings...") { ctx in

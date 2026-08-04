@@ -1,4 +1,4 @@
-import AppKit
+@preconcurrency import AppKit
 
 enum Theme {
     // Monokai-inspired palette
@@ -34,8 +34,8 @@ enum Theme {
 
     static let findBarBg        = NSColor(srgbRed: 0.180, green: 0.184, blue: 0.161, alpha: 1)
 
-    static let editorFont       = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
-    static let lineNumFont      = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
-    static let uiFont           = NSFont.systemFont(ofSize: 12, weight: .regular)
-    static let uiFontSmall      = NSFont.systemFont(ofSize: 11, weight: .regular)
+    @MainActor static let editorFont = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+    @MainActor static let lineNumFont = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+    @MainActor static let uiFont = NSFont.systemFont(ofSize: 12, weight: .regular)
+    @MainActor static let uiFontSmall = NSFont.systemFont(ofSize: 11, weight: .regular)
 }

@@ -1,10 +1,12 @@
 import XCTest
 import MaruEditCore
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
+
+@preconcurrency @MainActor
 final class DocumentTests: XCTestCase {
 
-    func testNewDocumentDefaults() {
+    func testNewDocumentDefaults() async {
         let doc = Document()
         XCTAssertNil(doc.fileURL)
         XCTAssertEqual(doc.content, "")
@@ -16,7 +18,7 @@ final class DocumentTests: XCTestCase {
         XCTAssertEqual(doc.lineEnding, .lf)
     }
 
-    func testMarkModifiedAndSaved() {
+    func testMarkModifiedAndSaved() async {
         let doc = Document(content: "hello")
         XCTAssertFalse(doc.isModified)
 
@@ -28,7 +30,7 @@ final class DocumentTests: XCTestCase {
         XCTAssertFalse(doc.isModified)
     }
 
-    func testFormatChangesRemainModifiedUntilSaved() {
+    func testFormatChangesRemainModifiedUntilSaved() async {
         let doc = Document(content: "unchanged")
         doc.markFormatModified()
         XCTAssertTrue(doc.isModified)
@@ -38,7 +40,7 @@ final class DocumentTests: XCTestCase {
         XCTAssertFalse(doc.isModified)
     }
 
-    func testSaveAndReopenRoundTrip() throws {
+    func testSaveAndReopenRoundTrip() async throws {
         let dir = FileManager.default.temporaryDirectory
         let url = dir.appendingPathComponent("MaruEditDocumentTests-\(UUID().uuidString).swift")
         defer { try? FileManager.default.removeItem(at: url) }
@@ -53,7 +55,7 @@ final class DocumentTests: XCTestCase {
         XCTAssertEqual(reopened.displayName, url.lastPathComponent)
     }
 
-    func testOpenAppliesFileTypeProfileEncodingAndSyntax() throws {
+    func testOpenAppliesFileTypeProfileEncodingAndSyntax() async throws {
         let sample = "日本語"
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("MaruEditDocumentTests-\(UUID().uuidString).legacy")
@@ -86,7 +88,7 @@ final class DocumentTests: XCTestCase {
 
     private let japaneseSample = "日本語のテキストファイルです。漢字とひらがなとカタカナ。"
 
-    func testOpeningLegacyEncodedFilePreservesEncodingOnSave() throws {
+    func testOpeningLegacyEncodedFilePreservesEncodingOnSave() async throws {
         guard let originalBytes = japaneseSample.data(using: .japaneseEUC) else {
             return XCTFail("setup")
         }
@@ -109,7 +111,7 @@ final class DocumentTests: XCTestCase {
         XCTAssertEqual(String(data: rawBytesAfterSave, encoding: .japaneseEUC), japaneseSample + "\n追加行")
     }
 
-    func testByteOrderMarkIsPreservedAcrossSave() throws {
+    func testByteOrderMarkIsPreservedAcrossSave() async throws {
         var originalBytes = Data([0xEF, 0xBB, 0xBF])
         originalBytes.append(Data("hello".utf8))
         let url = FileManager.default.temporaryDirectory
@@ -130,7 +132,7 @@ final class DocumentTests: XCTestCase {
         XCTAssertEqual(rawBytesAfterSave.dropFirst(3), Data("hello world".utf8))
     }
 
-    func testSavingUnrepresentableCharacterThrowsInsteadOfCorrupting() throws {
+    func testSavingUnrepresentableCharacterThrowsInsteadOfCorrupting() async throws {
         guard let originalBytes = japaneseSample.data(using: .japaneseEUC) else {
             return XCTFail("setup")
         }
@@ -158,7 +160,7 @@ final class DocumentTests: XCTestCase {
         XCTAssertEqual(rawBytesAfterFailedSave, originalBytes)
     }
 
-    func testReopenForcingEncodingResetsModifiedState() throws {
+    func testReopenForcingEncodingResetsModifiedState() async throws {
         guard let originalBytes = japaneseSample.data(using: .japaneseEUC) else {
             return XCTFail("setup")
         }
@@ -190,7 +192,7 @@ final class DocumentTests: XCTestCase {
         return url
     }
 
-    func testOpeningNormalizesContentToLFInMemory() throws {
+    func testOpeningNormalizesContentToLFInMemory() async throws {
         let url = try write(Array("a\r\nb\r\nc\r\n".utf8))
         defer { try? FileManager.default.removeItem(at: url) }
 
@@ -199,7 +201,7 @@ final class DocumentTests: XCTestCase {
         XCTAssertEqual(doc.lineEnding, .crlf)
     }
 
-    func testUnmodifiedCRLFFileStaysCRLFAfterSave() throws {
+    func testUnmodifiedCRLFFileStaysCRLFAfterSave() async throws {
         let originalBytes = Array("a\r\nb\r\nc\r\n".utf8)
         let url = try write(originalBytes)
         defer { try? FileManager.default.removeItem(at: url) }
@@ -211,7 +213,7 @@ final class DocumentTests: XCTestCase {
         XCTAssertEqual(Array(rawBytesAfterSave), originalBytes)
     }
 
-    func testUnmodifiedCRFileStaysCRAfterSave() throws {
+    func testUnmodifiedCRFileStaysCRAfterSave() async throws {
         let originalBytes = Array("a\rb\rc\r".utf8)
         let url = try write(originalBytes)
         defer { try? FileManager.default.removeItem(at: url) }
@@ -223,7 +225,7 @@ final class DocumentTests: XCTestCase {
         XCTAssertEqual(Array(rawBytesAfterSave), originalBytes)
     }
 
-    func testEditingCRLFFileAndSavingKeepsCRLF() throws {
+    func testEditingCRLFFileAndSavingKeepsCRLF() async throws {
         let url = try write(Array("a\r\nb\r\nc\r\n".utf8))
         defer { try? FileManager.default.removeItem(at: url) }
 
@@ -236,7 +238,7 @@ final class DocumentTests: XCTestCase {
         XCTAssertEqual(String(data: rawBytesAfterSave, encoding: .utf8), "a\r\nb\r\nc\r\nd\r\n")
     }
 
-    func testNoTrailingNewlineIsNotAddedOnSave() throws {
+    func testNoTrailingNewlineIsNotAddedOnSave() async throws {
         let url = try write(Array("no trailing newline".utf8))
         defer { try? FileManager.default.removeItem(at: url) }
 
@@ -248,7 +250,7 @@ final class DocumentTests: XCTestCase {
         XCTAssertEqual(String(data: rawBytesAfterSave, encoding: .utf8), "no trailing newline")
     }
 
-    func testMixedLineEndingFileFallsBackToLFWhenSavedWithoutExplicitResolution() throws {
+    func testMixedLineEndingFileFallsBackToLFWhenSavedWithoutExplicitResolution() async throws {
         // Document.save() alone (no UI layer) defaults an unresolved
         // .mixed lineEnding to LF — a safe, documented fallback. The
         // *required user choice* this task's acceptance criterion refers
@@ -268,7 +270,7 @@ final class DocumentTests: XCTestCase {
 
     // MARK: - Atomic save and attributes (M2-05)
 
-    func testSavePreservesUnusualPermissions() throws {
+    func testSavePreservesUnusualPermissions() async throws {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("MaruEditDocumentTests-\(UUID().uuidString).txt")
         try Data("original".utf8).write(to: url)
@@ -286,7 +288,7 @@ final class DocumentTests: XCTestCase {
         XCTAssertEqual((attrs[.posixPermissions] as? NSNumber)?.intValue, 0o600)
     }
 
-    func testFileIdentityAndModificationDateRefreshAfterSave() throws {
+    func testFileIdentityAndModificationDateRefreshAfterSave() async throws {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("MaruEditDocumentTests-\(UUID().uuidString).txt")
         try Data("original".utf8).write(to: url)
@@ -304,7 +306,7 @@ final class DocumentTests: XCTestCase {
         XCTAssertNotNil(doc.lastKnownModificationDate)
     }
 
-    func testSaveAsToExistingFilePreservesThatFilesPermissionsNotTheOriginals() throws {
+    func testSaveAsToExistingFilePreservesThatFilesPermissionsNotTheOriginals() async throws {
         let sourceURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("MaruEditDocumentTests-\(UUID().uuidString).txt")
         try Data("source".utf8).write(to: sourceURL)
@@ -326,7 +328,7 @@ final class DocumentTests: XCTestCase {
         XCTAssertEqual((attrs[.posixPermissions] as? NSNumber)?.intValue, 0o644, "Save As onto an existing file must preserve *that* file's permissions, not the source document's")
     }
 
-    func testWriteFailureThrowsWriteFailedAndLeavesDocumentUnmarkedAsSaved() throws {
+    func testWriteFailureThrowsWriteFailedAndLeavesDocumentUnmarkedAsSaved() async throws {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("MaruEditDocumentTests-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -356,11 +358,11 @@ final class DocumentTests: XCTestCase {
 
     // MARK: - Read-only detection (M2-08)
 
-    func testNewUnnamedDocumentIsNeverReadOnly() {
+    func testNewUnnamedDocumentIsNeverReadOnly() async {
         XCTAssertFalse(Document().isReadOnly)
     }
 
-    func testOpeningWritableFileLeavesIsReadOnlyFalse() throws {
+    func testOpeningWritableFileLeavesIsReadOnlyFalse() async throws {
         let url = try write(Array("hello".utf8))
         defer { try? FileManager.default.removeItem(at: url) }
 
@@ -368,7 +370,7 @@ final class DocumentTests: XCTestCase {
         XCTAssertFalse(doc.isReadOnly)
     }
 
-    func testOpeningReadOnlyFileSetsIsReadOnly() throws {
+    func testOpeningReadOnlyFileSetsIsReadOnly() async throws {
         let url = try write(Array("hello".utf8))
         try FileManager.default.setAttributes([.posixPermissions: 0o444], ofItemAtPath: url.path)
         defer {
@@ -380,7 +382,7 @@ final class DocumentTests: XCTestCase {
         XCTAssertTrue(doc.isReadOnly)
     }
 
-    func testRefreshReadOnlyStateDetectsPermissionChangeWhileOpen() throws {
+    func testRefreshReadOnlyStateDetectsPermissionChangeWhileOpen() async throws {
         let url = try write(Array("hello".utf8))
         defer {
             try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: url.path)
@@ -399,7 +401,7 @@ final class DocumentTests: XCTestCase {
         XCTAssertFalse(doc.isReadOnly)
     }
 
-    func testRefreshReadOnlyStateReturnsFalseWhenUnchanged() throws {
+    func testRefreshReadOnlyStateReturnsFalseWhenUnchanged() async throws {
         let url = try write(Array("hello".utf8))
         defer { try? FileManager.default.removeItem(at: url) }
 
@@ -407,13 +409,13 @@ final class DocumentTests: XCTestCase {
         XCTAssertFalse(doc.refreshReadOnlyState(), "no permission change happened, so nothing should be reported")
     }
 
-    func testRefreshReadOnlyStateOnUnnamedDocumentIsNoOp() {
+    func testRefreshReadOnlyStateOnUnnamedDocumentIsNoOp() async {
         let doc = Document()
         XCTAssertFalse(doc.refreshReadOnlyState())
         XCTAssertFalse(doc.isReadOnly)
     }
 
-    func testReopenForcingEncodingRefreshesReadOnlyState() throws {
+    func testReopenForcingEncodingRefreshesReadOnlyState() async throws {
         let url = try write(Array("hello".utf8))
         defer {
             try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: url.path)

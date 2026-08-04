@@ -9,6 +9,7 @@ import MaruEditCore
 /// Not a singleton: `AppDelegate` owns exactly one instance for the life
 /// of the process. When multi-window support arrives, this is where that
 /// would be coordinated from.
+@MainActor
 final class AppCoordinator {
     private var windowController: MainWindowController?
     private var settingsWindowController: SettingsWindowController?

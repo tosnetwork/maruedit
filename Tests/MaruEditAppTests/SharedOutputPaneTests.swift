@@ -1,10 +1,12 @@
 import AppKit
 import XCTest
 import MaruEditCore
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
+
+@preconcurrency @MainActor
 final class SharedOutputPaneTests: XCTestCase {
-    func testMacroOutputHasTimestampChannelSeverityAndCanClear() {
+    func testMacroOutputHasTimestampChannelSeverityAndCanClear() async {
         let pane = OutputPaneView()
         pane.appendMacroError(
             name: "Broken", message: "failure", timestamp: Date(timeIntervalSince1970: 0))
@@ -14,7 +16,7 @@ final class SharedOutputPaneTests: XCTestCase {
         XCTAssertEqual(pane.resultsText, "")
     }
 
-    func testCompilerStyleLocationNavigatesToLineAndColumn() throws {
+    func testCompilerStyleLocationNavigatesToLineAndColumn() async throws {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("SharedOutputPaneTests-\(UUID().uuidString).txt")
         try "first\nsecond line\nthird".write(to: url, atomically: true, encoding: .utf8)

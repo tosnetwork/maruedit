@@ -1,13 +1,15 @@
 import AppKit
 import MaruEditCore
 import XCTest
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
+
+@preconcurrency @MainActor
 final class MenuCustomizationUITests: XCTestCase {
     private let settings = CommandDefinition(id: .appSettings, title: "Settings") { _ in }
     private let find = CommandDefinition(id: .searchFind, title: "Find") { _ in }
 
-    func testWindowHidesOptionalCommandsButProtectsRequiredCommandsAndRestores() throws {
+    func testWindowHidesOptionalCommandsButProtectsRequiredCommandsAndRestores() async throws {
         var changes: [MenuCustomization] = []
         let controller = MenuCustomizationWindowController(
             definitions: [settings, find], protectedCommandIDs: [.appSettings],
@@ -26,7 +28,7 @@ final class MenuCustomizationUITests: XCTestCase {
         XCTAssertEqual(controller.checkboxForTesting(.searchFind)?.state, .on)
     }
 
-    func testApplyingCustomizationUsesIDsAndNeverHidesSystemOrProtectedItems() {
+    func testApplyingCustomizationUsesIDsAndNeverHidesSystemOrProtectedItems() async {
         let root = NSMenu()
         let menu = NSMenu(title: "Test")
         let top = NSMenuItem(); top.submenu = menu; root.addItem(top)
@@ -54,7 +56,7 @@ final class MenuCustomizationUITests: XCTestCase {
         XCTAssertTrue(group.isHidden, "an empty optional command group should collapse")
     }
 
-    func testBuiltApplicationMenuContainsRequiredMacOSItems() {
+    func testBuiltApplicationMenuContainsRequiredMacOSItems() async {
         _ = NSApplication.shared
         let delegate = AppDelegate()
         delegate.buildMenu()

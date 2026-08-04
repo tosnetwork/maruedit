@@ -80,6 +80,28 @@ public enum GrepEvent: Sendable {
 /// Never call this on the main thread: it reads and decodes every file.
 public enum GrepService {
 
+    /// Swift-concurrency adapter for non-UI callers. Cancellation of the
+    /// parent Task is bridged into the same lock-protected token used by the
+    /// Dispatch-based streaming implementation; no detached task or UI object
+    /// crosses this boundary.
+    public static func collect(_ request: GrepRequest) async -> [GrepEvent] {
+        let cancellation = CancellationToken()
+        return await withTaskCancellationHandler {
+            if Task.isCancelled { cancellation.cancel() }
+            return await withCheckedContinuation { continuation in
+                DispatchQueue.global(qos: .userInitiated).async {
+                    var events: [GrepEvent] = []
+                    run(request, isCancelled: { cancellation.isCancelled }) {
+                        events.append($0)
+                    }
+                    continuation.resume(returning: events)
+                }
+            }
+        } onCancel: {
+            cancellation.cancel()
+        }
+    }
+
     public static func run(
         _ request: GrepRequest,
         isCancelled: () -> Bool = { false },

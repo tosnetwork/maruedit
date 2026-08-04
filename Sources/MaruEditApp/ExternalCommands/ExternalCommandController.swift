@@ -19,7 +19,8 @@ enum ExternalCommandControllerError: LocalizedError, Equatable {
     }
 }
 
-final class ExternalCommandController: @unchecked Sendable {
+@MainActor
+final class ExternalCommandController {
     private let coordinator: AppCoordinator
     private let runner: ExternalCommandRunner
     private let pasteboard: NSPasteboard
@@ -72,16 +73,15 @@ final class ExternalCommandController: @unchecked Sendable {
         var token: ExternalCommandCancellation?
         token = runner.run(
             configuration: configuration, input: input, workingDirectoryURL: workingDirectory,
-            onChunk: { [weak self] chunk in
+            onChunk: { [self] chunk in
                 guard configuration.output == .outputPane else { return }
-                DispatchQueue.main.async {
-                    self?.coordinator.ensureWindowControllerReady().appendExternalCommandOutput(
+                Task { @MainActor in
+                    self.coordinator.ensureWindowControllerReady().appendExternalCommandOutput(
                         chunk.data,
                         isError: chunk.stream == .standardError)
                 }
-            }, completion: { [weak self, weak editor] result in
-                DispatchQueue.main.async {
-                    guard let self else { return }
+            }, completion: { [self, editor] result in
+                Task { @MainActor in
                     switch result {
                     case .failure(let error): self.finishFailure(error)
                     case .success(let value):
@@ -92,12 +92,11 @@ final class ExternalCommandController: @unchecked Sendable {
                             }
                         }
                         if configuration.output == .replaceSelection {
-                            guard let editor, let current = editor.document,
+                            guard let current = editor.document,
                                   ObjectIdentifier(current) == documentID else {
                                 self.finishFailure(ExternalCommandControllerError.activeDocumentChanged); return
                             }
                         }
-                        guard let editor else { return }
                         self.apply(value.standardOutput, configuration: configuration,
                                    editor: editor, window: window)
                         if configuration.output == .outputPane {

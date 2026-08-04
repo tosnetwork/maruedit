@@ -1,9 +1,11 @@
 import XCTest
 import MaruEditCore
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
+
+@preconcurrency @MainActor
 final class GrepReplacePreviewTests: XCTestCase {
-    func testPreviewShowsBeforeAfterAndAllowsFileAndMatchSelection() throws {
+    func testPreviewShowsBeforeAfterAndAllowsFileAndMatchSelection() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         try Data("foo and foo".utf8).write(to: root.appendingPathComponent("a.txt"))

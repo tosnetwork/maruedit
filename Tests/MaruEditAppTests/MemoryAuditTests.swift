@@ -1,10 +1,12 @@
 import AppKit
 import Darwin
 import XCTest
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
+
+@preconcurrency @MainActor
 final class MemoryAuditTests: XCTestCase {
-    func testTenOpenTenMegabyteDocumentsRemainEditable() throws {
+    func testTenOpenTenMegabyteDocumentsRemainEditable() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("MaruEditMemoryAudit-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

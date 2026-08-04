@@ -1,6 +1,7 @@
 import AppKit
 import MaruEditCore
 
+@MainActor
 protocol GrepPanelDelegate: AnyObject {
     func grepPanel(_ panel: GrepPanel, didSubmit request: GrepRequest)
     func grepPanel(_ panel: GrepPanel, didRequestReplace request: GrepRequest, replacement: String)
@@ -13,6 +14,7 @@ protocol GrepPanelDelegate: AnyObject {
 /// Collects the parameters for a Grep run (ROADMAP.md M3-06). Presented as
 /// a sheet, never a modal `runModal()` — a blocking modal loop is exactly
 /// what makes a UI untestable and unresponsive.
+@MainActor
 final class GrepPanel: NSObject, NSTextFieldDelegate {
     weak var delegate: GrepPanelDelegate?
 

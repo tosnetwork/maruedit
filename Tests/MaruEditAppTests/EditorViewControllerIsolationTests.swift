@@ -1,5 +1,5 @@
 import XCTest
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
 /// Guards against the exact class of bug ROADMAP.md M1-06 exists to fix:
 /// multi-cursor/edit-mode state that used to live in module-level
@@ -8,9 +8,11 @@ import XCTest
 /// into or clobber another's. It's now a plain instance property, so
 /// isolation holds by construction; this test exists as a concrete,
 /// permanent regression guard for that invariant, not just documentation.
+
+@preconcurrency @MainActor
 final class EditorViewControllerIsolationTests: XCTestCase {
 
-    func testMultiEditStateIsIndependentBetweenTwoEditorInstances() {
+    func testMultiEditStateIsIndependentBetweenTwoEditorInstances() async {
         let editorA = EditorViewController()
         let editorB = EditorViewController()
 
@@ -29,7 +31,7 @@ final class EditorViewControllerIsolationTests: XCTestCase {
         XCTAssertEqual(editorB.multiEditCursorRanges, [NSRange(location: 0, length: 0)], "cursor ranges must not leak between editor instances")
     }
 
-    func testDeallocatingOneEditorDoesNotAffectAnother() {
+    func testDeallocatingOneEditorDoesNotAffectAnother() async {
         var editorA: EditorViewController? = EditorViewController()
         let editorB = EditorViewController()
 

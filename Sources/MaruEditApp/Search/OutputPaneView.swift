@@ -1,6 +1,7 @@
 import AppKit
 import MaruEditCore
 
+@MainActor
 protocol OutputPaneViewDelegate: AnyObject {
     /// The user chose a result — by double-click, Return, or the Enter key.
     func outputPane(_ pane: OutputPaneView, didActivate match: GrepMatch)

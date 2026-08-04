@@ -1,6 +1,7 @@
 import AppKit
 import MaruEditCore
 
+@MainActor
 protocol QuickOpenDelegate: AnyObject {
     func quickOpenDidSelectFile(_ url: URL)
     func quickOpenDismissed()

@@ -1,10 +1,12 @@
 import XCTest
 import MaruEditCore
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
 /// Exercises M2-02's "Reopen with Encoding" through the real
 /// `MainWindowController`, not just `Document` in isolation — this is
 /// the actual code path the status bar click and File menu item drive.
+
+@preconcurrency @MainActor
 final class MainWindowControllerEncodingTests: XCTestCase {
 
     private let japaneseSample = "日本語のテキストファイルです。漢字とひらがなとカタカナ。"
@@ -16,7 +18,7 @@ final class MainWindowControllerEncodingTests: XCTestCase {
         return url
     }
 
-    func testBuildEncodingMenuListsAllUserSelectableEncodingsAndChecksCurrent() throws {
+    func testBuildEncodingMenuListsAllUserSelectableEncodingsAndChecksCurrent() async throws {
         guard let data = japaneseSample.data(using: .japaneseEUC) else { return XCTFail("setup") }
         let url = try tempFile(contents: data)
         defer { try? FileManager.default.removeItem(at: url) }
@@ -34,7 +36,7 @@ final class MainWindowControllerEncodingTests: XCTestCase {
         XCTAssertEqual(checkedItem?.state, .on, "the currently-active encoding should be checked")
     }
 
-    func testReopenCurrentDocumentWithEncodingUpdatesDocumentAndStatusBar() throws {
+    func testReopenCurrentDocumentWithEncodingUpdatesDocumentAndStatusBar() async throws {
         guard let data = japaneseSample.data(using: .japaneseEUC) else { return XCTFail("setup") }
         let url = try tempFile(contents: data)
         defer { try? FileManager.default.removeItem(at: url) }
@@ -52,7 +54,7 @@ final class MainWindowControllerEncodingTests: XCTestCase {
         XCTAssertEqual(checkedItem?.representedObject as? TextEncoding, .eucJP)
     }
 
-    func testReopenTracksRecentEncodings() throws {
+    func testReopenTracksRecentEncodings() async throws {
         // Deliberately reopens with the *correct* encoding for these
         // bytes: forcing a wrong one that fails to decode would hit
         // reopenCurrentDocument's error path, which shows a real

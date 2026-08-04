@@ -1,10 +1,12 @@
 import AppKit
 import XCTest
 import MaruEditCore
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
+
+@preconcurrency @MainActor
 final class MacroManagerTests: XCTestCase {
-    func testReloadRegistersMenusShortcutsEnablementAndExecutes() throws {
+    func testReloadRegistersMenusShortcutsEnablementAndExecutes() async throws {
         let directory = try makeDirectory()
         let upper = directory.appendingPathComponent("upper.js")
         try """
@@ -31,7 +33,7 @@ final class MacroManagerTests: XCTestCase {
             finished.fulfill()
         }
         manager.runForTesting(macro.id)
-        wait(for: [finished], timeout: 2)
+        await fulfillment(of: [finished], timeout: 2)
         XCTAssertEqual(coordinator.ensureWindowControllerReady().macroEditor.textView.string, "UP")
 
         manager.toggleForTesting(macro.id)
@@ -43,7 +45,7 @@ final class MacroManagerTests: XCTestCase {
         XCTAssertTrue(manager.catalog.macros[0].isEnabled)
     }
 
-    func testReloadRemovesDeletedCommandsAndErrorConsoleShowsStack() throws {
+    func testReloadRemovesDeletedCommandsAndErrorConsoleShowsStack() async throws {
         let directory = try makeDirectory()
         let broken = directory.appendingPathComponent("broken.js")
         try "// @maru-name: Broken\nthrow new Error('kaboom')"
@@ -57,7 +59,7 @@ final class MacroManagerTests: XCTestCase {
         let finished = expectation(description: "broken macro")
         manager.executionDidFinish = { _, _ in finished.fulfill() }
         manager.runForTesting(id)
-        wait(for: [finished], timeout: 2)
+        await fulfillment(of: [finished], timeout: 2)
         manager.showErrorConsoleForTesting()
         XCTAssertTrue(manager.errorConsoleTextForTesting.contains("Broken"))
         XCTAssertTrue(manager.errorConsoleTextForTesting.contains("kaboom"))
@@ -68,7 +70,7 @@ final class MacroManagerTests: XCTestCase {
         XCTAssertEqual(manager.catalog.macros, [])
     }
 
-    func testUnauthorizedNetworkMacroIsRejectedBeforeScriptRuns() throws {
+    func testUnauthorizedNetworkMacroIsRejectedBeforeScriptRuns() async throws {
         let directory = try makeDirectory()
         try """
         // @maru-name: Network Attempt
@@ -91,12 +93,12 @@ final class MacroManagerTests: XCTestCase {
             finished.fulfill()
         }
         manager.runForTesting(id)
-        wait(for: [finished], timeout: 1)
+        await fulfillment(of: [finished], timeout: 1)
         XCTAssertEqual(coordinator.ensureWindowControllerReady().macroEditor.textView.string, "safe")
         XCTAssertTrue(manager.errors.last?.message.contains("network access is never available") == true)
     }
 
-    func testExperimentalCompatibilityMustBeEnabledAndExecutesThroughNativeHost() throws {
+    func testExperimentalCompatibilityMustBeEnabledAndExecutesThroughNativeHost() async throws {
         let directory = try makeDirectory()
         try "selectall; toupper;".write(
             to: directory.appendingPathComponent("upper.mac"), atomically: true, encoding: .utf8)
@@ -111,7 +113,7 @@ final class MacroManagerTests: XCTestCase {
         let macro = try XCTUnwrap(enabled.catalog.macros.first)
         let finished = expectation(description: "compatibility macro")
         enabled.executionDidFinish = { _, _ in finished.fulfill() }
-        enabled.runForTesting(macro.id); wait(for: [finished], timeout: 2)
+        enabled.runForTesting(macro.id); await fulfillment(of: [finished], timeout: 2)
         XCTAssertEqual(coordinator.ensureWindowControllerReady().macroEditor.textView.string, "MIXED")
         XCTAssertTrue(macro.metadata.name.contains("Experimental"))
     }

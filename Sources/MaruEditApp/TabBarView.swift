@@ -1,5 +1,6 @@
 import AppKit
 
+@MainActor
 protocol TabBarViewDelegate: AnyObject {
     func tabBarDidSelectTab(at index: Int)
     func tabBarDidCloseTab(at index: Int)

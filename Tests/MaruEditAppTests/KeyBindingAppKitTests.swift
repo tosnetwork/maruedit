@@ -1,10 +1,12 @@
 import AppKit
 import XCTest
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 import MaruEditCore
 
+
+@preconcurrency @MainActor
 final class KeyBindingAppKitTests: XCTestCase {
-    func testEventConversionUsesCharactersAndSemanticKeysNotHardwareCodes() throws {
+    func testEventConversionUsesCharactersAndSemanticKeysNotHardwareCodes() async throws {
         let letter = try XCTUnwrap(NSEvent.keyEvent(
             with: .keyDown, location: .zero, modifierFlags: [.command, .shift],
             timestamp: 0, windowNumber: 0, context: nil,
@@ -20,7 +22,7 @@ final class KeyBindingAppKitTests: XCTestCase {
         XCTAssertEqual(KeyGesture(event: arrow), KeyGesture("opt+up"))
     }
 
-    func testMenuPresentationComesFromPortableGesture() {
+    func testMenuPresentationComesFromPortableGesture() async {
         let gesture = KeyGesture("cmd+opt+up")!
         XCTAssertEqual(gesture.menuKeyEquivalent, String(UnicodeScalar(NSUpArrowFunctionKey)!))
         XCTAssertEqual(gesture.menuModifierFlags, [.command, .option])

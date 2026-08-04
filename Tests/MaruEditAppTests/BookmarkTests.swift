@@ -1,7 +1,9 @@
 import AppKit
 import XCTest
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
+
+@preconcurrency @MainActor
 final class BookmarkTests: XCTestCase {
     private var windows: [NSWindow] = []
 
@@ -22,7 +24,7 @@ final class BookmarkTests: XCTestCase {
         return editor
     }
 
-    func testToggleNavigationWrappingAndClear() {
+    func testToggleNavigationWrappingAndClear() async {
         let subject = editor("a\nb\nc\n")
         subject.setSelections([NSRange(location: 0, length: 0)])
         subject.toggleBookmark()
@@ -39,7 +41,7 @@ final class BookmarkTests: XCTestCase {
         XCTAssertTrue(subject.document?.bookmarks.offsets.isEmpty == true)
     }
 
-    func testBookmarksAreOwnedByTheirDocument() {
+    func testBookmarksAreOwnedByTheirDocument() async {
         let first = editor("a\nb\n")
         let second = Document(content: "x\ny\n")
         first.toggleBookmark()
@@ -49,7 +51,7 @@ final class BookmarkTests: XCTestCase {
         XCTAssertEqual(second.bookmarks.offsets, Set([0]))
     }
 
-    func testBookmarkAnchorsMoveWithLineEditsAndUndo() {
+    func testBookmarkAnchorsMoveWithLineEditsAndUndo() async {
         let subject = editor("a\nb\nc\n")
         subject.setSelections([NSRange(location: 4, length: 0)])
         subject.toggleBookmark()
@@ -62,7 +64,7 @@ final class BookmarkTests: XCTestCase {
         XCTAssertEqual(subject.document?.bookmarks.offsets, Set([4]))
     }
 
-    func testTypingAtBookmarkedLineStartKeepsMarkerOnThatLine() {
+    func testTypingAtBookmarkedLineStartKeepsMarkerOnThatLine() async {
         let subject = editor("a\nb\n")
         subject.setSelections([NSRange(location: 2, length: 0)])
         subject.toggleBookmark()

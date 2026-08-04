@@ -2,6 +2,7 @@ import AppKit
 import MaruEditCore
 import os.log
 
+@MainActor
 protocol EditorViewControllerDelegate: AnyObject {
     func editorTextDidChange(_ vc: EditorViewController)
     func editorCursorMoved(_ vc: EditorViewController, state: EditorCursorState)

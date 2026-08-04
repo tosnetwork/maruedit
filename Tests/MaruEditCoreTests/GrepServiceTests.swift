@@ -210,6 +210,20 @@ final class GrepServiceTests: XCTestCase {
         XCTAssertLessThan(summary.scannedFiles, 40)
     }
 
+    func testSwiftTaskCancellationBridgesIntoGrepToken() async throws {
+        for index in 0..<100 { try write("hit", to: "task-\(index).txt") }
+        let request = GrepRequest(query: SearchQuery(pattern: "hit"), roots: [root])
+        let task = Task { await GrepService.collect(request) }
+        task.cancel()
+
+        let events = await task.value
+        guard case let .finished(summary)? = events.last else {
+            return XCTFail("Task adapter must always finish with a summary")
+        }
+        XCTAssertTrue(summary.wasCancelled)
+        XCTAssertLessThan(summary.scannedFiles, 100)
+    }
+
     func testIncludeGlobsNarrowTheScan() throws {
         try write("hit", to: "a.swift")
         try write("hit", to: "b.txt")

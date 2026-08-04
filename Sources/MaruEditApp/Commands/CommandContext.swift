@@ -6,10 +6,8 @@ import Foundation
 /// support lands, this is where "the frontmost window" resolution would
 /// go — command implementations should not need to change.
 ///
-/// Not marked `@MainActor`: nothing else in this codebase uses Swift
-/// concurrency yet, and every command currently only ever runs
-/// synchronously on the main thread already (menu actions, key events).
-/// Revisit if/when async commands (e.g. macros in M6) need real isolation.
+/// Commands resolve AppKit state and therefore remain main-actor isolated.
+@MainActor
 struct CommandContext {
     let coordinator: AppCoordinator
 }

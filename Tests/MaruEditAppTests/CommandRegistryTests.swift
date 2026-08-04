@@ -1,9 +1,11 @@
 import XCTest
 import MaruEditCore
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
+
+@preconcurrency @MainActor
 final class CommandRegistryTests: XCTestCase {
-    func testDynamicCommandCanBeUnregistered() {
+    func testDynamicCommandCanBeUnregistered() async {
         let registry = CommandRegistry()
         let id: CommandID = "macro.user.dynamic"
         registry.register(CommandDefinition(id: id, title: "Dynamic") { _ in })
@@ -21,7 +23,7 @@ final class CommandRegistryTests: XCTestCase {
         CommandContext(coordinator: AppCoordinator())
     }
 
-    func testEnabledCommandExecutes() {
+    func testEnabledCommandExecutes() async {
         let registry = CommandRegistry()
         var didRun = false
         registry.register(CommandDefinition(id: CommandID("test.enabled"), title: "Enabled") { _ in
@@ -33,7 +35,7 @@ final class CommandRegistryTests: XCTestCase {
         XCTAssertTrue(didRun)
     }
 
-    func testDisabledCommandDoesNotExecute() {
+    func testDisabledCommandDoesNotExecute() async {
         let registry = CommandRegistry()
         var didRun = false
         registry.register(CommandDefinition(
@@ -49,14 +51,14 @@ final class CommandRegistryTests: XCTestCase {
         XCTAssertFalse(didRun, "a disabled command must never run, even if execute() is called directly")
     }
 
-    func testUnregisteredCommandIsSafelyANoOp() {
+    func testUnregisteredCommandIsSafelyANoOp() async {
         let registry = CommandRegistry()
         XCTAssertFalse(registry.isEnabled(CommandID("does.not.exist"), context: makeContext()))
         XCTAssertFalse(registry.execute(CommandID("does.not.exist"), context: makeContext()))
         XCTAssertNil(registry.definition(for: CommandID("does.not.exist")))
     }
 
-    func testAllAppCommandsAreRegisteredAndUniquelyIdentified() {
+    func testAllAppCommandsAreRegisteredAndUniquelyIdentified() async {
         let registry = CommandRegistry()
         AppCommands.registerAll(in: registry)
 
@@ -82,7 +84,7 @@ final class CommandRegistryTests: XCTestCase {
         XCTAssertEqual(registry.allDefinitions.count, ids.count)
     }
 
-    func testAppCommandsAreEnabledByDefault() {
+    func testAppCommandsAreEnabledByDefault() async {
         let registry = CommandRegistry()
         AppCommands.registerAll(in: registry)
         let context = makeContext()

@@ -1,6 +1,7 @@
 import AppKit
 import MaruEditCore
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let coordinator = AppCoordinator()
     private let keyBindings = KeyBindingManager(profile: .macOSStandard)

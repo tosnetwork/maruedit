@@ -3,7 +3,10 @@ import MaruEditCore
 
 /// Converts the active AppKit editor into the value-only `MacroHost` surface.
 /// Every closure enters the main thread before touching UI state.
-final class MacroCommandBridge {
+/// The bridge itself is passed into JavaScriptCore callbacks. Every access to
+/// its AppKit-owned references is synchronously confined to the main queue by
+/// `onMain`; the references are never dereferenced on the macro engine queue.
+final class MacroCommandBridge: @unchecked Sendable {
     private unowned let coordinator: AppCoordinator
     private unowned let editor: EditorViewController
     private let pasteboard: NSPasteboard
@@ -11,6 +14,7 @@ final class MacroCommandBridge {
     private let messageHandler: (String) -> Void
     private let promptHandler: (String, String) -> String?
 
+    @MainActor
     init(
         coordinator: AppCoordinator,
         editor: EditorViewController,
@@ -96,8 +100,12 @@ final class MacroCommandBridge {
         )
     }
 
-    private func onMain<T>(_ work: () -> T) -> T {
-        if Thread.isMainThread { return work() }
-        return DispatchQueue.main.sync(execute: work)
+    private func onMain<T: Sendable>(_ work: @Sendable @MainActor () -> T) -> T {
+        if Thread.isMainThread {
+            return MainActor.assumeIsolated { work() }
+        }
+        return DispatchQueue.main.sync {
+            MainActor.assumeIsolated { work() }
+        }
     }
 }

@@ -5,6 +5,7 @@ enum StatusBarControl: CaseIterable {
     case largeFileMode, encoding, byteOrderMark, lineEnding, languageProfile
 }
 
+@MainActor
 protocol StatusBarViewDelegate: AnyObject {
     func statusBar(
         _ statusBar: StatusBarView, didClick control: StatusBarControl, at point: NSPoint)

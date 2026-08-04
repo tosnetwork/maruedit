@@ -14,6 +14,7 @@ enum FindBarAction {
 /// builds a `SearchQuery` and asks its delegate to carry it out, then
 /// displays whatever the delegate reports back. It never touches text,
 /// never matches anything itself, and knows nothing about `NSTextView`.
+@MainActor
 protocol FindBarDelegate: AnyObject {
     @discardableResult
     func findBar(_ bar: FindBarView, perform action: FindBarAction, query: SearchQuery) -> FindOutcome

@@ -1,9 +1,11 @@
 import XCTest
 import MaruEditCore
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
+
+@preconcurrency @MainActor
 final class ExternalCommandManagerTests: XCTestCase {
-    func testReloadRegistersCommandsBuildsRiskMarkedMenuAndRemovesDeletedCommands() throws {
+    func testReloadRegistersCommandsBuildsRiskMarkedMenuAndRemovesDeletedCommands() async throws {
         let url = temporaryConfigurationURL()
         let direct = ExternalCommandConfiguration(
             id: "direct", name: "Direct", executable: "/usr/bin/true")
@@ -29,7 +31,7 @@ final class ExternalCommandManagerTests: XCTestCase {
         XCTAssertNil(coordinator.commandRegistry.definition(for: shell.commandID))
     }
 
-    func testInvalidConfigurationFailsClosedWithoutRegisteringCommands() throws {
+    func testInvalidConfigurationFailsClosedWithoutRegisteringCommands() async throws {
         let url = temporaryConfigurationURL()
         try Data("[{\"schemaVersion\":99}]".utf8).write(to: url)
         let coordinator = coordinator()

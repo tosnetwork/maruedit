@@ -1,7 +1,9 @@
 import AppKit
 import XCTest
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
+
+@preconcurrency @MainActor
 final class BoxSelectionTests: XCTestCase {
     private var windows: [NSWindow] = []
 
@@ -22,13 +24,13 @@ final class BoxSelectionTests: XCTestCase {
         return editor
     }
 
-    func testVisualWidthHandlesTabsFullWidthAndCombiningCharacters() {
+    func testVisualWidthHandlesTabsFullWidthAndCombiningCharacters() async {
         XCTAssertEqual(BoxSelectionModel.visualWidth(of: "\tA", tabWidth: 4), 5)
         XCTAssertEqual(BoxSelectionModel.visualWidth(of: "日e\u{301}", tabWidth: 4), 3)
         XCTAssertEqual(BoxSelectionModel.visualWidth(of: "ａｂ", tabWidth: 4), 4)
     }
 
-    func testRowsUseVisualColumnsAndVirtualSpaceOnShortLines() {
+    func testRowsUseVisualColumnsAndVirtualSpaceOnShortLines() async {
         let rows = BoxSelectionModel.rows(
             in: "abc\nx\n日本",
             anchor: TextCoordinate(line: 0, visualColumn: 2),
@@ -41,7 +43,7 @@ final class BoxSelectionTests: XCTestCase {
         ])
     }
 
-    func testColumnCopyDeleteAndInsert() {
+    func testColumnCopyDeleteAndInsert() async {
         let selectedEditor = editor("abc\nxyz")
         selectedEditor.beginColumnSelection(atUTF16Offset: 1)
         selectedEditor.updateColumnSelection(toUTF16Offset: 6)
@@ -62,7 +64,7 @@ final class BoxSelectionTests: XCTestCase {
         XCTAssertEqual(virtual.textView.string, "a  Z\nbb Z")
     }
 
-    func testMultilinePasteMapsRowsAndSingleLineRepeats() {
+    func testMultilinePasteMapsRowsAndSingleLineRepeats() async {
         let mapped = editor("abc\nxyz")
         mapped.beginColumnSelection(atUTF16Offset: 1)
         mapped.updateColumnSelection(toUTF16Offset: 6)
@@ -76,7 +78,7 @@ final class BoxSelectionTests: XCTestCase {
         XCTAssertEqual(repeated.textView.string, "aQc\nxQz")
     }
 
-    func testEditorRemainsAccessibleAndColumnModeIsNoWrap() {
+    func testEditorRemainsAccessibleAndColumnModeIsNoWrap() async {
         let editor = editor("abc")
         XCTAssertEqual(editor.textView.accessibilityLabel(), "Editor")
         XCTAssertTrue(editor.textView.isHorizontallyResizable)

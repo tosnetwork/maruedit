@@ -5,7 +5,9 @@ import MaruEditCore
 /// immutable text/range snapshots; regex work runs off the main thread and
 /// attributes are applied only when the captured document revision is still
 /// current.
-final class SyntaxHighlightCoordinator {
+/// Scheduling methods and UI-facing diagnostics are confined to
+/// `callbackQueue`; only the revision lock is touched by the worker queue.
+final class SyntaxHighlightCoordinator: @unchecked Sendable {
     static let largeFileThreshold = 100_000
     static let contextBuffer = 3_000
 
@@ -53,7 +55,7 @@ final class SyntaxHighlightCoordinator {
         baseForeground: NSColor = Theme.foreground,
         delay: TimeInterval = 0.05,
         highlighter: SyntaxHighlighter? = nil,
-        completion: (() -> Void)? = nil,
+        completion: (@Sendable () -> Void)? = nil,
         allowLargeFileHighlighting: Bool = false
     ) {
         let requestedRevision = nextRevision()
@@ -85,21 +87,24 @@ final class SyntaxHighlightCoordinator {
             for: visibleRange ?? NSRange(location: 0, length: length), in: snapshot,
             buffer: visibleRange == nil ? 0 : Self.contextBuffer)
         let matcher = highlighter ?? SyntaxHighlighter(language: language)
-        let debounce = DispatchWorkItem { [weak self, weak storage] in
-            guard let self, let storage, self.isCurrent(requestedRevision) else { return }
-            let matchWork = DispatchWorkItem { [weak self, weak storage] in
-                guard let self, let storage, self.isCurrent(requestedRevision) else { return }
+        let application = HighlightApplication(
+            storage: storage, font: font, baseForeground: baseForeground,
+            completion: completion)
+        let debounce = DispatchWorkItem { [weak self] in
+            guard let self, self.isCurrent(requestedRevision) else { return }
+            let matchWork = DispatchWorkItem { [weak self] in
+                guard let self, self.isCurrent(requestedRevision) else { return }
                 let batch = matcher.matchBatch(
                     in: snapshot, range: target,
                     isCancelled: { !self.isCurrent(requestedRevision) })
-                self.callbackQueue.async { [weak self, weak storage] in
-                    guard let self, let storage,
+                self.callbackQueue.async { [weak self, application] in
+                    guard let self, let storage = application.storage,
                           self.isCurrent(requestedRevision),
                           storage.string == snapshot else { return }
                     storage.beginEditing()
                     storage.addAttributes([
-                        .foregroundColor: baseForeground,
-                        .font: font,
+                        .foregroundColor: application.baseForeground,
+                        .font: application.font,
                     ], range: target)
                     for match in batch.matches where NSMaxRange(match.range) <= storage.length {
                         storage.addAttribute(
@@ -108,7 +113,7 @@ final class SyntaxHighlightCoordinator {
                     storage.endEditing()
                     self.lastAppliedRange = target
                     self.lastWorkWasTruncated = batch.wasTruncated
-                    completion?()
+                    application.completion?()
                 }
             }
             self.pendingMatch = matchWork
@@ -138,5 +143,25 @@ final class SyntaxHighlightCoordinator {
         let start = max(0, safe.location - buffer)
         let end = min(ns.length, NSMaxRange(safe) + buffer)
         return ns.lineRange(for: NSRange(location: start, length: max(0, end - start)))
+    }
+}
+
+/// AppKit reference values are not Sendable. This box is passed through the
+/// worker queue but its fields are read only on the configured callback queue;
+/// the worker computes value-only ranges and never dereferences UI objects.
+private final class HighlightApplication: @unchecked Sendable {
+    weak var storage: NSTextStorage?
+    let font: NSFont
+    let baseForeground: NSColor
+    let completion: (@Sendable () -> Void)?
+
+    init(
+        storage: NSTextStorage, font: NSFont, baseForeground: NSColor,
+        completion: (@Sendable () -> Void)?
+    ) {
+        self.storage = storage
+        self.font = font
+        self.baseForeground = baseForeground
+        self.completion = completion
     }
 }

@@ -1,10 +1,12 @@
 import AppKit
 import XCTest
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 import MaruEditCore
 
+
+@preconcurrency @MainActor
 final class SettingsWindowTests: XCTestCase {
-    func testLocalizationCoversEnglishJapaneseAndSimplifiedChinese() {
+    func testLocalizationCoversEnglishJapaneseAndSimplifiedChinese() async {
         XCTAssertEqual(SettingsLocalization.text("settings", language: .english), "Settings")
         XCTAssertEqual(SettingsLocalization.text("settings", language: .japanese), "設定")
         XCTAssertEqual(SettingsLocalization.text("settings", language: .simplifiedChinese), "设置")
@@ -14,7 +16,7 @@ final class SettingsWindowTests: XCTestCase {
         }
     }
 
-    func testSettingsSearchFiltersGroups() {
+    func testSettingsSearchFiltersGroups() async {
         let controller = SettingsWindowController(preferences: .defaults) { _ in }
         controller.searchForTesting(SettingsLocalization.text("appearance"))
         XCTAssertEqual(controller.visibleGroups, [.appearance])
@@ -22,7 +24,7 @@ final class SettingsWindowTests: XCTestCase {
         XCTAssertEqual(controller.visibleGroups, SettingsWindowController.Group.allCases)
     }
 
-    func testRestoreDefaultsAffectsOnlySelectedGroupAndNotifies() {
+    func testRestoreDefaultsAffectsOnlySelectedGroupAndNotifies() async {
         var custom = Preferences.defaults
         custom.fontSize = 22
         custom.tabWidth = 8
@@ -36,7 +38,7 @@ final class SettingsWindowTests: XCTestCase {
         XCTAssertEqual(received?.fontSize, 22, "restoring Editor must not reset Appearance")
     }
 
-    func testEditorPreferencesApplyImmediatelyWithoutChangingText() {
+    func testEditorPreferencesApplyImmediatelyWithoutChangingText() async {
         let editor = EditorViewController()
         _ = editor.view
         editor.textView.string = "let value = 1"
@@ -54,7 +56,7 @@ final class SettingsWindowTests: XCTestCase {
         XCTAssertEqual(editor.appliedPreferences, preferences)
     }
 
-    func testFileTypeProfileOverridesGlobalTabWidthAndWrapping() throws {
+    func testFileTypeProfileOverridesGlobalTabWidthAndWrapping() async throws {
         let editor = EditorViewController()
         _ = editor.view
         let document = Document(content: "a\tb")
@@ -75,7 +77,7 @@ final class SettingsWindowTests: XCTestCase {
                        "the persisted global preference must remain unchanged")
     }
 
-    func testSearchAndControlsHaveAccessibilityLabels() throws {
+    func testSearchAndControlsHaveAccessibilityLabels() async throws {
         let controller = SettingsWindowController(preferences: .defaults) { _ in }
         let root = try XCTUnwrap(controller.window?.contentView)
         let views = descendants(of: root)
@@ -87,7 +89,7 @@ final class SettingsWindowTests: XCTestCase {
         XCTAssertTrue(groupButtons.allSatisfy { !($0.accessibilityLabel() ?? "").isEmpty })
     }
 
-    func testSettingsExportImportAndRestoreAll() throws {
+    func testSettingsExportImportAndRestoreAll() async throws {
         var original = Preferences.defaults
         original.fontSize = 19
         original.invisibleCharacters.tabs = true

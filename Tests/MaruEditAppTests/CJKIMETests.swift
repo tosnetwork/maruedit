@@ -1,7 +1,9 @@
 import AppKit
 import XCTest
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
+
+@preconcurrency @MainActor
 final class CJKIMETests: XCTestCase {
     private var windows: [NSWindow] = []
 
@@ -26,7 +28,7 @@ final class CJKIMETests: XCTestCase {
         return editor
     }
 
-    func testMarkedTextStaysAtPrimaryThenCommitReplicatesFinalText() {
+    func testMarkedTextStaysAtPrimaryThenCommitReplicatesFinalText() async {
         let editor = editor()
         editor.textView.setMarkedText(
             "に", selectedRange: NSRange(location: 1, length: 0),
@@ -45,7 +47,7 @@ final class CJKIMETests: XCTestCase {
         XCTAssertEqual(editor.textView.string, "aa aa", "one Undo reverses one committed composition")
     }
 
-    func testCancellingCompositionRestoresTextAndSecondarySelections() {
+    func testCancellingCompositionRestoresTextAndSecondarySelections() async {
         let editor = editor()
         let original = editor.selectionSet.ranges
         editor.textView.setMarkedText(
@@ -58,7 +60,7 @@ final class CJKIMETests: XCTestCase {
         XCTAssertTrue(editor.isMultiEditActive)
     }
 
-    func testTextViewCancelOperationRestoresAfterInputMethodCallback() {
+    func testTextViewCancelOperationRestoresAfterInputMethodCallback() async {
         let editor = editor()
         editor.textView.setMarkedText(
             "中", selectedRange: NSRange(location: 1, length: 0),
@@ -71,16 +73,16 @@ final class CJKIMETests: XCTestCase {
             XCTAssertEqual(editor.selectionSet.ranges.count, 2)
             cancelled.fulfill()
         }
-        wait(for: [cancelled], timeout: 1)
+        await fulfillment(of: [cancelled], timeout: 1)
     }
 
-    func testOrdinaryCommittedTextUsesTheSameCommitBoundary() {
+    func testOrdinaryCommittedTextUsesTheSameCommitBoundary() async {
         let editor = editor()
         editor.textView.insertText("語", replacementRange: NSRange(location: 0, length: 2))
         XCTAssertEqual(editor.textView.string, "語 語")
     }
 
-    func testLegacyOneArgumentIMECommitReplicatesToEverySelection() {
+    func testLegacyOneArgumentIMECommitReplicatesToEverySelection() async {
         let editor = editor()
         editor.textView.setMarkedText(
             "にほんご", selectedRange: NSRange(location: 4, length: 0),
@@ -96,10 +98,10 @@ final class CJKIMETests: XCTestCase {
             XCTAssertEqual(editor.textView.string, "aa aa")
             committed.fulfill()
         }
-        wait(for: [committed], timeout: 1)
+        await fulfillment(of: [committed], timeout: 1)
     }
 
-    func testUnmarkOnlyIMECommitReplicatesToEverySelection() {
+    func testUnmarkOnlyIMECommitReplicatesToEverySelection() async {
         let editor = editor()
         editor.textView.setMarkedText(
             "日本語", selectedRange: NSRange(location: 3, length: 0),
@@ -114,10 +116,10 @@ final class CJKIMETests: XCTestCase {
             XCTAssertEqual(editor.textView.string, "aa aa")
             committed.fulfill()
         }
-        wait(for: [committed], timeout: 1)
+        await fulfillment(of: [committed], timeout: 1)
     }
 
-    func testDelegateDetectsIMEThatEndsMarkingWithoutInsertTextCallback() {
+    func testDelegateDetectsIMEThatEndsMarkingWithoutInsertTextCallback() async {
         let editor = editor()
         editor.textView.setMarkedText(
             "にほんご", selectedRange: NSRange(location: 4, length: 0),
@@ -132,10 +134,10 @@ final class CJKIMETests: XCTestCase {
             XCTAssertEqual(editor.textView.string, "日本語 日本語")
             committed.fulfill()
         }
-        wait(for: [committed], timeout: 1)
+        await fulfillment(of: [committed], timeout: 1)
     }
 
-    func testDelegateDetectsIMEThatCancelsWithoutCancelOperationCallback() {
+    func testDelegateDetectsIMEThatCancelsWithoutCancelOperationCallback() async {
         let editor = editor()
         editor.textView.setMarkedText(
             "に", selectedRange: NSRange(location: 1, length: 0),
@@ -151,6 +153,6 @@ final class CJKIMETests: XCTestCase {
             XCTAssertEqual(editor.selectionSet.ranges.count, 2)
             cancelled.fulfill()
         }
-        wait(for: [cancelled], timeout: 1)
+        await fulfillment(of: [cancelled], timeout: 1)
     }
 }

@@ -1,10 +1,12 @@
 import AppKit
 import XCTest
 import MaruEditCore
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
+
+@preconcurrency @MainActor
 final class GrepUITests: XCTestCase {
-    func testPanelBuildsRequestFromPrefilledQueryAndFolder() {
+    func testPanelBuildsRequestFromPrefilledQueryAndFolder() async {
         let panel = GrepPanel()
         panel.folderURL = URL(fileURLWithPath: "/tmp/project")
         panel.prefill(with: SearchQuery(
@@ -22,7 +24,7 @@ final class GrepUITests: XCTestCase {
         XCTAssertEqual(request?.query.wholeWord, true)
     }
 
-    func testPanelRequiresPatternAndFolder() {
+    func testPanelRequiresPatternAndFolder() async {
         let panel = GrepPanel()
         XCTAssertNil(panel.currentRequest)
 
@@ -30,7 +32,7 @@ final class GrepUITests: XCTestCase {
         XCTAssertNil(panel.currentRequest)
     }
 
-    func testResultRowCarriesReadableAccessibilityDescription() {
+    func testResultRowCarriesReadableAccessibilityDescription() async {
         let match = GrepMatch(
             url: URL(fileURLWithPath: "/tmp/a.txt"),
             relativePath: "a.txt",
@@ -49,7 +51,7 @@ final class GrepUITests: XCTestCase {
         XCTAssertEqual(OutputPaneView.attributedRow(for: match).string, "a.txt:2: a needle here")
     }
 
-    func testGrepHistoryRecallUsesItsOwnList() {
+    func testGrepHistoryRecallUsesItsOwnList() async {
         let panel = GrepPanel()
         panel.searchHistory = ["newest", "older"]
         panel.folderURL = URL(fileURLWithPath: "/tmp")

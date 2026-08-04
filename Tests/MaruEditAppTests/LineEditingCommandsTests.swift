@@ -1,8 +1,10 @@
 import AppKit
 import MaruEditCore
 import XCTest
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
+
+@preconcurrency @MainActor
 final class LineEditingCommandsTests: XCTestCase {
     private var windows: [NSWindow] = []
 
@@ -28,7 +30,7 @@ final class LineEditingCommandsTests: XCTestCase {
         return editor
     }
 
-    func testDeleteLineSupportsCaretAndMultipleSelectionsWithOneUndo() {
+    func testDeleteLineSupportsCaretAndMultipleSelectionsWithOneUndo() async {
         let editor = editor("a\nb\nc\n", ranges: [
             NSRange(location: 0, length: 0), NSRange(location: 4, length: 0),
         ])
@@ -38,7 +40,7 @@ final class LineEditingCommandsTests: XCTestCase {
         XCTAssertEqual(editor.textView.string, "a\nb\nc\n")
     }
 
-    func testDuplicateAndMoveLineCommands() {
+    func testDuplicateAndMoveLineCommands() async {
         let duplicate = editor("a\nb\n", ranges: [NSRange(location: 2, length: 0)])
         duplicate.performLineCommand(.duplicate)
         XCTAssertEqual(duplicate.textView.string, "a\nb\nb\n")
@@ -52,7 +54,7 @@ final class LineEditingCommandsTests: XCTestCase {
         XCTAssertEqual(down.textView.string, "a\nc\nb\n")
     }
 
-    func testJoinAndTrimTrailingWhitespace() {
+    func testJoinAndTrimTrailingWhitespace() async {
         let join = editor("alpha  \n  beta\ngamma\n")
         join.performLineCommand(.join)
         XCTAssertEqual(join.textView.string, "alpha beta\ngamma\n")
@@ -62,7 +64,7 @@ final class LineEditingCommandsTests: XCTestCase {
         XCTAssertEqual(trim.textView.string, "a\n b\n")
     }
 
-    func testCaseConversionHonorsMultipleExactSelections() {
+    func testCaseConversionHonorsMultipleExactSelections() async {
         let upper = editor("aa bb", ranges: [
             NSRange(location: 0, length: 2), NSRange(location: 3, length: 2),
         ])
@@ -72,7 +74,7 @@ final class LineEditingCommandsTests: XCTestCase {
         XCTAssertEqual(upper.textView.string, "aa bb")
     }
 
-    func testSortAndReverseLines() {
+    func testSortAndReverseLines() async {
         let sort = editor("c\na\nb\n")
         sort.performLineCommand(.sort)
         XCTAssertEqual(sort.textView.string, "a\nb\nc\n")
@@ -82,7 +84,7 @@ final class LineEditingCommandsTests: XCTestCase {
         XCTAssertEqual(reverse.textView.string, "c\nb\na\n")
     }
 
-    func testIndentOutdentAndToggleComment() {
+    func testIndentOutdentAndToggleComment() async {
         let indent = editor("a\n  b\n", ranges: [NSRange(location: 0, length: 5)])
         indent.performLineCommand(.indent)
         XCTAssertEqual(indent.textView.string, "\ta\n\t  b\n")
@@ -98,7 +100,7 @@ final class LineEditingCommandsTests: XCTestCase {
         XCTAssertEqual(comment.textView.string, "  let a = 1\nlet b = 2\n")
     }
 
-    func testFileTypeProfileControlsIndentAndCommentDelimiter() {
+    func testFileTypeProfileControlsIndentAndCommentDelimiter() async {
         let subject = editor("a\nb\n", ranges: [NSRange(location: 0, length: 3)])
         subject.document?.fileTypeProfile = FileTypeProfile(
             id: "user.custom", name: "Custom", extensions: ["custom"],
@@ -114,7 +116,7 @@ final class LineEditingCommandsTests: XCTestCase {
         XCTAssertEqual(subject.textView.string, ";; a\n;; b\n")
     }
 
-    func testGoToLineAndColumnClampsToLineEnd() {
+    func testGoToLineAndColumnClampsToLineEnd() async {
         let editor = editor("abc\nx\nlast")
         editor.goTo(line: 2, column: 9)
         XCTAssertEqual(editor.selectionSet.primaryRange, NSRange(location: 5, length: 0))
@@ -122,7 +124,7 @@ final class LineEditingCommandsTests: XCTestCase {
         XCTAssertEqual(editor.selectionSet.primaryRange, NSRange(location: 8, length: 0))
     }
 
-    func testEveryMutatingLineCommandPreservesValidSelectionsAndUsesOneUndoStep() {
+    func testEveryMutatingLineCommandPreservesValidSelectionsAndUsesOneUndoStep() async {
         let cases: [(LineEditCommand, String, NSRange, Language)] = [
             (.delete, "c\nb\na\n", NSRange(location: 2, length: 0), .plainText),
             (.duplicate, "c\nb\na\n", NSRange(location: 2, length: 0), .plainText),

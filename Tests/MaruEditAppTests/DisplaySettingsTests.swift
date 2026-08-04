@@ -1,8 +1,10 @@
 import AppKit
 import MaruEditCore
 import XCTest
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
+
+@preconcurrency @MainActor
 final class DisplaySettingsTests: XCTestCase {
     private final class Delegate: EditorViewControllerDelegate {
         var chosenFont: NSFont?
@@ -11,7 +13,7 @@ final class DisplaySettingsTests: XCTestCase {
         func editorDidChooseFont(_ vc: EditorViewController, font: NSFont) { chosenFont = font }
     }
 
-    func testInvisibleMarkersToggleIndependently() {
+    func testInvisibleMarkersToggleIndependently() async {
         let spaces = InvisibleCharacterOptions(spaces: true)
         XCTAssertEqual(MaruTextView.marker(forUTF16CodeUnit: 0x20, options: spaces), "·")
         XCTAssertNil(MaruTextView.marker(forUTF16CodeUnit: 0x09, options: spaces))
@@ -25,7 +27,7 @@ final class DisplaySettingsTests: XCTestCase {
         XCTAssertEqual(MaruTextView.marker(forUTF16CodeUnit: 0x3000, options: all), "□")
     }
 
-    func testInvisibleRenderingDegradesForLargeFiles() {
+    func testInvisibleRenderingDegradesForLargeFiles() async {
         let view = MaruTextView()
         view.string = String(repeating: " ", count: MaruTextView.invisibleMarkerLargeFileThreshold + 1)
         view.invisibleCharacters = InvisibleCharacterOptions(spaces: true)
@@ -33,7 +35,7 @@ final class DisplaySettingsTests: XCTestCase {
         XCTAssertEqual(view.string.count, MaruTextView.invisibleMarkerLargeFileThreshold + 1)
     }
 
-    func testDocumentWrapAndTabWidthOverrideProfileWithoutChangingText() throws {
+    func testDocumentWrapAndTabWidthOverrideProfileWithoutChangingText() async throws {
         let editor = EditorViewController()
         _ = editor.view
         let document = Document(content: "a\tb")
@@ -55,13 +57,13 @@ final class DisplaySettingsTests: XCTestCase {
         XCTAssertEqual(paragraph.defaultTabInterval, space * 2, accuracy: 0.01)
     }
 
-    func testDefaultFontIsNativeMonospacedFont() {
+    func testDefaultFontIsNativeMonospacedFont() async {
         let editor = EditorViewController()
         _ = editor.view
         XCTAssertTrue(editor.currentEditorFont.fontDescriptor.symbolicTraits.contains(.monoSpace))
     }
 
-    func testSystemFontPanelSelectionAppliesAndNotifiesWithoutChangingText() throws {
+    func testSystemFontPanelSelectionAppliesAndNotifiesWithoutChangingText() async throws {
         let editor = EditorViewController()
         _ = editor.view
         let delegate = Delegate()
@@ -81,7 +83,7 @@ final class DisplaySettingsTests: XCTestCase {
         XCTAssertNotNil(delegate.chosenFont, "changeFont must route through the editor delegate")
     }
 
-    func testHighContrastChangesPresentationWithoutChangingText() {
+    func testHighContrastChangesPresentationWithoutChangingText() async {
         let editor = EditorViewController()
         _ = editor.view
         editor.document = Document(content: "let value = 1")
@@ -96,7 +98,7 @@ final class DisplaySettingsTests: XCTestCase {
         XCTAssertEqual(editor.textView.string, original)
     }
 
-    func testInvisibleCommandMutatesOnlyRequestedPersistedPreference() {
+    func testInvisibleCommandMutatesOnlyRequestedPersistedPreference() async {
         let suite = "DisplaySettingsTests-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }

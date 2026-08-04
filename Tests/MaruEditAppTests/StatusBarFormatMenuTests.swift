@@ -1,10 +1,12 @@
 import AppKit
 import MaruEditCore
 import XCTest
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
+
+@preconcurrency @MainActor
 final class StatusBarFormatMenuTests: XCTestCase {
-    func testMenusExposeEncodingBOMLineEndingAndEveryLanguage() {
+    func testMenusExposeEncodingBOMLineEndingAndEveryLanguage() async {
         let controller = MainWindowController()
 
         XCTAssertFalse(controller.buildEncodingMenu().items.isEmpty)
@@ -16,7 +18,7 @@ final class StatusBarFormatMenuTests: XCTestCase {
         XCTAssertTrue(languages.allSatisfy { $0.action != nil && $0.target === controller })
     }
 
-    func testFormatMenuActionsUpdateCheckedState() throws {
+    func testFormatMenuActionsUpdateCheckedState() async throws {
         let controller = MainWindowController()
         let bom = try XCTUnwrap(controller.buildByteOrderMarkMenu().items.first)
         _ = bom.target?.perform(bom.action, with: bom)

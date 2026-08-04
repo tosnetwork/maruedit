@@ -1,8 +1,10 @@
 import AppKit
 import MaruEditCore
 import XCTest
-@testable import MaruEditApp
+@preconcurrency @testable import MaruEditApp
 
+
+@preconcurrency @MainActor
 final class LargeFileModeTests: XCTestCase {
     private func sparseFile(size: UInt64) throws -> URL {
         let url = FileManager.default.temporaryDirectory
@@ -14,7 +16,7 @@ final class LargeFileModeTests: XCTestCase {
         return url
     }
 
-    func testFileAboveSafetyCeilingIsRejectedBeforeMaterialization() throws {
+    func testFileAboveSafetyCeilingIsRejectedBeforeMaterialization() async throws {
         let url = try sparseFile(size: UInt64(LargeFilePolicy.maximumMaterializedSize + 1))
         defer { try? FileManager.default.removeItem(at: url) }
 
@@ -27,7 +29,7 @@ final class LargeFileModeTests: XCTestCase {
         }
     }
 
-    func testThresholdFileAutomaticallyOpensReducedWithoutUIPrompt() throws {
+    func testThresholdFileAutomaticallyOpensReducedWithoutUIPrompt() async throws {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("MaruEditReduced-\(UUID().uuidString).txt")
         try Data(
@@ -41,7 +43,7 @@ final class LargeFileModeTests: XCTestCase {
         XCTAssertFalse(document.isReadOnly)
     }
 
-    func testReducedAndReadOnlyModesApplyEditorSafetyFeatures() {
+    func testReducedAndReadOnlyModesApplyEditorSafetyFeatures() async {
         let reduced = Document(content: "let value = 1")
         reduced.largeFileMode = .reducedFeatures
         let editor = EditorViewController()
