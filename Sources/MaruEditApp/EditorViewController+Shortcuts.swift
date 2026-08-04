@@ -207,6 +207,12 @@ extension EditorViewController {
             exitMultiEdit(); return false
         }
 
+        if mods == .command, event.charactersIgnoringModifiers == "v",
+           let text = NSPasteboard.general.string(forType: .string) {
+            multiEditPaste(text)
+            return true
+        }
+
         if mods.contains(.command) { exitMultiEdit(); return false }
 
         if key == 51  { multiEditBackspace();     return true }
@@ -233,13 +239,13 @@ extension EditorViewController {
 
 extension EditorViewController {
 
-    fileprivate func multiEditInsert(_ text: String) {
+    func multiEditInsert(_ text: String) {
         let cursors = multiEditCursorRanges
         guard !cursors.isEmpty else { exitMultiEdit(); return }
         batchReplace(cursors, with: text)
     }
 
-    fileprivate func multiEditBackspace() {
+    func multiEditBackspace() {
         let cursors = multiEditCursorRanges
         guard !cursors.isEmpty else { exitMultiEdit(); return }
 
@@ -255,7 +261,7 @@ extension EditorViewController {
         }
     }
 
-    fileprivate func multiEditForwardDelete() {
+    func multiEditForwardDelete() {
         let cursors = multiEditCursorRanges
         guard !cursors.isEmpty else { exitMultiEdit(); return }
         let len = (textView.string as NSString).length
@@ -271,6 +277,19 @@ extension EditorViewController {
             batchReplace(expanded, with: "")
         }
     }
+
+    /// If the clipboard has exactly one line per selection, each line is
+    /// pasted into its corresponding normalized selection. Otherwise the
+    /// complete clipboard text is inserted at every selection.
+    func multiEditPaste(_ text: String) {
+        let ranges = selectionSet.ranges
+        let fragments = text.components(separatedBy: "\n")
+        if ranges.count > 1, fragments.count == ranges.count {
+            batchReplace(ranges, with: fragments)
+        } else {
+            batchReplace(ranges, with: text)
+        }
+    }
 }
 
 // MARK: - Batch replacement engine (multi-cursor aware)
@@ -284,37 +303,54 @@ extension EditorViewController {
     /// `textDidChange` handler runs rehighlighting via `ts.beginEditing/endEditing`,
     /// which collapses multi-selection back to a single cursor.  Instead we update
     /// the document state and undo stack manually.
-    fileprivate func batchReplace(_ targetRanges: [NSRange], with text: String) {
-        guard let ts = textView.textStorage else { return }
+    func batchReplace(_ targetRanges: [NSRange], with text: String) {
+        batchReplace(targetRanges, with: Array(repeating: text, count: targetRanges.count))
+    }
 
-        let sorted = targetRanges.sorted { $0.location < $1.location }
-        var merged: [NSRange] = []
-        for range in sorted {
-            if let last = merged.last, range.location <= NSMaxRange(last) {
-                let end = max(NSMaxRange(last), NSMaxRange(range))
-                merged[merged.count - 1] = NSRange(location: last.location,
-                                                    length: end - last.location)
+    func batchReplace(_ targetRanges: [NSRange], with replacements: [String]) {
+        guard let ts = textView.textStorage else { return }
+        guard targetRanges.count == replacements.count else { return }
+
+        var operations: [(range: NSRange, replacement: String)] = []
+        for index in targetRanges.indices {
+            let range = targetRanges[index]
+            guard range.location != NSNotFound, NSMaxRange(range) <= ts.length else { continue }
+            operations.append((range, replacements[index]))
+        }
+        operations.sort {
+            $0.range.location == $1.range.location
+                ? $0.range.length < $1.range.length : $0.range.location < $1.range.location
+        }
+        var merged: [(range: NSRange, replacement: String)] = []
+        for operation in operations {
+            if let last = merged.last,
+               (operation.range.location < NSMaxRange(last.range)
+                || (operation.range.length == 0 && NSLocationInRange(operation.range.location, last.range))) {
+                let end = max(NSMaxRange(last.range), NSMaxRange(operation.range))
+                // Deterministic overlap rule: the earliest normalized
+                // selection supplies the replacement for the union.
+                merged[merged.count - 1].range = NSRange(
+                    location: last.range.location, length: end - last.range.location)
             } else {
-                merged.append(range)
+                merged.append(operation)
             }
         }
         guard !merged.isEmpty else { return }
 
-        let insertLen = (text as NSString).length
-
         var positions: [Int] = []
         var offset = 0
-        for range in merged {
+        for operation in merged {
+            let range = operation.range
+            let insertLen = (operation.replacement as NSString).length
             positions.append(range.location + offset + insertLen)
             offset += insertLen - range.length
         }
 
-        let oldString = textView.string
-        let oldRanges = textView.selectedRanges
+        let oldSnapshot = editorSnapshot()
 
         ts.beginEditing()
-        for range in merged.reversed() {
-            ts.replaceCharacters(in: range, with: text)
+        for operation in merged.reversed() {
+            ts.replaceCharacters(in: operation.range, with: operation.replacement)
         }
         ts.endEditing()
 
@@ -323,34 +359,52 @@ extension EditorViewController {
         document?.markModified()
         delegate?.editorTextDidChange(self)
 
-        textView.undoManager?.registerUndo(withTarget: textView) { [weak self] tv in
-            guard let self = self else { return }
-            tv.textStorage?.beginEditing()
-            tv.textStorage?.replaceCharacters(
-                in: NSRange(location: 0, length: (tv.string as NSString).length),
-                with: oldString)
-            tv.textStorage?.endEditing()
-            self.document?.content = oldString
-            self.document?.markModified()
-            self.delegate?.editorTextDidChange(self)
-            tv.setSelectedRanges(oldRanges, affinity: .downstream, stillSelecting: false)
-        }
-
         let maxLen = (newContent as NSString).length
         let unique = Array(Set(positions.map { max(0, min($0, maxLen)) })).sorted()
         let newCursors = unique.map { NSRange(location: $0, length: 0) }
 
-        if newCursors.count <= 1 { exitMultiEdit() }
-        else { multiEditCursorRanges = newCursors }
+        let primary = newCursors.first ?? NSRange(location: 0, length: 0)
+        setSelections(newCursors, primaryRange: primary)
+        isMultiEditActive = newCursors.count > 1
+        rehighlightEntireDocument()
+        // Attribute-only highlighting must not change logical selections.
+        setSelections(newCursors, primaryRange: primary)
 
-        let nsValues = newCursors.map { NSValue(range: $0) }
-        if !nsValues.isEmpty {
-            textView.setSelectedRanges(nsValues, affinity: .downstream, stillSelecting: false)
-            DispatchQueue.main.async { [weak self] in
-                guard let self = self, !nsValues.isEmpty else { return }
-                self.textView.setSelectedRanges(nsValues, affinity: .downstream,
-                                                stillSelecting: false)
+        if let undoManager = textView.undoManager {
+            undoManager.beginUndoGrouping()
+            undoManager.registerUndo(withTarget: self) { target in
+                target.restoreEditorSnapshot(oldSnapshot)
             }
+            undoManager.setActionName("Multiple Selection Edit")
+            undoManager.endUndoGrouping()
+        }
+    }
+
+    private struct EditorSnapshot {
+        let text: String
+        let selections: [NSRange]
+        let primary: NSRange
+    }
+
+    private func editorSnapshot() -> EditorSnapshot {
+        EditorSnapshot(text: textView.string, selections: selectionSet.ranges, primary: selectionSet.primaryRange)
+    }
+
+    private func restoreEditorSnapshot(_ snapshot: EditorSnapshot) {
+        let inverse = editorSnapshot()
+        guard let ts = textView.textStorage else { return }
+        ts.beginEditing()
+        ts.replaceCharacters(in: NSRange(location: 0, length: ts.length), with: snapshot.text)
+        ts.endEditing()
+        document?.content = snapshot.text
+        document?.markModified()
+        delegate?.editorTextDidChange(self)
+        setSelections(snapshot.selections, primaryRange: snapshot.primary)
+        isMultiEditActive = snapshot.selections.count > 1
+        rehighlightEntireDocument()
+        setSelections(snapshot.selections, primaryRange: snapshot.primary)
+        textView.undoManager?.registerUndo(withTarget: self) { target in
+            target.restoreEditorSnapshot(inverse)
         }
     }
 }

@@ -1762,12 +1762,12 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M4-03: Multi-Selection Editing and Undo
 
-- [ ] Insert, Delete, Backspace, and Paste.
-- [ ] Apply edits from highest offset to lowest.
-- [ ] Use one Undo group per user action.
-- [ ] Document multi-fragment clipboard behavior.
-- [ ] Ensure syntax highlighting preserves selections.
-- [ ] Resolve overlapping ranges deterministically.
+- [x] Insert, Delete, Backspace, and Paste. *(All four use the same `batchReplace` transaction; ⌘V is intercepted only while multi-edit is active and reads plain text from the pasteboard.)*
+- [x] Apply edits from highest offset to lowest. *(Normalized operations are executed in reverse document order; `testInsertAppliesFromEndAndLeavesOneCursorPerEdit` pins the offset result.)*
+- [x] Use one Undo group per user action. *(One named Undo registration stores text plus logical selections; its reciprocal snapshot registration supports Redo. `testOneUndoAndRedoRestoreTextAndSelections`.)*
+- [x] Document multi-fragment clipboard behavior. *(`docs/multiple-selections.md`: exact fragment-count maps one-to-one; otherwise the complete clipboard is repeated at every selection.)*
+- [x] Ensure syntax highlighting preserves selections. *(The logical selection is reapplied after attribute-only highlighting; `testHighlightingDoesNotClearLogicalCursors`.)*
+- [x] Resolve overlapping ranges deterministically. *(Overlaps merge into a union and the earliest normalized selection's replacement wins; adjacent selections remain separate. `testOverlapsMergeAndEarliestReplacementWins`.)*
 
 ## M4-04: CJK IME
 
