@@ -56,4 +56,15 @@ public enum Language: String, CaseIterable, Sendable {
         default:                               return .plainText
         }
     }
+
+    /// Temporary built-in profile value used by M4 line commands. M5-04
+    /// moves this setting into versioned FileType Profiles.
+    public var lineCommentDelimiter: String? {
+        switch self {
+        case .swift, .javascript, .typescript, .rust, .go, .c, .cpp, .java: return "//"
+        case .python, .ruby, .shell, .yaml, .toml: return "#"
+        case .sql: return "--"
+        default: return nil
+        }
+    }
 }

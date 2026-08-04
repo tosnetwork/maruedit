@@ -39,6 +39,19 @@ significantly, replace this with a small script that generates it from
 | `edit.selectAllOccurrences` | Select All Occurrences | Edit | ⇧⌘L | `AppCoordinator.selectAllOccurrences()` |
 | `edit.undoLastAddedCursor` | Undo Last Added Cursor | Edit | ⌘U | `AppCoordinator.undoLastAddedCursor()` |
 | `edit.beginColumnSelection` | Begin Column Selection | Edit | — | `AppCoordinator.beginColumnSelection()` |
+| `edit.deleteLine` | Delete Line | Edit > Lines | — | `performLineCommand(.delete)` |
+| `edit.duplicateLine` | Duplicate Line/Selection | Edit > Lines | — | `performLineCommand(.duplicate)` |
+| `edit.moveLineUp` | Move Line Up | Edit > Lines | — | `performLineCommand(.moveUp)` |
+| `edit.moveLineDown` | Move Line Down | Edit > Lines | — | `performLineCommand(.moveDown)` |
+| `edit.joinLines` | Join Lines | Edit > Lines | — | `performLineCommand(.join)` |
+| `edit.trimTrailingWhitespace` | Trim Trailing Whitespace | Edit > Lines | — | `performLineCommand(.trimTrailingWhitespace)` |
+| `edit.uppercase` | Convert to Uppercase | Edit > Lines | — | `performLineCommand(.uppercase)` |
+| `edit.lowercase` | Convert to Lowercase | Edit > Lines | — | `performLineCommand(.lowercase)` |
+| `edit.sortLines` | Sort Lines | Edit > Lines | — | `performLineCommand(.sort)` |
+| `edit.reverseLines` | Reverse Lines | Edit > Lines | — | `performLineCommand(.reverse)` |
+| `edit.indent` | Indent | Edit > Lines | — | `performLineCommand(.indent)` |
+| `edit.outdent` | Outdent | Edit > Lines | — | `performLineCommand(.outdent)` |
+| `edit.toggleComment` | Toggle Comment | Edit > Lines | — | `performLineCommand(.toggleComment)` |
 
 All of them are enabled unconditionally right now (`isEnabled` always
 returns `true`) — the app has no state yet where one of them shouldn't be

@@ -27,6 +27,19 @@ extension CommandID {
     static let editSelectAllOccurrences = CommandID("edit.selectAllOccurrences")
     static let editUndoLastAddedCursor = CommandID("edit.undoLastAddedCursor")
     static let editBeginColumnSelection = CommandID("edit.beginColumnSelection")
+    static let editDeleteLine = CommandID("edit.deleteLine")
+    static let editDuplicateLine = CommandID("edit.duplicateLine")
+    static let editMoveLineUp = CommandID("edit.moveLineUp")
+    static let editMoveLineDown = CommandID("edit.moveLineDown")
+    static let editJoinLines = CommandID("edit.joinLines")
+    static let editTrimTrailingWhitespace = CommandID("edit.trimTrailingWhitespace")
+    static let editUppercase = CommandID("edit.uppercase")
+    static let editLowercase = CommandID("edit.lowercase")
+    static let editSortLines = CommandID("edit.sortLines")
+    static let editReverseLines = CommandID("edit.reverseLines")
+    static let editIndent = CommandID("edit.indent")
+    static let editOutdent = CommandID("edit.outdent")
+    static let editToggleComment = CommandID("edit.toggleComment")
 }
 
 /// The command definitions for MaruEdit's current static menu actions.
@@ -92,5 +105,29 @@ enum AppCommands {
         registry.register(CommandDefinition(id: .editSelectAllOccurrences, title: "Select All Occurrences") { $0.coordinator.selectAllOccurrences() })
         registry.register(CommandDefinition(id: .editUndoLastAddedCursor, title: "Undo Last Added Cursor") { $0.coordinator.undoLastAddedCursor() })
         registry.register(CommandDefinition(id: .editBeginColumnSelection, title: "Begin Column Selection") { $0.coordinator.beginColumnSelection() })
+        registerLineCommands(in: registry)
+    }
+
+    private static func registerLineCommands(in registry: CommandRegistry) {
+        let commands: [(CommandID, String, LineEditCommand)] = [
+            (.editDeleteLine, "Delete Line", .delete),
+            (.editDuplicateLine, "Duplicate Line/Selection", .duplicate),
+            (.editMoveLineUp, "Move Line Up", .moveUp),
+            (.editMoveLineDown, "Move Line Down", .moveDown),
+            (.editJoinLines, "Join Lines", .join),
+            (.editTrimTrailingWhitespace, "Trim Trailing Whitespace", .trimTrailingWhitespace),
+            (.editUppercase, "Convert to Uppercase", .uppercase),
+            (.editLowercase, "Convert to Lowercase", .lowercase),
+            (.editSortLines, "Sort Lines", .sort),
+            (.editReverseLines, "Reverse Lines", .reverse),
+            (.editIndent, "Indent", .indent),
+            (.editOutdent, "Outdent", .outdent),
+            (.editToggleComment, "Toggle Comment", .toggleComment),
+        ]
+        for (id, title, command) in commands {
+            registry.register(CommandDefinition(id: id, title: title) {
+                $0.coordinator.performLineCommand(command)
+            })
+        }
     }
 }

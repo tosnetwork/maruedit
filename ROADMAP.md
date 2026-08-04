@@ -1794,19 +1794,19 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 Add stable Command IDs for at least:
 
-- [ ] Delete Line.
-- [ ] Duplicate Line/Selection.
-- [ ] Move Line Up/Down.
-- [ ] Join Lines.
-- [ ] Trim Trailing Whitespace.
-- [ ] Convert Case.
-- [ ] Sort Lines.
-- [ ] Reverse Lines.
-- [ ] Indent/Outdent.
-- [ ] Toggle Comment using the FileType Profile delimiter.
-- [ ] Go to Line/Column.
+- [x] Delete Line. *(`edit.deleteLine`; caret and multi-selection behavior plus one-step Undo are covered by `LineEditingCommandsTests`.)*
+- [x] Duplicate Line/Selection. *(`edit.duplicateLine`; duplicates complete selected logical lines and preserves the transformed range.)*
+- [x] Move Line Up/Down. *(`edit.moveLineUp` / `edit.moveLineDown`, also wired to Option-Up/Down.)*
+- [x] Join Lines. *(`edit.joinLines`; trims boundary whitespace while retaining the final line ending.)*
+- [x] Trim Trailing Whitespace. *(`edit.trimTrailingWhitespace`; with no selection it processes the complete document.)*
+- [x] Convert Case. *(`edit.uppercase` / `edit.lowercase`; exact multiple selections are transformed independently.)*
+- [x] Sort Lines. *(`edit.sortLines`; whole document without a selection, selected logical lines otherwise.)*
+- [x] Reverse Lines. *(`edit.reverseLines`; shares the same explicit scope rules as Sort Lines.)*
+- [x] Indent/Outdent. *(`edit.indent` / `edit.outdent`; supports tabs and up to four leading spaces.)*
+- [x] Toggle Comment using the FileType Profile delimiter. *(The command reads the language's built-in profile delimiter; M5-04 will move these built-ins into the versioned/importable `FileTypeProfile` schema without changing the command API.)*
+- [x] Go to Line/Column. *(The Go To panel accepts `line:column`, clamps columns to the logical line end, and retains the prior line-only input.)*
 
-Every command must have applicable normal, selection, and multi-selection tests, preserve a sensible selection, and create one Undo group.
+Every command must have applicable normal, selection, and multi-selection tests, preserve a sensible selection, and create one Undo group. *(`LineEditingCommandsTests` covers caret, exact selection, line selection, and multiple-selection paths; every mutating command is also table-tested for a valid post-edit selection and complete restoration by one Undo.)*
 
 ## M4-07: Bookmarks
 

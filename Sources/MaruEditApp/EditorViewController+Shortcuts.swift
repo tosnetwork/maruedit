@@ -69,9 +69,9 @@ extension EditorViewController {
         let key  = event.keyCode
 
         switch (mods, key) {
-        case (.option, 126):            moveLineUp();          return true
-        case (.option, 125):            moveLineDown();        return true
-        case ([.command, .shift], 40):  deleteCurrentLine();   return true
+        case (.option, 126):            performLineCommand(.moveUp); return true
+        case (.option, 125):            performLineCommand(.moveDown); return true
+        case ([.command, .shift], 40):  performLineCommand(.delete); return true
         case ([.command, .shift], 37):  selectAllOccurrences();return true
         case ([], 48):                  if indentSelectedLines() { return true }; return false
         case (.shift, 48):              unindentSelectedLines(); return true

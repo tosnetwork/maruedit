@@ -84,6 +84,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         editMenu.addItem(commandItem(.editSelectAllOccurrences, "l", modifiers: [.command, .shift]))
         editMenu.addItem(commandItem(.editUndoLastAddedCursor, "u"))
         editMenu.addItem(commandItem(.editBeginColumnSelection, ""))
+        editMenu.addItem(.separator())
+        let linesItem = NSMenuItem(title: "Lines", action: nil, keyEquivalent: "")
+        let linesMenu = NSMenu(title: "Lines")
+        for id: CommandID in [
+            .editDeleteLine, .editDuplicateLine, .editMoveLineUp, .editMoveLineDown,
+            .editJoinLines, .editTrimTrailingWhitespace, .editUppercase, .editLowercase,
+            .editSortLines, .editReverseLines, .editIndent, .editOutdent, .editToggleComment,
+        ] { linesMenu.addItem(commandItem(id, "")) }
+        linesItem.submenu = linesMenu
+        editMenu.addItem(linesItem)
         editItem.submenu = editMenu
         main.addItem(editItem)
 

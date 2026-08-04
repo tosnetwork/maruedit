@@ -57,6 +57,7 @@ final class AppCoordinator {
     func selectAllOccurrences()        { ensureWindowControllerReady().selectAllOccurrences() }
     func undoLastAddedCursor()         { ensureWindowControllerReady().undoLastAddedCursor() }
     func beginColumnSelection()        { ensureWindowControllerReady().beginColumnSelection() }
+    func performLineCommand(_ command: LineEditCommand) { ensureWindowControllerReady().performLineCommand(command) }
     func toggleSidebar()               { ensureWindowControllerReady().toggleSidebar() }
     func clearRecoveryData()           { ensureWindowControllerReady().clearRecoveryData() }
 

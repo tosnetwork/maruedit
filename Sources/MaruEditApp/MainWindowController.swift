@@ -650,11 +650,14 @@ final class MainWindowController: NSWindowController,
         a.addButton(withTitle: "Go")
         a.addButton(withTitle: "Cancel")
         let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
-        input.placeholderString = "Line number"
+        input.placeholderString = "Line:Column (for example 42:8)"
         a.accessoryView = input
         a.beginSheetModal(for: window!) { [weak self] r in
-            guard r == .alertFirstButtonReturn, let ln = Int(input.stringValue) else { return }
-            self?.editorVC.goToLine(ln)
+            guard r == .alertFirstButtonReturn else { return }
+            let parts = input.stringValue.split(whereSeparator: { $0 == ":" || $0.isWhitespace })
+            guard let first = parts.first, let line = Int(first) else { return }
+            let column = parts.count > 1 ? (Int(parts[1]) ?? 1) : 1
+            self?.editorVC.goTo(line: line, column: column)
         }
     }
 
@@ -1071,6 +1074,7 @@ final class MainWindowController: NSWindowController,
     func selectAllOccurrences() { editorVC.selectAllOccurrences() }
     func undoLastAddedCursor() { editorVC.undoLastAddedCursor() }
     func beginColumnSelection() { editorVC.beginColumnSelectionCommand() }
+    func performLineCommand(_ command: LineEditCommand) { editorVC.performLineCommand(command) }
 
     // MARK: - Session persistence
     //

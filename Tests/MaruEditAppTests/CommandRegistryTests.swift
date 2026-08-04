@@ -57,7 +57,10 @@ final class CommandRegistryTests: XCTestCase {
             .searchFindPrevious, .searchGoToLine, .searchQuickOpen, .searchGrep,
             .searchClearHistory, .viewToggleSidebar
             , .editAddCursorAbove, .editAddCursorBelow, .editSelectNextOccurrence,
-            .editSelectAllOccurrences, .editUndoLastAddedCursor, .editBeginColumnSelection
+            .editSelectAllOccurrences, .editUndoLastAddedCursor, .editBeginColumnSelection,
+            .editDeleteLine, .editDuplicateLine, .editMoveLineUp, .editMoveLineDown,
+            .editJoinLines, .editTrimTrailingWhitespace, .editUppercase, .editLowercase,
+            .editSortLines, .editReverseLines, .editIndent, .editOutdent, .editToggleComment
         ]
         for id in ids {
             XCTAssertNotNil(registry.definition(for: id), "\(id.rawValue) should be registered")
