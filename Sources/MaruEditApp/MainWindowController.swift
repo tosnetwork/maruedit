@@ -1,4 +1,5 @@
 import AppKit
+import MaruEditCore
 
 final class MainWindowController: NSWindowController,
     NSSplitViewDelegate,
@@ -19,6 +20,8 @@ final class MainWindowController: NSWindowController,
     private var keyMonitor: Any?
 
     private let documentController = DocumentController()
+    private let sessionStore = SessionStore()
+    private let sessionSaveDebouncer = Debouncer(delay: 1.5)
     private var sidebarManuallyCollapsed = false
 
     /// Convenience shims onto `documentController` so the UI-orchestration
@@ -188,6 +191,7 @@ final class MainWindowController: NSWindowController,
         editorVC.document = doc
         refreshTabs()
         refreshStatus()
+        scheduleSessionSave()
     }
 
     func openDocument() {
@@ -215,6 +219,7 @@ final class MainWindowController: NSWindowController,
             if result.wasAlreadyOpen {
                 deferredRestoreCursor()
             }
+            scheduleSessionSave()
         } catch {
             NSAlert(error: error).runModal()
         }
@@ -232,6 +237,7 @@ final class MainWindowController: NSWindowController,
             if result.wasAlreadyOpen {
                 deferredRestoreCursor()
             }
+            scheduleSessionSave()
         } catch {
             NSAlert(error: error).runModal()
         }
@@ -276,6 +282,7 @@ final class MainWindowController: NSWindowController,
         let emptiedAndReplaced = documentController.closeDocument(at: indexToClose)
         editorVC.document = curDoc
         refreshTabs(); refreshStatus()
+        scheduleSessionSave()
         if emptiedAndReplaced { return }
         deferredRestoreCursor()
     }
@@ -308,6 +315,7 @@ final class MainWindowController: NSWindowController,
             }
             self.sidebarVC.openFolder(url)
         }
+        scheduleSessionSave()
     }
 
     func toggleSidebar() {
@@ -322,6 +330,7 @@ final class MainWindowController: NSWindowController,
             sidebarVC.view.isHidden = true
         }
         updateTabBarFrame()
+        scheduleSessionSave()
     }
 
     func showFind() {
@@ -437,6 +446,7 @@ final class MainWindowController: NSWindowController,
         if let doc = curDoc {
             tabBar.updateTab(at: curIdx, item: TabItem(title: doc.displayName, isModified: doc.isModified))
         }
+        scheduleSessionSave()
     }
     func editorCursorMoved(_ vc: EditorViewController, line: Int, col: Int) { statusBar.updateCursor(line: line, col: col) }
 
@@ -452,6 +462,7 @@ final class MainWindowController: NSWindowController,
         window?.title = "MaruEdit — \(doc.displayName)"
         if let url = doc.fileURL { sidebarVC.revealFile(url) }
         deferredRestoreCursor()
+        scheduleSessionSave()
     }
 
     func tabBarDidCloseTab(at index: Int) {
@@ -499,57 +510,68 @@ final class MainWindowController: NSWindowController,
     }
 
     // MARK: - Session persistence
+    //
+    // Backed by `SessionStore` (a JSON file under Application Support),
+    // not UserDefaults — see ROADMAP.md M1-05. Window frame is
+    // deliberately not part of this: AppKit's own
+    // `setFrameAutosaveName("MainWindow")` (see `init`) already persists
+    // and restores it.
 
-    private static let sessionFolderKey  = "SessionFolder"
-    private static let sessionFilesKey   = "SessionFiles"
-    private static let sessionIndexKey   = "SessionActiveIndex"
-    private static let sessionCursorsKey = "SessionCursors"
-    private static let sessionZoomedKey  = "SessionWindowZoomed"
+    /// Debounced so normal typing/tab-switching doesn't write to disk on
+    /// every keystroke, while a crash or force-quit still only loses at
+    /// most a few seconds of session state — `applicationWillTerminate`
+    /// (via `AppCoordinator`) still calls `saveSession()` directly for a
+    /// final synchronous flush on a clean quit.
+    private func scheduleSessionSave() {
+        sessionSaveDebouncer.schedule { [weak self] in
+            self?.saveSession()
+        }
+    }
 
     func saveSession() {
         saveCursorPosition()
-        let ud = UserDefaults.standard
-        ud.set(sidebarVC.rootFolderURL?.path, forKey: Self.sessionFolderKey)
-        ud.set(documentController.documents.compactMap { $0.fileURL?.path }, forKey: Self.sessionFilesKey)
-        ud.set(curIdx, forKey: Self.sessionIndexKey)
-
-        var cursors: [String: Int] = [:]
-        for doc in documentController.documents {
-            if let path = doc.fileURL?.path {
-                cursors[path] = doc.cursorPosition
-            }
+        let openFiles: [OpenFileState] = documentController.documents.compactMap { doc in
+            guard let path = doc.fileURL?.path else { return nil }
+            return OpenFileState(
+                path: path,
+                cursorPosition: doc.cursorPosition,
+                scrollOffsetX: doc.scrollOffset.x,
+                scrollOffsetY: doc.scrollOffset.y
+            )
         }
-        ud.set(cursors, forKey: Self.sessionCursorsKey)
-        ud.set(window?.isZoomed ?? false, forKey: Self.sessionZoomedKey)
+        let state = SessionState(
+            rootFolderPath: sidebarVC.rootFolderURL?.path,
+            openFiles: openFiles,
+            activeIndex: curIdx,
+            windowZoomed: window?.isZoomed ?? false,
+            sidebarCollapsed: sidebarManuallyCollapsed
+        )
+        sessionStore.save(state)
     }
 
     func restoreSession() {
-        let ud = UserDefaults.standard
-        let folderPath = ud.string(forKey: Self.sessionFolderKey)
-        let filePaths  = (ud.stringArray(forKey: Self.sessionFilesKey) ?? [])
-            .filter { FileManager.default.fileExists(atPath: $0) }
+        let state = sessionStore.load()
+        let existingFiles = state.openFiles.filter { FileManager.default.fileExists(atPath: $0.path) }
 
-        guard folderPath != nil || !filePaths.isEmpty else { return }
+        guard state.rootFolderPath != nil || !existingFiles.isEmpty else { return }
 
-        if let fp = folderPath, FileManager.default.fileExists(atPath: fp) {
+        if let fp = state.rootFolderPath, FileManager.default.fileExists(atPath: fp) {
             openFolderDirect(URL(fileURLWithPath: fp))
         }
 
-        for path in filePaths {
-            openFile(URL(fileURLWithPath: path))
+        for fileState in existingFiles {
+            openFile(URL(fileURLWithPath: fileState.path))
         }
 
         documentController.pruneLeftoverBlankDocument()
 
-        let cursors = ud.dictionary(forKey: Self.sessionCursorsKey) as? [String: Int] ?? [:]
-        for doc in documentController.documents {
-            if let path = doc.fileURL?.path, let pos = cursors[path] {
-                doc.cursorPosition = pos
-            }
+        for fileState in existingFiles {
+            guard let doc = documentController.documents.first(where: { $0.fileURL?.path == fileState.path }) else { continue }
+            doc.cursorPosition = fileState.cursorPosition
+            doc.scrollOffset = NSPoint(x: fileState.scrollOffsetX, y: fileState.scrollOffsetY)
         }
 
-        let savedIdx = ud.integer(forKey: Self.sessionIndexKey)
-        documentController.selectDocumentClamped(to: savedIdx)
+        documentController.selectDocumentClamped(to: state.activeIndex)
         if let doc = curDoc {
             editorVC.document = doc
         }
@@ -560,12 +582,23 @@ final class MainWindowController: NSWindowController,
         }
 
         DispatchQueue.main.async { [weak self] in
-            self?.restoreCursorPosition()
-            if let url = self?.curDoc?.fileURL {
-                self?.sidebarVC.revealFile(url)
+            guard let self = self else { return }
+            self.restoreCursorPosition()
+            if let url = self.curDoc?.fileURL {
+                self.sidebarVC.revealFile(url)
             }
-            if ud.bool(forKey: Self.sessionZoomedKey), !(self?.window?.isZoomed ?? true) {
-                self?.window?.zoom(nil)
+            if state.windowZoomed, !(self.window?.isZoomed ?? true) {
+                self.window?.zoom(nil)
+            }
+            // Applied last, after showSidebarAndOpen's own async
+            // repositioning (scheduled above via openFolderDirect), so a
+            // saved "collapsed" state wins even when a folder was also
+            // restored.
+            if state.sidebarCollapsed {
+                self.sidebarManuallyCollapsed = true
+                self.splitView.setPosition(0, ofDividerAt: 0)
+                self.sidebarVC.view.isHidden = true
+                self.updateTabBarFrame()
             }
         }
     }

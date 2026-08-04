@@ -1455,12 +1455,14 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M1-05: Session Schema v1
 
-- [ ] Define `SessionState` with `schemaVersion`.
-- [ ] Save open file URLs, active tab, selection, scroll position, window frame, and sidebar state.
-- [ ] Debounce and atomically write session state.
-- [ ] Quarantine corrupt session files and start a clean session.
-- [ ] Read LiteEdit sessions only through an explicit migration path.
-- [ ] Add round-trip and corruption tests.
+- [x] Define `SessionState` with `schemaVersion`. *(`Sources/MaruEditCore/Sessions/SessionState.swift`, plus `OpenFileState` — one typed record per open file, replacing the prior two-parallel-structures approach.)*
+- [x] Save open file URLs, active tab, selection, scroll position, window frame, and sidebar state. *(Files/active-tab/sidebar-collapsed are new schema fields; **scroll position is newly persisted across relaunches** — the prior UserDefaults implementation only kept it in memory during a session. **Window frame is intentionally excluded** — AppKit's `setFrameAutosaveName("MainWindow")` already persists/restores it; duplicating that here would be two sources of truth for the same thing. "Selection" here means caret position, as in the prior implementation — persisting a full selection *range* is a future enhancement, not a regression.)*
+- [x] Debounce and atomically write session state. *(`Debouncer` (1.5s) + `AtomicFileWriter`, both new in `MaruEditCore/Utilities/`. `MainWindowController` now calls a debounced `scheduleSessionSave()` from every document/tab/sidebar state-changing method, not just at quit.)*
+- [x] Quarantine corrupt session files and start a clean session. *(`SessionStore.load()` renames an undecodable file aside as `session.json.corrupt-<timestamp>` — never deletes it — and returns `.empty`.)*
+- [x] Read LiteEdit sessions only through an explicit migration path. *(Satisfied by construction, not a migration code path: LiteEdit and MaruEdit have always had different bundle identifiers (§M0-03), so MaruEdit was never able to read LiteEdit's `UserDefaults`-stored session data through any standard API in the first place — there is nothing to migrate from. The old MaruEdit-own `UserDefaults`-based session keys from before this task are retired outright, not migrated: MaruEdit has no released users yet, so that data is disposable test-session state.)*
+- [x] Add round-trip and corruption tests. *(9 new `MaruEditCoreTests`: 2 `AtomicFileWriterTests`, 2 `DebouncerTests`, 5 `SessionStoreTests` — nothing-stored, round-trip, corrupt-file quarantine, migration stamping, default file location.)*
+
+**Acceptance:** After forced termination, saved-file tabs and caret positions restore on relaunch. *(Verified manually, not just by unit test: opened a file, waited past the debounce window with no quit, then `kill -9`'d the process — a real forced termination that never runs `applicationWillTerminate` — and confirmed `session.json` still reflected the open file; relaunching reopened it correctly. Repeated once more with a second file to confirm accumulation across sessions, then cleaned up all test fixtures and the test session directory.)*
 
 **Acceptance:** After forced termination, saved-file tabs and caret positions restore on relaunch.
 
