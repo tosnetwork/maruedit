@@ -1655,15 +1655,15 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M3-04: GrepRequest and Directory Traversal
 
-- [ ] Include and exclude globs.
-- [ ] Hidden-file, package, and symlink options.
-- [ ] Maximum file size.
-- [ ] Binary detection.
-- [ ] Report per-file access errors without terminating the entire scan.
-- [ ] Cancellation.
-- [ ] No main-actor traversal.
+- [x] Include and exclude globs. *(`GlobPattern` (`Sources/MaruEditCore/Search/GlobPattern.swift`) supports `*`, `**`, `?`, and character classes, translated to a regex rather than delegating to `fnmatch(3)`, which has no `**`. Bare names match the last path component so `*.swift` works at any depth; patterns containing `/` match the path relative to the root. Excludes apply to directories, so `node_modules` prunes the subtree — `testExcludeGlobsPruneWholeDirectories`. 9 `GlobPatternTests` plus traversal-level tests.)*
+- [x] Hidden-file, package, and symlink options. *(`GrepRequest.includesHiddenFiles` / `traversesPackages` / `followsSymbolicLinks`, all off by default per section 11.3. `testHiddenFilesAreSkippedUnlessRequested`, `testSymbolicLinksAreSkippedByDefault`.)*
+- [x] Maximum file size. *(`GrepRequest.maximumFileSize`, default 10 MB; over-limit files are skipped with their actual size for reporting — `testFilesOverTheSizeLimitAreSkippedWithTheirSize`.)*
+- [x] Binary detection. *(`BinaryContentDetector`: a NUL byte in the first 8 KB, with UTF-16/32 BOMs recognized first so genuine text isn't misjudged. Only the header is read, so classifying a large binary is cheap — `testBinaryFilesAreSkipped`.)*
+- [x] Report per-file access errors without terminating the entire scan. *(Every exclusion is reported through `onSkip` with a typed `SkipReason`, including `.unreadable`. `testUnreadableDirectoryIsReportedAndTheScanContinues` chmod 000s a real directory and asserts the rest of the tree is still scanned.)*
+- [x] Cancellation. *(`CancellationToken` (`Sources/MaruEditCore/Utilities/CancellationToken.swift`), checked before each root, each directory, and each entry. `testCancellationStopsTheScanEarly` cancels from the file callback and asserts traversal stops immediately.)*
+- [x] No main-actor traversal. *(`DirectoryTraversal` is a stateless `enum` of synchronous functions with no UI or global state, documented as caller-dispatched — the same contract M2-01 established for `TextFileLoader`. M3-06 runs it on a background `DispatchQueue`.)*
 
-**Acceptance:** A fixture tree containing permission errors, symlink loops, and binary files completes safely.
+**Acceptance:** A fixture tree containing permission errors, symlink loops, and binary files completes safely. *(`DirectoryTraversalTests` builds exactly that tree on disk for each test: a `chmod 000` directory, a symlink pointing back at its own ancestor, an ELF-header binary file, an oversized file, and hidden files. All 13 tests pass; the loop test asserts each real file is reported exactly once and that the cycle is reported as `.alreadyVisited` rather than silently pruned. Loop safety comes from a visited-set keyed on `resolvingSymlinksInPath().standardizedFileURL.path`.)*
 
 ## M3-05: Grep Search and Encoding
 
