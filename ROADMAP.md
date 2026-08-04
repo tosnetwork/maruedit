@@ -1617,17 +1617,17 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M3-01: SearchEngine v1
 
-- [ ] One API for literal and regex search.
-- [ ] Next and Previous.
-- [ ] Case sensitivity.
-- [ ] Whole-word matching.
-- [ ] Wrap-around.
-- [ ] Selection and document scopes.
-- [ ] Unicode tests.
-- [ ] Zero-length regex tests.
-- [ ] Invalid-regex diagnostics.
+- [x] One API for literal and regex search. *(`SearchEngine.matches(for:in:)` in `Sources/MaruEditCore/Search/SearchEngine.swift`; both modes compile to one `NSRegularExpression` — literal patterns via `NSRegularExpression.escapedPattern(for:)` — so options cannot behave differently per mode.)*
+- [x] Next and Previous. *(`SearchEngine.nextMatch(for:in:from:)` / `previousMatch(for:in:from:)`, both derived from the same `matches` set. 6 tests cover skip-current, wrap on/off, and the no-match case.)*
+- [x] Case sensitivity. *(`SearchQuery.isCaseSensitive` → `.caseInsensitive` regex option; `testLiteralMatchesAreCaseInsensitiveByDefault`, `testCaseSensitiveLiteralMatchesOnlyExactCase`.)*
+- [x] Whole-word matching. *(`SearchEngine.isWholeWord(_:in:)` — a boundary check around the match rather than `\b…\b`, which never matches when the pattern edge is punctuation; `testWholeWordWorksForPatternsStartingWithPunctuation` pins that case.)*
+- [x] Wrap-around. *(`SearchQuery.wraps`, honored by both next and previous; `testNextMatchWrapsWhenEnabled`, `testNextMatchDoesNotWrapWhenDisabled`, `testPreviousMatchWrapsToTheLastMatch`.)*
+- [x] Selection and document scopes. *(`SearchScope.document` / `.selection(NSRange)`, clamped in `resolvedScope`; `testSelectionScopeRestrictsMatches`, `testSelectionScopeIsClampedToTextLength`.)*
+- [x] Unicode tests. *(`testMatchesJapaneseText`, `testMatchRangesAreUTF16OffsetsAcrossAstralCharacters` (emoji surrogate pair), `testCaseInsensitiveMatchingUsesFullUnicodeCaseFolding` — the last one documents ICU folding ß↔ss rather than pretending it doesn't happen.)*
+- [x] Zero-length regex tests. *(`testZeroLengthRegexTerminatesAndMatchesEachPosition` (`x*`), `testZeroLengthAnchorRegexTerminates` (`^`), `testReplaceAllWithZeroLengthPatternTerminates`. Matching uses one `regex.matches(in:range:)` sweep, so ICU guarantees progress and `^`/`$` keep their meaning instead of re-anchoring on a shrinking sub-range.)*
+- [x] Invalid-regex diagnostics. *(`SearchError.invalidPattern(pattern:reason:)` carries the ICU message; `SearchEngine.validate` lets the Find Bar report it without discarding input. `testInvalidRegexThrowsDiagnosticWithoutCrashing`.)*
 
-**Acceptance:** Find, Select All Matches, and Replace return the same match set for the same query and scope.
+**Acceptance:** Find, Select All Matches, and Replace return the same match set for the same query and scope. *(`testFindSelectAllAndReplaceAgreeOnTheSameMatchSet` walks the document with repeated `nextMatch` calls and asserts the resulting range list equals `matches(...)` and that `replacingAllMatches` reports the same count. Structurally guaranteed too: next/previous/replace-all are all implemented on top of `matches`. 26 new tests; full suite 159/159 green.)*
 
 ## M3-02: Refactor the Find Bar
 
