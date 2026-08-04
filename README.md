@@ -2,12 +2,12 @@
 
 The fastest way to open, browse, and quick-edit code on macOS — a native editor under 1 MB, built entirely with Swift and AppKit.
 
-[![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue)](https://tosnetwork.github.io/maruedit/)
-[![Swift 5.9](https://img.shields.io/badge/Swift-5.9-orange)](https://tosnetwork.github.io/maruedit/)
+![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue)
+![Swift 5.9](https://img.shields.io/badge/Swift-5.9-orange)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 [![Download DMG](https://img.shields.io/github/v/release/tosnetwork/maruedit?label=Download&color=blue)](https://github.com/tosnetwork/maruedit/releases/latest)
 
-**[Website](https://tosnetwork.github.io/maruedit/)** · **[Download](https://github.com/tosnetwork/maruedit/releases/latest)** · **[Source](https://github.com/tosnetwork/maruedit)**
+**[Download](https://github.com/tosnetwork/maruedit/releases/latest)** · **[Source](https://github.com/tosnetwork/maruedit)**
 
 ---
 

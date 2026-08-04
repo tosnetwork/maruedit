@@ -33,7 +33,6 @@ supports multi-cursor editing.
 It is NOT a VS Code replacement. It's the editor you reach for when you want to
 open, read, edit, and close — in seconds.
 
-Website: https://tosnetwork.github.io/maruedit/
 Source: https://github.com/tosnetwork/maruedit
 Download: https://github.com/tosnetwork/maruedit/releases/latest
 
@@ -73,7 +72,6 @@ make a quick edit, and move on without waiting for a heavy app to load.
 
 Free, MIT licensed, open source.
 
-Website: https://tosnetwork.github.io/maruedit/
 GitHub: https://github.com/tosnetwork/maruedit
 Download: https://github.com/tosnetwork/maruedit/releases/latest
 ```
@@ -235,7 +233,6 @@ own rendering pipeline.
 ---
 
 6/ Try it:
-🔗 https://tosnetwork.github.io/maruedit/
 📦 https://github.com/tosnetwork/maruedit
 
 Free, MIT licensed, open source.
@@ -260,7 +257,7 @@ MaruEdit is:
 → Supports 20+ languages, tabbed editing, quick open, multi-cursor
 
 It's open source (MIT) and free to download:
-https://tosnetwork.github.io/maruedit/
+https://github.com/tosnetwork/maruedit
 
 Sometimes the best tool is the smallest one.
 ```
@@ -333,7 +330,7 @@ Sign up at https://www.goatcounter.com/ (free, no cookies, GDPR-friendly).
 
 **Option B: Plausible (self-hosted or paid cloud)**
 ```html
-<script defer data-domain="tosnetwork.github.io" src="https://plausible.io/js/script.js"></script>
+<script defer data-domain="yourdomain.example" src="https://plausible.io/js/script.js"></script>
 ```
 
 **Option C: GitHub Pages traffic only**
