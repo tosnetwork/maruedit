@@ -55,7 +55,10 @@ final class CommandRegistryTests: XCTestCase {
             .appSettings, .fileNew, .fileOpen, .fileOpenFolder, .fileSave, .fileSaveAs,
             .fileCloseTab, .fileClearRecoveryData, .searchFind, .searchReplace, .searchReplaceAll, .searchFindNext,
             .searchFindPrevious, .searchGoToLine, .searchQuickOpen, .searchGrep,
-            .searchClearHistory, .viewToggleSidebar
+            .searchClearHistory, .viewToggleSidebar, .viewToggleWrap,
+            .viewToggleSpaces, .viewToggleTabs, .viewToggleLineEndings,
+            .viewToggleFullWidthSpaces, .viewTabWidth2, .viewTabWidth4,
+            .viewTabWidth8, .viewShowFonts
             , .editAddCursorAbove, .editAddCursorBelow, .editSelectNextOccurrence,
             .editSelectAllOccurrences, .editUndoLastAddedCursor, .editBeginColumnSelection,
             .editDeleteLine, .editDuplicateLine, .editMoveLineUp, .editMoveLineDown,

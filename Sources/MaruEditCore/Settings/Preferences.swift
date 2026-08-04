@@ -4,14 +4,11 @@ import Foundation
 /// M1-04). All preference-backed settings live as typed fields on this
 /// struct instead of scattered `UserDefaults` string keys.
 ///
-/// Not yet consumed by the editor UI: M1's goal is to establish this
-/// boundary without changing current behavior (every field's default
-/// below matches what is currently hardcoded in `Theme.swift` /
-/// `EditorViewController`). Wiring the editor to actually read live
-/// preferences — and building a Preferences UI to change them — is M5
-/// ("Key bindings, settings, file profiles, display, and themes").
+/// Consumed live by Settings, View commands, and `EditorViewController`.
+/// Defaults preserve the original editor appearance, and decoding supplies
+/// defaults for fields introduced by later schema versions.
 public struct Preferences: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 1
+    public static let currentSchemaVersion = 2
 
     public var schemaVersion: Int
     public var fontName: String
@@ -20,6 +17,7 @@ public struct Preferences: Codable, Equatable, Sendable {
     public var showLineNumbers: Bool
     public var wrapLines: Bool
     public var tabWidth: Int
+    public var invisibleCharacters: InvisibleCharacterOptions
 
     public init(
         schemaVersion: Int = Preferences.currentSchemaVersion,
@@ -28,7 +26,8 @@ public struct Preferences: Codable, Equatable, Sendable {
         theme: ThemeName,
         showLineNumbers: Bool,
         wrapLines: Bool,
-        tabWidth: Int
+        tabWidth: Int,
+        invisibleCharacters: InvisibleCharacterOptions = .none
     ) {
         self.schemaVersion = schemaVersion
         self.fontName = fontName
@@ -37,6 +36,7 @@ public struct Preferences: Codable, Equatable, Sendable {
         self.showLineNumbers = showLineNumbers
         self.wrapLines = wrapLines
         self.tabWidth = tabWidth
+        self.invisibleCharacters = invisibleCharacters
     }
 
     /// Matches the values currently hardcoded in `Theme.swift` and
@@ -50,6 +50,44 @@ public struct Preferences: Codable, Equatable, Sendable {
         wrapLines: false,
         tabWidth: 4
     )
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, fontName, fontSize, theme, showLineNumbers, wrapLines, tabWidth
+        case invisibleCharacters
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try values.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
+        fontName = try values.decodeIfPresent(String.self, forKey: .fontName) ?? Self.defaults.fontName
+        fontSize = try values.decodeIfPresent(Double.self, forKey: .fontSize) ?? Self.defaults.fontSize
+        theme = try values.decodeIfPresent(ThemeName.self, forKey: .theme) ?? Self.defaults.theme
+        showLineNumbers = try values.decodeIfPresent(Bool.self, forKey: .showLineNumbers)
+            ?? Self.defaults.showLineNumbers
+        wrapLines = try values.decodeIfPresent(Bool.self, forKey: .wrapLines) ?? Self.defaults.wrapLines
+        tabWidth = try values.decodeIfPresent(Int.self, forKey: .tabWidth) ?? Self.defaults.tabWidth
+        invisibleCharacters = try values.decodeIfPresent(
+            InvisibleCharacterOptions.self, forKey: .invisibleCharacters) ?? .none
+    }
+}
+
+public struct InvisibleCharacterOptions: Codable, Equatable, Sendable {
+    public var spaces: Bool
+    public var tabs: Bool
+    public var lineEndings: Bool
+    public var fullWidthSpaces: Bool
+
+    public init(
+        spaces: Bool = false, tabs: Bool = false,
+        lineEndings: Bool = false, fullWidthSpaces: Bool = false
+    ) {
+        self.spaces = spaces
+        self.tabs = tabs
+        self.lineEndings = lineEndings
+        self.fullWidthSpaces = fullWidthSpaces
+    }
+
+    public static let none = InvisibleCharacterOptions()
 }
 
 /// The set of built-in themes. Only one exists today (the hardcoded

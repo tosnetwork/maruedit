@@ -152,6 +152,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let viewItem = NSMenuItem()
         let viewMenu = NSMenu(title: "View")
         viewMenu.addItem(commandItem(.viewToggleSidebar))
+        viewMenu.addItem(commandItem(.viewToggleWrap))
+        let invisiblesItem = NSMenuItem(title: "Show Invisibles", action: nil, keyEquivalent: "")
+        let invisiblesMenu = NSMenu(title: "Show Invisibles")
+        invisiblesMenu.addItem(commandItem(.viewToggleSpaces))
+        invisiblesMenu.addItem(commandItem(.viewToggleTabs))
+        invisiblesMenu.addItem(commandItem(.viewToggleLineEndings))
+        invisiblesMenu.addItem(commandItem(.viewToggleFullWidthSpaces))
+        invisiblesItem.submenu = invisiblesMenu
+        viewMenu.addItem(invisiblesItem)
+        let tabWidthItem = NSMenuItem(title: "Tab Width", action: nil, keyEquivalent: "")
+        let tabWidthMenu = NSMenu(title: "Tab Width")
+        tabWidthMenu.addItem(commandItem(.viewTabWidth2))
+        tabWidthMenu.addItem(commandItem(.viewTabWidth4))
+        tabWidthMenu.addItem(commandItem(.viewTabWidth8))
+        tabWidthItem.submenu = tabWidthMenu
+        viewMenu.addItem(tabWidthItem)
+        viewMenu.addItem(.separator())
+        viewMenu.addItem(commandItem(.viewShowFonts))
         viewItem.submenu = viewMenu
         main.addItem(viewItem)
 
@@ -214,6 +232,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         guard let id = menuItem.representedObject as? CommandID else { return true }
+        let statefulViewCommands: Set<CommandID> = [
+            .viewToggleWrap, .viewToggleSpaces, .viewToggleTabs,
+            .viewToggleLineEndings, .viewToggleFullWidthSpaces,
+            .viewTabWidth2, .viewTabWidth4, .viewTabWidth8,
+        ]
+        if statefulViewCommands.contains(id) {
+            menuItem.state = coordinator.isViewCommandActive(id) ? .on : .off
+        }
         return coordinator.commandRegistry.isEnabled(id, context: CommandContext(coordinator: coordinator))
     }
 

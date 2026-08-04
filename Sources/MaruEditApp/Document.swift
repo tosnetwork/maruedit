@@ -7,6 +7,8 @@ final class Document {
     var isModified: Bool = false
     var language: Language
     var fileTypeProfile: FileTypeProfile?
+    var wrapLinesOverride: Bool?
+    var tabWidthOverride: Int?
     private var fileTypeResolver: FileTypeProfileResolver = .builtIn
     /// The encoding this document was loaded with (or `.utf8` for a new,
     /// never-saved document). `save()`/`save(to:)` re-encode using this

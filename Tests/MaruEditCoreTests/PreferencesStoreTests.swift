@@ -26,6 +26,8 @@ final class PreferencesStoreTests: XCTestCase {
         prefs.fontSize = 16
         prefs.tabWidth = 2
         prefs.wrapLines = true
+        prefs.invisibleCharacters = InvisibleCharacterOptions(
+            spaces: true, tabs: false, lineEndings: true, fullWidthSpaces: true)
         prefs.theme = .monokai
         store.save(prefs)
 
@@ -82,5 +84,16 @@ final class PreferencesStoreTests: XCTestCase {
         older.schemaVersion = 0
         let migrated = PreferencesStore.migrate(older)
         XCTAssertEqual(migrated.schemaVersion, Preferences.currentSchemaVersion)
+    }
+
+    func testVersionOnePreferencesMigrateWithInvisibleMarkersOff() throws {
+        let json = """
+        {"schemaVersion":1,"fontName":"SF Mono","fontSize":13,"theme":"monokai",
+         "showLineNumbers":true,"wrapLines":false,"tabWidth":4}
+        """
+        let decoded = try JSONDecoder().decode(Preferences.self, from: Data(json.utf8))
+        let migrated = PreferencesStore.migrate(decoded)
+        XCTAssertEqual(migrated.schemaVersion, 2)
+        XCTAssertEqual(migrated.invisibleCharacters, .none)
     }
 }

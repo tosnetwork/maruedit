@@ -4,6 +4,11 @@ import MaruEditCore
 protocol EditorViewControllerDelegate: AnyObject {
     func editorTextDidChange(_ vc: EditorViewController)
     func editorCursorMoved(_ vc: EditorViewController, state: EditorCursorState)
+    func editorDidChooseFont(_ vc: EditorViewController, font: NSFont)
+}
+
+extension EditorViewControllerDelegate {
+    func editorDidChooseFont(_ vc: EditorViewController, font: NSFont) {}
 }
 
 private final class FlippedView: NSView {
@@ -24,6 +29,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     private var markedTextSnapshot: (text: String, ranges: [NSRange], primary: NSRange)?
     private var isCompositionCommitScheduled = false
     private var preferences = Preferences.defaults
+    private(set) var isHighContrast = false
     var appliedPreferences: Preferences { preferences }
     var areLineNumbersHidden: Bool { lineNumbers?.isHidden ?? false }
     private var preferredEditorFont: NSFont {
@@ -32,6 +38,8 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
             : (NSFont(name: preferences.fontName, size: preferences.fontSize)
                 ?? NSFont.monospacedSystemFont(ofSize: preferences.fontSize, weight: .regular))
     }
+    var currentEditorFont: NSFont { preferredEditorFont }
+    private var editorForeground: NSColor { isHighContrast ? .white : Theme.foreground }
 
     /// Multi-cursor ("select all occurrences") edit-mode state. Owned by
     /// this instance — not a global dictionary keyed by identity, per
@@ -148,6 +156,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
 
     deinit {
         NotificationCenter.default.removeObserver(self)
+        NSWorkspace.shared.notificationCenter.removeObserver(self)
     }
 
     // MARK: - View lifecycle
@@ -233,8 +242,12 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
             self, selector: #selector(boundsChanged),
             name: NSView.boundsDidChangeNotification, object: scrollView.contentView
         )
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self, selector: #selector(accessibilityDisplayOptionsChanged),
+            name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil)
 
         view = wrapper
+        applyHighContrast(NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast)
     }
 
     override func viewDidAppear() {
@@ -303,16 +316,17 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         self.preferences = preferences
         guard isViewLoaded else { return }
         var effectivePreferences = preferences
-        if let settings = document?.fileTypeProfile?.settings {
-            effectivePreferences.tabWidth = settings.tabWidth
-            effectivePreferences.wrapLines = settings.wrapLines
-        }
+        effectivePreferences.tabWidth = document?.tabWidthOverride
+            ?? document?.fileTypeProfile?.settings.tabWidth ?? preferences.tabWidth
+        effectivePreferences.wrapLines = document?.wrapLinesOverride
+            ?? document?.fileTypeProfile?.settings.wrapLines ?? preferences.wrapLines
         let font = preferredEditorFont
         let paragraph = NSMutableParagraphStyle()
         paragraph.tabStops = []
         paragraph.defaultTabInterval = " ".size(withAttributes: [.font: font]).width
             * CGFloat(max(1, effectivePreferences.tabWidth))
         textView.font = font
+        (textView as? MaruTextView)?.invisibleCharacters = preferences.invisibleCharacters
         textView.defaultParagraphStyle = paragraph
         textView.typingAttributes[.font] = font
         textView.typingAttributes[.paragraphStyle] = paragraph
@@ -332,6 +346,62 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         lineNumbers?.needsDisplay = true
     }
 
+    var effectiveWrapLines: Bool {
+        document?.wrapLinesOverride ?? document?.fileTypeProfile?.settings.wrapLines
+            ?? preferences.wrapLines
+    }
+
+    var effectiveTabWidth: Int {
+        document?.tabWidthOverride ?? document?.fileTypeProfile?.settings.tabWidth
+            ?? preferences.tabWidth
+    }
+
+    func toggleWrapLines() {
+        document?.wrapLinesOverride = !effectiveWrapLines
+        applyPreferences(preferences)
+    }
+
+    func setTabWidth(_ width: Int) {
+        document?.tabWidthOverride = max(1, min(16, width))
+        applyPreferences(preferences)
+        emitCursor()
+    }
+
+    @objc private func accessibilityDisplayOptionsChanged() {
+        applyHighContrast(NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast)
+    }
+
+    func applyHighContrast(_ enabled: Bool) {
+        isHighContrast = enabled
+        guard isViewLoaded else { return }
+        textView.backgroundColor = enabled ? .black : Theme.background
+        textView.textColor = editorForeground
+        textView.insertionPointColor = enabled ? .white : Theme.cursor
+        textView.selectedTextAttributes = [
+            .backgroundColor: enabled ? NSColor.white : Theme.selection,
+            .foregroundColor: enabled ? NSColor.black : Theme.foreground,
+        ]
+        (textView as? MaruTextView)?.usesHighContrastMarkers = enabled
+        if let storage = textView.textStorage, storage.length > 0 {
+            storage.addAttribute(
+                .foregroundColor, value: editorForeground,
+                range: NSRange(location: 0, length: storage.length))
+        }
+        rehighlightAll()
+    }
+
+    func changeEditorFont(using manager: NSFontManager) {
+        applyEditorFont(manager.convert(preferredEditorFont))
+    }
+
+    func applyEditorFont(_ converted: NSFont) {
+        var updated = preferences
+        updated.fontName = converted.fontName
+        updated.fontSize = converted.pointSize
+        applyPreferences(updated)
+        delegate?.editorDidChooseFont(self, font: converted)
+    }
+
     /// Deferred to let scroll-view geometry settle after replaceTextStorage.
     /// Small files request the full document; large-file mode skips regex work.
     private func deferredHighlightVisible() {
@@ -339,8 +409,8 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         let range = storage.length <= SyntaxHighlightCoordinator.largeFileThreshold
             ? nil : visibleCharacterRange()
         syntaxHighlightCoordinator.schedule(
-            storage: storage, language: language, visibleRange: range,
-            font: preferredEditorFont, delay: 0.02)
+            storage: storage, language: isHighContrast ? .plainText : language, visibleRange: range,
+            font: preferredEditorFont, baseForeground: editorForeground, delay: 0.02)
     }
 
     /// Highlights the visible range plus a buffer for smooth scrolling.
@@ -351,8 +421,8 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         let visible = visibleCharacterRange()
         guard visible.length > 0 else { return }
         syntaxHighlightCoordinator.schedule(
-            storage: ts, language: language, visibleRange: visible,
-            font: preferredEditorFont, delay: delay)
+            storage: ts, language: isHighContrast ? .plainText : language, visibleRange: visible,
+            font: preferredEditorFont, baseForeground: editorForeground, delay: delay)
     }
 
     private func visibleCharacterRange() -> NSRange {
@@ -368,8 +438,8 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         guard let ts = textView.textStorage, ts.length > 0,
               let language = document?.language else { return }
         syntaxHighlightCoordinator.schedule(
-            storage: ts, language: language, visibleRange: nil,
-            font: preferredEditorFont, delay: 0)
+            storage: ts, language: isHighContrast ? .plainText : language, visibleRange: nil,
+            font: preferredEditorFont, baseForeground: editorForeground, delay: 0)
     }
 
     // MARK: - NSTextViewDelegate
@@ -424,8 +494,9 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
                 rehighlightRange = ns.lineRange(for: NSRange(location: min(sel.location, ns.length), length: 0))
             }
             syntaxHighlightCoordinator.schedule(
-                storage: ts, language: language, visibleRange: rehighlightRange,
-                font: preferredEditorFont)
+                storage: ts, language: isHighContrast ? .plainText : language,
+                visibleRange: rehighlightRange, font: preferredEditorFont,
+                baseForeground: editorForeground)
         }
     }
 

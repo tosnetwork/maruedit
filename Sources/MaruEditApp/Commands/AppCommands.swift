@@ -22,6 +22,15 @@ extension CommandID {
     static let searchGrep       = CommandID("search.grep")
     static let searchClearHistory = CommandID("search.clearHistory")
     static let viewToggleSidebar = CommandID("view.toggleSidebar")
+    static let viewToggleWrap = CommandID("view.toggleWrap")
+    static let viewToggleSpaces = CommandID("view.toggleSpaces")
+    static let viewToggleTabs = CommandID("view.toggleTabs")
+    static let viewToggleLineEndings = CommandID("view.toggleLineEndings")
+    static let viewToggleFullWidthSpaces = CommandID("view.toggleFullWidthSpaces")
+    static let viewTabWidth2 = CommandID("view.tabWidth2")
+    static let viewTabWidth4 = CommandID("view.tabWidth4")
+    static let viewTabWidth8 = CommandID("view.tabWidth8")
+    static let viewShowFonts = CommandID("view.showFonts")
     static let editAddCursorAbove = CommandID("edit.addCursorAbove")
     static let editAddCursorBelow = CommandID("edit.addCursorBelow")
     static let editSelectNextOccurrence = CommandID("edit.selectNextOccurrence")
@@ -106,6 +115,34 @@ enum AppCommands {
         })
         registry.register(CommandDefinition(id: .viewToggleSidebar, title: "Toggle Sidebar") { ctx in
             ctx.coordinator.toggleSidebar()
+        })
+        registry.register(CommandDefinition(id: .viewToggleWrap, title: "Wrap Lines") {
+            $0.coordinator.toggleWrapLines()
+        })
+        registry.register(CommandDefinition(id: .viewToggleSpaces, title: "Show Spaces") {
+            $0.coordinator.toggleInvisible(\.spaces)
+        })
+        registry.register(CommandDefinition(id: .viewToggleTabs, title: "Show Tabs") {
+            $0.coordinator.toggleInvisible(\.tabs)
+        })
+        registry.register(CommandDefinition(id: .viewToggleLineEndings, title: "Show Line Endings") {
+            $0.coordinator.toggleInvisible(\.lineEndings)
+        })
+        registry.register(CommandDefinition(
+            id: .viewToggleFullWidthSpaces, title: "Show Full-Width Spaces") {
+                $0.coordinator.toggleInvisible(\.fullWidthSpaces)
+            })
+        registry.register(CommandDefinition(id: .viewTabWidth2, title: "2 Spaces") {
+            $0.coordinator.setTabWidth(2)
+        })
+        registry.register(CommandDefinition(id: .viewTabWidth4, title: "4 Spaces") {
+            $0.coordinator.setTabWidth(4)
+        })
+        registry.register(CommandDefinition(id: .viewTabWidth8, title: "8 Spaces") {
+            $0.coordinator.setTabWidth(8)
+        })
+        registry.register(CommandDefinition(id: .viewShowFonts, title: "Show Fonts") {
+            $0.coordinator.showFontPanel()
         })
         registry.register(CommandDefinition(id: .editAddCursorAbove, title: "Add Cursor Above") { $0.coordinator.addCursorAbove() })
         registry.register(CommandDefinition(id: .editAddCursorBelow, title: "Add Cursor Below") { $0.coordinator.addCursorBelow() })

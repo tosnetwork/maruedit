@@ -12,13 +12,23 @@ import MaruEditCore
 final class AppCoordinator {
     private var windowController: MainWindowController?
     private var settingsWindowController: SettingsWindowController?
-    private let preferencesStore = PreferencesStore()
+    private let preferencesStore: PreferencesStore
     private let fileTypeProfileStore = FileTypeProfileStore()
     private(set) var preferences: Preferences
     let commandRegistry = CommandRegistry()
 
-    init() {
-        preferences = preferencesStore.load()
+    init(preferencesStore: PreferencesStore? = nil) {
+        if let preferencesStore {
+            self.preferencesStore = preferencesStore
+        } else if ProcessInfo.processInfo.environment["MARUEDIT_UI_TEST_MODE"] == "1" {
+            let suite = "network.tos.maruedit.UITest.\(ProcessInfo.processInfo.processIdentifier)"
+            let defaults = UserDefaults(suiteName: suite)!
+            defaults.removePersistentDomain(forName: suite)
+            self.preferencesStore = PreferencesStore(defaults: defaults)
+        } else {
+            self.preferencesStore = PreferencesStore()
+        }
+        preferences = self.preferencesStore.load()
         AppCommands.registerAll(in: commandRegistry)
     }
 
@@ -26,6 +36,13 @@ final class AppCoordinator {
     func ensureWindowControllerReady(restoreSession: Bool = true) -> MainWindowController {
         if let wc = windowController { return wc }
         let wc = MainWindowController(fileTypeResolver: fileTypeProfileStore.resolver())
+        wc.onEditorFontChange = { [weak self] font in
+            guard let self else { return }
+            self.preferences.fontName = font.fontName
+            self.preferences.fontSize = font.pointSize
+            self.preferencesStore.save(self.preferences)
+            self.windowController?.applyPreferences(self.preferences)
+        }
         windowController = wc
         wc.showWindow(nil)
         wc.applyPreferences(preferences)
@@ -87,6 +104,28 @@ final class AppCoordinator {
     func previousBookmark()             { ensureWindowControllerReady().previousBookmark() }
     func clearBookmarks()               { ensureWindowControllerReady().clearBookmarks() }
     func toggleSidebar()               { ensureWindowControllerReady().toggleSidebar() }
+    func toggleWrapLines()             { ensureWindowControllerReady().toggleWrapLines() }
+    func setTabWidth(_ width: Int)      { ensureWindowControllerReady().setTabWidth(width) }
+    func showFontPanel()                { ensureWindowControllerReady().showFontPanel() }
+    func toggleInvisible(_ keyPath: WritableKeyPath<InvisibleCharacterOptions, Bool>) {
+        preferences.invisibleCharacters[keyPath: keyPath].toggle()
+        preferencesStore.save(preferences)
+        windowController?.applyPreferences(preferences)
+    }
+
+    func isViewCommandActive(_ id: CommandID) -> Bool {
+        switch id {
+        case .viewToggleWrap: ensureWindowControllerReady().effectiveWrapLines
+        case .viewToggleSpaces: preferences.invisibleCharacters.spaces
+        case .viewToggleTabs: preferences.invisibleCharacters.tabs
+        case .viewToggleLineEndings: preferences.invisibleCharacters.lineEndings
+        case .viewToggleFullWidthSpaces: preferences.invisibleCharacters.fullWidthSpaces
+        case .viewTabWidth2: ensureWindowControllerReady().effectiveTabWidth == 2
+        case .viewTabWidth4: ensureWindowControllerReady().effectiveTabWidth == 4
+        case .viewTabWidth8: ensureWindowControllerReady().effectiveTabWidth == 8
+        default: false
+        }
+    }
     func clearRecoveryData()           { ensureWindowControllerReady().clearRecoveryData() }
     func prepareUITestDocument(content: String, selections: [NSRange]) {
         ensureWindowControllerReady(restoreSession: false)

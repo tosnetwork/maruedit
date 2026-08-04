@@ -11,6 +11,12 @@ line-number visibility. Changes are saved immediately and applied to both the
 open document and documents loaded later. Applying appearance settings changes
 attributes only; it does not modify document text or its Undo history.
 
+Preferences schema v2 also stores the four independent invisible-character
+toggles exposed by the View menu. Version 1 data migrates with all markers off,
+so upgrading does not unexpectedly change document appearance. See
+`display-settings.md` for marker, wrap, Tab width, font-panel, high-contrast,
+and large-file behavior.
+
 **Restore Group Defaults** changes only the selected group's fields. Groups
 whose features arrive in later M5/M6 tasks remain visible and searchable so
 their controls can be added without redesigning navigation.

@@ -1,13 +1,86 @@
 import AppKit
+import MaruEditCore
 
 /// Text view boundary for committed text versus IME marked text.
 /// Marked text is left entirely to AppKit at the primary selection;
 /// only `insertText` (the committed result) is replicated.
 final class MaruTextView: NSTextView {
+    static let invisibleMarkerLargeFileThreshold = 100_000
     weak var selectionOwner: EditorViewController?
+    var invisibleCharacters: InvisibleCharacterOptions = .none {
+        didSet { needsDisplay = true }
+    }
+    var usesHighContrastMarkers = false {
+        didSet { needsDisplay = true }
+    }
+    var isInvisibleRenderingSuppressedForLargeFile: Bool {
+        (textStorage?.length ?? 0) > Self.invisibleMarkerLargeFileThreshold
+    }
     private var isDraggingColumn = false
     private var isCancellingComposition = false
     private var isFinalizingThroughInsertText = false
+
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        drawInvisibleMarkers(in: dirtyRect)
+    }
+
+    private func drawInvisibleMarkers(in dirtyRect: NSRect) {
+        guard invisibleCharacters != .none,
+              !isInvisibleRenderingSuppressedForLargeFile,
+              let storage = textStorage, storage.length > 0,
+              let layoutManager, let textContainer else { return }
+        let containerRect = dirtyRect.offsetBy(
+            dx: -textContainerOrigin.x, dy: -textContainerOrigin.y)
+        let glyphs = layoutManager.glyphRange(forBoundingRect: containerRect, in: textContainer)
+        let characters = layoutManager.characterRange(
+            forGlyphRange: glyphs, actualGlyphRange: nil)
+        let string = storage.string as NSString
+        let color = usesHighContrastMarkers
+            ? NSColor.white.withAlphaComponent(0.9) : Theme.gutterText
+        let markerFont = font ?? Theme.editorFont
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: markerFont,
+            .foregroundColor: color,
+        ]
+        let end = min(string.length, NSMaxRange(characters))
+        guard characters.location < end else { return }
+        for index in characters.location..<end {
+            guard let marker = Self.marker(
+                forUTF16CodeUnit: string.character(at: index), options: invisibleCharacters)
+            else { continue }
+            let glyph = layoutManager.glyphIndexForCharacter(at: index)
+            guard glyph < layoutManager.numberOfGlyphs else { continue }
+            let fragment = layoutManager.lineFragmentRect(
+                forGlyphAt: glyph, effectiveRange: nil, withoutAdditionalLayout: true)
+            let location = layoutManager.location(forGlyphAt: glyph)
+            let point = NSPoint(
+                x: textContainerOrigin.x + fragment.minX + location.x,
+                y: textContainerOrigin.y + fragment.minY
+                    + max(0, (fragment.height - markerFont.pointSize) / 2))
+            marker.draw(at: point, withAttributes: attributes)
+        }
+    }
+
+    static func marker(
+        forUTF16CodeUnit codeUnit: unichar, options: InvisibleCharacterOptions
+    ) -> String? {
+        switch codeUnit {
+        case 0x20 where options.spaces: "·"
+        case 0x09 where options.tabs: "→"
+        case 0x0A where options.lineEndings: "¶"
+        case 0x3000 where options.fullWidthSpaces: "□"
+        default: nil
+        }
+    }
+
+    override func changeFont(_ sender: Any?) {
+        guard let manager = sender as? NSFontManager else {
+            super.changeFont(sender)
+            return
+        }
+        selectionOwner?.changeEditorFont(using: manager)
+    }
 
     override func mouseDown(with event: NSEvent) {
         if event.modifierFlags.contains(.option) {

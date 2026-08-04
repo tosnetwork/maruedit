@@ -1903,14 +1903,14 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 
 ## M5-07: Invisibles, Wrapping, and Fonts
 
-- [ ] Space, Tab, line-ending, and full-width-space markers.
-- [ ] Independent visibility toggles.
-- [ ] Wrap on/off.
-- [ ] Tab width.
-- [ ] Native monospaced default font.
-- [ ] System font panel support.
-- [ ] High-contrast behavior.
-- [ ] Large-file degradation.
+- [x] Space, Tab, line-ending, and full-width-space markers. *(`MaruTextView` overlays ·, →, ¶, and □ using visible TextKit glyph geometry, without inserting marker characters.)*
+- [x] Independent visibility toggles. *(Preferences schema v2 stores four independent booleans; stable View commands and checked submenu items toggle each one separately, with migration defaulting v1 users to all-off.)*
+- [x] Wrap on/off. *(`view.toggleWrap` creates a document-level display override above FileType Profile/global defaults and immediately updates TextKit without changing text.)*
+- [x] Tab width. *(2/4/8 View commands create a document override, while Settings and FileType Profiles retain arbitrary typed widths; paragraph tabs, visual columns, and status update immediately.)*
+- [x] Native monospaced default font. *(SF Mono resolves through `NSFont.monospacedSystemFont`; `testDefaultFontIsNativeMonospacedFont` verifies the descriptor's fixed-pitch trait.)*
+- [x] System font panel support. *(`view.showFonts` opens `NSFontPanel`; `MaruTextView.changeFont` forwards through the responder chain and the selected family/size is persisted in Preferences.)*
+- [x] High-contrast behavior. *(The editor observes macOS accessibility display changes; increased contrast uses black/white editor and marker colors and disables colored regex rules without mutating text.)*
+- [x] Large-file degradation. *(Invisible overlays automatically stop above 100,000 UTF-16 units and syntax highlighting already shares the same reduced-feature threshold; tests verify content remains intact.)*
 
 ## M5-08: Basic Menu Customization
 

@@ -42,9 +42,9 @@ public final class PreferencesStore {
     }
 
     /// Migration entry point: brings a decoded, possibly-older schema up
-    /// to `Preferences.currentSchemaVersion`. There is only one version
-    /// so far, so this currently just re-stamps the version number — this
-    /// is where a future version bump adds real field migrations.
+    /// to `Preferences.currentSchemaVersion`. Preferences' decoder supplies
+    /// v2's invisible-character defaults for v1 blobs; this entry point then
+    /// records the current version and remains the home for future migrations.
     static func migrate(_ preferences: Preferences) -> Preferences {
         var migrated = preferences
         migrated.schemaVersion = Preferences.currentSchemaVersion

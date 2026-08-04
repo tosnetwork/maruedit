@@ -49,6 +49,7 @@ final class SyntaxHighlightCoordinator {
         language: Language,
         visibleRange: NSRange?,
         font: NSFont,
+        baseForeground: NSColor = Theme.foreground,
         delay: TimeInterval = 0.05,
         highlighter: SyntaxHighlighter? = nil,
         completion: (() -> Void)? = nil
@@ -71,7 +72,7 @@ final class SyntaxHighlightCoordinator {
             // stale syntax colors once, preserving characters and all non-color
             // attributes.
             let entire = NSRange(location: 0, length: length)
-            storage.addAttribute(.foregroundColor, value: Theme.foreground, range: entire)
+            storage.addAttribute(.foregroundColor, value: baseForeground, range: entire)
             lastAppliedRange = nil
             completion?()
             return
@@ -92,7 +93,7 @@ final class SyntaxHighlightCoordinator {
                           storage.string == snapshot else { return }
                     storage.beginEditing()
                     storage.addAttributes([
-                        .foregroundColor: Theme.foreground,
+                        .foregroundColor: baseForeground,
                         .font: font,
                     ], range: target)
                     for match in matches where NSMaxRange(match.range) <= storage.length {

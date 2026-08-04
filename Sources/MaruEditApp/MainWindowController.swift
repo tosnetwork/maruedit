@@ -41,6 +41,7 @@ final class MainWindowController: NSWindowController,
     private let recoveryStore = RecoveryStore()
     private let recoverySaveDebouncer = Debouncer(delay: 1.5)
     private var sidebarManuallyCollapsed = false
+    var onEditorFontChange: ((NSFont) -> Void)?
 
     /// Convenience shims onto `documentController` so the UI-orchestration
     /// code below (largely unchanged from before the M1-02 extraction)
@@ -150,6 +151,25 @@ final class MainWindowController: NSWindowController,
 
     func applyPreferences(_ preferences: Preferences) {
         editorVC.applyPreferences(preferences)
+        refreshStatus()
+    }
+
+    var effectiveWrapLines: Bool { editorVC.effectiveWrapLines }
+    var effectiveTabWidth: Int { editorVC.effectiveTabWidth }
+
+    func toggleWrapLines() {
+        editorVC.toggleWrapLines()
+        refreshStatus()
+    }
+
+    func setTabWidth(_ width: Int) {
+        editorVC.setTabWidth(width)
+        refreshStatus()
+    }
+
+    func showFontPanel() {
+        NSFontManager.shared.setSelectedFont(editorVC.currentEditorFont, isMultiple: false)
+        NSFontManager.shared.orderFrontFontPanel(nil)
     }
 
     /// Positions the tab bar, Find Bar, Output Pane, split view, and status
@@ -874,7 +894,7 @@ final class MainWindowController: NSWindowController,
             let settings = doc.fileTypeProfile?.settings
             statusBar.updateIndentation(
                 style: settings?.indentStyle ?? .spaces,
-                width: settings?.indentWidth ?? max(1, editorVC.appliedPreferences.tabWidth))
+                width: editorVC.effectiveTabWidth)
             statusBar.updateReadOnly(doc.isReadOnly)
         }
     }
@@ -1083,6 +1103,9 @@ final class MainWindowController: NSWindowController,
     }
     func editorCursorMoved(_ vc: EditorViewController, state: EditorCursorState) {
         statusBar.updateCursor(state)
+    }
+    func editorDidChooseFont(_ vc: EditorViewController, font: NSFont) {
+        onEditorFontChange?(font)
     }
 
     // MARK: - TabBarViewDelegate
