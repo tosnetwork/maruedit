@@ -8,6 +8,11 @@ let package = Package(
         .executableTarget(
             name: "MaruEdit",
             path: "Sources/MaruEdit"
+        ),
+        .testTarget(
+            name: "MaruEditTests",
+            dependencies: ["MaruEdit"],
+            path: "Tests/MaruEditTests"
         )
     ]
 )

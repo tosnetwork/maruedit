@@ -1360,44 +1360,44 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M0-04: Build Baseline
 
-- [ ] Keep the minimum deployment target at macOS 13+.
-- [ ] Keep `swift-tools-version: 5.9`; do not change Swift language mode in M0.
-- [ ] Ensure `swift build` succeeds.
-- [ ] Ensure `bash build.sh` creates a launchable `.app`.
-- [ ] Make Debug and Release paths explicit.
-- [ ] Document the Universal Binary build procedure.
-- [ ] Reduce compiler warnings to zero or maintain a documented temporary allowlist.
+- [x] Keep the minimum deployment target at macOS 13+.
+- [x] Keep `swift-tools-version: 5.9`; do not change Swift language mode in M0.
+- [x] Ensure `swift build` succeeds.
+- [x] Ensure `bash build.sh` creates a launchable `.app`.
+- [x] Make Debug and Release paths explicit. *(Documented in README.md's new "Debug vs. Release builds" subsection.)*
+- [x] Document the Universal Binary build procedure. *(`scripts/build-release.sh`, documented in README.md; verified it actually produces an `arm64`+`x86_64` fat binary via `lipo -info` and that the resulting bundle launches.)*
+- [x] Reduce compiler warnings to zero or maintain a documented temporary allowlist. *(Zero warnings on a clean `rm -rf .build && swift build -c release`.)*
 
 **Acceptance:** A clean checkout builds and launches using the README instructions.
 
 ## M0-05: Test and CI Skeleton
 
-- [ ] Add a `MaruEditTests` target for the current module arrangement.
-- [ ] Add at least one smoke test.
-- [ ] Add GitHub Actions on a supported macOS runner for `swift build` and `swift test`.
-- [ ] Verify license files in CI.
-- [ ] Do not introduce a third-party lint dependency in M0.
-- [ ] Add issue and pull-request templates if practical.
+- [x] Add a `MaruEditTests` target for the current module arrangement. *(Single `executableTarget` tested via `@testable import MaruEdit`, per Swift 5.5+ executable-target testing support.)*
+- [x] Add at least one smoke test. *(`Tests/MaruEditTests/DocumentTests.swift` — 4 tests covering defaults, modified/saved state, language detection, and a real save/open round-trip through the filesystem.)*
+- [x] Add GitHub Actions on a supported macOS runner for `swift build` and `swift test`. *(`.github/workflows/ci.yml`, `macos-latest`.)*
+- [x] Verify license files in CI. *(`ci.yml` runs `scripts/verify-licenses.sh`.)*
+- [x] Do not introduce a third-party lint dependency in M0. *(`Package.swift` has no dependencies.)*
+- [x] Add issue and pull-request templates if practical. *(Already present: `bug_report.yml`, `feature_request.yml`, `PULL_REQUEST_TEMPLATE.md` — verified none reference LiteEdit/arietan.)*
 
 **Acceptance:** Every pull request displays build and test status.
 
 ## M0-06: Performance Baseline
 
-- [ ] Record current Release app size.
-- [ ] Measure launch time, idle RSS, and 1 MB/10 MB file-open times on the M2 reference Mac.
-- [ ] Record method, fixtures, hardware, OS, configuration, and results in `docs/performance.md`.
-- [ ] Do not optimize yet; establish a reproducible baseline only.
-- [ ] Ensure benchmark fixtures contain no sensitive data.
+- [x] Record current Release app size. *(692 KB.)*
+- [x] Measure launch time, idle RSS, and 1 MB/10 MB file-open times on the M2 reference Mac. *(This machine is the actual MacBook Air M2 16GB reference machine.)*
+- [x] Record method, fixtures, hardware, OS, configuration, and results in `docs/performance.md`.
+- [x] Do not optimize yet; establish a reproducible baseline only. *(No `Sources/` changes in this batch; several measured numbers already exceed §16.1 targets and are reported as-is, not chased down.)*
+- [x] Ensure benchmark fixtures contain no sensitive data. *(Synthetic, generated fresh into a temp dir by the benchmark script, never committed.)*
 
 **Acceptance:** Future performance work can be compared against M0 using the same procedure.
 
 ### M0 Gate
 
-- [ ] Every M0 task is complete.
-- [ ] Debug and Release builds succeed.
-- [ ] The app can create, open, edit, save, and close a UTF-8 document.
-- [ ] License provenance is clear.
-- [ ] No user-facing material implies official Hidemaru affiliation.
+- [ ] Every M0 task is complete. *(One item intentionally deferred: M0-01's "fork or import complete Git history" — see that task's note. Every task's bold **Acceptance:** criterion is otherwise met.)*
+- [x] Debug and Release builds succeed. *(Including the arm64+x86_64 universal Release build.)*
+- [x] The app can create, open, edit, save, and close a UTF-8 document. *(Verified via `DocumentTests.testSaveAndReopenRoundTrip` plus manual launch/quit checks earlier in this project's history; no fresh interactive GUI click-through was performed in this batch.)*
+- [x] License provenance is clear. *(`LICENSE`, `NOTICE.md`, `UPSTREAM.md`; enforced by `scripts/verify-licenses.sh`.)*
+- [x] No user-facing material implies official Hidemaru affiliation. *(Only mention of "Hidemaru" in any user-facing file is the explicit non-affiliation statement in README.md.)*
 
 ---
 

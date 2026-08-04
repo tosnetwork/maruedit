@@ -139,6 +139,28 @@ cp -r MaruEdit.app /Applications/
 bash create-dmg.sh
 ```
 
+### Debug vs. Release builds
+
+- `swift build` — Debug configuration, binary at `.build/debug/MaruEdit`. Fastest to compile; use this while developing.
+- `swift build -c release` — Release configuration, binary at `.build/release/MaruEdit`. Optimized; this is what `build.sh` and `create-dmg.sh` package.
+
+`bash build.sh` always builds Release for the host architecture only (fast, single-arch — this is what you want for local testing).
+
+### Universal Binary (Apple Silicon + Intel)
+
+MaruEdit targets both `arm64` and `x86_64` as a Universal Binary for distribution. `build.sh` does **not** build a Universal Binary by default (it's slower — SwiftPM compiles twice, once per architecture). To build one:
+
+```bash
+bash scripts/build-release.sh
+```
+
+This runs `swift build -c release --arch arm64 --arch x86_64` (SwiftPM automatically merges the two architecture slices with `lipo` into `.build/apple/Products/Release/MaruEdit`) and packages it the same way `build.sh` does. Verify the result with:
+
+```bash
+lipo -info MaruEdit.app/Contents/MacOS/MaruEdit
+# Architectures in the fat file: ... are: x86_64 arm64
+```
+
 ## Project Structure
 
 ```

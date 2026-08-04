@@ -15,5 +15,11 @@ jobs:
       - name: Build
         run: swift build -c release
 
+      - name: Test
+        run: swift test
+
+      - name: Verify license files
+        run: bash scripts/verify-licenses.sh
+
       - name: Package app bundle
         run: bash build.sh
