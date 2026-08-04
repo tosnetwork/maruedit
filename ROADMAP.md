@@ -1500,14 +1500,18 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 
 ## M2-01: TextFileLoader
 
-- [ ] Read files as `Data`.
-- [ ] Capture permissions, size, modification date, and file identity.
-- [ ] Detect BOM.
-- [ ] Strictly validate UTF-8.
-- [ ] Support the initial Japanese encoding candidates.
-- [ ] Return `LoadedText` plus diagnostics.
-- [ ] Perform file reads away from the main actor.
-- [ ] Add fixtures for every supported encoding.
+- [x] Read files as `Data`. *(`FileManager.default.contents(atPath:)` in `TextFileLoader.load(contentsOf:)`.)*
+- [x] Capture permissions, size, modification date, and file identity. *(`LoadedText.posixPermissions`/`fileSize`/`modificationDate`/`fileIdentity`; `FileIdentity` — new, `Documents/FileIdentity.swift` — is a device+inode pair via `stat(2)`, laying groundwork for M2-06's external-modification detection.)*
+- [x] Detect BOM. *(UTF-8/UTF-16LE/UTF-16BE BOMs detected and stripped from returned content; UTF-32 BOMs are recognized but explicitly reported as unsupported rather than mis-decoded — UTF-32 isn't in M2-01's acceptance criteria.)*
+- [x] Strictly validate UTF-8. *(`String(data:encoding:.utf8)`, which is inherently strict — returns `nil` on any invalid byte sequence rather than substituting replacement characters.)*
+- [x] Support the initial Japanese encoding candidates. *(Windows-31J/CP932, classic Mac Shift-JIS, EUC-JP, ISO-2022-JP — each accepted only if decode→re-encode round-trips byte-for-byte, so an accepted result is provably lossless, not a guess. ISO-2022-JP needed a special case: unlike the other three, it's a 7-bit-safe encoding built from ASCII-range bytes plus ESC mode-switch sequences, so it's *always* also technically valid UTF-8 — a plain "try UTF-8 first" pipeline would never reach it. Detected instead by recognizing its `ESC $` mode-switch prefix before the UTF-8 check, still gated by the same round-trip verification.)*
+- [x] Return `LoadedText` plus diagnostics. *(`TextFileLoader.swift`; `EncodingDetectionResult`/`EncodingDiagnostic` in `EncodingDetector.swift`, with a `DetectionConfidence` of `.certain`/`.high`/`.low`/`.failed` — `.failed` never returns guessed content, it throws `TextFileLoaderError.couldNotDecode` instead.)*
+- [x] Perform file reads away from the main actor. *(`TextFileLoader.load` is a plain, side-effect-free, thread-safe function with no shared mutable state — safe to call from any queue. Not itself `async`: no caller exists yet to design the boundary around, and nothing else in the codebase uses Swift concurrency — same tradeoff recorded for `CommandDefinition` in M1-03. Documented as the caller's responsibility in the doc comment.)*
+- [x] Add fixtures for every supported encoding. *(Fixtures are generated programmatically in tests — a Japanese sample string encoded via Foundation's own encoders into each target encoding, then round-tripped through `TextFileLoader`/`EncodingDetector` — rather than committed binary files, consistent with the M0-06 benchmark fixtures' approach. 20 new tests across `EncodingDetectorTests` and `TextFileLoaderTests`.)*
+
+**Acceptance:** UTF-8, UTF-16, Windows-31J, Shift-JIS, EUC-JP, and ISO-2022-JP samples open as expected. *(All six are directly tested via `TextFileLoader.load` against real temp files on disk in `TextFileLoaderTests`, not just the lower-level detector — 58/58 tests pass.)*
+
+**Deliberately not wired into `Document` yet** (same reasoning as M1-04's `PreferencesStore`, but higher-stakes here): `Document.open(url:)` still hardcodes `String(contentsOf:encoding:.utf8)`. Wiring the read side alone, before M2-04 (Save Preflight) and M2-05 (`TextFileSaver`) exist to preserve the original encoding on save, would let MaruEdit silently re-encode a Shift-JIS/EUC-JP file to UTF-8 the next time it's saved — exactly the silent corruption ROADMAP.md section 1.2 commits against. `TextFileLoader` is real, tested, working infrastructure; wiring it in is M2-02 through M2-05's job, in the order the roadmap already lays out.
 
 **Acceptance:** UTF-8, UTF-16, Windows-31J, Shift-JIS, EUC-JP, and ISO-2022-JP samples open as expected.
 
