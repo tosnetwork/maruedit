@@ -1960,6 +1960,38 @@ final class MainWindowController: NSWindowController,
     func nextBookmark() { editorVC.nextBookmark() }
     func previousBookmark() { editorVC.previousBookmark() }
     func clearBookmarks() { editorVC.clearBookmarks() }
+
+    func showBookmarkList() {
+        guard let document = curDoc else { return }
+        let offsets = document.bookmarks.sortedOffsets
+        guard !offsets.isEmpty else { showStatusMessage("No bookmarks"); return }
+        let text = editorVC.textView.string as NSString
+        let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 420, height: 26))
+        for (index, offset) in offsets.enumerated() {
+            let safe = min(offset, text.length)
+            let line = text.substring(to: safe).reduce(1) { $1 == "\n" ? $0 + 1 : $0 }
+            let range = text.lineRange(for: NSRange(location: safe, length: 0))
+            let preview = text.substring(with: range).trimmingCharacters(in: .whitespacesAndNewlines)
+            popup.addItem(withTitle: "\(index + 1). Line \(line)  \(preview)")
+        }
+        let alert = NSAlert()
+        alert.messageText = "Bookmark List"
+        alert.informativeText = "Go to a bookmark or remove it from this document."
+        alert.accessoryView = popup
+        alert.addButton(withTitle: "Go To"); alert.addButton(withTitle: "Remove")
+        alert.addButton(withTitle: "Cancel")
+        let response = alert.runModal()
+        guard offsets.indices.contains(popup.indexOfSelectedItem) else { return }
+        let offset = offsets[popup.indexOfSelectedItem]
+        if response == .alertFirstButtonReturn {
+            let range = NSRange(location: offset, length: 0)
+            editorVC.setSelections([range], primaryRange: range)
+            editorVC.textView.scrollRangeToVisible(range)
+        } else if response == .alertSecondButtonReturn {
+            document.bookmarks.remove(at: offset)
+            editorVC.refreshBookmarkGutter()
+        }
+    }
     func toggleInputMode() { editorVC.toggleInputMode() }
     func moveWordLeft() { editorVC.textView.moveWordLeft(nil) }
     func moveWordRight() { editorVC.textView.moveWordRight(nil) }

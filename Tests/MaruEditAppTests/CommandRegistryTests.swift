@@ -99,7 +99,7 @@ final class CommandRegistryTests: XCTestCase {
             .navigatePreviousDifference, .navigateMergeDifferenceFromRight,
             .navigateTagJump, .navigateDirectTagJump, .navigateBackTagJump,
             .navigateToggleBookmark, .navigateNextBookmark,
-            .navigatePreviousBookmark, .navigateClearBookmarks
+            .navigatePreviousBookmark, .navigateBookmarkList, .navigateClearBookmarks
             , .navigateToggleFold, .navigateCollapseAllFolds, .navigateExpandAllFolds,
             .navigateBeginPartialOutline, .navigateEndPartialOutline
         ]

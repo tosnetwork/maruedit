@@ -335,7 +335,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let bookmarkMenu = NSMenu(title: "Bookmark")
         for id: CommandID in [
             .navigateToggleBookmark, .navigateNextBookmark,
-            .navigatePreviousBookmark, .navigateClearBookmarks,
+            .navigatePreviousBookmark, .navigateBookmarkList, .navigateClearBookmarks,
         ] { bookmarkMenu.addItem(commandItem(id)) }
         bookmarkItem.submenu = bookmarkMenu
 

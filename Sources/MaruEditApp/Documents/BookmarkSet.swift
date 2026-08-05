@@ -19,6 +19,8 @@ final class BookmarkSet {
     }
 
     func clear() { offsets.removeAll() }
+    func remove(at offset: Int) { offsets.remove(offset) }
+    var sortedOffsets: [Int] { offsets.sorted() }
 
     func restore(_ savedOffsets: Set<Int>) { offsets = savedOffsets }
 

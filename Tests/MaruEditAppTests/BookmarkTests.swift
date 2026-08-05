@@ -5,6 +5,15 @@ import XCTest
 
 @preconcurrency @MainActor
 final class BookmarkTests: XCTestCase {
+    func testBookmarkListIsSortedAndSupportsRemoval() async {
+        let bookmarks = BookmarkSet()
+        let text = "one\ntwo\nthree" as NSString
+        bookmarks.toggle(lineAt: 9, in: text)
+        bookmarks.toggle(lineAt: 1, in: text)
+        XCTAssertEqual(bookmarks.sortedOffsets, [0, 8])
+        bookmarks.remove(at: 0)
+        XCTAssertEqual(bookmarks.sortedOffsets, [8])
+    }
     private var windows: [NSWindow] = []
 
     override func tearDown() {

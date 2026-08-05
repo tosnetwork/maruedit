@@ -148,6 +148,7 @@ final class AppCoordinator {
     func nextBookmark()                 { ensureWindowControllerReady().nextBookmark() }
     func previousBookmark()             { ensureWindowControllerReady().previousBookmark() }
     func clearBookmarks()               { ensureWindowControllerReady().clearBookmarks() }
+    func showBookmarkList()              { ensureWindowControllerReady().showBookmarkList() }
     func toggleInputMode()               { ensureWindowControllerReady().toggleInputMode() }
     func moveWordLeft()                  { ensureWindowControllerReady().moveWordLeft() }
     func moveWordRight()                 { ensureWindowControllerReady().moveWordRight() }

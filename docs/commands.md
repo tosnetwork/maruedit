@@ -108,6 +108,7 @@ significantly, replace this with a small script that generates it from
 | `navigate.toggleBookmark` | Toggle Bookmark | Edit | — | `AppCoordinator.toggleBookmark()` |
 | `navigate.nextBookmark` | Next Bookmark | Edit | — | `AppCoordinator.nextBookmark()` |
 | `navigate.previousBookmark` | Previous Bookmark | Edit | — | `AppCoordinator.previousBookmark()` |
+| `navigate.bookmarkList` | Bookmark List… | Bookmark | — | `AppCoordinator.showBookmarkList()` |
 | `navigate.clearBookmarks` | Clear Bookmarks | Edit | — | `AppCoordinator.clearBookmarks()` |
 | `navigate.toggleFold` | Toggle Fold | Edit | — | `AppCoordinator.toggleFold()` |
 | `navigate.collapseAllFolds` | Collapse All Folds | Edit | — | `AppCoordinator.collapseAllFolds()` |
