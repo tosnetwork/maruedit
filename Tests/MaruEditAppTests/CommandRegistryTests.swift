@@ -103,6 +103,10 @@ final class CommandRegistryTests: XCTestCase {
             .editSelectWord, .editSelectLine, .editSelectParagraph,
             .editCopyQuoted, .editPasteQuoted,
             .editClipboardHistory, .editRestoreDeletion, .editCorrectCapsLock, .editReconvert,
+            .editAppendCopy, .editAppendCut, .editDeleteToLineStart, .editDeleteToLineEnd,
+            .editInvertSelections, .editReserveSelections, .editRestoreReservedSelections,
+            .editBoxPaste, .editPastePreviousClipboard,
+            .editRepeatLastOperation,
             .editSelectAllOccurrences, .editUndoLastAddedCursor, .editBeginColumnSelection,
             .editDeleteLine, .editDuplicateLine, .editMoveLineUp, .editMoveLineDown,
             .editJoinLines, .editTrimTrailingWhitespace, .editUppercase, .editLowercase,
@@ -170,6 +174,20 @@ final class CommandRegistryTests: XCTestCase {
         XCTAssertEqual(observed, [allowed])
     }
 
+    func testRepeatLastEditTracksOnlySuccessfulDeterministicEdits() {
+        let coordinator = AppCoordinator()
+        let context = CommandContext(coordinator: coordinator)
+        XCTAssertFalse(coordinator.commandRegistry.isEnabled(.editRepeatLastOperation, context: context))
+        coordinator.prepareUITestDocument(content: "one two", selections: [NSRange(location: 0, length: 3)])
+        XCTAssertTrue(coordinator.commandRegistry.execute(.editUppercase, context: context))
+        let editor = coordinator.ensureWindowControllerReady().macroEditor
+        XCTAssertEqual(editor.textView.string, "ONE two")
+        editor.setSelections([NSRange(location: 4, length: 3)])
+        XCTAssertTrue(coordinator.commandRegistry.isEnabled(.editRepeatLastOperation, context: context))
+        XCTAssertTrue(coordinator.commandRegistry.execute(.editRepeatLastOperation, context: context))
+        XCTAssertEqual(editor.textView.string, "ONE TWO")
+    }
+
     func testAppCommandsAreEnabledByDefault() async {
         let registry = CommandRegistry()
         AppCommands.registerAll(in: registry)
@@ -177,6 +195,7 @@ final class CommandRegistryTests: XCTestCase {
         let configurationDependentCommands: Set<CommandID> = [
             .helpExternal1, .helpExternal2, .helpExternal3,
             .helpExternal4, .helpExternal5, .helpExternal6,
+            .editRepeatLastOperation,
         ]
 
         for definition in registry.allDefinitions where !configurationDependentCommands.contains(definition.id) {

@@ -78,6 +78,15 @@ final class BoxSelectionTests: XCTestCase {
         XCTAssertEqual(repeated.textView.string, "aQc\nxQz")
     }
 
+    func testExplicitBoxPasteMapsClipboardRowsFromCursorColumn() {
+        let target = editor("abc\nx\n12345")
+        target.setSelections([NSRange(location: 2, length: 0)])
+        let pasteboard = NSPasteboard(name: .init("BoxSelectionTests.explicitPaste"))
+        pasteboard.clearContents(); pasteboard.setString("A\nB\nC", forType: .string)
+        XCTAssertTrue(target.boxPaste(from: pasteboard))
+        XCTAssertEqual(target.textView.string, "abAc\nx B\n12C345")
+    }
+
     func testEditorRemainsAccessibleAndColumnModeIsNoWrap() async {
         let editor = editor("abc")
         XCTAssertEqual(editor.textView.accessibilityLabel(), "Editor")

@@ -136,4 +136,49 @@ final class SelectionSetTests: XCTestCase {
         editor.exitMultiEdit()
         XCTAssertEqual(editor.selectionSet.ranges, [NSRange(location: 4, length: 3)])
     }
+
+    func testAppendCopyAndCutPreserveExistingClipboard() {
+        let editor = EditorViewController(); _ = editor.view
+        editor.textView.string = "one two"
+        editor.setSelections([NSRange(location: 4, length: 3)])
+        let pasteboard = NSPasteboard(name: .init("SelectionSetTests.append"))
+        pasteboard.clearContents(); pasteboard.setString("prefix:", forType: .string)
+        XCTAssertTrue(editor.appendSelectionToClipboard(cut: false, pasteboard: pasteboard))
+        XCTAssertEqual(pasteboard.string(forType: .string), "prefix:two")
+        XCTAssertEqual(editor.textView.string, "one two")
+        XCTAssertTrue(editor.appendSelectionToClipboard(cut: true, pasteboard: pasteboard))
+        XCTAssertEqual(pasteboard.string(forType: .string), "prefix:twotwo")
+        XCTAssertEqual(editor.textView.string, "one ")
+    }
+
+    func testDeleteToLineBoundariesAcrossMultipleCursors() {
+        let editor = EditorViewController(); _ = editor.view
+        editor.textView.string = "abcde\n12345"
+        editor.setSelections([NSRange(location: 2, length: 0), NSRange(location: 9, length: 0)])
+        editor.deleteToLineStart()
+        XCTAssertEqual(editor.textView.string, "cde\n45")
+
+        editor.textView.string = "abcde\n12345"
+        editor.setSelections([NSRange(location: 2, length: 0), NSRange(location: 9, length: 0)])
+        editor.deleteToLineEnd()
+        XCTAssertEqual(editor.textView.string, "ab\n123")
+    }
+
+    func testInvertReserveAndRestoreSelections() {
+        let editor = EditorViewController(); _ = editor.view
+        editor.textView.string = "0123456789"
+        editor.setSelections([NSRange(location: 2, length: 2), NSRange(location: 6, length: 2)])
+        editor.invertSelections()
+        XCTAssertEqual(editor.selectionSet.ranges, [
+            NSRange(location: 0, length: 2), NSRange(location: 4, length: 2),
+            NSRange(location: 8, length: 2),
+        ])
+        editor.reserveSelections()
+        XCTAssertEqual(editor.reservedSelections.count, 3)
+        editor.setSelections([NSRange(location: 3, length: 1)])
+        editor.restoreReservedSelections()
+        XCTAssertTrue(editor.reservedSelections.isEmpty)
+        XCTAssertEqual(editor.selectionSet.ranges.count, 4)
+        XCTAssertEqual(editor.selectionSet.primaryRange, NSRange(location: 3, length: 1))
+    }
 }

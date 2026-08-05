@@ -189,6 +189,16 @@ significantly, replace this with a small script that generates it from
 | `edit.copyQuoted` | Copy with Quote Prefix | Edit | — | Copies selected lines with `> ` prefixes |
 | `edit.pasteQuoted` | Paste Removing Quote Prefix | Edit | — | Removes `>` quote prefixes while pasting |
 | `edit.clipboardHistory` | Clipboard History… | Edit | — | Selects, pastes or clears recently observed text clipboard values |
+| `edit.appendCopy` | Append Copy | Edit | — | Appends all selected text to the current clipboard without modifying the document |
+| `edit.appendCut` | Append Cut | Edit | — | Appends selected text to the clipboard and removes it as one undoable edit |
+| `edit.deleteToLineStart` | Delete to Start of Line | Edit | — | Deletes from every cursor to its logical line start |
+| `edit.deleteToLineEnd` | Delete to End of Line | Edit | — | Deletes from every cursor to its logical line end without consuming the newline |
+| `edit.invertSelections` | Invert Selections | Edit | — | Selects the complement of all current document selections |
+| `edit.reserveSelections` | Reserve Selections | Edit | — | Temporarily preserves the current multi-selection set |
+| `edit.restoreReservedSelections` | Restore Reserved Selections | Edit | — | Merges reserved selections with the current selection |
+| `edit.boxPaste` | BOX Paste | Edit | — | Maps clipboard lines vertically from the cursor's visual column |
+| `edit.pastePreviousClipboard` | Paste Previous Clipboard | Edit | — | Pastes the preceding monitored clipboard-history value at every selection |
+| `edit.repeatLastOperation` | Repeat Last Edit | Edit | — | Re-executes the most recent deterministic editing or conversion command |
 | `edit.restoreDeletion` | Restore Last Deleted Text | Edit | — | Reinserts the most recently deleted text at every active selection |
 | `edit.correctCapsLock` | Correct Caps Lock Mistake | Edit | — | Toggles the selected/current word's letter case; macOS owns the physical Caps Lock state |
 | `edit.reconvert` | Reconvert with Input Method | Edit | — | Routes the selection to the active macOS input method's native reconversion command |

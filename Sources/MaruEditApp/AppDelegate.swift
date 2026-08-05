@@ -194,6 +194,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let editMenu = NSMenu(title: "Edit")
         editMenu.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
         editMenu.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
+        editMenu.addItem(commandItem(.editRepeatLastOperation))
         editMenu.addItem(.separator())
         editMenu.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
         editMenu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
@@ -202,6 +203,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         editMenu.addItem(commandItem(.editCopyQuoted))
         editMenu.addItem(commandItem(.editPasteQuoted))
         editMenu.addItem(commandItem(.editClipboardHistory))
+        editMenu.addItem(commandItem(.editPastePreviousClipboard))
+        editMenu.addItem(commandItem(.editBoxPaste))
+        editMenu.addItem(commandItem(.editAppendCopy))
+        editMenu.addItem(commandItem(.editAppendCut))
         editMenu.addItem(commandItem(.editRestoreDeletion))
         editMenu.addItem(commandItem(.editCorrectCapsLock))
         editMenu.addItem(commandItem(.editReconvert))
@@ -215,6 +220,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         editMenu.addItem(commandItem(.editSelectAllOccurrences))
         editMenu.addItem(commandItem(.editUndoLastAddedCursor))
         editMenu.addItem(commandItem(.editBeginColumnSelection))
+        editMenu.addItem(commandItem(.editInvertSelections))
+        editMenu.addItem(commandItem(.editReserveSelections))
+        editMenu.addItem(commandItem(.editRestoreReservedSelections))
         editMenu.addItem(.separator())
         let linesItem = NSMenuItem(title: "Lines", action: nil, keyEquivalent: "")
         let linesMenu = NSMenu(title: "Lines")
@@ -232,6 +240,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .editMoveParagraphEnd, .editDeleteWordBackward, .editDeleteWordForward,
             .editCompleteWord,
         ] { editMenu.addItem(commandItem(id)) }
+        editMenu.addItem(commandItem(.editDeleteToLineStart))
+        editMenu.addItem(commandItem(.editDeleteToLineEnd))
         editMenu.addItem(.separator())
         editMenu.addItem(commandItem(.navigateToggleFold))
         editMenu.addItem(commandItem(.navigateCollapseAllFolds))

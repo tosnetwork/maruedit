@@ -108,6 +108,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     var isMultiEditActive = false
     let selectionSet = SelectionSet()
     var selectionHistory: [[NSRange]] = []
+    var reservedSelections: [NSRange] = []
     var columnSelectionRows: [BoxSelectionRow]?
     private var columnSelectionDimensions: (width: Int, height: Int)?
     private var columnSelectionAnchor: TextCoordinate?

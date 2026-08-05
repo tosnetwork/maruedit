@@ -23,6 +23,7 @@ final class AppCoordinator {
     private(set) var isRecordingCommands = false
     private(set) var recordedCommands: [CommandID] = []
     private var isPlayingRecording = false
+    private var lastRepeatableCommand: CommandID?
     let clipboardHistory = ClipboardHistoryStore()
     let commandRegistry = CommandRegistry()
     var onShowMenuCustomization: (() -> Void)?
@@ -45,7 +46,7 @@ final class AppCoordinator {
         self.externalHelpStore = externalHelpStore ?? ExternalHelpStore()
         externalHelpEntries = self.externalHelpStore.load()
         AppCommands.registerAll(in: commandRegistry)
-        commandRegistry.didExecute = { [weak self] id in self?.recordExecutedCommand(id) }
+        commandRegistry.didExecute = { [weak self] id in self?.commandDidExecute(id) }
     }
 
     @discardableResult
@@ -179,6 +180,26 @@ final class AppCoordinator {
         guard isRecordingCommands, !isPlayingRecording, !controls.contains(id) else { return }
         recordedCommands.append(id)
     }
+    private func commandDidExecute(_ id: CommandID) {
+        recordExecutedCommand(id)
+        if Self.repeatableEditCommands.contains(id) { lastRepeatableCommand = id }
+    }
+    private static let repeatableEditCommands: Set<CommandID> = [
+        .editDeleteLine, .editDuplicateLine, .editMoveLineUp, .editMoveLineDown,
+        .editJoinLines, .editTrimTrailingWhitespace, .editSortLines, .editReverseLines,
+        .editIndent, .editOutdent, .editToggleComment, .editUppercase, .editLowercase,
+        .editTitlecase, .editDeleteWordBackward, .editDeleteWordForward,
+        .editDeleteToLineStart, .editDeleteToLineEnd, .editCorrectCapsLock,
+        .convertHalfWidth, .convertFullWidth, .convertHiragana, .convertKatakana,
+        .convertHalfWidthAlphanumeric, .convertFullWidthAlphanumeric,
+        .convertHalfWidthKatakana, .convertFullWidthKatakana,
+        .convertTabsToSpaces, .convertSpacesToTabs,
+    ]
+    var canRepeatLastEdit: Bool { lastRepeatableCommand != nil }
+    func repeatLastEdit() {
+        guard let id = lastRepeatableCommand else { return }
+        _ = commandRegistry.execute(id, context: CommandContext(coordinator: self))
+    }
     func recordExecutedCommandForTesting(_ id: CommandID) { recordExecutedCommand(id) }
     func showHelp() {
         openHelpPath("docs/user-guide.md")
@@ -297,6 +318,21 @@ final class AppCoordinator {
         if !ensureWindowControllerReady().macroEditor.reconvertWithCurrentInputMethod() {
             showStatusMessage("The active input method does not support reconversion")
         }
+    }
+    func appendCopy() { _ = ensureWindowControllerReady().macroEditor.appendSelectionToClipboard(cut: false) }
+    func appendCut() { _ = ensureWindowControllerReady().macroEditor.appendSelectionToClipboard(cut: true) }
+    func deleteToLineStart() { ensureWindowControllerReady().macroEditor.deleteToLineStart() }
+    func deleteToLineEnd() { ensureWindowControllerReady().macroEditor.deleteToLineEnd() }
+    func invertSelections() { ensureWindowControllerReady().macroEditor.invertSelections() }
+    func reserveSelections() { ensureWindowControllerReady().macroEditor.reserveSelections() }
+    func restoreReservedSelections() { ensureWindowControllerReady().macroEditor.restoreReservedSelections() }
+    func boxPaste() { _ = ensureWindowControllerReady().macroEditor.boxPaste() }
+    func pastePreviousClipboard() {
+        clipboardHistory.poll()
+        guard let value = clipboardHistory.entries.dropFirst().first ?? clipboardHistory.entries.first else {
+            showStatusMessage("Clipboard history is empty"); return
+        }
+        ensureWindowControllerReady().macroEditor.multiEditPaste(value)
     }
     func pollClipboard() { clipboardHistory.poll() }
     func showClipboardHistory() {

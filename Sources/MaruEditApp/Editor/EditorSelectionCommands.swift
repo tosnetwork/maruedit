@@ -46,6 +46,91 @@ extension EditorViewController {
     }
 
     @discardableResult
+    func appendSelectionToClipboard(cut: Bool, pasteboard: NSPasteboard = .general) -> Bool {
+        let source = textView.string as NSString
+        let ranges = selectionSet.ranges.filter { $0.length > 0 && NSMaxRange($0) <= source.length }
+        guard !ranges.isEmpty else { return false }
+        let appended = (pasteboard.string(forType: .string) ?? "")
+            + ranges.map { source.substring(with: $0) }.joined(separator: "\n")
+        pasteboard.clearContents()
+        guard pasteboard.setString(appended, forType: .string) else { return false }
+        if cut { batchReplace(ranges, with: "") }
+        return true
+    }
+
+    func deleteToLineStart() { deleteTowardLineBoundary(start: true) }
+    func deleteToLineEnd() { deleteTowardLineBoundary(start: false) }
+
+    private func deleteTowardLineBoundary(start: Bool) {
+        let source = textView.string as NSString
+        let ranges = selectionSet.ranges.compactMap { selection -> NSRange? in
+            guard selection.location <= source.length else { return nil }
+            if selection.length > 0 { return selection }
+            let line = source.lineRange(for: NSRange(location: selection.location, length: 0))
+            var contentEnd = NSMaxRange(line)
+            while contentEnd > line.location,
+                  let scalar = UnicodeScalar(source.character(at: contentEnd - 1)),
+                  CharacterSet.newlines.contains(scalar) { contentEnd -= 1 }
+            return start
+                ? NSRange(location: line.location, length: selection.location - line.location)
+                : NSRange(location: selection.location, length: contentEnd - selection.location)
+        }.filter { $0.length > 0 }
+        if !ranges.isEmpty { batchReplace(ranges, with: "") }
+    }
+
+    func invertSelections() {
+        let length = (textView.string as NSString).length
+        let selected = selectionSet.ranges.filter { $0.length > 0 }.sorted { $0.location < $1.location }
+        var result: [NSRange] = []
+        var cursor = 0
+        for range in selected {
+            if cursor < range.location { result.append(NSRange(location: cursor, length: range.location - cursor)) }
+            cursor = max(cursor, min(length, NSMaxRange(range)))
+        }
+        if cursor < length { result.append(NSRange(location: cursor, length: length - cursor)) }
+        if result.isEmpty { result = [NSRange(location: 0, length: 0)] }
+        setSelections(result, primaryRange: result.first)
+        isMultiEditActive = result.count > 1
+    }
+
+    func reserveSelections() {
+        let ranges = selectionSet.ranges.filter { $0.length > 0 }
+        guard !ranges.isEmpty else { return }
+        reservedSelections = ranges
+        let cursor = NSRange(location: NSMaxRange(selectionSet.primaryRange), length: 0)
+        setSelections([cursor], primaryRange: cursor)
+        isMultiEditActive = false
+    }
+
+    func restoreReservedSelections() {
+        guard !reservedSelections.isEmpty else { return }
+        let current = selectionSet.ranges
+        let restored = reservedSelections + current
+        reservedSelections = []
+        setSelections(restored, primaryRange: current.first)
+        isMultiEditActive = selectionSet.ranges.count > 1
+    }
+
+    @discardableResult
+    func boxPaste(from pasteboard: NSPasteboard = .general) -> Bool {
+        guard let value = pasteboard.string(forType: .string) else { return false }
+        let fragments = value.components(separatedBy: "\n")
+        let origin = BoxSelectionModel.coordinate(
+            atUTF16Offset: selectionSet.primaryRange.location, in: textView.string,
+            tabWidth: max(1, appliedPreferences.tabWidth))
+        let end = TextCoordinate(line: origin.line + max(0, fragments.count - 1), visualColumn: origin.visualColumn)
+        let rows = BoxSelectionModel.rows(
+            in: textView.string, anchor: origin, current: end,
+            tabWidth: max(1, appliedPreferences.tabWidth))
+        guard !rows.isEmpty else { return false }
+        let replacements = zip(rows, fragments).map { row, fragment in
+            String(repeating: " ", count: row.leadingVirtualSpaces) + fragment
+        }
+        batchReplace(rows.map(\.range), with: replacements)
+        return true
+    }
+
+    @discardableResult
     func correctCapsLockMistake() -> Bool {
         if selectionSet.ranges.allSatisfy({ $0.length == 0 }) {
             selectCurrentWord()
