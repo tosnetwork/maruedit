@@ -10,6 +10,13 @@ final class FileTypeOutlineRuleTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(FileTypeProfile.self, from: data), profile)
     }
 
+    func testRuleLengthBoundaryIsDeterministic() {
+        let accepted = OutlineRule(pattern: "(" + String(repeating: "a", count: 1_022) + ")")
+        let rejected = OutlineRule(pattern: "(" + String(repeating: "a", count: 1_023) + ")")
+        XCTAssertNil(accepted.validationError())
+        XCTAssertEqual(rejected.validationError(), .patternTooLong)
+    }
+
     func testVersionOneSettingsWithoutOutlineRulesStillDecode() throws {
         let json = #"{"tabWidth":4,"indentWidth":4,"indentStyle":"spaces","wrapLines":false,"syntax":"plainText"}"#
         let settings = try JSONDecoder().decode(FileTypeSettings.self, from: Data(json.utf8))

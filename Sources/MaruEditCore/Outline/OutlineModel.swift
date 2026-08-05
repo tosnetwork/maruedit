@@ -32,6 +32,32 @@ public struct OutlineRule: Codable, Equatable, Sendable, Identifiable {
         self.titleCaptureGroup = titleCaptureGroup
         self.fixedLevel = fixedLevel
     }
+
+    public func validationError() -> OutlineRuleValidationError? {
+        guard !pattern.isEmpty else { return .emptyPattern }
+        guard pattern.utf16.count <= OutlineModel.maximumCustomPatternLength else {
+            return .patternTooLong
+        }
+        // Foundation regex matching has no timeout. Reject the most common
+        // exponential-backtracking forms and backreferences before compiling.
+        let nestedQuantifier = #"\([^)]*[+*][^)]*\)\s*(?:[+*]|\{)"#
+        if pattern.range(of: nestedQuantifier, options: .regularExpression) != nil
+            || pattern.range(of: #"\\[1-9]"#, options: .regularExpression) != nil {
+            return .unsafeBacktracking
+        }
+        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+            return .invalidPattern
+        }
+        guard titleCaptureGroup >= 0,
+              titleCaptureGroup <= regex.numberOfCaptureGroups else {
+            return .invalidCaptureGroup
+        }
+        return nil
+    }
+}
+
+public enum OutlineRuleValidationError: String, Error, Equatable, Sendable {
+    case emptyPattern, patternTooLong, unsafeBacktracking, invalidPattern, invalidCaptureGroup
 }
 
 /// Foundation-only outline index. Edits preserve the unchanged prefix and
@@ -91,9 +117,10 @@ public struct OutlineModel: Sendable, Equatable {
         text: String, language: Language, customRules: [OutlineRule],
         startingAtLine: Int, baseOffset: Int
     ) -> [OutlineSymbol] {
-        let rules = customRules.prefix(maximumCustomRuleCount).map {
-            Rule(kind: $0.kind, pattern: $0.pattern,
-                 titleGroup: max(0, $0.titleCaptureGroup), fixedLevel: $0.fixedLevel)
+        let rules = customRules.prefix(maximumCustomRuleCount).compactMap {
+            guard $0.validationError() == nil else { return nil }
+            return Rule(kind: $0.kind, pattern: $0.pattern,
+                        titleGroup: max(0, $0.titleCaptureGroup), fixedLevel: $0.fixedLevel)
         } + rules(for: language)
         guard !rules.isEmpty else { return [] }
         let compiled = rules.compactMap { rule in
@@ -103,7 +130,7 @@ public struct OutlineModel: Sendable, Equatable {
         var offset = 0
         let ns = text as NSString
         var lineNumber = startingAtLine
-        while offset <= ns.length {
+        scanLines: while offset <= ns.length {
             let remaining = NSRange(location: offset, length: ns.length - offset)
             let newline = ns.range(of: "\n", options: [], range: remaining)
             let end = newline.location == NSNotFound ? ns.length : newline.location
@@ -127,6 +154,7 @@ public struct OutlineModel: Sendable, Equatable {
                         location: baseOffset + offset + capture.location,
                         length: capture.length),
                     level: rule.fixedLevel ?? indentation / 4))
+                if output.count >= maximumSymbolCount { break scanLines }
                 break
               }
             }
@@ -138,7 +166,9 @@ public struct OutlineModel: Sendable, Equatable {
     }
 
     public static let maximumCustomRuleCount = 64
+    public static let maximumCustomPatternLength = 1_024
     public static let maximumScannedLineLength = 16_384
+    public static let maximumSymbolCount = 20_000
 
     private static func rules(for language: Language) -> [Rule] {
         let name = #"([\p{L}_][\p{L}\p{N}_]*)"#

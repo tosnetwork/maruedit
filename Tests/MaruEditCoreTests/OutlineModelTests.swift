@@ -62,4 +62,22 @@ final class OutlineModelTests: XCTestCase {
         XCTAssertEqual(model.symbols.map(\.title), ["Kept"])
         XCTAssertEqual(model.customRules.count, OutlineModel.maximumCustomRuleCount)
     }
+
+    func testUnsafeRegexAndInvalidCaptureGroupsAreRejected() {
+        XCTAssertEqual(OutlineRule(pattern: #"^(a+)+$"#).validationError(), .unsafeBacktracking)
+        XCTAssertEqual(OutlineRule(pattern: #"^(a)\1$"#).validationError(), .unsafeBacktracking)
+        XCTAssertEqual(OutlineRule(pattern: "(").validationError(), .invalidPattern)
+        XCTAssertEqual(
+            OutlineRule(pattern: #"^(.+)$"#, titleCaptureGroup: 2).validationError(),
+            .invalidCaptureGroup)
+    }
+
+    func testLargeOutlineCapsSymbolMemoryAndStillReturnsPrefixInOrder() {
+        let text = (0..<(OutlineModel.maximumSymbolCount + 500)).map { "# Heading \($0)" }
+            .joined(separator: "\n")
+        let model = OutlineModel(text: text, language: .markdown)
+        XCTAssertEqual(model.symbols.count, OutlineModel.maximumSymbolCount)
+        XCTAssertEqual(model.symbols.first?.title, "Heading 0")
+        XCTAssertEqual(model.symbols.last?.title, "Heading \(OutlineModel.maximumSymbolCount - 1)")
+    }
 }

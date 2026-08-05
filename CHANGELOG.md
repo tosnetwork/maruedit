@@ -17,6 +17,8 @@ semantic version tags.
   document outlines and preserves collapsed regions when surrounding lines move,
   with clickable gutter markers, registry-backed fold commands, TextKit layout,
   and per-file session restoration.
+- Hardened user outline rules against malformed patterns, nested-quantifier
+  backtracking, backreferences, oversized patterns/lines, and unbounded symbol output.
 - Added the Maru Classic workspace foundation: a Classic Light palette, compact tabs,
   current-document heading and character ruler, favorite-command strip, explicit
   insert-mode status, a customizable command-registry toolbar, and Files / Outline /
