@@ -15,6 +15,13 @@ extension CommandID {
     static let helpShortcuts    = CommandID("help.shortcuts")
     static let helpCheckUpdates = CommandID("help.checkUpdates")
     static let helpSupport      = CommandID("help.support")
+    static let helpConfigureExternal = CommandID("help.configureExternal")
+    static let helpExternal1 = CommandID("help.external1")
+    static let helpExternal2 = CommandID("help.external2")
+    static let helpExternal3 = CommandID("help.external3")
+    static let helpExternal4 = CommandID("help.external4")
+    static let helpExternal5 = CommandID("help.external5")
+    static let helpExternal6 = CommandID("help.external6")
     static let otherFileTypeProfiles = CommandID("other.fileTypeProfiles")
     static let otherKeyAssignments = CommandID("other.keyAssignments")
     static let otherCommandList = CommandID("other.commandList")
@@ -217,6 +224,19 @@ enum AppCommands {
         registry.register(CommandDefinition(id: .helpSupport, title: "Support and Report an Issue…") {
             $0.coordinator.showSupport()
         })
+        registry.register(CommandDefinition(id: .helpConfigureExternal, title: "Configure External Help…") {
+            $0.coordinator.showExternalHelpConfiguration()
+        })
+        let externalHelpIDs: [CommandID] = [
+            .helpExternal1, .helpExternal2, .helpExternal3,
+            .helpExternal4, .helpExternal5, .helpExternal6,
+        ]
+        for (slot, id) in externalHelpIDs.enumerated() {
+            registry.register(CommandDefinition(
+                id: id, title: "External Help \(slot + 1)",
+                isEnabled: { $0.coordinator.hasExternalHelp(slot: slot) },
+                execute: { $0.coordinator.openExternalHelp(slot: slot) }))
+        }
         registry.register(CommandDefinition(id: .otherFileTypeProfiles, title: "File-Type Profiles…") {
             $0.coordinator.showFileTypeProfiles()
         })

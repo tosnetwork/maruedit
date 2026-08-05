@@ -65,7 +65,9 @@ final class CommandRegistryTests: XCTestCase {
         let ids: [CommandID] = [
             .appSettings, .appMacroMenu, .macroStartRecording, .macroStopRecording,
             .macroPlayRecording, .macroSaveRecording, .appHelp, .helpMacros, .helpShortcuts,
-            .helpCheckUpdates, .helpSupport,
+            .helpCheckUpdates, .helpSupport, .helpConfigureExternal,
+            .helpExternal1, .helpExternal2, .helpExternal3,
+            .helpExternal4, .helpExternal5, .helpExternal6,
             .otherFileTypeProfiles, .otherKeyAssignments, .otherCommandList,
             .fileNew, .fileNewFromTemplate, .fileOpen, .fileOpenFolder, .fileOpenPartial,
             .fileOpenBinary,
@@ -167,8 +169,12 @@ final class CommandRegistryTests: XCTestCase {
         let registry = CommandRegistry()
         AppCommands.registerAll(in: registry)
         let context = makeContext()
+        let configurationDependentCommands: Set<CommandID> = [
+            .helpExternal1, .helpExternal2, .helpExternal3,
+            .helpExternal4, .helpExternal5, .helpExternal6,
+        ]
 
-        for definition in registry.allDefinitions {
+        for definition in registry.allDefinitions where !configurationDependentCommands.contains(definition.id) {
             XCTAssertTrue(
                 registry.isEnabled(definition.id, context: context),
                 "\(definition.id.rawValue) should be enabled with no document open yet"

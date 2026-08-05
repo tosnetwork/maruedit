@@ -459,6 +459,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         helpMenu.addItem(commandItem(.helpMacros))
         helpMenu.addItem(commandItem(.helpShortcuts))
         helpMenu.addItem(.separator())
+        for id: CommandID in [
+            .helpExternal1, .helpExternal2, .helpExternal3,
+            .helpExternal4, .helpExternal5, .helpExternal6,
+        ] { helpMenu.addItem(commandItem(id)) }
+        helpMenu.addItem(commandItem(.helpConfigureExternal))
+        helpMenu.addItem(.separator())
         helpMenu.addItem(commandItem(.helpCheckUpdates))
         helpMenu.addItem(commandItem(.helpSupport))
         helpMenu.addItem(.separator())

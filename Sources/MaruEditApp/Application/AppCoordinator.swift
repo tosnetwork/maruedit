@@ -13,8 +13,11 @@ import MaruEditCore
 final class AppCoordinator {
     private var windowController: MainWindowController?
     private var settingsWindowController: SettingsWindowController?
+    private var externalHelpWindowController: ExternalHelpWindowController?
     private let preferencesStore: PreferencesStore
     private let fileTypeProfileStore = FileTypeProfileStore()
+    private let externalHelpStore: ExternalHelpStore
+    private(set) var externalHelpEntries: [ExternalHelpEntry]
     private(set) var preferences: Preferences
     private var activeMacroCount = 0
     private(set) var isRecordingCommands = false
@@ -27,7 +30,7 @@ final class AppCoordinator {
     var onSaveRecordedMacro: ((String, [CommandID]) -> Void)?
     var openDocumentationURL: (URL) -> Void = { NSWorkspace.shared.open($0) }
 
-    init(preferencesStore: PreferencesStore? = nil) {
+    init(preferencesStore: PreferencesStore? = nil, externalHelpStore: ExternalHelpStore? = nil) {
         if let preferencesStore {
             self.preferencesStore = preferencesStore
         } else if ProcessInfo.processInfo.environment["MARUEDIT_UI_TEST_MODE"] == "1" {
@@ -39,6 +42,8 @@ final class AppCoordinator {
             self.preferencesStore = PreferencesStore()
         }
         preferences = self.preferencesStore.load()
+        self.externalHelpStore = externalHelpStore ?? ExternalHelpStore()
+        externalHelpEntries = self.externalHelpStore.load()
         AppCommands.registerAll(in: commandRegistry)
         commandRegistry.didExecute = { [weak self] id in self?.recordExecutedCommand(id) }
     }
@@ -105,6 +110,44 @@ final class AppCoordinator {
     func showKeyAssignments() { showSettings(group: .keyBindings) }
 
     func showMacroMenu() { onShowMacroMenu?() }
+    func hasExternalHelp(slot: Int) -> Bool {
+        externalHelpEntries.indices.contains(slot) && externalHelpEntries[slot].isConfigured
+    }
+
+    func openExternalHelp(slot: Int) {
+        guard hasExternalHelp(slot: slot) else {
+            showStatusMessage("External Help \(slot + 1) is not configured"); return
+        }
+        let target = externalHelpEntries[slot].target
+        let url: URL?
+        if let parsed = URL(string: target), let scheme = parsed.scheme,
+           ["https", "http", "file"].contains(scheme.lowercased()) {
+            url = parsed
+        } else {
+            let expanded = (target as NSString).expandingTildeInPath
+            url = FileManager.default.fileExists(atPath: expanded)
+                ? URL(fileURLWithPath: expanded) : nil
+        }
+        guard let url else { showStatusMessage("External Help target is invalid", duration: 5); return }
+        openDocumentationURL(url)
+    }
+
+    func showExternalHelpConfiguration() {
+        let controller = ExternalHelpWindowController(entries: externalHelpEntries) { [weak self] entries in
+            guard let self else { return }
+            self.externalHelpEntries = entries
+            self.externalHelpStore.save(entries)
+            self.windowController?.refreshClassicCommandPresentation()
+        }
+        externalHelpWindowController = controller
+        controller.showWindow(nil); controller.window?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func setExternalHelpEntriesForTesting(_ entries: [ExternalHelpEntry]) {
+        externalHelpEntries = entries
+        externalHelpStore.save(entries)
+    }
     func startMacroRecording() {
         recordedCommands.removeAll(); isRecordingCommands = true
         ensureWindowControllerReady().updateMacroRecording(isRecording: true)

@@ -18,7 +18,7 @@ passing MaruEdit regression tests from exhaustive Hidemaru feature parity.
 
 | Area | ✅ Complete | 🟡 Partial/native | ❌ Incomplete |
 |---|---:|---:|---:|
-| Menu rows | 1 | 8 | 4 |
+| Menu rows | 2 | 8 | 3 |
 | Toolbar/function-key rows | 9 | 3 | 0 |
 | Status-bar rows | 16 | 0 | 0 |
 | Acceptance gates | 1 | 2 | 2 |
@@ -44,7 +44,7 @@ native menu before the Hidemaru-compatible business menus.
 | Window | Tab list, close-other/left/right, pane focus, tab cycling, native Minimize/Zoom, and session restoration | 🟡 Native substitute | Windows arrangement/process/desktop behavior is not identical; document each native replacement explicitly. |
 | Macro | Recording, stop, playback, save-to-JavaScript, registered macros, reload, enablement, and permissions | 🟡 Partial | Core behavior exists, but Hidemaru macro-menu slots and invocation behavior have not been exhaustively mapped and tested. |
 | Other | Settings, file-type profiles, key assignments, command list/menu editing, and font entry points | ❌ Incomplete | Add categorized history clearing, tags generation, free-cursor mode, settings save/restore, kana-kanji word registration or explicit native substitutes. |
-| Help | MaruEdit guide, macro guide, shortcut reference, release check, support, and native About | ❌ Incomplete | Add configurable External Help 1–6 or document an explicit unsupported decision for each entry. |
+| Help | MaruEdit guide, macro guide, shortcut reference, configurable External Help 1–6, release check, support, and native About | ✅ Complete | All six external-help slots have persistent names/URL-or-file targets, dynamic enablement, a configuration window, and tested dispatch; About uses the native macOS panel. |
 
 The official pages contain roughly 297 command references, including repeated
 placements, dynamic entries, and Windows-only commands. MaruEdit registers 175

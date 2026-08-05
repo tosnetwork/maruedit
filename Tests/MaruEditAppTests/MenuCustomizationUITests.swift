@@ -89,4 +89,12 @@ final class MenuCustomizationUITests: XCTestCase {
         XCTAssertTrue(titles.contains("Command List…"))
         XCTAssertNotNil(tools?.item(withTitle: "External Commands")?.submenu)
     }
+
+    func testHelpMenuContainsSixConfigurableExternalHelpSlots() async {
+        let app = AppDelegate(); app.buildMenu()
+        let helpMenu = NSApp.mainMenu?.items.compactMap(\.submenu).first { $0.title == "Help" }
+        let titles = helpMenu?.items.map(\.title) ?? []
+        for slot in 1...6 { XCTAssertTrue(titles.contains("External Help \(slot)")) }
+        XCTAssertTrue(titles.contains("Configure External Help…"))
+    }
 }
