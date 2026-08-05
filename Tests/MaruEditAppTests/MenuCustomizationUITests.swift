@@ -109,4 +109,14 @@ final class MenuCustomizationUITests: XCTestCase {
             "Clear Recent Workspaces", "Clear Recent Encodings", "Clear All Histories",
         ])
     }
+
+    func testOtherMenuProvidesSettingsTransferCommands() async {
+        let app = AppDelegate(); app.buildMenu()
+        let other = NSApp.mainMenu?.items.compactMap(\.submenu).first { $0.title == "Other" }
+        let transfer = other?.item(withTitle: "Settings Transfer")?.submenu
+        XCTAssertEqual(transfer?.items.filter { !$0.isSeparatorItem }.map(\.title), [
+            "Export Settings…", "Import Settings…", "Restore Default Settings…",
+        ])
+        XCTAssertNotNil(other?.item(withTitle: "Free Cursor"))
+    }
 }
