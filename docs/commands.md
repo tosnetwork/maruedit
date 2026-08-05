@@ -200,6 +200,7 @@ significantly, replace this with a small script that generates it from
 | `navigate.previousDifference` | Previous Difference | Navigate | — | `AppCoordinator.previousDifference()` |
 | `navigate.mergeDifferenceFromRight` | Accept Difference from Right | Navigate | — | `AppCoordinator.mergeCurrentDifferenceFromRight()` |
 | `navigate.tagJump` | Jump to Tag… | Navigate | — | `AppCoordinator.showTagJump()` |
+| `navigate.generateTags` | Generate Tags File… | Navigate | — | `AppCoordinator.generateTagsFile()` |
 | `navigate.directTagJump` | Direct Tag Jump | Navigate | — | `AppCoordinator.directTagJump()` |
 | `navigate.backTagJump` | Back from Tag | Navigate | — | `AppCoordinator.backTagJump()` |
 

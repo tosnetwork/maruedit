@@ -84,6 +84,7 @@ final class MenuCustomizationUITests: XCTestCase {
         let tools = NSApp.mainMenu?.item(withTitle: "Tools")?.submenu
         let titles = tools?.items.map(\.title) ?? []
         XCTAssertTrue(titles.contains("Compare with Next Document"))
+        XCTAssertTrue(titles.contains("Generate Tags File…"))
         XCTAssertTrue(titles.contains("Jump to Tag…"))
         XCTAssertTrue(titles.contains("External Commands"))
         XCTAssertTrue(titles.contains("Command List…"))

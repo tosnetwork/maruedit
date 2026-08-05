@@ -2568,6 +2568,27 @@ final class MainWindowController: NSWindowController,
     var currentDiffIndexForTesting: Int { currentDiffIndex }
     var isComparingDocumentsForTesting: Bool { diffTargetDocument != nil }
 
+    func generateTagsFile() {
+        let panel = NSOpenPanel()
+        panel.title = "Generate Tags File"
+        panel.prompt = "Generate"
+        panel.message = "Choose the project folder where MaruEdit should create or replace the tags file."
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = curDoc?.fileURL?.deletingLastPathComponent()
+        guard panel.runModal() == .OK, let root = panel.url else { return }
+        do {
+            let summary = try TagFileGenerator().generate(in: root)
+            showStatusMessage("Generated \(summary.tagCount) tags from \(summary.fileCount) files")
+        } catch {
+            let alert = NSAlert(error: error)
+            alert.messageText = "Could Not Generate Tags File"
+            alert.informativeText = error.localizedDescription
+            alert.runModal()
+        }
+    }
+
     func showTagJump() {
         let alert = NSAlert()
         alert.messageText = "Jump to Tag"

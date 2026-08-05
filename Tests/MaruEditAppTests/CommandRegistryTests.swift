@@ -123,7 +123,7 @@ final class CommandRegistryTests: XCTestCase {
             .viewToggleLinkedScrolling,
             .navigateCompareNextDocument, .navigateNextDifference,
             .navigatePreviousDifference, .navigateMergeDifferenceFromRight,
-            .navigateTagJump, .navigateDirectTagJump, .navigateBackTagJump,
+            .navigateGenerateTags, .navigateTagJump, .navigateDirectTagJump, .navigateBackTagJump,
             .navigateToggleBookmark, .navigateNextBookmark,
             .navigatePreviousBookmark, .navigateBookmarkList, .navigateClearBookmarks
             , .navigateToggleFold, .navigateCollapseAllFolds, .navigateExpandAllFolds,

@@ -302,6 +302,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         toolsMenu.addItem(commandItem(.navigatePreviousDifference))
         toolsMenu.addItem(commandItem(.navigateMergeDifferenceFromRight))
         toolsMenu.addItem(.separator())
+        toolsMenu.addItem(commandItem(.navigateGenerateTags))
         toolsMenu.addItem(commandItem(.navigateTagJump))
         toolsMenu.addItem(commandItem(.navigateDirectTagJump))
         toolsMenu.addItem(commandItem(.navigateBackTagJump))
