@@ -308,6 +308,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         viewMenu.addItem(commandItem(.viewToggleSidebar))
         viewMenu.addItem(commandItem(.viewToggleWrap))
         viewMenu.addItem(commandItem(.viewToggleTableMode))
+        viewMenu.addItem(commandItem(.viewToggleVerticalLayout))
         let rulerItem = NSMenuItem(title: "Ruler", action: nil, keyEquivalent: "")
         let rulerMenu = NSMenu(title: "Ruler")
         rulerMenu.addItem(commandItem(.viewToggleRuler))
@@ -555,7 +556,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .viewToggleLineEndings, .viewToggleFullWidthSpaces,
             .viewTabWidth2, .viewTabWidth4, .viewTabWidth8,
             .viewToggleRuler, .viewRulerInterval8, .viewRulerInterval10,
-            .viewToggleTabStops,
+            .viewToggleTabStops, .viewToggleVerticalLayout,
         ]
         if statefulViewCommands.contains(id) {
             menuItem.state = coordinator.isViewCommandActive(id) ? .on : .off

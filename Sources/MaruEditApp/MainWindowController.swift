@@ -2158,6 +2158,10 @@ final class MainWindowController: NSWindowController,
     }
     func showCompletions() { editorVC.showCompletions() }
     func toggleTableMode() { editorVC.toggleDelimitedTableMode() }
+    func toggleVerticalLayout() {
+        editorVC.toggleVerticalLayout()
+        refreshStatus()
+    }
 
     enum EditorSplitOrientation { case vertical, horizontal }
 

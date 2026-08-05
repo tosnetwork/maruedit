@@ -108,6 +108,7 @@ significantly, replace this with a small script that generates it from
 | `view.closeSplit` | Close Editor Split | View | — | `AppCoordinator.closeEditorSplit()` |
 | `view.toggleLinkedScrolling` | Linked Editor Scrolling | View | — | `AppCoordinator.toggleLinkedEditorScrolling()` |
 | `view.toggleTableMode` | CSV/TSV Table Mode | View | — | `AppCoordinator.toggleTableMode()` |
+| `view.toggleVerticalLayout` | Vertical Writing Mode | View | — | Switches between AppKit horizontal and native vertical glyph layout |
 | `edit.addCursorAbove` | Add Cursor Above | Edit | ⌥⌘↑ | `AppCoordinator.addCursorAbove()` |
 | `edit.addCursorBelow` | Add Cursor Below | Edit | ⌥⌘↓ | `AppCoordinator.addCursorBelow()` |
 | `edit.selectNextOccurrence` | Select Next Occurrence | Edit | ⌘D | `AppCoordinator.selectNextOccurrence()` |

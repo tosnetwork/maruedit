@@ -400,6 +400,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         suppressTextChange = false
         lineIndex = LineIndex(textView.string)
         configureLargeFileEditingMode()
+        applyTextLayoutOrientation()
         lineNumbers?.isBinaryMode = doc.isBinaryMode
         let cursor = NSRange(location: min(doc.cursorPosition, lm.textStorage?.length ?? 0), length: 0)
         setSelections([cursor], primaryRange: cursor)
@@ -574,6 +575,27 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     var effectiveTabWidth: Int {
         document?.tabWidthOverride ?? document?.fileTypeProfile?.settings.tabWidth
             ?? preferences.tabWidth
+    }
+
+    var isVerticalLayout: Bool { document?.isVerticalLayout == true }
+
+    func toggleVerticalLayout() {
+        guard let document else { return }
+        document.isVerticalLayout.toggle()
+        let ranges = selectionSet.ranges
+        applyTextLayoutOrientation()
+        applyPreferences(preferences)
+        setSelections(ranges, primaryRange: ranges.first)
+    }
+
+    private func applyTextLayoutOrientation() {
+        let orientation: NSLayoutManager.TextLayoutOrientation = isVerticalLayout ? .vertical : .horizontal
+        guard textView.layoutOrientation != orientation else { return }
+        textView.setLayoutOrientation(orientation)
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = true
+        textView.needsLayout = true
+        textView.needsDisplay = true
     }
 
     func toggleWrapLines() {
