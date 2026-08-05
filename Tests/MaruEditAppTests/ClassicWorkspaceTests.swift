@@ -404,6 +404,19 @@ final class ClassicWorkspaceTests: XCTestCase {
         XCTAssertFalse(decoded.classicChrome.showToolbar)
     }
 
+    func testToolbarDetachesIntoFloatingPanelAndDocksWithoutLosingCommands() {
+        let controller = MainWindowController()
+        controller.setClassicToolbarFloating(false)
+        let commands = controller.classicToolbarIdentifiersForTesting
+        controller.setClassicToolbarFloating(true)
+        XCTAssertTrue(controller.isClassicToolbarFloatingForTesting)
+        XCTAssertEqual(controller.classicToolbarIdentifiersForTesting, commands)
+        XCTAssertTrue(NSApp.windows.contains { $0.title == "Maru Classic Toolbar" && $0.isVisible })
+        controller.setClassicToolbarFloating(false)
+        XCTAssertFalse(controller.isClassicToolbarFloatingForTesting)
+        XCTAssertEqual(controller.classicToolbarIdentifiersForTesting, commands)
+    }
+
     private func descendants(of view: NSView) -> [NSView] {
         view.subviews.flatMap { [$0] + descendants(of: $0) }
     }

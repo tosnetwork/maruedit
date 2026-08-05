@@ -1,5 +1,8 @@
 import Foundation
+import AppKit
+import MaruEditCore
 import XCTest
+@preconcurrency @testable import MaruEditApp
 
 final class ChromeParityAuditTests: XCTestCase {
     private var repositoryRoot: URL {
@@ -61,6 +64,7 @@ final class ChromeParityAuditTests: XCTestCase {
 
         let inventoryKeys = Set(inventory.map { "\($0[0])\u{1f}\($0[2])" })
         let mappingKeys = mappings.map { "\($0[0])\u{1f}\($0[1])" }
+        XCTAssertEqual(mappings.count, inventory.count, "every official row must have one audited mapping")
         XCTAssertEqual(mappingKeys.count, Set(mappingKeys).count)
         XCTAssertTrue(mappingKeys.allSatisfy(inventoryKeys.contains), "mapping contains a non-official row")
 
@@ -78,7 +82,7 @@ final class ChromeParityAuditTests: XCTestCase {
         // Menus listed here have completed row-for-row review. Adding a menu
         // is intentionally impossible until every official row is mapped.
         let completedMenus = Set([
-            "File", "Conv", "Insert", "Hilight", "Bookmark", "Tool", "Window", "Macro", "Other", "Help",
+            "File", "Edit", "Conv", "Disp", "Insert", "Search", "Hilight", "Bookmark", "Tool", "Window", "Macro", "Other", "Help",
         ])
         for menu in completedMenus {
             let official = inventory.filter { $0[0] == menu }.map { $0[2] }.sorted()
@@ -93,6 +97,46 @@ final class ChromeParityAuditTests: XCTestCase {
         XCTAssertFalse(matrix.contains("| Missing |"))
         XCTAssertFalse(matrix.contains("| Partial |"))
         XCTAssertFalse(matrix.contains("missing "))
+        XCTAssertFalse(matrix.contains("1. ❌"))
+        XCTAssertFalse(matrix.contains("2. 🟡"))
+    }
+
+    func testPlatformMappingsAreExplicitAndNoCapabilityIsUnsupported() throws {
+        let mappings = try tsv(named: "docs/hidemaru-9.57-menu-mapping.tsv", columns: 5)
+        XCTAssertFalse(mappings.contains { $0[2] == "unsupported" })
+        let nativeTargets = Set(mappings.filter { $0[2] == "native" }.map { $0[3] })
+        XCTAssertEqual(nativeTargets, Set([
+            "NSApplication.terminate", "NSWindow.performClose",
+            "NSApplication.orderFrontStandardAboutPanel", "macOS.inputSourceMenu",
+            "macOS.mountedRemoteOpen", "macOS.mountedRemoteSave",
+            "NSUndoManager.undo", "NSUndoManager.redo", "NSText.cut", "NSText.copy",
+            "NSText.paste", "NSText.deleteForward", "NSText.deleteBackward", "NSText.selectAll",
+            "NSText.moveUp", "NSText.moveDown", "NSText.moveForward", "NSText.moveBackward",
+            "NSText.moveToBeginningOfParagraph", "NSText.moveToEndOfParagraph",
+            "NSText.pageUp", "NSText.pageDown",
+        ]))
+        XCTAssertTrue(mappings.filter { ["native", "dynamic", "group"].contains($0[2]) }
+            .allSatisfy { !$0[4].isEmpty && !$0[4].contains("not implemented") })
+    }
+
+    @MainActor
+    func testEveryStableOfficialMappingIsPlacedInItsCorrespondingMenu() throws {
+        _ = NSApplication.shared
+        let app = AppDelegate(); app.buildMenu()
+        let mappings = try tsv(named: "docs/hidemaru-9.57-menu-mapping.tsv", columns: 5)
+        let displayedMenu = [
+            "Conv": "Convert", "Disp": "View", "Hilight": "Highlight", "Tool": "Tools",
+        ]
+        var missing: [String] = []
+        for row in mappings where row[2] == "stable" {
+            let title = displayedMenu[row[0]] ?? row[0]
+            guard let menu = NSApp.mainMenu?.items.compactMap(\.submenu).first(where: { $0.title == title }) else {
+                missing.append("\(row[0])/\(row[1]) -> missing menu \(title)"); continue
+            }
+            let ids = commandIDs(in: menu)
+            if !ids.contains(row[3]) { missing.append("\(row[0])/\(row[1]) -> \(row[3])") }
+        }
+        XCTAssertEqual(missing, [], "stable mappings absent from official menu:\n" + missing.joined(separator: "\n"))
     }
 
     private func captures(_ pattern: String, in text: String) -> [String] {
@@ -113,5 +157,13 @@ final class ChromeParityAuditTests: XCTestCase {
             }
             return values
         }
+    }
+
+    @MainActor
+    private func commandIDs(in menu: NSMenu) -> Set<String> {
+        Set(menu.items.flatMap { item -> [String] in
+            let own = (item.representedObject as? CommandID).map { [$0.rawValue] } ?? []
+            return own + (item.submenu.map { Array(commandIDs(in: $0)) } ?? [])
+        })
     }
 }

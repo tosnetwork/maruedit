@@ -17,12 +17,13 @@ final class ClassicWorkspaceChrome: NSView {
     private var configuredVisibility = ClassicChromeOptions.allVisible
     private var isSingleDocument = true
     private var isStatusBarVisible = true
+    private(set) var isToolbarFloating = false
     var externalTopGap: CGFloat = 0 { didSet { needsLayout = true } }
     var onLayoutChange: (() -> Void)?
 
     var headingText: String { heading.stringValue }
     var topChromeHeight: CGFloat {
-        (toolbar.isHidden ? 0 : Self.toolbarHeight) + (heading.isHidden ? 0 : Self.headingHeight)
+        (toolbar.isHidden || isToolbarFloating ? 0 : Self.toolbarHeight) + (heading.isHidden ? 0 : Self.headingHeight)
             + (ruler.isHidden ? 0 : Self.rulerHeight)
     }
     var bottomChromeHeight: CGFloat {
@@ -63,7 +64,7 @@ final class ClassicWorkspaceChrome: NSView {
     override func layout() {
         super.layout()
         let top = bounds.height
-        let toolbarHeight = toolbar.isHidden ? 0 : Self.toolbarHeight
+        let toolbarHeight = toolbar.isHidden || isToolbarFloating ? 0 : Self.toolbarHeight
         toolbar.frame = NSRect(
             x: 0, y: top - Self.toolbarHeight,
             width: bounds.width, height: Self.toolbarHeight)
@@ -152,6 +153,18 @@ final class ClassicWorkspaceChrome: NSView {
         toolbar.setIconSizeForTesting(size)
     }
     func performToolbarSearchForTesting(_ text: String) { toolbar.performSearchForTesting(text) }
+    func detachToolbarForFloating() -> NSView {
+        isToolbarFloating = true
+        toolbar.removeFromSuperview()
+        needsLayout = true; onLayoutChange?()
+        return toolbar
+    }
+    func attachFloatingToolbar() {
+        guard toolbar.superview !== self else { return }
+        isToolbarFloating = false
+        addSubview(toolbar)
+        needsLayout = true; onLayoutChange?()
+    }
     func setFunctionKeyCommandsForTesting(_ ids: [CommandID?]) {
         commandStrip.setCommandsForTesting(ids)
     }

@@ -18,6 +18,7 @@ final class LineNumberView: NSView {
     var editMarkOffsets: Set<Int> = [] { didSet { needsDisplay = true } }
     var foldRegions: [FoldRegion] = [] { didSet { needsDisplay = true } }
     var collapsedFoldIDs: Set<String> = [] { didSet { needsDisplay = true } }
+    var showsFoldControls = true { didSet { needsDisplay = true } }
     var onToggleFold: ((String) -> Void)?
     override var isFlipped: Bool { true }
 
@@ -130,7 +131,7 @@ final class LineNumberView: NSView {
             NSColor.systemOrange.setFill()
             NSRect(x: bounds.width - 5, y: y + 3, width: 3, height: 12).fill()
         }
-        if let fold {
+        if showsFoldControls, let fold {
             let collapsed = collapsedFoldIDs.contains(fold.id)
             let path = NSBezierPath()
             if collapsed {
@@ -153,7 +154,7 @@ final class LineNumberView: NSView {
     }
 
     override func mouseDown(with event: NSEvent) {
-        guard convert(event.locationInWindow, from: nil).x < 26,
+        guard showsFoldControls, convert(event.locationInWindow, from: nil).x < 26,
               let tv = textView, let lm = tv.layoutManager, let tc = tv.textContainer else {
             super.mouseDown(with: event); return
         }

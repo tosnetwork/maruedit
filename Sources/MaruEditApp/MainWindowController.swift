@@ -70,6 +70,8 @@ final class MainWindowController: NSWindowController,
         didSet { editorVC.onCrossDocumentScroll = onCrossDocumentScroll }
     }
     var onStatusMacroControl: (() -> Void)?
+    private var floatingToolbarPanel: NSPanel?
+    private static let floatingToolbarDefaultsKey = "MaruClassicToolbarFloating"
 
     /// Convenience shims onto `documentController` so the UI-orchestration
     /// code below (largely unchanged from before the M1-02 extraction)
@@ -98,6 +100,9 @@ final class MainWindowController: NSWindowController,
         self.init(window: w)
         documentController = DocumentController(fileTypeResolver: fileTypeResolver)
         buildUI()
+        if UserDefaults.standard.bool(forKey: Self.floatingToolbarDefaultsKey) {
+            setClassicToolbarFloating(true)
+        }
         searchHistory = searchHistoryStore.load()
         syncSearchHistoryUI()
         newDocument()
@@ -243,6 +248,7 @@ final class MainWindowController: NSWindowController,
     var classicToolbarDisplayModeForTesting: ToolbarDisplayMode { classicChrome.toolbarDisplayMode }
     var classicToolbarIconSizeForTesting: ToolbarIconSize { classicChrome.toolbarIconSize }
     var isClassicToolbarSearchVisibleForTesting: Bool { classicChrome.isToolbarSearchVisible }
+    var isClassicToolbarFloatingForTesting: Bool { classicChrome.isToolbarFloating }
     var isFunctionKeyStripMergedForTesting: Bool { classicChrome.isFunctionKeyStripMerged }
     var classicFunctionKeyCommandsForTesting: [String?] { classicChrome.functionKeyCommandIDs }
     var classicFunctionKeyCountForTesting: Int { classicChrome.functionKeyCount }
@@ -276,6 +282,36 @@ final class MainWindowController: NSWindowController,
     }
     func setClassicToolbarSearchVisibleForTesting(_ visible: Bool) {
         classicChrome.setToolbarSearchVisibleForTesting(visible)
+    }
+
+    func toggleClassicToolbarFloating() {
+        setClassicToolbarFloating(!classicChrome.isToolbarFloating)
+    }
+
+    func setClassicToolbarFloating(_ floating: Bool) {
+        guard floating != classicChrome.isToolbarFloating else { return }
+        if floating {
+            let panel = NSPanel(
+                contentRect: NSRect(x: 0, y: 0, width: 760, height: ClassicWorkspaceChrome.toolbarHeight),
+                styleMask: [.titled, .utilityWindow, .resizable], backing: .buffered, defer: false)
+            panel.title = "Maru Classic Toolbar"
+            panel.isFloatingPanel = true
+            panel.level = .floating
+            panel.hidesOnDeactivate = false
+            let toolbar = classicChrome.detachToolbarForFloating()
+            toolbar.frame = panel.contentView?.bounds ?? .zero
+            toolbar.autoresizingMask = [.width, .height]
+            panel.contentView?.addSubview(toolbar)
+            panel.setFrameAutosaveName("MaruClassicFloatingToolbar")
+            panel.orderFront(nil)
+            floatingToolbarPanel = panel
+        } else {
+            floatingToolbarPanel?.orderOut(nil)
+            classicChrome.attachFloatingToolbar()
+            floatingToolbarPanel = nil
+        }
+        UserDefaults.standard.set(floating, forKey: Self.floatingToolbarDefaultsKey)
+        layoutContentViews()
     }
     func setClassicToolbarIconSizeForTesting(_ size: ToolbarIconSize) {
         classicChrome.setToolbarIconSizeForTesting(size)
@@ -3117,6 +3153,14 @@ final class MainWindowController: NSWindowController,
         sidebarVC.updateMarkerResults(doc.colorMarkers.markers, text: doc.content)
     }
     func toggleFold() { editorVC.toggleFoldAtCursor() }
+    func toggleFoldMargin() { editorVC.toggleFoldMargin() }
+    func copyCurrentWord() { editorVC.copyCurrentWord() }
+    func cutCurrentWord() { editorVC.cutCurrentWord() }
+    func deleteCurrentWord() { editorVC.deleteCurrentWord() }
+    func copyCurrentLine() { editorVC.copyCurrentLine() }
+    func cutCurrentLine() { editorVC.cutCurrentLine() }
+    func cutToLineEnd() { editorVC.cutToLineEnd() }
+    func clearUndoBuffer() { editorVC.clearUndoBuffer() }
     func beginPartialOutlineEditing() { _ = editorVC.beginPartialOutlineEditing() }
     func endPartialOutlineEditing() { editorVC.endPartialOutlineEditing() }
     func collapseAllFolds() { editorVC.collapseAllFolds() }

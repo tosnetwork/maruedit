@@ -35,4 +35,29 @@ final class WordParagraphCommandTests: XCTestCase {
         controller.deleteWordForward()
         XCTAssertNotEqual(controller.macroEditor.textView.string, original)
     }
+
+    func testWholeWordAndLineClipboardCommands() {
+        controller.prepareUITestDocument(content: "alpha beta\ngamma\n", selections: [NSRange(location: 7, length: 0)])
+        controller.copyCurrentWord()
+        XCTAssertEqual(NSPasteboard.general.string(forType: .string), "beta")
+        controller.cutCurrentWord()
+        XCTAssertEqual(controller.macroEditor.textView.string, "alpha \ngamma\n")
+        controller.macroEditor.textView.undoManager?.undo()
+        XCTAssertEqual(controller.macroEditor.textView.string, "alpha beta\ngamma\n")
+
+        controller.macroEditor.setSelections([NSRange(location: 1, length: 0)])
+        controller.cutCurrentLine()
+        XCTAssertEqual(NSPasteboard.general.string(forType: .string), "alpha beta\n")
+        XCTAssertEqual(controller.macroEditor.textView.string, "gamma\n")
+    }
+
+    func testCutToLineEndAndClearUndoBuffer() {
+        controller.prepareUITestDocument(content: "alpha beta\ngamma", selections: [NSRange(location: 6, length: 0)])
+        controller.cutToLineEnd()
+        XCTAssertEqual(NSPasteboard.general.string(forType: .string), "beta")
+        XCTAssertEqual(controller.macroEditor.textView.string, "alpha \ngamma")
+        XCTAssertTrue(controller.macroEditor.textView.undoManager?.canUndo == true)
+        controller.clearUndoBuffer()
+        XCTAssertFalse(controller.macroEditor.textView.undoManager?.canUndo == true)
+    }
 }

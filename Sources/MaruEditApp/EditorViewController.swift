@@ -549,6 +549,26 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     }
     var searchMarkerOffsetsForTesting: Set<Int> { searchMarkerOffsets }
     var foldRegionCountForTesting: Int { lineNumbers?.foldRegions.count ?? 0 }
+    var showsFoldMarginForTesting: Bool { lineNumbers?.showsFoldControls ?? false }
+    func toggleFoldMargin() { lineNumbers?.showsFoldControls.toggle() }
+
+    func copyCurrentWord() { selectCurrentWord(); textView.copy(nil) }
+    func cutCurrentWord() { selectCurrentWord(); textView.cut(nil) }
+    func deleteCurrentWord() { selectCurrentWord(); textView.delete(nil) }
+    func copyCurrentLine() { selectCurrentLine(); textView.copy(nil) }
+    func cutCurrentLine() { selectCurrentLine(); textView.cut(nil) }
+    func cutToLineEnd() { deleteToLineEnd(copyingToClipboard: true) }
+    func clearUndoBuffer() { textView.undoManager?.removeAllActions() }
+
+    private func deleteToLineEnd(copyingToClipboard: Bool) {
+        let ns = textView.string as NSString
+        let cursor = min(textView.selectedRange().location, ns.length)
+        let line = ns.lineRange(for: NSRange(location: cursor, length: 0))
+        var end = NSMaxRange(line)
+        while end > cursor, CharacterSet.newlines.contains(UnicodeScalar(ns.character(at: end - 1))!) { end -= 1 }
+        textView.setSelectedRange(NSRange(location: cursor, length: max(0, end - cursor)))
+        if copyingToClipboard { textView.cut(nil) } else { textView.delete(nil) }
+    }
 
     func applyPreferences(_ preferences: Preferences) {
         self.preferences = preferences

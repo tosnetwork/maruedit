@@ -154,6 +154,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         fileMenu.addItem(commandItem(.fileOpenFolder))
         fileMenu.addItem(commandItem(.fileOpenPartial))
         fileMenu.addItem(commandItem(.fileOpenBinary))
+        fileMenu.addItem(commandItem(.viewWebBrowseMode))
         fileMenu.addItem(commandItem(.fileProjectHistory))
         fileMenu.addItem(commandItem(.fileOpenWorkspace))
         fileMenu.addItem(commandItem(.fileSaveWorkspace))
@@ -191,6 +192,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         fileMenu.addItem(commandItem(.fileDiscardAllAndClose))
         fileMenu.addItem(commandItem(.fileAppendSave))
         fileMenu.addItem(commandItem(.fileAppendRead))
+        fileMenu.addItem(commandItem(.insertFileContents))
         fileMenu.addItem(.separator())
         fileMenu.addItem(commandItem(.fileOpenCursorTargetAssociated))
         fileMenu.addItem(commandItem(.fileOpenCursorTargetInEditor))
@@ -227,6 +229,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         editMenu.addItem(commandItem(.editRestoreDeletion))
         editMenu.addItem(commandItem(.editCorrectCapsLock))
         editMenu.addItem(commandItem(.editReconvert))
+        editMenu.addItem(commandItem(.editDeleteWordAll))
+        editMenu.addItem(commandItem(.editCopyWord))
+        editMenu.addItem(commandItem(.editCutWord))
+        editMenu.addItem(commandItem(.editCopyLine))
+        editMenu.addItem(commandItem(.editCutLine))
+        editMenu.addItem(commandItem(.editCutToLineEnd))
+        editMenu.addItem(commandItem(.editClearUndoBuffer))
         editMenu.addItem(.separator())
         editMenu.addItem(commandItem(.editSelectWord))
         editMenu.addItem(commandItem(.editSelectLine))
@@ -265,6 +274,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         editMenu.addItem(commandItem(.navigateExpandAllFolds))
         editMenu.addItem(commandItem(.navigateBeginPartialOutline))
         editMenu.addItem(commandItem(.navigateEndPartialOutline))
+        editMenu.addItem(.separator())
+        editMenu.addItem(commandItem(.insertTemplate))
+        editMenu.addItem(commandItem(.searchFind))
+        editMenu.addItem(commandItem(.searchReplace))
+        editMenu.addItem(commandItem(.fileReload))
         editItem.submenu = editMenu
         main.addItem(editItem)
 
@@ -423,6 +437,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let viewItem = NSMenuItem()
         let viewMenu = NSMenu(title: "View")
         viewMenu.addItem(commandItem(.viewToggleToolbar))
+        viewMenu.addItem(commandItem(.viewToggleFloatingToolbar))
         viewMenu.addItem(commandItem(.viewToggleSidebar))
         viewMenu.addItem(commandItem(.viewToggleWrap))
         viewMenu.addItem(commandItem(.viewToggleTableMode))
@@ -431,6 +446,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         for id: CommandID in [
             .viewToggleLineNumbers, .viewToggleHeading, .viewToggleFunctionKeys,
             .viewToggleStatusBar, .viewToggleOutputPane, .viewFocusOutputPane,
+            .viewToggleFoldMargin, .viewBeginPartialEditing, .viewEndPartialEditing,
+            .viewWebBrowseMode,
+            .windowShowFilesPane, .windowShowOutlinePane,
+            .windowShowDocumentBrowserPane, .windowShowSharedBrowserPane,
+            .windowToggleBrowserPane,
         ] { viewMenu.addItem(commandItem(id)) }
         let rulerItem = NSMenuItem(title: "Ruler", action: nil, keyEquivalent: "")
         let rulerMenu = NSMenu(title: "Ruler")
@@ -493,12 +513,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .viewCloseSplit, .viewToggleLinkedScrolling,
             .navigateCompareNextDocument, .navigateNextDifference, .navigatePreviousDifference,
             .fileSaveWorkspace, .fileOpenWorkspace,
+            .fileCloseWorkspace,
             .windowAlwaysOnTop, .windowFullScreen,
             .windowShowOutlinePane, .windowShowFilesPane,
             .windowShowDocumentBrowserPane, .windowShowSharedBrowserPane,
             .windowToggleBrowserPane, .windowFocusBrowserPane,
             .windowToggleCrossDocumentScrollLink,
-            .viewToggleOutputPane, .windowFocusUtilityPane,
+            .viewToggleOutputPane, .viewFocusOutputPane, .windowFocusUtilityPane,
         ] { winMenu.addItem(commandItem(id)) }
         winMenu.addItem(.separator())
         winMenu.addItem(commandItem(.windowNextTab))
@@ -536,6 +557,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .convertHalfWidthAlphanumeric, .convertFullWidthAlphanumeric,
             .convertHalfWidthKatakana, .convertFullWidthKatakana,
             .convertTabsToSpaces, .convertSpacesToTabs,
+            .editIndent, .editOutdent, .editSortLines,
         ] { convertMenu.addItem(commandItem(id)) }
         convertItem.submenu = convertMenu
 
@@ -626,6 +648,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         clearHistoryMenu.addItem(commandItem(.otherClearAllHistories))
         clearHistoryItem.submenu = clearHistoryMenu
         otherMenu.addItem(clearHistoryItem)
+        otherMenu.addItem(.separator())
+        otherMenu.addItem(commandItem(.helpCheckUpdates))
+        otherMenu.addItem(commandItem(.appHelp))
+        otherMenu.addItem(commandItem(.helpMacros))
         otherItem.submenu = otherMenu
 
         let helpItem = NSMenuItem()

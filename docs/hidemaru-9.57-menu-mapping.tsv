@@ -15,13 +15,13 @@ File	Save as project...	stable	file.saveWorkspace	Portable workspace captures pr
 File	Open desktop...	stable	file.openWorkspace	Open .maruedit-workspace desktop
 File	Save as desktop...	stable	file.saveWorkspace	Save .maruedit-workspace desktop
 File	Close desktop	stable	file.closeWorkspace	Close the workspace document set with normal save/discard/cancel confirmation
-File	New web browse mode(H)	unsupported	windows.webBrowseMode	Embedded IE/WebView browse mode has no macOS editor-shell equivalent; URLs open in the default browser
-File	FTP Open(G)...	unsupported	windows.ftpModule	Hidemarnet/FTP module is Windows-only; mounted remote files use the normal Open command
-File	FTP Save as...	unsupported	windows.ftpModule	Hidemarnet/FTP module is Windows-only; mounted remote files use the normal Save As command
+File	New web browse mode(H)	stable	view.webBrowseMode	Open the active document in the embedded WebKit browser pane
+File	FTP Open(G)...	native	macOS.mountedRemoteOpen	Open files from Finder-mounted FTP SFTP or WebDAV volumes
+File	FTP Save as...	native	macOS.mountedRemoteSave	Save through native file panels to mounted remote volumes
 File	Encoding	group	file.encodingAndBinary	Encoding choices are dynamic; binary mode is file.openBinary
 File	Browse mode	stable	file.toggleViewMode	Document-local View Mode
 File	Switch Read-only	stable	file.toggleOverwriteProtection	Edit-preserving same-path overwrite prohibition
-File	Web	group	windows.webCommands	Windows Web submenu; browser destinations use the default browser
+File	Web	group	view.webCommands	Embedded WebKit pane plus default-browser destination commands
 File	Save and Exit all	stable	file.saveAllAndClose	Save and close all documents
 File	Exit	native	NSApplication.terminate	macOS application lifecycle command
 File	Quit all	stable	file.discardAllAndClose	Close all documents with normal unsaved-change handling
@@ -188,3 +188,150 @@ Window	Next Maruo Editor(with minimize)	stable	window.nextManagedIncludingMinimi
 Window	Prev Maruo Editor(with minimize)	stable	window.previousManagedIncludingMinimized	Cycle backward and restore minimized managed windows
 Window	Just before active	stable	window.previousActive	Activate the previously active managed window
 Window	Window list...	stable	window.tabList	Select an open document from the complete tab list
+Disp	Tool bar	stable	view.toggleToolbar	Persistently show or hide the Maru Classic toolbar
+Disp	Tab mode	group	window.nativeTabWorkspace	Native document tabs are always available and hidden for one document
+Disp	Function-Key	stable	view.toggleFunctionKeys	Show or hide the twelve-slot function-key strip
+Disp	Status bar	stable	view.toggleStatusBar	Show or hide the interactive status bar
+Disp	File maneger pane(X)	stable	window.showFilesPane	Reveal and focus the Files utility pane
+Disp	Output pane	stable	view.toggleOutputPane	Show or hide the shared output pane
+Disp	Browser pane	stable	window.showSharedBrowserPane	Reveal the embedded WebKit browser pane
+Disp	Browser pane show/hide	stable	window.toggleBrowserPane	Show or collapse the embedded browser pane
+Disp	Outline pane	stable	window.showOutlinePane	Reveal and focus the outline pane
+Disp	Headline bar(U)	stable	view.toggleHeading	Show or hide the classic heading bar
+Disp	Left margin for folding	stable	view.toggleFoldMargin	Independently toggle interactive fold controls in the gutter
+Disp	Line-number	stable	view.toggleLineNumbers	Show or hide the line-number gutter
+Disp	Ruler	stable	view.toggleRuler	Show or hide the configurable horizontal ruler
+Disp	Auto spell check	stable	view.toggleSpellChecking	Toggle native continuous spelling
+Disp	Each browser pane	stable	window.showDocumentBrowserPane	Open embedded WebKit at the active document URL
+Disp	Each browser pane show/hide	stable	window.toggleBrowserPane	Show or collapse the document browser pane
+Disp	Column(I)	group	view.columnDisplayOptions	Wrap ruler tab-stop and vertical-writing display options
+Disp	Multi column mode(J)	stable	view.toggleColumnLayout	Continuous editable TextKit column flow
+Disp	Web browse mode	stable	view.webBrowseMode	Open the active document in embedded WebKit
+Disp	Show character code	stable	view.showCharacterCode	Show encoding-aware code details at the cursor
+Disp	Count characters	stable	view.showCharacterCount	Open configurable weighted character counting
+Disp	Redraw	stable	view.redraw	Invalidate editor gutter and classic chrome
+Disp	Range-Edit In([)	stable	view.beginPartialEditing	Isolate the containing outline range without document mutation
+Disp	Range-Edit Out(])	stable	view.endPartialEditing	Restore full-document editing
+Disp	Folding(V)	group	view.foldingAndFullscreen	Toggle fold and native full-screen commands
+Edit	Undo	native	NSUndoManager.undo	Native document undo transaction
+Edit	Redo	native	NSUndoManager.redo	Native document redo transaction
+Edit	Repeat previous action	stable	edit.repeatLastOperation	Repeat the most recent deterministic edit or conversion
+Edit	Restore deletion	stable	edit.restoreDeletion	Restore the most recently deleted text
+Edit	Cut	native	NSText.cut	Native multi-range cut through the first responder
+Edit	Copy	native	NSText.copy	Native multi-range copy through the first responder
+Edit	Copy with Reference	stable	edit.copyQuoted	Copy selected logical lines with quote prefixes
+Edit	Cut for append(W)	stable	edit.appendCut	Append selection to clipboard and remove it undoably
+Edit	Copy for append(A)	stable	edit.appendCopy	Append selection to the current clipboard
+Edit	Paste	native	NSText.paste	Native first-responder paste
+Edit	Paste with Reference(@)	stable	edit.pasteQuoted	Remove quote prefixes while pasting
+Edit	Delete	native	NSText.deleteForward	Native forward deletion
+Edit	Delete line	stable	edit.deleteLine	Delete selected logical lines as one transaction
+Edit	Delete line 2	stable	edit.deleteLine	Logical-line deletion is the default MaruEdit line operation
+Edit	Delete after cursor	stable	edit.deleteToLineEnd	Delete to logical line end without consuming newline
+Edit	Delete before cursor	stable	edit.deleteToLineStart	Delete to logical line start
+Edit	Delete word	stable	edit.deleteWordForward	Delete using native forward word boundary
+Edit	Delete Word (all)	stable	edit.deleteWordAll	Select and delete the complete current word
+Edit	Delete Word (front)	stable	edit.deleteWordBackward	Delete using native backward word boundary
+Edit	Backspace	native	NSText.deleteBackward	Native backward deletion
+Edit	Convert	group	convert.pipelineDialog	Parameterized conversion and formatting pipeline
+Edit	Reconvert(G)	stable	edit.reconvert	Route selection to the active input method reconversion command
+Edit	Change case(K)	stable	edit.correctCapsLock	Toggle selected or current word letter case
+Edit	Begin selection	group	macOS.selectionExtension	Native Shift plus movement extends selection from the anchor
+Edit	Begin Box selection	stable	edit.beginColumnSelection	Begin rectangular selection mode
+Edit	Begin Box selection (by multi)	stable	edit.beginColumnSelection	Rectangular ranges materialize as multiple selections
+Edit	Begin line selection(:)	stable	edit.selectLine	Select the complete logical line
+Edit	Select all	native	NSText.selectAll	Native first-responder select all
+Edit	To multi select(])	group	edit.multipleSelection	Select-next and select-all-occurrence commands create multiple selections
+Edit	Invert selection(^)	stable	edit.invertSelections	Select the complement of all active selections
+Edit	paste + history back	stable	edit.pastePreviousClipboard	Paste the preceding monitored clipboard value
+Edit	paste + history back(¥)	stable	edit.pastePreviousClipboard	Second official binding reaches the same clipboard-history action
+Edit	Clipboard History...	stable	edit.clipboardHistory	Browse paste or clear monitored clipboard values
+Edit	Box paste(J)	stable	edit.boxPaste	Map clipboard lines vertically from the visual cursor column
+Edit	Select word	stable	edit.selectWord	Select the complete current word
+Edit	Select line	stable	edit.selectLine	Select the complete current logical line
+Edit	Copy word	stable	edit.copyWord	Select and copy the complete current word
+Edit	Cut word	stable	edit.cutWord	Select and cut the complete current word
+Edit	Copy line	stable	edit.copyLine	Select and copy the complete logical line including ending
+Edit	Cut line(/)	stable	edit.cutLine	Select and cut the complete logical line undoably
+Edit	Cut after cursor	stable	edit.cutToLineEnd	Cut to logical line end without consuming newline
+Edit	Copy it(Z)	group	edit.copyVariants	Native quoted word line and append-copy variants
+Edit	Multi select(.)	group	edit.selectNextOccurrence	Select next occurrence plus completion commands
+Edit	Complete decide 1	dynamic	completion.candidate1	Choose candidate 1 from the native accessible completion panel
+Edit	Complete decide 2	dynamic	completion.candidate2	Choose candidate 2 from the native accessible completion panel
+Edit	Complete decide 3	dynamic	completion.candidate3	Choose candidate 3 from the native accessible completion panel
+Edit		stable	insert.template	Official Template submenu inserts a selected profile template
+Edit	Find...	stable	search.find	Open the unified Find bar
+Edit	Replace...	stable	search.replace	Open the unified Replace bar
+Edit	Reload	stable	file.reload	Reload active document from disk with modification protection
+Edit	Clear undo buffer	stable	edit.clearUndoBuffer	Remove all undo and redo actions for the active editor
+Search	Find...	stable	search.find	Open the unified incremental Find bar
+Search	Find(up)...	stable	search.findUpward	Open Find with upward Return direction
+Search	Find word...	stable	search.findWord	Capture and search the native whole word at cursor
+Search	Next	stable	search.findNext	Find the next match with wrapping
+Search	Previous	stable	search.findPrevious	Find the previous match with wrapping
+Search	Select all found(¥)	stable	search.selectAllMatches	Create one selection per unified-engine match
+Search	List all found(¥¥)	stable	search.listAllMatches	List matching lines in Results
+Search	Show outline for all found	stable	search.outlineAllMatches	Build navigable outline rows for every match
+Search	Color marker all found(:)	stable	search.colorAllMatches	Apply rotating temporary color to all matches
+Search	Clear color marker all found	stable	search.clearMatchColors	Remove match colors and gutter markers
+Search	Replace...	stable	search.replace	Open the unified Replace bar
+Search	Highlight found string	stable	search.toggleHighlight	Toggle all-match highlighting for active query
+Search	Get find text	stable	search.captureString	Capture selection or current word into search state
+Search	Return to start position	stable	search.returnToStart	Restore caret captured when search began
+Search	Jump...	stable	search.goToLine	Jump to validated logical line number
+Search	Top of file	stable	navigate.documentStart	Move to UTF-16 offset zero
+Search	Bottom of file	stable	navigate.documentEnd	Move to terminal insertion point
+Search	To Screen top(Y)	stable	navigate.screenStart	Move to first currently visible character
+Search	To Screen bottom(Z)	stable	navigate.screenEnd	Move to final currently visible character
+Search	Word right	stable	edit.moveWordRight	Native word-boundary movement right
+Search	Word right (salnen style)	stable	navigate.wordRightSalnen	Move to alphanumeric or full-width word end
+Search	Word left	stable	edit.moveWordLeft	Native word-boundary movement left
+Search	Move to word top	stable	navigate.wordStart	Move to native word start
+Search	Move to word bottom	stable	navigate.wordEnd	Move to native word end
+Search	To top of line	stable	navigate.lineStart	Move to TextKit visual-line start
+Search	To bottom of line	stable	navigate.lineEnd	Move onto visual-line final character
+Search	To bottom of line(type 2)	stable	navigate.lineEndAfterCharacter	Move after visual-line final character
+Search	go logical line top	stable	navigate.logicalLineStart	Move to newline-delimited line start
+Search	go logical line end	stable	navigate.logicalLineEnd	Move before logical line ending
+Search	Next page	stable	navigate.nextPage	Native page-down navigation
+Search	Previous page	stable	navigate.previousPage	Native page-up navigation
+Search	Half next page	stable	navigate.halfNextPage	Advance by half visible character range
+Search	Half prev page	stable	navigate.halfPreviousPage	Rewind by half visible character range
+Search	Scroll up	stable	navigate.scrollUp	Scroll one line while moving cursor
+Search	Scroll down	stable	navigate.scrollDown	Scroll one line while moving cursor
+Search	Scroll Up (type 2)	stable	navigate.scrollUp2	Scroll one line preserving visual cursor
+Search	Scroll Down (type 2)	stable	navigate.scrollDown2	Scroll one line preserving visual cursor
+Search	Back tab	stable	navigate.previousTabStop	Move to preceding configured display-column tab stop
+Search	Forward tab	stable	navigate.nextTabStop	Move to following configured display-column tab stop
+Search	Jump to mached parenthesis(K)	stable	navigate.matchingBracket	Match nested parentheses brackets or braces
+Search	move to {	stable	navigate.openingBrace	Move to nearest containing opening brace
+Search	move to }	stable	navigate.closingBrace	Move to next closing brace
+Search	Jump to mached tag	stable	navigate.matchingTag	Match nested HTML or XML tags
+Search	Last updated position	stable	navigate.lastEdit	Move to most recently recorded edit mark
+Search	Find Updated position Down	stable	search.nextEditMark	Navigate to next changed-line mark with wrapping
+Search	Find Updated position Up	stable	search.previousEditMark	Navigate to previous changed-line mark with wrapping
+Search	Clear edit marks	stable	search.clearEditMarks	Clear edit marks without changing dirty state
+Search	Previous position	stable	navigate.previousCursor	Pop bounded cursor-position history
+Search	Highlighted line	stable	search.toggleMark	Toggle classic yellow mark on current line
+Search	Mark list...	stable	search.listMarks	List marked lines in Results
+Search	Search marked line down(X)	stable	navigate.nextMarker	Navigate to next marked line with wrapping
+Search	Search marked line up(Q)	stable	navigate.previousMarker	Navigate to previous marked line with wrapping
+Search	Clear all mark	stable	search.clearAllMarks	Clear marks across all open documents
+Search	Clear current file mark	stable	search.clearCurrentMarks	Clear marks only in active document
+Search	Find-marker list(-)...	stable	search.listColorLayers	List persistent query color layers and counts
+Search	Color marker(/)	group	highlight.temporaryMarkers	Configure apply remove select and navigate temporary markers
+Search	Previous result	stable	search.previousResult	Navigate search-color then Grep results backward
+Search	Nest grep result	stable	search.nextGrepResult	Open next Grep output row
+Search	Previous grep result	stable	search.previousGrepResult	Open previous Grep output row
+Search	grep and replace(@)...	stable	search.grepReplace	Open directory Grep replacement workflow with preview
+Search	grep...	stable	search.grep	Run bounded cancellable directory Grep
+Search	Select inselect	stable	search.selectRange	Reselect explicit search scope
+Search	Set inselect	stable	search.setRange	Persist current selection as explicit search scope
+Search	Cursor up	native	NSText.moveUp	Native visual-line cursor movement
+Search	Cursor down	native	NSText.moveDown	Native visual-line cursor movement
+Search	Cursor right	native	NSText.moveForward	Native grapheme-aware cursor movement
+Search	Cursor left	native	NSText.moveBackward	Native grapheme-aware cursor movement
+Search	Cursor up (no wrap)	native	NSText.moveToBeginningOfParagraph	Native logical-line upward binding substitute
+Search	Cursor down (no wrap)	native	NSText.moveToEndOfParagraph	Native logical-line downward binding substitute
+Search	Fast cursor up	native	NSText.pageUp	Native accelerated upward navigation
+Search	Fast cursor down	native	NSText.pageDown	Native accelerated downward navigation

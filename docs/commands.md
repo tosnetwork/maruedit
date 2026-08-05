@@ -228,6 +228,7 @@ significantly, replace this with a small script that generates it from
 | `search.clearRange` | Clear Search Range | Search › Search Range | — | Restores document-wide searching |
 | `view.toggleSidebar` | Toggle Sidebar | View | ⌘B | `AppCoordinator.toggleSidebar()` |
 | `view.toggleToolbar` | Toolbar | View | — | Persistently toggles the Maru Classic command toolbar |
+| `view.toggleFloatingToolbar` | Floating Toolbar | View | — | Detaches or docks the live command toolbar in a persistent native utility panel |
 | `view.toggleSpellChecking` | Automatic Spell Checking | View | — | Toggles native continuous spelling for the active document |
 | `view.showCharacterCode` | Character Code | View | — | Shows encoding-aware code details for the cursor character |
 | `view.showCharacterCount` | Character Count | View | — | Opens the configurable weighted character-count panel |
@@ -260,6 +261,10 @@ significantly, replace this with a small script that generates it from
 | `view.toggleStatusBar` | Show Status Bar | View | — | Shows or hides the interactive status fields |
 | `view.toggleOutputPane` | Show Output Pane | View | — | Shows or hides grep, macro and external-command output |
 | `view.focusOutputPane` | Focus Output Pane | View | — | Shows the output pane if necessary and moves keyboard focus to it |
+| `view.toggleFoldMargin` | Folding Margin | View | — | Independently shows or hides interactive folding controls in the gutter |
+| `view.beginPartialEditing` | Range Edit In | View | — | Isolates the containing outline range without mutating the document |
+| `view.endPartialEditing` | Range Edit Out | View | — | Restores full-document editing after partial range editing |
+| `view.webBrowseMode` | Web Browse Mode | View | — | Opens the active document in the embedded WebKit browser pane |
 | `edit.addCursorAbove` | Add Cursor Above | Edit | ⌥⌘↑ | `AppCoordinator.addCursorAbove()` |
 | `edit.addCursorBelow` | Add Cursor Below | Edit | ⌥⌘↓ | `AppCoordinator.addCursorBelow()` |
 | `edit.selectNextOccurrence` | Select Next Occurrence | Edit | ⌘D | `AppCoordinator.selectNextOccurrence()` |
@@ -307,6 +312,13 @@ significantly, replace this with a small script that generates it from
 | `edit.restoreDeletion` | Restore Last Deleted Text | Edit | — | Reinserts the most recently deleted text at every active selection |
 | `edit.correctCapsLock` | Correct Caps Lock Mistake | Edit | — | Toggles the selected/current word's letter case; macOS owns the physical Caps Lock state |
 | `edit.reconvert` | Reconvert with Input Method | Edit | — | Routes the selection to the active macOS input method's native reconversion command |
+| `edit.deleteWordAll` | Delete Whole Word | Edit | — | Selects and deletes the complete word at the primary cursor |
+| `edit.copyWord` | Copy Word | Edit | — | Selects and copies the complete word at the primary cursor |
+| `edit.cutWord` | Cut Word | Edit | — | Selects and cuts the complete word at the primary cursor |
+| `edit.copyLine` | Copy Line | Edit | — | Selects and copies the complete logical line including its ending |
+| `edit.cutLine` | Cut Line | Edit | — | Selects and cuts the complete logical line as one undoable edit |
+| `edit.cutToLineEnd` | Cut after Cursor | Edit | — | Cuts from the cursor to the logical line end without consuming its newline |
+| `edit.clearUndoBuffer` | Clear Undo Buffer | Edit | — | Removes all undo and redo actions for the active editor |
 | `navigate.toggleBookmark` | Toggle Bookmark | Edit | — | `AppCoordinator.toggleBookmark()` |
 | `navigate.nextBookmark` | Next Bookmark | Edit | — | `AppCoordinator.nextBookmark()` |
 | `navigate.previousBookmark` | Previous Bookmark | Edit | — | `AppCoordinator.previousBookmark()` |

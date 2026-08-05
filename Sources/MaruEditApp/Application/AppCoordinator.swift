@@ -657,6 +657,15 @@ final class AppCoordinator {
     func directTagJump()                  { ensureWindowControllerReady().directTagJump() }
     func backTagJump()                    { ensureWindowControllerReady().backTagJump() }
     func toggleFold()                    { ensureWindowControllerReady().toggleFold() }
+    func toggleFoldMargin()              { ensureWindowControllerReady().toggleFoldMargin() }
+    func toggleFloatingToolbar()         { ensureWindowControllerReady().toggleClassicToolbarFloating() }
+    func copyCurrentWord()               { ensureWindowControllerReady().copyCurrentWord() }
+    func cutCurrentWord()                { ensureWindowControllerReady().cutCurrentWord() }
+    func deleteCurrentWord()             { ensureWindowControllerReady().deleteCurrentWord() }
+    func copyCurrentLine()               { ensureWindowControllerReady().copyCurrentLine() }
+    func cutCurrentLine()                { ensureWindowControllerReady().cutCurrentLine() }
+    func cutToLineEnd()                   { ensureWindowControllerReady().cutToLineEnd() }
+    func clearUndoBuffer()                { ensureWindowControllerReady().clearUndoBuffer() }
     func collapseAllFolds()              { ensureWindowControllerReady().collapseAllFolds() }
     func expandAllFolds()                { ensureWindowControllerReady().expandAllFolds() }
     func beginPartialOutlineEditing()    { ensureWindowControllerReady().beginPartialOutlineEditing() }

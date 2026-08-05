@@ -23,4 +23,12 @@ final class PartialOutlineEditingTests: XCTestCase {
         XCTAssertNil(editor.partialEditRange)
         XCTAssertEqual(document.content, original)
     }
+
+    func testFoldingMarginVisibilityIsIndependentFromLineNumbers() {
+        let editor = EditorViewController(); _ = editor.view
+        XCTAssertTrue(editor.showsFoldMarginForTesting)
+        editor.toggleFoldMargin()
+        XCTAssertFalse(editor.showsFoldMarginForTesting)
+        XCTAssertFalse(editor.areLineNumbersHidden)
+    }
 }
