@@ -79,13 +79,20 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     var appliedPreferences: Preferences { preferences }
     var areLineNumbersHidden: Bool { lineNumbers?.isHidden ?? false }
     private var preferredEditorFont: NSFont {
-        preferences.fontName == "SF Mono"
-            ? NSFont.monospacedSystemFont(ofSize: preferences.fontSize, weight: .regular)
-            : (NSFont(name: preferences.fontName, size: preferences.fontSize)
-                ?? NSFont.monospacedSystemFont(ofSize: preferences.fontSize, weight: .regular))
+        let appearance = document?.fileTypeProfile?.settings.appearance
+        let name = appearance?.fontName ?? preferences.fontName
+        let size = min(72, max(8, appearance?.fontSize ?? preferences.fontSize))
+        return name == "SF Mono"
+            ? NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
+            : (NSFont(name: name, size: size)
+                ?? NSFont.monospacedSystemFont(ofSize: size, weight: .regular))
     }
     var currentEditorFont: NSFont { preferredEditorFont }
-    private var editorForeground: NSColor { isHighContrast ? .white : Theme.foreground }
+    private var editorForeground: NSColor {
+        if isHighContrast { return .white }
+        return Self.color(hex: document?.fileTypeProfile?.settings.appearance?.foregroundHex)
+            ?? Theme.foreground
+    }
 
     /// Multi-cursor ("select all occurrences") edit-mode state. Owned by
     /// this instance — not a global dictionary keyed by identity, per
@@ -408,6 +415,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         refreshBookmarkGutter()
     }
     var searchMarkerOffsetsForTesting: Set<Int> { searchMarkerOffsets }
+    var foldRegionCountForTesting: Int { lineNumbers?.foldRegions.count ?? 0 }
 
     func applyPreferences(_ preferences: Preferences) {
         self.preferences = preferences
@@ -424,6 +432,11 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         paragraph.defaultTabInterval = " ".size(withAttributes: [.font: font]).width
             * CGFloat(max(1, effectivePreferences.tabWidth))
         textView.font = font
+        textView.textColor = editorForeground
+        textView.backgroundColor = isHighContrast ? .black
+            : Self.color(hex: document?.fileTypeProfile?.settings.appearance?.backgroundHex) ?? Theme.background
+        textView.selectedTextAttributes[.backgroundColor] = Self.color(
+            hex: document?.fileTypeProfile?.settings.appearance?.selectionHex) ?? Theme.selection
         (textView as? MaruTextView)?.invisibleCharacters = document?.largeFileMode.usesReducedFeatures == true
             ? .none : preferences.invisibleCharacters
         textView.defaultParagraphStyle = paragraph
@@ -447,6 +460,16 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         }
         applyHighContrast(isHighContrast)
         lineNumbers?.needsDisplay = true
+    }
+
+    private static func color(hex: String?) -> NSColor? {
+        guard var value = hex?.trimmingCharacters(in: .whitespacesAndNewlines), value.hasPrefix("#") else { return nil }
+        value.removeFirst()
+        guard value.count == 6, let rgb = Int(value, radix: 16) else { return nil }
+        return NSColor(
+            red: CGFloat((rgb >> 16) & 0xff) / 255,
+            green: CGFloat((rgb >> 8) & 0xff) / 255,
+            blue: CGFloat(rgb & 0xff) / 255, alpha: 1)
     }
 
     func showCompletions() {
@@ -521,12 +544,14 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     func applyHighContrast(_ enabled: Bool) {
         isHighContrast = enabled
         guard isViewLoaded else { return }
-        textView.backgroundColor = enabled ? .black : Theme.background
+        textView.backgroundColor = enabled ? .black
+            : Self.color(hex: document?.fileTypeProfile?.settings.appearance?.backgroundHex) ?? Theme.background
         textView.textColor = editorForeground
         textView.insertionPointColor = enabled ? .white : Theme.cursor
         textView.selectedTextAttributes = [
-            .backgroundColor: enabled ? NSColor.white : Theme.selection,
-            .foregroundColor: enabled ? NSColor.black : Theme.foreground,
+            .backgroundColor: enabled ? NSColor.white
+                : Self.color(hex: document?.fileTypeProfile?.settings.appearance?.selectionHex) ?? Theme.selection,
+            .foregroundColor: enabled ? NSColor.black : editorForeground,
         ]
         (textView as? MaruTextView)?.usesHighContrastMarkers = enabled
         if let storage = textView.textStorage, storage.length > 0 {
@@ -685,6 +710,15 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
 
     func refreshFolding() {
         guard isViewLoaded, let document, let layoutManager = textView.layoutManager else { return }
+        if document.fileTypeProfile?.settings.foldingEnabled == false {
+            foldLayoutDelegate.collapsedRanges = []
+            lineNumbers?.foldRegions = []
+            lineNumbers?.collapsedFoldIDs = []
+            layoutManager.invalidateLayout(
+                forCharacterRange: NSRange(location: 0, length: (document.content as NSString).length),
+                actualCharacterRange: nil)
+            return
+        }
         let outline = OutlineModel(
             text: document.content, language: document.language,
             customRules: document.fileTypeProfile?.settings.outlineRules ?? [])

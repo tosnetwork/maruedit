@@ -81,6 +81,7 @@ final class AppCoordinator {
     func openFile(_ url: URL)         { ensureWindowControllerReady().openFile(url) }
     func openFolder(_ url: URL)       { ensureWindowControllerReady().openFolderDirect(url) }
     func newDocument()                { ensureWindowControllerReady().newDocument() }
+    func newDocumentFromTemplate()    { ensureWindowControllerReady().newDocumentFromTemplate() }
     func openDocument()               { ensureWindowControllerReady().openDocument() }
     func openFolderPanel()            { ensureWindowControllerReady().openFolder() }
     func saveDocument()               { ensureWindowControllerReady().saveDocument() }

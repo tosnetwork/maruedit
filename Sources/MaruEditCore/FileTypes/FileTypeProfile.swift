@@ -33,6 +33,63 @@ public struct SpellingSettings: Codable, Equatable, Sendable {
     }
 }
 
+public struct ProfileAppearanceSettings: Codable, Equatable, Sendable {
+    public var fontName: String?
+    public var fontSize: Double?
+    public var foregroundHex: String?
+    public var backgroundHex: String?
+    public var selectionHex: String?
+
+    public init(
+        fontName: String? = nil, fontSize: Double? = nil,
+        foregroundHex: String? = nil, backgroundHex: String? = nil,
+        selectionHex: String? = nil
+    ) {
+        self.fontName = fontName; self.fontSize = fontSize
+        self.foregroundHex = foregroundHex; self.backgroundHex = backgroundHex
+        self.selectionHex = selectionHex
+    }
+}
+
+public enum BackupDestination: String, Codable, Sendable { case sibling, directory }
+
+public struct BackupSettings: Codable, Equatable, Sendable {
+    public var enabled: Bool
+    public var destination: BackupDestination
+    public var directoryPath: String?
+    public var suffix: String
+    public var maximumCopies: Int
+    public init(
+        enabled: Bool = false, destination: BackupDestination = .sibling,
+        directoryPath: String? = nil, suffix: String = "~", maximumCopies: Int = 5
+    ) {
+        self.enabled = enabled; self.destination = destination
+        self.directoryPath = directoryPath; self.suffix = suffix
+        self.maximumCopies = maximumCopies
+    }
+}
+
+public struct ProfileLoadPolicy: Codable, Equatable, Sendable {
+    public var opensReadOnly: Bool
+    public var encodingCandidateOrder: [TextEncoding]
+    public init(opensReadOnly: Bool = false, encodingCandidateOrder: [TextEncoding] = []) {
+        self.opensReadOnly = opensReadOnly; self.encodingCandidateOrder = encodingCandidateOrder
+    }
+}
+
+public struct ProfileSavePolicy: Codable, Equatable, Sendable {
+    public var backup: BackupSettings
+    public var ensuresFinalNewline: Bool
+    public var trimsTrailingWhitespace: Bool
+    public init(
+        backup: BackupSettings = BackupSettings(), ensuresFinalNewline: Bool = false,
+        trimsTrailingWhitespace: Bool = false
+    ) {
+        self.backup = backup; self.ensuresFinalNewline = ensuresFinalNewline
+        self.trimsTrailingWhitespace = trimsTrailingWhitespace
+    }
+}
+
 public struct FileTypeSettings: Codable, Equatable, Sendable {
     public var tabWidth: Int
     public var indentWidth: Int
@@ -48,13 +105,20 @@ public struct FileTypeSettings: Codable, Equatable, Sendable {
     public var outlineRules: [OutlineRule]?
     public var completion: CompletionSettings?
     public var spelling: SpellingSettings?
+    public var appearance: ProfileAppearanceSettings?
+    public var foldingEnabled: Bool?
+    public var templatePath: String?
+    public var loadPolicy: ProfileLoadPolicy?
+    public var savePolicy: ProfileSavePolicy?
 
     public init(
         tabWidth: Int = 4, indentWidth: Int = 4, indentStyle: IndentStyle = .spaces,
         wrapLines: Bool = false, encoding: TextEncoding? = nil, syntax: Language = .plainText,
         lineComment: String? = nil, blockCommentStart: String? = nil, blockCommentEnd: String? = nil,
         outlineRules: [OutlineRule]? = nil, completion: CompletionSettings? = nil,
-        spelling: SpellingSettings? = nil
+        spelling: SpellingSettings? = nil, appearance: ProfileAppearanceSettings? = nil,
+        foldingEnabled: Bool? = nil, templatePath: String? = nil,
+        loadPolicy: ProfileLoadPolicy? = nil, savePolicy: ProfileSavePolicy? = nil
     ) {
         self.tabWidth = tabWidth; self.indentWidth = indentWidth; self.indentStyle = indentStyle
         self.wrapLines = wrapLines; self.encoding = encoding; self.syntax = syntax
@@ -63,11 +127,16 @@ public struct FileTypeSettings: Codable, Equatable, Sendable {
         self.outlineRules = outlineRules
         self.completion = completion
         self.spelling = spelling
+        self.appearance = appearance
+        self.foldingEnabled = foldingEnabled
+        self.templatePath = templatePath
+        self.loadPolicy = loadPolicy
+        self.savePolicy = savePolicy
     }
 }
 
 public struct FileTypeProfile: Codable, Equatable, Identifiable, Sendable {
-    public static let currentSchemaVersion = 3
+    public static let currentSchemaVersion = 4
     public var schemaVersion: Int
     public var id: String
     public var name: String

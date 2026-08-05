@@ -6,6 +6,7 @@ import MaruEditCore
 extension CommandID {
     static let appSettings      = CommandID("app.settings")
     static let fileNew          = CommandID("file.new")
+    static let fileNewFromTemplate = CommandID("file.newFromTemplate")
     static let fileOpen         = CommandID("file.open")
     static let fileOpenFolder   = CommandID("file.openFolder")
     static let fileSave         = CommandID("file.save")
@@ -103,6 +104,7 @@ enum AppCommands {
         registry.register(CommandDefinition(id: .fileNew, title: "New File") { ctx in
             ctx.coordinator.newDocument()
         })
+        registry.register(CommandDefinition(id: .fileNewFromTemplate, title: "New from Template…") { $0.coordinator.newDocumentFromTemplate() })
         registry.register(CommandDefinition(id: .fileOpen, title: "Open...") { ctx in
             ctx.coordinator.openDocument()
         })

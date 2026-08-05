@@ -22,8 +22,9 @@ Advanced group also provides **Export Settings**, **Import Settings**, and
 **Restore All Settings**. Export writes versioned, human-readable JSON;
 Import validates and migrates supported older schemas before applying the
 settings; Restore All resets the complete typed preference value. Groups
-whose features arrive in later M5/M6 tasks remain visible and searchable so
-their controls can be added without redesigning navigation.
+can be filtered in Basic mode or expanded in Advanced mode. Every non-Advanced
+section can be exported and imported independently; a section file cannot be
+imported into a differently named section, and unrelated preferences remain intact.
 
 All controls use native keyboard focus and accessibility APIs. Settings labels,
 group names, search, reset, and explanatory text are available in English,

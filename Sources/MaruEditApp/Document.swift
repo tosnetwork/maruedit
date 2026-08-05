@@ -114,9 +114,15 @@ final class Document: @unchecked Sendable {
         }
         let mode = requestedMode ?? (recommendation == .normal ? .normal : .reducedFeatures)
         let profile = resolver.resolve(for: url)
-        let loaded = try profile?.settings.encoding.map {
-            try TextFileLoader.load(contentsOf: url, forcing: $0)
-        } ?? TextFileLoader.load(contentsOf: url)
+        let loaded: LoadedText
+        if let forced = profile?.settings.encoding {
+            loaded = try TextFileLoader.load(contentsOf: url, forcing: forced)
+        } else if let candidates = profile?.settings.loadPolicy?.encodingCandidateOrder,
+                  let candidate = candidates.lazy.compactMap({ try? TextFileLoader.load(contentsOf: url, forcing: $0) }).first {
+            loaded = candidate
+        } else {
+            loaded = try TextFileLoader.load(contentsOf: url)
+        }
         let doc = Document(
             fileURL: url,
             content: LineEndingDetector.normalize(loaded.content),
@@ -131,8 +137,21 @@ final class Document: @unchecked Sendable {
         doc.lastKnownModificationDate = loaded.modificationDate
         doc.posixPermissions = loaded.posixPermissions
         doc.largeFileMode = mode
-        doc.isReadOnly = mode == .readOnly || !FileManager.default.isWritableFile(atPath: url.path)
+        doc.isReadOnly = mode == .readOnly
+            || profile?.settings.loadPolicy?.opensReadOnly == true
+            || !FileManager.default.isWritableFile(atPath: url.path)
         return doc
+    }
+
+    static func fromTemplate(profile: FileTypeProfile) throws -> Document {
+        let content = try profile.settings.templatePath.map(ProfileFilePolicy.loadTemplate) ?? ""
+        let document = Document(content: content, language: profile.settings.syntax)
+        document.fileTypeProfile = profile
+        if !content.isEmpty {
+            document.savedContent = ""
+            document.markModified()
+        }
+        return document
     }
 
     /// Re-checks whether `fileURL` is currently writable, updating
@@ -190,7 +209,9 @@ final class Document: @unchecked Sendable {
             throw DocumentSaveError.unrepresentable(encoding: encoding, characters: [])
         }
 
-        let preflight = preflightSave()
+        let policy = fileTypeProfile?.settings.savePolicy
+        let policyContent = ProfileFilePolicy.transformedForSave(content, policy: policy)
+        let preflight = SavePreflight.check(policyContent, encoding: encoding)
         guard preflight.isRepresentable else {
             throw DocumentSaveError.unrepresentable(encoding: encoding, characters: preflight.unrepresentableCharacters)
         }
@@ -208,7 +229,7 @@ final class Document: @unchecked Sendable {
         case .cr: targetKind = .cr
         case .mixed, .none: targetKind = .lf
         }
-        let outputText = LineEndingDetector.applying(targetKind, to: content)
+        let outputText = LineEndingDetector.applying(targetKind, to: policyContent)
 
         guard let encoded = outputText.data(using: foundationEncoding) else {
             throw DocumentSaveError.unrepresentable(encoding: encoding, characters: preflight.unrepresentableCharacters)
@@ -217,7 +238,10 @@ final class Document: @unchecked Sendable {
 
         let info: SavedFileInfo
         do {
+            if let backup = policy?.backup { _ = try ProfileFilePolicy.createBackup(of: url, settings: backup) }
             info = try TextFileSaver.save(data, to: url, preservingPermissionsFrom: posixPermissions)
+        } catch let error as ProfileFilePolicyError {
+            throw DocumentSaveError.policyFailed(error.localizedDescription)
         } catch let error as TextFileSaverError {
             throw DocumentSaveError.writeFailed(underlying: error)
         }
@@ -248,6 +272,7 @@ final class Document: @unchecked Sendable {
 enum DocumentSaveError: Error {
     case unrepresentable(encoding: TextEncoding, characters: [UnrepresentableCharacter])
     case writeFailed(underlying: TextFileSaverError)
+    case policyFailed(String)
 }
 
 enum DocumentOpenError: LocalizedError, Equatable {
@@ -273,6 +298,7 @@ extension DocumentSaveError: LocalizedError {
             return "\(count) \(noun) cannot be represented in \(encoding.displayName). Save as UTF-8 or another encoding instead."
         case .writeFailed(let underlying):
             return underlying.errorDescription
+        case .policyFailed(let message): return message
         }
     }
 }

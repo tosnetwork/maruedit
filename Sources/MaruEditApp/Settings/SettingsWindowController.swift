@@ -2,6 +2,7 @@ import AppKit
 import MaruEditCore
 
 final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate {
+    enum Level: Int { case basic, advanced }
     enum Group: String, CaseIterable {
         case general, editor, appearance, files, searchGroup, keyBindings, macros, advanced
         var localizedTitle: String { SettingsLocalization.text(rawValue) }
@@ -11,10 +12,13 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
     private let onChange: (Preferences) -> Void
     private let transferStore = PreferencesStore()
     private let searchField = NSSearchField()
+    private let levelPopup = NSPopUpButton()
     private let sidebar = NSStackView()
     private let content = NSView()
     private var groupButtons: [Group: NSButton] = [:]
     private var selectedGroup: Group = .general
+    private var level: Level = .basic
+    private var settingsQuery = ""
 
     private let fontNameField = NSTextField()
     private let fontSizeField = NSTextField()
@@ -50,6 +54,12 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
         searchField.setAccessibilityLabel(SettingsLocalization.text("search"))
         searchField.delegate = self
         root.addSubview(searchField)
+        levelPopup.addItems(withTitles: ["Basic", "Advanced"])
+        levelPopup.selectItem(at: Level.basic.rawValue)
+        levelPopup.target = self; levelPopup.action = #selector(levelChanged)
+        levelPopup.translatesAutoresizingMaskIntoConstraints = false
+        levelPopup.setAccessibilityLabel("Settings detail level")
+        root.addSubview(levelPopup)
 
         sidebar.orientation = .vertical
         sidebar.alignment = .leading
@@ -78,7 +88,10 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
         NSLayoutConstraint.activate([
             searchField.topAnchor.constraint(equalTo: root.topAnchor, constant: 16),
             searchField.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 16),
-            searchField.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -16),
+            searchField.trailingAnchor.constraint(equalTo: levelPopup.leadingAnchor, constant: -12),
+            levelPopup.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -16),
+            levelPopup.centerYAnchor.constraint(equalTo: searchField.centerYAnchor),
+            levelPopup.widthAnchor.constraint(equalToConstant: 110),
             sidebar.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 16),
             sidebar.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 16),
             sidebar.widthAnchor.constraint(equalToConstant: 150),
@@ -90,6 +103,12 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
             restore.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -16),
         ])
         window?.initialFirstResponder = searchField
+        refreshGroupVisibility()
+    }
+
+    @objc private func levelChanged() {
+        level = Level(rawValue: levelPopup.indexOfSelectedItem) ?? .basic
+        refreshGroupVisibility()
     }
 
     @objc private func selectGroup(_ sender: NSButton) {
@@ -176,6 +195,13 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
         default:
             stack.addArrangedSubview(NSTextField(wrappingLabelWithString: SettingsLocalization.text("comingSoon")))
         }
+        if group != .advanced {
+            let exportSection = NSButton(title: "Export This Section…", target: self, action: #selector(showSectionExportPanel))
+            let importSection = NSButton(title: "Import This Section…", target: self, action: #selector(showSectionImportPanel))
+            exportSection.setAccessibilityLabel(exportSection.title)
+            importSection.setAccessibilityLabel(importSection.title)
+            stack.addArrangedSubview(NSStackView(views: [exportSection, importSection]))
+        }
     }
 
     private func row(_ title: String, _ control: NSView) -> NSView {
@@ -252,6 +278,26 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
         }
     }
 
+    @objc private func showSectionExportPanel() {
+        guard let window else { return }
+        let panel = NSSavePanel(); panel.nameFieldStringValue = "MaruEdit-\(selectedGroup.rawValue)-settings.json"
+        panel.beginSheetModal(for: window) { [weak self] response in
+            guard response == .OK, let self, let url = panel.url else { return }
+            do { try self.exportSection(self.selectedGroup, to: url) }
+            catch { self.presentTransferError(error) }
+        }
+    }
+
+    @objc private func showSectionImportPanel() {
+        guard let window else { return }
+        let panel = NSOpenPanel(); panel.canChooseDirectories = false; panel.allowsMultipleSelection = false
+        panel.beginSheetModal(for: window) { [weak self] response in
+            guard response == .OK, let self, let url = panel.url else { return }
+            do { try self.importSection(self.selectedGroup, from: url) }
+            catch { self.presentTransferError(error) }
+        }
+    }
+
     @objc private func showImportPanel() {
         guard let window else { return }
         let panel = NSOpenPanel()
@@ -286,10 +332,55 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
         select(selectedGroup)
     }
 
+    private struct SectionEnvelope: Codable {
+        let group: String
+        let preferences: Preferences
+    }
+
+    func exportSection(_ group: Group, to url: URL) throws {
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(SectionEnvelope(group: group.rawValue, preferences: preferences))
+            .write(to: url, options: .atomic)
+    }
+
+    func importSection(_ group: Group, from url: URL) throws {
+        let envelope = try JSONDecoder().decode(SectionEnvelope.self, from: Data(contentsOf: url))
+        guard envelope.group == group.rawValue else {
+            throw CocoaError(.fileReadCorruptFile, userInfo: [NSLocalizedDescriptionKey: "The settings file belongs to the \(envelope.group) section."])
+        }
+        let imported = envelope.preferences
+        switch group {
+        case .general:
+            preferences.workspaceStyle = imported.workspaceStyle
+            preferences.theme = imported.theme
+            preferences.classicChrome = imported.classicChrome
+        case .editor:
+            preferences.tabWidth = imported.tabWidth
+            preferences.showLineNumbers = imported.showLineNumbers
+            preferences.wrapLines = imported.wrapLines
+            preferences.invisibleCharacters = imported.invisibleCharacters
+        case .appearance:
+            preferences.fontName = imported.fontName
+            preferences.fontSize = imported.fontSize
+            preferences.theme = imported.theme
+        case .advanced: preferences = imported
+        default: break
+        }
+        onChange(preferences); select(selectedGroup)
+    }
+
     func controlTextDidChange(_ obj: Notification) {
         guard obj.object as AnyObject? === searchField else { return }
-        let query = searchField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let visible = Group.allCases.filter { query.isEmpty || $0.localizedTitle.lowercased().contains(query) }
+        settingsQuery = searchField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        refreshGroupVisibility()
+    }
+
+    private func refreshGroupVisibility() {
+        let basic: Set<Group> = [.general, .editor, .appearance, .files, .searchGroup]
+        let visible = Group.allCases.filter {
+            (level == .advanced || basic.contains($0))
+                && (settingsQuery.isEmpty || $0.localizedTitle.lowercased().contains(settingsQuery))
+        }
         groupButtons.forEach { $0.value.isHidden = !visible.contains($0.key) }
         if !visible.contains(selectedGroup), let first = visible.first { select(first) }
     }
@@ -303,6 +394,9 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
     func searchForTesting(_ query: String) {
         searchField.stringValue = query
         controlTextDidChange(Notification(name: NSControl.textDidChangeNotification, object: searchField))
+    }
+    func setLevelForTesting(_ value: Level) {
+        levelPopup.selectItem(at: value.rawValue); levelChanged()
     }
     func setWorkspaceForTesting(_ style: WorkspaceStyle) {
         select(.general)

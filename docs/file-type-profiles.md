@@ -1,12 +1,12 @@
 # FileType Profiles
 
-MaruEdit file-type profiles use JSON schema version 1. A profile matches exact
+MaruEdit file-type profiles use JSON schema version 4. A profile matches exact
 filenames and/or filename extensions, then supplies the editor behavior for a
 newly opened document.
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 4,
   "id": "user.example-script",
   "name": "Example Script",
   "filenamePatterns": ["Examplefile"],
@@ -21,7 +21,23 @@ newly opened document.
     "syntax": "shell",
     "lineComment": "#",
     "blockCommentStart": null,
-    "blockCommentEnd": null
+    "blockCommentEnd": null,
+    "appearance": {
+      "fontName": "Menlo", "fontSize": 14,
+      "foregroundHex": "#202020", "backgroundHex": "#FAFAF5",
+      "selectionHex": "#B8D8FF"
+    },
+    "foldingEnabled": true,
+    "templatePath": "/Users/me/Templates/example.txt",
+    "loadPolicy": {
+      "opensReadOnly": false,
+      "encodingCandidateOrder": ["UTF-8", "Windows-31J"]
+    },
+    "savePolicy": {
+      "backup": {"enabled": true, "destination": "sibling", "directoryPath": null, "suffix": ".bak", "maximumCopies": 5},
+      "ensuresFinalNewline": true,
+      "trimsTrailingWhitespace": false
+    }
   }
 }
 ```
@@ -45,3 +61,10 @@ rejects unsupported schema versions and writes atomically into the user-profile
 directory. Profiles are resolved before file decoding, allowing an explicit
 encoding to control loading; syntax, tab and indent widths, indent style,
 wrapping, and comment delimiters then apply to the document and editor.
+
+Schema 4 additionally controls font and colors, spelling, completion sources and
+ranking, outline rules, folding, UTF-8 templates, bounded timestamped backups,
+read-only loading, ordered decoding candidates, and explicit save transforms.
+Template and dictionary reads have size limits. Backup paths and failures are
+reported; MaruEdit never silently skips a configured backup before overwriting.
+Older profiles decode with the new fields disabled, then migrate on import.

@@ -120,6 +120,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let fileItem = NSMenuItem()
         let fileMenu = NSMenu(title: "File")
         fileMenu.addItem(commandItem(.fileNew))
+        fileMenu.addItem(commandItem(.fileNewFromTemplate))
         fileMenu.addItem(commandItem(.fileOpen))
         fileMenu.addItem(commandItem(.fileOpenFolder))
 

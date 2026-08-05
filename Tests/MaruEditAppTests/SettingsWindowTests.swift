@@ -21,6 +21,7 @@ final class SettingsWindowTests: XCTestCase {
         controller.searchForTesting(SettingsLocalization.text("appearance"))
         XCTAssertEqual(controller.visibleGroups, [.appearance])
         controller.searchForTesting("")
+        controller.setLevelForTesting(.advanced)
         XCTAssertEqual(controller.visibleGroups, SettingsWindowController.Group.allCases)
     }
 
@@ -126,6 +127,30 @@ final class SettingsWindowTests: XCTestCase {
         try controller.importSettings(from: url)
         XCTAssertEqual(received, original)
         XCTAssertEqual(controller.currentPreferences, original)
+    }
+
+    func testBasicAdvancedLevelsAndPerSectionTransfer() async throws {
+        var source = Preferences.defaults
+        source.tabWidth = 8
+        source.fontSize = 21
+        let exporter = SettingsWindowController(preferences: source) { _ in }
+        XCTAssertFalse(exporter.visibleGroups.contains(.advanced))
+        exporter.setLevelForTesting(.advanced)
+        XCTAssertTrue(exporter.visibleGroups.contains(.advanced))
+
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MaruEdit-section-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try exporter.exportSection(.editor, to: url)
+
+        var target = Preferences.defaults
+        target.fontSize = 17
+        var received: Preferences?
+        let importer = SettingsWindowController(preferences: target) { received = $0 }
+        try importer.importSection(.editor, from: url)
+        XCTAssertEqual(received?.tabWidth, 8)
+        XCTAssertEqual(received?.fontSize, 17, "section import must not overwrite Appearance")
+        XCTAssertThrowsError(try importer.importSection(.appearance, from: url))
     }
 
     private func descendants(of view: NSView) -> [NSView] {

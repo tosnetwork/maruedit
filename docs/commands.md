@@ -18,6 +18,7 @@ significantly, replace this with a small script that generates it from
 |---|---|---|---|---|
 | `app.settings` | Settings... | MaruEdit | ⌘, | `AppCoordinator.showSettings()` |
 | `file.new` | New File | File | ⌘N | `AppCoordinator.newDocument()` |
+| `file.newFromTemplate` | New from Template… | File | — | `AppCoordinator.newDocumentFromTemplate()` |
 | `file.open` | Open... | File | ⌘O | `AppCoordinator.openDocument()` |
 | `file.openFolder` | Open Folder... | File | ⌘⇧O | `AppCoordinator.openFolderPanel()` |
 | `file.save` | Save | File | ⌘S | `AppCoordinator.saveDocument()` |

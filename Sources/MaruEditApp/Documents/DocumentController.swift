@@ -24,6 +24,16 @@ final class DocumentController {
         document(at: currentIndex)
     }
 
+    var templateProfiles: [FileTypeProfile] {
+        fileTypeResolver.profiles.map(\.profile).filter { $0.settings.templatePath != nil }
+    }
+
+    @discardableResult
+    func addDocument(_ document: Document) -> Document {
+        documents.append(document); currentIndex = documents.count - 1
+        return document
+    }
+
     func document(at index: Int) -> Document? {
         guard index >= 0, index < documents.count else { return nil }
         return documents[index]

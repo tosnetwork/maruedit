@@ -78,6 +78,54 @@ final class DocumentTests: XCTestCase {
         XCTAssertEqual(document.fileTypeProfile, profile)
     }
 
+    func testProfileLoadPolicyCandidateOrderAndReadOnly() async throws {
+        let sample = "日本語"
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MaruEditPolicy-\(UUID().uuidString).legacy")
+        try XCTUnwrap(sample.data(using: .shiftJIS)).write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let profile = FileTypeProfile(
+            id: "legacy", name: "Legacy", extensions: ["legacy"],
+            settings: FileTypeSettings(loadPolicy: ProfileLoadPolicy(
+                opensReadOnly: true, encodingCandidateOrder: [.shiftJISClassic])))
+        let resolver = FileTypeProfileResolver(profiles: [.init(profile, source: .user)])
+        let document = try Document.open(url: url, resolver: resolver)
+        XCTAssertEqual(document.content, sample)
+        XCTAssertEqual(document.encoding, .shiftJISClassic)
+        XCTAssertTrue(document.isReadOnly)
+    }
+
+    func testProfileTemplateAndSaveBackupPoliciesAreApplied() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MaruEditPolicy-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let template = directory.appendingPathComponent("template.txt")
+        try "starter".write(to: template, atomically: true, encoding: .utf8)
+        let profile = FileTypeProfile(
+            id: "text", name: "Text", extensions: ["txt"], settings: FileTypeSettings(
+                templatePath: template.path,
+                savePolicy: ProfileSavePolicy(
+                    backup: BackupSettings(enabled: true, suffix: ".bak"),
+                    ensuresFinalNewline: true, trimsTrailingWhitespace: true)))
+        let templated = try Document.fromTemplate(profile: profile)
+        XCTAssertEqual(templated.content, "starter")
+        XCTAssertTrue(templated.isModified)
+
+        let target = directory.appendingPathComponent("target.txt")
+        try "old".write(to: target, atomically: true, encoding: .utf8)
+        let resolver = FileTypeProfileResolver(profiles: [.init(profile, source: .user)])
+        let document = try Document.open(url: target, resolver: resolver)
+        document.content = "new  "
+        document.markModified()
+        try document.save()
+        XCTAssertEqual(try String(contentsOf: target, encoding: .utf8), "new\n")
+        XCTAssertTrue(try FileManager.default.contentsOfDirectory(
+            at: directory, includingPropertiesForKeys: nil).contains {
+                $0.lastPathComponent.hasPrefix("target.txt.") && $0.lastPathComponent.hasSuffix(".bak")
+            })
+    }
+
     // MARK: - Encoding preservation (M2-02)
     //
     // These are the tests that matter most: opening a non-UTF-8 file and

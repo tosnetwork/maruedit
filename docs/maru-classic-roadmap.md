@@ -59,9 +59,9 @@ that would weaken MaruEdit's security model.
 
 ## MC7 — File-type and settings depth
 
-- [ ] Profile font/colors, spelling, completion, outline and folding.
-- [ ] Templates, backups, load/save policies and encoding candidate order.
-- [ ] Searchable Basic/Advanced settings with per-section reset/import/export.
+- [x] Profile font/colors, spelling, completion, outline and folding.
+- [x] Templates, backups, load/save policies and encoding candidate order.
+- [x] Searchable Basic/Advanced settings with per-section reset/import/export.
 
 ## MC8 — Macro compatibility
 

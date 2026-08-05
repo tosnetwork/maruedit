@@ -392,6 +392,21 @@ final class MainWindowController: NSWindowController,
         scheduleSessionSave()
     }
 
+    func newDocumentFromTemplate() {
+        let profiles = documentController.templateProfiles
+        guard !profiles.isEmpty else { showStatusMessage("No File Type Profile templates are configured"); return }
+        let popup = NSPopUpButton(); popup.addItems(withTitles: profiles.map(\.name)); popup.frame.size.width = 260
+        let alert = NSAlert(); alert.messageText = "New from Template"
+        alert.informativeText = "Choose a File Type Profile template."
+        alert.accessoryView = popup; alert.addButton(withTitle: "Create"); alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        do {
+            let document = try Document.fromTemplate(profile: profiles[popup.indexOfSelectedItem])
+            documentController.addDocument(document); editorVC.document = document
+            refreshTabs(); refreshStatus(); scheduleSessionSave()
+        } catch { showStatusMessage(error.localizedDescription, duration: 4) }
+    }
+
     func openDocument() {
         let p = NSOpenPanel()
         p.allowsMultipleSelection = true

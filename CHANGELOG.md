@@ -28,6 +28,10 @@ semantic version tags.
   fields, transient search-result gutter markers, and a bounded Results list.
 - Added background Grep over the current unsaved buffer or every open buffer,
   Grep-over-results refinement, and export of structured results to a new document.
+- Expanded File Type Profiles to schema 4 with per-profile fonts/colors, folding,
+  templates, ordered encoding candidates, read-only load policy, save transforms,
+  and bounded fail-closed backups; added New from Template to the File menu.
+- Added Basic/Advanced Settings filtering and guarded per-section import/export.
 - Added a Foundation-only incremental document-outline model with built-in
   symbol rules for source, markup, scripting, configuration, and SQL languages,
   plus bounded user-defined regex rules in versioned FileType Profiles. The
