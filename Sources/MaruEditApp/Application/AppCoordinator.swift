@@ -107,6 +107,7 @@ final class AppCoordinator {
     func showFileProperties()         { ensureWindowControllerReady().showFileProperties() }
     func appendRead()                 { ensureWindowControllerReady().appendRead() }
     func appendSave()                 { ensureWindowControllerReady().appendSave() }
+    func renameFile()                 { ensureWindowControllerReady().renameFile() }
     func showFind()                   { ensureWindowControllerReady().showFind() }
     func showReplace()                { ensureWindowControllerReady().showFind(showingReplace: true) }
     func replaceAll()                 { ensureWindowControllerReady().replaceAllFromFindBar() }

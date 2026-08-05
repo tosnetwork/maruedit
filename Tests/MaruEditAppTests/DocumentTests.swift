@@ -78,6 +78,38 @@ final class DocumentTests: XCTestCase {
         XCTAssertEqual(try Document.normalizedText(contentsOf: target), "one\ntwo\n")
     }
 
+    func testRenameMovesFileAndRefreshesDocumentIdentityAndLanguage() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MaruEditRename-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let source = directory.appendingPathComponent("before.txt")
+        let destination = directory.appendingPathComponent("after.swift")
+        try Data("let value = 1".utf8).write(to: source)
+        let document = try Document.open(url: source)
+        try document.rename(to: destination)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: source.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: destination.path))
+        XCTAssertEqual(document.fileURL, destination)
+        XCTAssertEqual(document.language, .swift)
+        XCTAssertEqual(document.fileIdentity, FileIdentity.of(destination))
+        XCTAssertEqual(document.content, "let value = 1")
+    }
+
+    func testRenameRefusesToOverwriteAnExistingFile() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MaruEditRename-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let source = directory.appendingPathComponent("source.txt")
+        let destination = directory.appendingPathComponent("existing.txt")
+        try Data("source".utf8).write(to: source); try Data("existing".utf8).write(to: destination)
+        let document = try Document.open(url: source)
+        XCTAssertThrowsError(try document.rename(to: destination))
+        XCTAssertEqual(try String(contentsOf: destination, encoding: .utf8), "existing")
+        XCTAssertEqual(document.fileURL, source)
+    }
+
     func testOpenAppliesFileTypeProfileEncodingAndSyntax() async throws {
         let sample = "日本語"
         let url = FileManager.default.temporaryDirectory

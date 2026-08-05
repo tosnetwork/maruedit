@@ -312,6 +312,37 @@ final class Document: @unchecked Sendable {
             throw DocumentSaveError.appendFailed(path: url.path)
         }
     }
+
+    func rename(to destination: URL) throws {
+        guard let source = fileURL else { throw DocumentRenameError.unnamedDocument }
+        guard source.standardizedFileURL != destination.standardizedFileURL else { return }
+        guard !FileManager.default.fileExists(atPath: destination.path) else {
+            throw DocumentRenameError.destinationExists(destination.path)
+        }
+        do { try FileManager.default.moveItem(at: source, to: destination) }
+        catch { throw DocumentRenameError.moveFailed(error.localizedDescription) }
+        fileURL = destination
+        fileTypeProfile = fileTypeResolver.resolve(for: destination)
+        language = fileTypeProfile?.settings.syntax ?? Language.detect(for: destination)
+        fileIdentity = FileIdentity.of(destination)
+        let attributes = try? FileManager.default.attributesOfItem(atPath: destination.path)
+        lastKnownModificationDate = attributes?[.modificationDate] as? Date
+        posixPermissions = (attributes?[.posixPermissions] as? NSNumber)?.intValue
+    }
+}
+
+enum DocumentRenameError: LocalizedError, Equatable {
+    case unnamedDocument
+    case destinationExists(String)
+    case moveFailed(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .unnamedDocument: "Save the document before renaming it."
+        case .destinationExists(let path): "A file already exists at \(path)."
+        case .moveFailed(let message): "The file could not be renamed. \(message)"
+        }
+    }
 }
 
 enum DocumentSaveError: Error {

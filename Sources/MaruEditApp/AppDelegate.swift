@@ -154,6 +154,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         fileMenu.addItem(commandItem(.fileReload))
         fileMenu.addItem(commandItem(.fileToggleViewMode))
         fileMenu.addItem(commandItem(.fileProperties))
+        fileMenu.addItem(commandItem(.fileRename))
 
         fileMenu.addItem(.separator())
         fileMenu.addItem(commandItem(.fileSave))

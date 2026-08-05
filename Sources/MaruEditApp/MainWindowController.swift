@@ -844,6 +844,25 @@ final class MainWindowController: NSWindowController,
         }
     }
 
+    func renameFile() {
+        guard let doc = curDoc, let source = doc.fileURL, let window else { return }
+        let panel = NSSavePanel()
+        panel.title = "Rename File"
+        panel.prompt = "Rename"
+        panel.directoryURL = source.deletingLastPathComponent()
+        panel.nameFieldStringValue = source.lastPathComponent
+        panel.beginSheetModal(for: window) { [weak self] response in
+            guard let self, response == .OK, let destination = panel.url else { return }
+            do {
+                try doc.rename(to: destination)
+                self.refreshTabs(); self.refreshStatus()
+                self.window?.title = "MaruEdit — \(doc.displayName)"
+                RecentItems.addFile(destination)
+                self.scheduleSessionSave()
+            } catch { NSAlert(error: error).beginSheetModal(for: window) }
+        }
+    }
+
     @discardableResult
     func closeCurrentTab() -> Bool {
         guard let doc = curDoc else { return false }

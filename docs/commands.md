@@ -44,6 +44,7 @@ significantly, replace this with a small script that generates it from
 | `file.appendRead` | Append Read… | File | — | `AppCoordinator.appendRead()` |
 | `file.appendSave` | Append Save… | File | — | `AppCoordinator.appendSave()` |
 | `insert.fileContents` | File Contents… | Insert | — | `AppCoordinator.insertFileContents()` |
+| `file.rename` | Rename File… | File | — | `AppCoordinator.renameFile()` |
 | `search.find` | Find... | Find | ⌘F | `AppCoordinator.showFind()` |
 | `search.replace` | Find and Replace... | Find | ⌥⌘F | `AppCoordinator.showReplace()` |
 | `search.replaceAll` | Replace All | Find | — | `AppCoordinator.replaceAll()` |

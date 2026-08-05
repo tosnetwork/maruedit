@@ -69,6 +69,7 @@ final class CommandRegistryTests: XCTestCase {
             .fileClearRecoveryData, .filePageSetup, .filePrint,
             .fileReload, .fileToggleViewMode, .fileProperties,
             .fileAppendRead, .fileAppendSave,
+            .fileRename,
             .searchFind, .searchReplace, .searchReplaceAll, .searchFindNext,
             .searchFindPrevious, .searchGoToLine, .searchQuickOpen, .searchGrep,
             .searchGrepCurrentDocument, .searchGrepOpenDocuments,
