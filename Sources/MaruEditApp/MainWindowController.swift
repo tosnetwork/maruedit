@@ -1686,6 +1686,9 @@ final class MainWindowController: NSWindowController,
             statusBar.updateIndentation(
                 style: settings?.indentStyle ?? .spaces,
                 width: editorVC.effectiveTabWidth)
+            statusBar.updateLayoutMode(
+                isVertical: editorVC.isVerticalLayout, isColumn: editorVC.isColumnLayout,
+                columnCount: editorVC.columnCountForTesting)
             statusBar.updateAccessMode(isReadOnly: doc.isReadOnly, isViewMode: doc.isViewMode)
             statusBar.updateLargeFileMode(doc.largeFileMode)
             statusBar.updateDocumentMetrics(
@@ -1747,6 +1750,8 @@ final class MainWindowController: NSWindowController,
             alert.beginSheetModal(for: window!); return
         case .inputMode:
             toggleInputMode(); return
+        case .layoutMode:
+            menu = buildLayoutModeMenu()
         case .fontSize:
             showFontPanel(); return
         case .largeFileMode:
@@ -1759,6 +1764,31 @@ final class MainWindowController: NSWindowController,
         case .languageProfile: menu = buildLanguageProfileMenu()
         }
         menu.popUp(positioning: nil, at: point, in: statusBar)
+    }
+
+    func buildLayoutModeMenu() -> NSMenu {
+        let menu = NSMenu()
+        for (title, tag) in [("Horizontal Writing", 0), ("Vertical Writing", 1), ("Column Layout", 2)] {
+            let item = NSMenuItem(title: title, action: #selector(didSelectLayoutMode(_:)), keyEquivalent: "")
+            item.target = self; item.tag = tag
+            item.state = tag == (editorVC.isColumnLayout ? 2 : editorVC.isVerticalLayout ? 1 : 0) ? .on : .off
+            menu.addItem(item)
+        }
+        return menu
+    }
+
+    @objc private func didSelectLayoutMode(_ sender: NSMenuItem) {
+        if sender.tag == 0 {
+            if editorVC.isColumnLayout { editorVC.toggleColumnLayout() }
+            if editorVC.isVerticalLayout { editorVC.toggleVerticalLayout() }
+        } else if sender.tag == 1 {
+            if editorVC.isColumnLayout { editorVC.toggleColumnLayout() }
+            if !editorVC.isVerticalLayout { editorVC.toggleVerticalLayout() }
+        } else if sender.tag == 2 {
+            if editorVC.isVerticalLayout { editorVC.toggleVerticalLayout() }
+            if !editorVC.isColumnLayout { editorVC.toggleColumnLayout() }
+        }
+        refreshStatus()
     }
 
     func buildLargeFileModeMenu() -> NSMenu {
@@ -2189,7 +2219,14 @@ final class MainWindowController: NSWindowController,
     func showCompletions() { editorVC.showCompletions() }
     func toggleTableMode() { editorVC.toggleDelimitedTableMode() }
     func toggleVerticalLayout() {
+        if secondaryEditorVC != nil { closeEditorSplit() }
         editorVC.toggleVerticalLayout()
+        refreshStatus()
+    }
+
+    func toggleColumnLayout() {
+        if secondaryEditorVC != nil { closeEditorSplit() }
+        editorVC.toggleColumnLayout()
         refreshStatus()
     }
 

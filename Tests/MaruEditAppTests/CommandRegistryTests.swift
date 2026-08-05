@@ -84,7 +84,7 @@ final class CommandRegistryTests: XCTestCase {
             .searchGrepCurrentDocument, .searchGrepOpenDocuments,
             .searchRefineGrepResults, .searchOutputGrepDocument,
             .searchClearHistory, .viewToggleSidebar, .viewToggleWrap, .viewToggleTableMode,
-            .viewToggleVerticalLayout,
+            .viewToggleVerticalLayout, .viewToggleColumnLayout,
             .viewToggleLineNumbers, .viewToggleHeading, .viewToggleFunctionKeys,
             .viewToggleStatusBar, .viewToggleOutputPane, .viewFocusOutputPane,
             .searchToggleCaseSensitive, .searchToggleWholeWord, .searchToggleRegex,

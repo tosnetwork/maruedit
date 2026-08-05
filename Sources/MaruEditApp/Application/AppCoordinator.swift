@@ -285,6 +285,7 @@ final class AppCoordinator {
     func showCompletions()               { ensureWindowControllerReady().showCompletions() }
     func toggleTableMode()               { ensureWindowControllerReady().toggleTableMode() }
     func toggleVerticalLayout()          { ensureWindowControllerReady().toggleVerticalLayout() }
+    func toggleColumnLayout()            { ensureWindowControllerReady().toggleColumnLayout() }
     func splitEditorVertical()           { ensureWindowControllerReady().showEditorSplit(.vertical) }
     func splitEditorHorizontal()         { ensureWindowControllerReady().showEditorSplit(.horizontal) }
     func closeEditorSplit()              { ensureWindowControllerReady().closeEditorSplit() }
@@ -358,6 +359,7 @@ final class AppCoordinator {
         case .viewRulerInterval10: preferences.classicChrome.rulerInterval == 10
         case .viewToggleTabStops: preferences.classicChrome.showTabStops
         case .viewToggleVerticalLayout: ensureWindowControllerReady().macroEditor.isVerticalLayout
+        case .viewToggleColumnLayout: ensureWindowControllerReady().macroEditor.isColumnLayout
         case .viewToggleLineNumbers: preferences.showLineNumbers
         case .viewToggleHeading: preferences.classicChrome.showHeading
         case .viewToggleFunctionKeys: preferences.classicChrome.showCommandStrip

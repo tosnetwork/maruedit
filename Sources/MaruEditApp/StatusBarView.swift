@@ -2,12 +2,12 @@ import AppKit
 import MaruEditCore
 
 enum StatusBarControl: CaseIterable {
-    case cursorPosition, characterCode, inputMode, fontSize
+    case cursorPosition, characterCode, inputMode, layoutMode, fontSize
     case largeFileMode, encoding, byteOrderMark, lineEnding, languageProfile
 }
 
 enum StatusBarField: String, CaseIterable {
-    case cursorPosition, selection, indentation, inputMode, totals, characterCode, fontSize
+    case cursorPosition, selection, indentation, inputMode, layoutMode, totals, characterCode, fontSize
     case macroActivity, capsLock, readOnly, largeFileMode, lineEnding, byteOrderMark, encoding, languageProfile
 
     var title: String {
@@ -16,6 +16,7 @@ enum StatusBarField: String, CaseIterable {
         case .selection: "Selection"
         case .indentation: "Indentation"
         case .inputMode: "Insert/Overwrite"
+        case .layoutMode: "Writing/Column Layout"
         case .totals: "Total Lines and Characters"
         case .characterCode: "Character Code"
         case .fontSize: "Font Size"
@@ -44,6 +45,7 @@ final class StatusBarView: NSView {
     private let selectionLabel = NSTextField(labelWithString: "")
     private let indentLabel = NSTextField(labelWithString: "Spaces: 4")
     private let inputModeLabel = NSTextField(labelWithString: "INS")
+    private let layoutModeLabel = NSTextField(labelWithString: "HORZ")
     private let totalsLabel = NSTextField(labelWithString: "1 lines · 0 chars")
     private let characterCodeLabel = NSTextField(labelWithString: "")
     private let fontSizeLabel = NSTextField(labelWithString: "13 pt")
@@ -73,6 +75,7 @@ final class StatusBarView: NSView {
     var displayedLineEndingText: String { lineEndingLabel.stringValue }
     var displayedLanguageProfileText: String { langLabel.stringValue }
     var displayedInputModeText: String { inputModeLabel.stringValue }
+    var displayedLayoutModeText: String { layoutModeLabel.stringValue }
     var displayedTotalsText: String { totalsLabel.stringValue }
     var displayedCharacterCodeText: String { characterCodeLabel.stringValue }
     var characterCodeDetail: String { characterCodeLabel.toolTip ?? characterCodeLabel.stringValue }
@@ -126,7 +129,7 @@ final class StatusBarView: NSView {
     }
 
     private func setup() {
-        let labels = [lineColLabel, selectionLabel, indentLabel, inputModeLabel,
+        let labels = [lineColLabel, selectionLabel, indentLabel, inputModeLabel, layoutModeLabel,
                       totalsLabel, characterCodeLabel, fontSizeLabel, langLabel, encLabel,
                       bomLabel, lineEndingLabel, macroActivityLabel, capsLockLabel,
                       readOnlyLabel, largeFileModeLabel]
@@ -154,7 +157,9 @@ final class StatusBarView: NSView {
         selectionLabel.setAccessibilityLabel("Selection count")
         inputModeLabel.setAccessibilityLabel("Input mode: insert")
         inputModeLabel.toolTip = "Insert mode; overwrite mode is not enabled"
-        for label in [lineColLabel, inputModeLabel, characterCodeLabel, fontSizeLabel] {
+        layoutModeLabel.setAccessibilityLabel("Writing layout: horizontal")
+        layoutModeLabel.toolTip = "Horizontal writing; click to choose writing or column layout"
+        for label in [lineColLabel, inputModeLabel, layoutModeLabel, characterCodeLabel, fontSizeLabel] {
             label.textColor = Theme.accent
             label.setAccessibilityRole(.button)
         }
@@ -178,7 +183,7 @@ final class StatusBarView: NSView {
 
     func applyTheme() {
         layer?.backgroundColor = Theme.statusBg.cgColor
-        for label in [lineColLabel, selectionLabel, indentLabel, inputModeLabel,
+        for label in [lineColLabel, selectionLabel, indentLabel, inputModeLabel, layoutModeLabel,
                       totalsLabel, characterCodeLabel, fontSizeLabel,
                       langLabel, encLabel, bomLabel, lineEndingLabel] {
             label.textColor = Theme.statusText
@@ -186,7 +191,7 @@ final class StatusBarView: NSView {
         for label in [encLabel, bomLabel, lineEndingLabel, langLabel] {
             label.textColor = Theme.accent
         }
-        for label in [lineColLabel, inputModeLabel, characterCodeLabel, fontSizeLabel] {
+        for label in [lineColLabel, inputModeLabel, layoutModeLabel, characterCodeLabel, fontSizeLabel] {
             label.textColor = Theme.accent
         }
     }
@@ -285,6 +290,22 @@ final class StatusBarView: NSView {
         inputModeLabel.toolTip = "Current input mode: \(name)"
     }
 
+    func updateLayoutMode(isVertical: Bool, isColumn: Bool, columnCount: Int) {
+        let text: String
+        let description: String
+        if isColumn {
+            text = "COL×\(max(2, columnCount))"; description = "continuous column"
+        } else if isVertical {
+            text = "VERT"; description = "vertical writing"
+        } else {
+            text = "HORZ"; description = "horizontal writing"
+        }
+        layoutModeLabel.stringValue = text
+        layoutModeLabel.setAccessibilityLabel("Writing layout: \(description)")
+        layoutModeLabel.toolTip = "Current layout: \(description); click to choose"
+        needsLayout = true
+    }
+
     func updateReadOnly(_ isReadOnly: Bool) {
         updateAccessMode(isReadOnly: isReadOnly, isViewMode: false)
     }
@@ -380,6 +401,7 @@ final class StatusBarView: NSView {
         case .characterCode:
             return characterCodeLabel.stringValue.isEmpty ? nil : visibleFrame(characterCodeLabel)
         case .inputMode: return visibleFrame(inputModeLabel)
+        case .layoutMode: return visibleFrame(layoutModeLabel)
         case .fontSize: return visibleFrame(fontSizeLabel)
         case .largeFileMode: return visibleFrame(largeFileModeLabel)
         case .encoding: return visibleFrame(encLabel)
@@ -403,6 +425,7 @@ final class StatusBarView: NSView {
     private var leftFields: [(StatusBarField, NSTextField, CGFloat)] {[
         (.cursorPosition, lineColLabel, 105), (.selection, selectionLabel, 130),
         (.indentation, indentLabel, 85), (.inputMode, inputModeLabel, 34),
+        (.layoutMode, layoutModeLabel, 58),
         (.totals, totalsLabel, 125), (.characterCode, characterCodeLabel, 70),
         (.fontSize, fontSizeLabel, 45),
     ]}

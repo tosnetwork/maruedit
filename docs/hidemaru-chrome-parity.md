@@ -17,7 +17,7 @@ native menu before the Hidemaru-compatible business menus.
 | File | File | Reload, properties, rename, View Mode, append save/read, bounded partial open, editable hexadecimal binary mode, save/close variants, recent project folders, and importable/exportable desktop workspaces with history are present | No known compatible gap |
 | Edit | Edit | Clipboard/Undo and line editing, histories, quoted clipboard, restore deletion, selections, Caps Lock mistake correction and native IME reconversion are present; macOS retains ownership of the physical Caps Lock state | Native equivalent; no known compatible gap |
 | Convert | Dedicated Convert menu | Case, half/full-width, hiragana/katakana and Tab/space conversions are present | No known compatible gap |
-| View | View | Wrapping, invisibles, splits exist; missing ruler modes, tab-stop display, vertical/column layouts and several pane commands |
+| View | View | Wrapping, invisibles, 8/10-column ruler marks, profile tab stops, editable vertical writing, continuous TextKit column flow, splits, chrome visibility and output-pane focus commands are present; vertical/column modes exclude ordinary splits as in Hidemaru | No known compatible gap |
 | Insert | Dedicated Insert menu | Date/time, page break, C0/DEL control-code selection and encoding-aware file-content insertion are present | No known compatible gap |
 | Search | Dedicated Search menu | Search/replace/grep core exists; missing Hidemaru hierarchy, search flags, highlight/refine variants and edit-mark navigation |
 | Highlight | Dedicated Highlight menu | Color-marker operations plus sorted highlight list with preview, jump and remove are present | No known compatible gap |
@@ -29,7 +29,7 @@ native menu before the Hidemaru-compatible business menus.
 | Help | Dedicated Help menu plus native About | User guide, macro help, shortcut reference, latest-release check and support/reporting entries are present | No known compatible gap |
 
 Official menu pages contain roughly 297 command references across these
-menus. MaruEdit currently registers 161 stable command IDs. Duplicate menu
+menus. MaruEdit currently registers 162 stable command IDs. Duplicate menu
 placements mean this is not a one-to-one command count, but it establishes
 that functional parity is not complete.
 
@@ -64,7 +64,7 @@ that functional parity is not complete.
 | Font size | Display; click adjustment | Display; click opens font panel | Present/native equivalent |
 | File-type profile | Display; click list | Display; click language/profile menu | Partial |
 | CapsLock | Optional field | Conditional configurable CAPS indicator | Present |
-| Vertical/horizontal and column count | Display/click | Missing; vertical mode is not production-ready | Missing |
+| Vertical/horizontal and column count | Display/click | HORZ/VERT/COL×n field reflects the live editable layout and opens a checked layout menu | Present |
 | Macro recording | Conditional state/click | Distinct REC recording state and MACRO execution state are shown | Present |
 | Large-file mode | No direct equivalent | MaruEdit-specific safety field | Native addition |
 | Configurable fields/clickability | Supported | Right-click field selection; interactive fields remain clickable | Present |

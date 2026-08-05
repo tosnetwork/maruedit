@@ -60,6 +60,8 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     private(set) var scrollView: NSScrollView!
     private(set) var textView: NSTextView!
     private var lineNumbers: LineNumberView?
+    private var columnLayoutHost: FlippedView?
+    private var columnTextViews: [NSTextView] = []
     private let syntaxHighlightCoordinator = SyntaxHighlightCoordinator()
     private let foldLayoutDelegate = FoldLayoutDelegate()
 
@@ -479,22 +481,29 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
                                   range: NSRange(location: 0, length: storage.length))
         }
         lineNumbers?.setVisible(effectivePreferences.showLineNumbers)
-        textView.textContainer?.widthTracksTextView = wrapMode == .window
-        textView.isHorizontallyResizable = wrapMode != .window
-        scrollView.hasHorizontalScroller = wrapMode != .window
+        if !isColumnLayout {
+            textView.textContainer?.widthTracksTextView = wrapMode == .window
+            textView.isHorizontallyResizable = wrapMode != .window
+            scrollView.hasHorizontalScroller = wrapMode != .window
+        }
         let spelling = document?.fileTypeProfile?.settings.spelling ?? SpellingSettings()
         textView.isContinuousSpellCheckingEnabled = spelling.enabled
         textView.isAutomaticSpellingCorrectionEnabled = spelling.enabled && spelling.automaticCorrection
-        switch wrapMode {
-        case .window:
-            textView.textContainer?.containerSize.width = scrollView.contentSize.width
-        case .fixed, .maximum:
-            let columns = wrapMode == .maximum ? 8_000 : effectiveWrapColumn
-            let cell = ("0" as NSString).size(withAttributes: [.font: font]).width
-            let padding = textView.textContainer?.lineFragmentPadding ?? 0
-            textView.textContainer?.containerSize.width = cell * CGFloat(columns) + padding * 2
-        case .none:
-            textView.textContainer?.containerSize.width = CGFloat.greatestFiniteMagnitude
+        if !isColumnLayout {
+            switch wrapMode {
+            case .window:
+                textView.textContainer?.containerSize.width = scrollView.contentSize.width
+            case .fixed, .maximum:
+                let columns = wrapMode == .maximum ? 8_000 : effectiveWrapColumn
+                let cell = ("0" as NSString).size(withAttributes: [.font: font]).width
+                let padding = textView.textContainer?.lineFragmentPadding ?? 0
+                textView.textContainer?.containerSize.width = cell * CGFloat(columns) + padding * 2
+            case .none:
+                textView.textContainer?.containerSize.width = CGFloat.greatestFiniteMagnitude
+            }
+        }
+        for (index, column) in columnTextViews.enumerated() {
+            configureColumnTextView(column, number: index + 2)
         }
         applyHighContrast(isHighContrast)
         lineNumbers?.needsDisplay = true
@@ -578,14 +587,101 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     }
 
     var isVerticalLayout: Bool { document?.isVerticalLayout == true }
+    var isColumnLayout: Bool { document?.isColumnLayout == true }
+    var columnCountForTesting: Int { 1 + columnTextViews.count }
 
     func toggleVerticalLayout() {
         guard let document else { return }
+        if document.isColumnLayout { setColumnLayout(false) }
         document.isVerticalLayout.toggle()
         let ranges = selectionSet.ranges
         applyTextLayoutOrientation()
         applyPreferences(preferences)
         setSelections(ranges, primaryRange: ranges.first)
+    }
+
+    func toggleColumnLayout() {
+        guard let document else { return }
+        setColumnLayout(!document.isColumnLayout)
+    }
+
+    /// TextKit flows one shared text storage through the containers in order,
+    /// giving the classic newspaper-style continuous column layout rather than
+    /// duplicating the document in an ordinary editor split.
+    private func setColumnLayout(_ enabled: Bool) {
+        guard let document, isViewLoaded, let layoutManager = textView.layoutManager else { return }
+        document.isColumnLayout = enabled
+        if enabled {
+            document.isVerticalLayout = false
+            applyTextLayoutOrientation()
+            let viewport = scrollView.contentSize
+            let columnWidth = max(260, min(520, (viewport.width - 18) / 2))
+            let columnHeight = max(240, viewport.height)
+            let estimatedCharactersPerColumn = max(1, Int(columnWidth / 8) * Int(columnHeight / 18))
+            let count = max(2, min(64,
+                Int(ceil(Double(max(1, (textView.string as NSString).length))
+                    / Double(estimatedCharactersPerColumn)))))
+            let gap: CGFloat = 18
+            let host = FlippedView(frame: NSRect(
+                x: 0, y: 0, width: CGFloat(count) * columnWidth + CGFloat(count - 1) * gap,
+                height: columnHeight))
+            textView.removeFromSuperview()
+            textView.frame = NSRect(x: 0, y: 0, width: columnWidth, height: columnHeight)
+            textView.autoresizingMask = []
+            textView.isVerticallyResizable = false
+            textView.isHorizontallyResizable = false
+            textView.textContainer?.widthTracksTextView = false
+            textView.textContainer?.heightTracksTextView = false
+            textView.textContainer?.containerSize = NSSize(width: columnWidth, height: columnHeight)
+            host.addSubview(textView)
+            columnTextViews.removeAll()
+            for index in 1..<count {
+                let container = NSTextContainer(size: NSSize(width: columnWidth, height: columnHeight))
+                layoutManager.addTextContainer(container)
+                let column = NSTextView(frame: NSRect(
+                    x: CGFloat(index) * (columnWidth + gap), y: 0,
+                    width: columnWidth, height: columnHeight), textContainer: container)
+                configureColumnTextView(column, number: index + 1)
+                host.addSubview(column)
+                columnTextViews.append(column)
+            }
+            columnLayoutHost = host
+            scrollView.documentView = host
+            scrollView.hasHorizontalScroller = true
+            scrollView.hasVerticalScroller = false
+        } else {
+            columnTextViews.forEach { $0.removeFromSuperview() }
+            while layoutManager.textContainers.count > 1 {
+                layoutManager.removeTextContainer(at: layoutManager.textContainers.count - 1)
+            }
+            columnTextViews.removeAll()
+            textView.removeFromSuperview()
+            textView.isVerticallyResizable = true
+            textView.isHorizontallyResizable = true
+            textView.autoresizingMask = [.width]
+            scrollView.documentView = textView
+            columnLayoutHost = nil
+            scrollView.hasVerticalScroller = true
+            applyPreferences(preferences)
+        }
+        textView.needsDisplay = true
+    }
+
+    private func configureColumnTextView(_ column: NSTextView, number: Int) {
+        column.isEditable = textView.isEditable
+        column.isSelectable = true
+        column.allowsUndo = true
+        column.isRichText = false
+        column.backgroundColor = textView.backgroundColor
+        column.textColor = textView.textColor
+        column.font = textView.font
+        column.insertionPointColor = textView.insertionPointColor
+        column.selectedTextAttributes = textView.selectedTextAttributes
+        column.textContainerInset = textView.textContainerInset
+        column.defaultParagraphStyle = textView.defaultParagraphStyle
+        column.typingAttributes = textView.typingAttributes
+        column.delegate = self
+        column.setAccessibilityLabel("Editor column \(number)")
     }
 
     private func applyTextLayoutOrientation() {

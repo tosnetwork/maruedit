@@ -6,6 +6,17 @@ import XCTest
 
 @preconcurrency @MainActor
 final class StatusBarViewTests: XCTestCase {
+    func testWritingAndColumnLayoutFieldIsExplicitAndAccessible() {
+        let bar = StatusBarView(frame: NSRect(x: 0, y: 0, width: 1_200, height: 24))
+        bar.updateLayoutMode(isVertical: false, isColumn: false, columnCount: 1)
+        XCTAssertEqual(bar.displayedLayoutModeText, "HORZ")
+        bar.updateLayoutMode(isVertical: true, isColumn: false, columnCount: 1)
+        XCTAssertEqual(bar.displayedLayoutModeText, "VERT")
+        bar.updateLayoutMode(isVertical: false, isColumn: true, columnCount: 3)
+        XCTAssertEqual(bar.displayedLayoutModeText, "COL×3")
+        bar.layoutSubtreeIfNeeded()
+        XCTAssertNotNil(bar.frame(for: .layoutMode))
+    }
     func testClassicInputModeSegmentIsExplicit() async {
         let bar = StatusBarView()
         XCTAssertEqual(bar.displayedInputModeText, "INS")

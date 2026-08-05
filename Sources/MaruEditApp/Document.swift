@@ -45,6 +45,7 @@ final class Document: @unchecked Sendable {
     var isViewMode: Bool = false
     var isBinaryMode: Bool = false
     var isVerticalLayout: Bool = false
+    var isColumnLayout: Bool = false
     var largeFileMode: LargeFileMode = .normal
     var hasExplicitlyEnabledLargeFileFeatures = false
     var cursorPosition: Int = 0

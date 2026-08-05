@@ -309,6 +309,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         viewMenu.addItem(commandItem(.viewToggleWrap))
         viewMenu.addItem(commandItem(.viewToggleTableMode))
         viewMenu.addItem(commandItem(.viewToggleVerticalLayout))
+        viewMenu.addItem(commandItem(.viewToggleColumnLayout))
         for id: CommandID in [
             .viewToggleLineNumbers, .viewToggleHeading, .viewToggleFunctionKeys,
             .viewToggleStatusBar, .viewToggleOutputPane, .viewFocusOutputPane,
@@ -560,7 +561,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .viewToggleLineEndings, .viewToggleFullWidthSpaces,
             .viewTabWidth2, .viewTabWidth4, .viewTabWidth8,
             .viewToggleRuler, .viewRulerInterval8, .viewRulerInterval10,
-            .viewToggleTabStops, .viewToggleVerticalLayout, .viewToggleLineNumbers,
+            .viewToggleTabStops, .viewToggleVerticalLayout, .viewToggleColumnLayout, .viewToggleLineNumbers,
             .viewToggleHeading, .viewToggleFunctionKeys, .viewToggleStatusBar,
             .viewToggleOutputPane,
         ]
