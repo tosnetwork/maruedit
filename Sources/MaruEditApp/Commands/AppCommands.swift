@@ -173,6 +173,7 @@ extension CommandID {
     static let convertFullWidthAlphanumeric = CommandID("convert.fullWidthAlphanumeric")
     static let convertHalfWidthKatakana = CommandID("convert.halfWidthKatakana")
     static let convertFullWidthKatakana = CommandID("convert.fullWidthKatakana")
+    static let convertPipelineDialog = CommandID("convert.pipelineDialog")
     static let insertDateTime = CommandID("insert.dateTime")
     static let insertPageBreak = CommandID("insert.pageBreak")
     static let insertFileContents = CommandID("insert.fileContents")
@@ -476,6 +477,9 @@ enum AppCommands {
                 $0.coordinator.performLineCommand(command)
             })
         }
+        registry.register(CommandDefinition(id: .convertPipelineDialog, title: "Conversion Pipeline…") {
+            $0.coordinator.showConversionPipeline()
+        })
         registry.register(CommandDefinition(id: .insertDateTime, title: "Date and Time") {
             $0.coordinator.insertDateTime()
         })

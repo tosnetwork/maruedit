@@ -88,6 +88,7 @@ significantly, replace this with a small script that generates it from
 | `convert.fullWidthAlphanumeric` | Alphanumerics/Symbols/Spaces to Full-Width | Convert | — | Selective width conversion that preserves kana |
 | `convert.halfWidthKatakana` | Katakana Only to Half-Width | Convert | — | Selective kana conversion that preserves Latin text |
 | `convert.fullWidthKatakana` | Katakana Only to Full-Width | Convert | — | Selective kana conversion that preserves Latin text |
+| `convert.pipelineDialog` | Conversion Pipeline… | Convert | — | Builds, reorders, saves, deletes, and applies parameterized conversion-module chains |
 | `file.clearRecoveryData` | Clear Recovery Data... | File | — | `AppCoordinator.clearRecoveryData()` |
 | `file.pageSetup` | Page Setup… | File | — | `AppCoordinator.showPageSetup()` |
 | `file.print` | Print… | File | — | `AppCoordinator.printDocument()` |

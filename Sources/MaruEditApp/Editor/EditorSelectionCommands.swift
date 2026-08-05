@@ -130,6 +130,19 @@ extension EditorViewController {
         return true
     }
 
+    func applyConversionPipeline(
+        _ steps: [TextConversionStep], registry: TextConversionRegistry = TextConversionRegistry()
+    ) throws {
+        let source = textView.string as NSString
+        guard source.length > 0 else { return }
+        let selected = selectionSet.ranges.filter { $0.length > 0 }
+        let ranges = selected.isEmpty
+            ? SelectionSet.normalize(selectionSet.ranges.map { source.lineRange(for: $0) })
+            : SelectionSet.normalize(selected)
+        let replacements = try ranges.map { try registry.apply(steps, to: source.substring(with: $0)) }
+        batchReplace(ranges, with: replacements)
+    }
+
     @discardableResult
     func correctCapsLockMistake() -> Bool {
         if selectionSet.ranges.allSatisfy({ $0.length == 0 }) {

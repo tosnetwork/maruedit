@@ -119,6 +119,7 @@ final class CommandRegistryTests: XCTestCase {
             .convertHalfWidth, .convertFullWidth, .convertHiragana, .convertKatakana,
             .convertHalfWidthAlphanumeric, .convertFullWidthAlphanumeric,
             .convertHalfWidthKatakana, .convertFullWidthKatakana,
+            .convertPipelineDialog,
             .convertTabsToSpaces, .convertSpacesToTabs,
             .navigateMarkerRed, .navigateMarkerYellow, .navigateMarkerBlue,
             .navigateNextMarker, .navigatePreviousMarker, .navigateHighlightList,

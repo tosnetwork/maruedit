@@ -14,6 +14,7 @@ final class AppCoordinator {
     private var windowController: MainWindowController?
     private var settingsWindowController: SettingsWindowController?
     private var externalHelpWindowController: ExternalHelpWindowController?
+    private var conversionDialogWindowController: ConversionDialogWindowController?
     private let preferencesStore: PreferencesStore
     private let fileTypeProfileStore = FileTypeProfileStore()
     private let externalHelpStore: ExternalHelpStore
@@ -109,6 +110,21 @@ final class AppCoordinator {
 
     func showFileTypeProfiles() { showSettings(group: .files) }
     func showKeyAssignments() { showSettings(group: .keyBindings) }
+
+    func showConversionPipeline() {
+        let controller = ConversionDialogWindowController { [weak self] steps in
+            guard let self else { return }
+            do {
+                try self.ensureWindowControllerReady().macroEditor.applyConversionPipeline(steps)
+                self.showStatusMessage("Conversion pipeline applied")
+            } catch {
+                let alert = NSAlert(error: error); alert.runModal()
+            }
+        }
+        conversionDialogWindowController = controller
+        controller.showWindow(nil); controller.window?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
 
     func showMacroMenu() { onShowMacroMenu?() }
     func hasExternalHelp(slot: Int) -> Bool {

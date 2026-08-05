@@ -416,6 +416,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // application menu before this sequence.
         let convertItem = NSMenuItem()
         let convertMenu = NSMenu(title: "Convert")
+        convertMenu.addItem(commandItem(.convertPipelineDialog))
+        convertMenu.addItem(.separator())
         for id: CommandID in [.editUppercase, .editLowercase, .editTitlecase] {
             convertMenu.addItem(commandItem(id))
         }
