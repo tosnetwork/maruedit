@@ -144,6 +144,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         fileMenu.addItem(.separator())
         fileMenu.addItem(commandItem(.fileCloseTab))
         fileMenu.addItem(.separator())
+        fileMenu.addItem(commandItem(.filePageSetup))
+        fileMenu.addItem(commandItem(.filePrint))
+        fileMenu.addItem(.separator())
         fileMenu.addItem(commandItem(.fileClearRecoveryData))
         fileItem.submenu = fileMenu
         main.addItem(fileItem)
@@ -195,6 +198,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         editMenu.addItem(commandItem(.navigateToggleFold))
         editMenu.addItem(commandItem(.navigateCollapseAllFolds))
         editMenu.addItem(commandItem(.navigateExpandAllFolds))
+        editMenu.addItem(commandItem(.navigateBeginPartialOutline))
+        editMenu.addItem(commandItem(.navigateEndPartialOutline))
         editItem.submenu = editMenu
         main.addItem(editItem)
 
@@ -234,6 +239,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let viewMenu = NSMenu(title: "View")
         viewMenu.addItem(commandItem(.viewToggleSidebar))
         viewMenu.addItem(commandItem(.viewToggleWrap))
+        viewMenu.addItem(commandItem(.viewToggleTableMode))
         let invisiblesItem = NSMenuItem(title: "Show Invisibles", action: nil, keyEquivalent: "")
         let invisiblesMenu = NSMenu(title: "Show Invisibles")
         invisiblesMenu.addItem(commandItem(.viewToggleSpaces))

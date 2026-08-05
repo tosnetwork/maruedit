@@ -25,6 +25,8 @@ significantly, replace this with a small script that generates it from
 | `file.saveAs` | Save As... | File | ⌘⇧S | `AppCoordinator.saveDocumentAs()` |
 | `file.closeTab` | Close Tab | File | ⌘W | `AppCoordinator.closeCurrentTab()` |
 | `file.clearRecoveryData` | Clear Recovery Data... | File | — | `AppCoordinator.clearRecoveryData()` |
+| `file.pageSetup` | Page Setup… | File | — | `AppCoordinator.showPageSetup()` |
+| `file.print` | Print… | File | — | `AppCoordinator.printDocument()` |
 | `search.find` | Find... | Find | ⌘F | `AppCoordinator.showFind()` |
 | `search.replace` | Find and Replace... | Find | ⌥⌘F | `AppCoordinator.showReplace()` |
 | `search.replaceAll` | Replace All | Find | — | `AppCoordinator.replaceAll()` |
@@ -53,6 +55,7 @@ significantly, replace this with a small script that generates it from
 | `view.splitHorizontal` | Split Editor Horizontally | View | — | `AppCoordinator.splitEditorHorizontal()` |
 | `view.closeSplit` | Close Editor Split | View | — | `AppCoordinator.closeEditorSplit()` |
 | `view.toggleLinkedScrolling` | Linked Editor Scrolling | View | — | `AppCoordinator.toggleLinkedEditorScrolling()` |
+| `view.toggleTableMode` | CSV/TSV Table Mode | View | — | `AppCoordinator.toggleTableMode()` |
 | `edit.addCursorAbove` | Add Cursor Above | Edit | ⌥⌘↑ | `AppCoordinator.addCursorAbove()` |
 | `edit.addCursorBelow` | Add Cursor Below | Edit | ⌥⌘↓ | `AppCoordinator.addCursorBelow()` |
 | `edit.selectNextOccurrence` | Select Next Occurrence | Edit | ⌘D | `AppCoordinator.selectNextOccurrence()` |
@@ -88,6 +91,8 @@ significantly, replace this with a small script that generates it from
 | `navigate.toggleFold` | Toggle Fold | Edit | — | `AppCoordinator.toggleFold()` |
 | `navigate.collapseAllFolds` | Collapse All Folds | Edit | — | `AppCoordinator.collapseAllFolds()` |
 | `navigate.expandAllFolds` | Expand All Folds | Edit | — | `AppCoordinator.expandAllFolds()` |
+| `navigate.beginPartialOutline` | Edit Current Outline Region | Edit | — | `AppCoordinator.beginPartialOutlineEditing()` |
+| `navigate.endPartialOutline` | Show Full Document | Edit | — | `AppCoordinator.endPartialOutlineEditing()` |
 | `navigate.markerRed` | Toggle Red Marker | Edit | — | `AppCoordinator.toggleMarker(.red)` |
 | `navigate.markerYellow` | Toggle Yellow Marker | Edit | — | `AppCoordinator.toggleMarker(.yellow)` |
 | `navigate.markerBlue` | Toggle Blue Marker | Edit | — | `AppCoordinator.toggleMarker(.blue)` |

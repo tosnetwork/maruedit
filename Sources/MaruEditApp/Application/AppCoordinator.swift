@@ -87,6 +87,8 @@ final class AppCoordinator {
     func saveDocument()               { ensureWindowControllerReady().saveDocument() }
     func saveDocumentAs()             { ensureWindowControllerReady().saveDocumentAs() }
     func closeCurrentTab()            { ensureWindowControllerReady().closeCurrentTab() }
+    func showPageSetup()              { ensureWindowControllerReady().showPageSetup() }
+    func printDocument()              { ensureWindowControllerReady().printDocument() }
     func showFind()                   { ensureWindowControllerReady().showFind() }
     func showReplace()                { ensureWindowControllerReady().showFind(showingReplace: true) }
     func replaceAll()                 { ensureWindowControllerReady().replaceAllFromFindBar() }
@@ -131,6 +133,7 @@ final class AppCoordinator {
     func previousMarker()                { ensureWindowControllerReady().previousMarker() }
     func clearMarkers()                  { ensureWindowControllerReady().clearMarkers() }
     func showCompletions()               { ensureWindowControllerReady().showCompletions() }
+    func toggleTableMode()               { ensureWindowControllerReady().toggleTableMode() }
     func splitEditorVertical()           { ensureWindowControllerReady().showEditorSplit(.vertical) }
     func splitEditorHorizontal()         { ensureWindowControllerReady().showEditorSplit(.horizontal) }
     func closeEditorSplit()              { ensureWindowControllerReady().closeEditorSplit() }
@@ -145,6 +148,8 @@ final class AppCoordinator {
     func toggleFold()                    { ensureWindowControllerReady().toggleFold() }
     func collapseAllFolds()              { ensureWindowControllerReady().collapseAllFolds() }
     func expandAllFolds()                { ensureWindowControllerReady().expandAllFolds() }
+    func beginPartialOutlineEditing()    { ensureWindowControllerReady().beginPartialOutlineEditing() }
+    func endPartialOutlineEditing()      { ensureWindowControllerReady().endPartialOutlineEditing() }
     func toggleSidebar()               { ensureWindowControllerReady().toggleSidebar() }
     func toggleWrapLines()             { ensureWindowControllerReady().toggleWrapLines() }
     func setTabWidth(_ width: Int)      { ensureWindowControllerReady().setTabWidth(width) }

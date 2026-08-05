@@ -407,6 +407,24 @@ final class MainWindowController: NSWindowController,
         } catch { showStatusMessage(error.localizedDescription, duration: 4) }
     }
 
+    func showPageSetup() {
+        guard let window else { return }
+        NSPageLayout().beginSheet(
+            with: NSPrintInfo.shared, modalFor: window,
+            delegate: nil, didEnd: nil, contextInfo: nil)
+    }
+
+    func printDocument() {
+        guard let window else { return }
+        let printable = NSTextView(frame: NSRect(x: 0, y: 0, width: 540, height: 720))
+        printable.string = curDoc?.content ?? ""
+        printable.font = editorVC.currentEditorFont
+        printable.isEditable = false
+        let operation = NSPrintOperation(view: printable, printInfo: NSPrintInfo.shared)
+        operation.showsPrintPanel = true; operation.showsProgressPanel = true
+        operation.runModal(for: window, delegate: nil, didRun: nil, contextInfo: nil)
+    }
+
     func openDocument() {
         let p = NSOpenPanel()
         p.allowsMultipleSelection = true
@@ -1672,6 +1690,7 @@ final class MainWindowController: NSWindowController,
     func previousMarker() { editorVC.previousMarker() }
     func clearMarkers() { editorVC.clearMarkers(); refreshMarkerResults() }
     func showCompletions() { editorVC.showCompletions() }
+    func toggleTableMode() { editorVC.toggleDelimitedTableMode() }
 
     enum EditorSplitOrientation { case vertical, horizontal }
 
@@ -1848,6 +1867,8 @@ final class MainWindowController: NSWindowController,
         sidebarVC.updateMarkerResults(doc.colorMarkers.markers, text: doc.content)
     }
     func toggleFold() { editorVC.toggleFoldAtCursor() }
+    func beginPartialOutlineEditing() { _ = editorVC.beginPartialOutlineEditing() }
+    func endPartialOutlineEditing() { editorVC.endPartialOutlineEditing() }
     func collapseAllFolds() { editorVC.collapseAllFolds() }
     func expandAllFolds() { editorVC.expandAllFolds() }
 

@@ -72,6 +72,8 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     private var isCompositionCommitScheduled = false
     private var completionDictionaries: [String] = []
     private var searchMarkerOffsets: Set<Int> = []
+    private(set) var isTableMode = false
+    private(set) var partialEditRange: NSRange?
     var inputLatencySignpostID: OSSignpostID?
     var lineIndex = LineIndex()
     private var preferences = Preferences.defaults
@@ -414,6 +416,25 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         })
         refreshBookmarkGutter()
     }
+
+    func toggleDelimitedTableMode() {
+        guard let storage = textView.textStorage else { return }
+        isTableMode.toggle()
+        let fullRange = NSRange(location: 0, length: storage.length)
+        storage.removeAttribute(.kern, range: fullRange)
+        guard isTableMode else { return }
+        let model = DelimitedTableModel(text: textView.string)
+        let space = " ".size(withAttributes: [.font: preferredEditorFont]).width
+        for row in model.rows {
+            for column in row.indices.dropLast() {
+                let delimiterOffset = NSMaxRange(row[column].range)
+                guard delimiterOffset < storage.length else { continue }
+                let padding = max(1, model.columnWidths[column] - row[column].value.count + 2)
+                storage.addAttribute(.kern, value: space * CGFloat(padding),
+                                     range: NSRange(location: delimiterOffset, length: 1))
+            }
+        }
+    }
     var searchMarkerOffsetsForTesting: Set<Int> { searchMarkerOffsets }
     var foldRegionCountForTesting: Int { lineNumbers?.foldRegions.count ?? 0 }
 
@@ -710,12 +731,21 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
 
     func refreshFolding() {
         guard isViewLoaded, let document, let layoutManager = textView.layoutManager else { return }
+        let documentLength = (document.content as NSString).length
+        var isolatedRanges: [NSRange] = []
+        if let range = partialEditRange {
+            if range.location > 0 { isolatedRanges.append(NSRange(location: 0, length: range.location)) }
+            let end = NSMaxRange(range)
+            if end < documentLength {
+                isolatedRanges.append(NSRange(location: end, length: documentLength - end))
+            }
+        }
         if document.fileTypeProfile?.settings.foldingEnabled == false {
-            foldLayoutDelegate.collapsedRanges = []
+            foldLayoutDelegate.collapsedRanges = isolatedRanges
             lineNumbers?.foldRegions = []
             lineNumbers?.collapsedFoldIDs = []
             layoutManager.invalidateLayout(
-                forCharacterRange: NSRange(location: 0, length: (document.content as NSString).length),
+                forCharacterRange: NSRange(location: 0, length: documentLength),
                 actualCharacterRange: nil)
             return
         }
@@ -723,7 +753,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
             text: document.content, language: document.language,
             customRules: document.fileTypeProfile?.settings.outlineRules ?? [])
         document.foldModel.rebuild(text: document.content, symbols: outline.symbols)
-        foldLayoutDelegate.collapsedRanges = document.foldModel.collapsedRanges()
+        foldLayoutDelegate.collapsedRanges = document.foldModel.collapsedRanges() + isolatedRanges
         layoutManager.invalidateGlyphs(
             forCharacterRange: NSRange(location: 0, length: (document.content as NSString).length),
             changeInLength: 0, actualCharacterRange: nil)
@@ -754,6 +784,35 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
 
     func collapseAllFolds() { document?.foldModel.collapseAll(); refreshFolding() }
     func expandAllFolds() { document?.foldModel.expandAll(); refreshFolding() }
+
+    /// Isolates the outline symbol containing the insertion point without
+    /// replacing or copying document text. The next symbol at the same or a
+    /// shallower level closes the editable region.
+    @discardableResult
+    func beginPartialOutlineEditing() -> Bool {
+        guard let document else { return false }
+        let outline = OutlineModel(
+            text: document.content, language: document.language,
+            customRules: document.fileTypeProfile?.settings.outlineRules ?? [])
+        let index = LineIndex(document.content)
+        let cursorLine = index.line(atUTF16Offset: textView.selectedRange().location)
+        guard let symbolIndex = outline.symbols.lastIndex(where: { $0.line <= cursorLine }) else {
+            return false
+        }
+        let symbol = outline.symbols[symbolIndex]
+        let boundary = outline.symbols.dropFirst(symbolIndex + 1).first { $0.level <= symbol.level }
+        guard let start = index.utf16Offset(forLine: symbol.line) else { return false }
+        let end = boundary.flatMap { index.utf16Offset(forLine: $0.line) } ?? index.utf16Length
+        partialEditRange = NSRange(location: start, length: max(0, end - start))
+        textView.setSelectedRange(NSRange(location: start, length: 0))
+        refreshFolding()
+        return true
+    }
+
+    func endPartialOutlineEditing() {
+        partialEditRange = nil
+        refreshFolding()
+    }
 
     var collapsedFoldCountForTesting: Int { document?.foldModel.collapsedRegionIDs.count ?? 0 }
 

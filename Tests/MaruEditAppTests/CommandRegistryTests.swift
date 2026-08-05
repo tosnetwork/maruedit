@@ -64,11 +64,12 @@ final class CommandRegistryTests: XCTestCase {
 
         let ids: [CommandID] = [
             .appSettings, .fileNew, .fileNewFromTemplate, .fileOpen, .fileOpenFolder, .fileSave, .fileSaveAs,
-            .fileCloseTab, .fileClearRecoveryData, .searchFind, .searchReplace, .searchReplaceAll, .searchFindNext,
+            .fileCloseTab, .fileClearRecoveryData, .filePageSetup, .filePrint,
+            .searchFind, .searchReplace, .searchReplaceAll, .searchFindNext,
             .searchFindPrevious, .searchGoToLine, .searchQuickOpen, .searchGrep,
             .searchGrepCurrentDocument, .searchGrepOpenDocuments,
             .searchRefineGrepResults, .searchOutputGrepDocument,
-            .searchClearHistory, .viewToggleSidebar, .viewToggleWrap,
+            .searchClearHistory, .viewToggleSidebar, .viewToggleWrap, .viewToggleTableMode,
             .viewToggleSpaces, .viewToggleTabs, .viewToggleLineEndings,
             .viewToggleFullWidthSpaces, .viewTabWidth2, .viewTabWidth4,
             .viewTabWidth8, .viewShowFonts, .viewCustomizeMenus
@@ -90,7 +91,8 @@ final class CommandRegistryTests: XCTestCase {
             .navigateTagJump, .navigateDirectTagJump, .navigateBackTagJump,
             .navigateToggleBookmark, .navigateNextBookmark,
             .navigatePreviousBookmark, .navigateClearBookmarks
-            , .navigateToggleFold, .navigateCollapseAllFolds, .navigateExpandAllFolds
+            , .navigateToggleFold, .navigateCollapseAllFolds, .navigateExpandAllFolds,
+            .navigateBeginPartialOutline, .navigateEndPartialOutline
         ]
         for id in ids {
             XCTAssertNotNil(registry.definition(for: id), "\(id.rawValue) should be registered")

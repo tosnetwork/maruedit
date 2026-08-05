@@ -73,11 +73,11 @@ that would weaken MaruEdit's security model.
 
 ## MC9 — Specialist workflows
 
-- [ ] Native print and page setup.
-- [ ] CSV/TSV table mode.
-- [ ] Partial editing of an outline region.
-- [ ] Vertical writing/column-layout feasibility spike.
-- [ ] Streaming editable huge-file and binary-view architecture.
+- [x] Native print and page setup.
+- [x] CSV/TSV table mode.
+- [x] Partial editing of an outline region.
+- [x] Vertical writing/column-layout feasibility spike.
+- [x] Streaming editable huge-file and binary-view architecture.
 
 ## MC10 — Adoption gate
 

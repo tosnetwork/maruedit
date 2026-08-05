@@ -8,6 +8,10 @@ semantic version tags.
 
 ### Added
 
+- Added native Page Setup and Print commands, presentation-only CSV/TSV table
+  alignment, and non-destructive editing isolation for the current outline region.
+- Added executable vertical TextKit layout feasibility coverage and a bounded-memory
+  streaming edit/binary-row architecture for future huge-file and hex interfaces.
 - Added per-document insert/overwrite modes with an explicit INS/OVR status,
   grapheme-safe replacement, IME and multiple-selection support, and a stable
   `edit.toggleInputMode` command.

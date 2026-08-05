@@ -13,6 +13,8 @@ extension CommandID {
     static let fileSaveAs       = CommandID("file.saveAs")
     static let fileCloseTab     = CommandID("file.closeTab")
     static let fileClearRecoveryData = CommandID("file.clearRecoveryData")
+    static let filePageSetup = CommandID("file.pageSetup")
+    static let filePrint = CommandID("file.print")
     static let searchFind       = CommandID("search.find")
     static let searchFindNext   = CommandID("search.findNext")
     static let searchReplace    = CommandID("search.replace")
@@ -65,6 +67,7 @@ extension CommandID {
     static let editDeleteWordForward = CommandID("edit.deleteWordForward")
     static let editTitlecase = CommandID("edit.titlecase")
     static let editCompleteWord = CommandID("edit.completeWord")
+    static let viewToggleTableMode = CommandID("view.toggleTableMode")
     static let navigateMarkerRed = CommandID("navigate.markerRed")
     static let navigateMarkerYellow = CommandID("navigate.markerYellow")
     static let navigateMarkerBlue = CommandID("navigate.markerBlue")
@@ -89,6 +92,8 @@ extension CommandID {
     static let navigateToggleFold = CommandID("navigate.toggleFold")
     static let navigateCollapseAllFolds = CommandID("navigate.collapseAllFolds")
     static let navigateExpandAllFolds = CommandID("navigate.expandAllFolds")
+    static let navigateBeginPartialOutline = CommandID("navigate.beginPartialOutline")
+    static let navigateEndPartialOutline = CommandID("navigate.endPartialOutline")
 }
 
 /// The command definitions for MaruEdit's current static menu actions.
@@ -123,6 +128,8 @@ enum AppCommands {
         registry.register(CommandDefinition(id: .fileClearRecoveryData, title: "Clear Recovery Data...") { ctx in
             ctx.coordinator.clearRecoveryData()
         })
+        registry.register(CommandDefinition(id: .filePageSetup, title: "Page Setup…") { $0.coordinator.showPageSetup() })
+        registry.register(CommandDefinition(id: .filePrint, title: "Print…") { $0.coordinator.printDocument() })
         registry.register(CommandDefinition(id: .searchFind, title: "Find...") { ctx in
             ctx.coordinator.showFind()
         })
@@ -204,6 +211,7 @@ enum AppCommands {
         registry.register(CommandDefinition(id: .editDeleteWordForward, title: "Delete Word Forward") { $0.coordinator.deleteWordForward() })
         registry.register(CommandDefinition(id: .editTitlecase, title: "Convert to Title Case") { $0.coordinator.performLineCommand(.titlecase) })
         registry.register(CommandDefinition(id: .editCompleteWord, title: "Complete Word") { $0.coordinator.showCompletions() })
+        registry.register(CommandDefinition(id: .viewToggleTableMode, title: "CSV/TSV Table Mode") { $0.coordinator.toggleTableMode() })
         registry.register(CommandDefinition(id: .navigateMarkerRed, title: "Toggle Red Marker") { $0.coordinator.toggleMarker(.red) })
         registry.register(CommandDefinition(id: .navigateMarkerYellow, title: "Toggle Yellow Marker") { $0.coordinator.toggleMarker(.yellow) })
         registry.register(CommandDefinition(id: .navigateMarkerBlue, title: "Toggle Blue Marker") { $0.coordinator.toggleMarker(.blue) })
@@ -226,6 +234,8 @@ enum AppCommands {
         registry.register(CommandDefinition(id: .navigatePreviousBookmark, title: "Previous Bookmark") { $0.coordinator.previousBookmark() })
         registry.register(CommandDefinition(id: .navigateClearBookmarks, title: "Clear Bookmarks") { $0.coordinator.clearBookmarks() })
         registry.register(CommandDefinition(id: .navigateToggleFold, title: "Toggle Fold") { $0.coordinator.toggleFold() })
+        registry.register(CommandDefinition(id: .navigateBeginPartialOutline, title: "Edit Current Outline Region") { $0.coordinator.beginPartialOutlineEditing() })
+        registry.register(CommandDefinition(id: .navigateEndPartialOutline, title: "Show Full Document") { $0.coordinator.endPartialOutlineEditing() })
         registry.register(CommandDefinition(id: .navigateCollapseAllFolds, title: "Collapse All Folds") { $0.coordinator.collapseAllFolds() })
         registry.register(CommandDefinition(id: .navigateExpandAllFolds, title: "Expand All Folds") { $0.coordinator.expandAllFolds() })
     }
