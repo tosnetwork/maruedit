@@ -124,6 +124,7 @@ final class ClassicWorkspaceTests: XCTestCase {
                                      selectedCharacterCount: 0, selectedUTF16Length: 0,
                                      selectionRangeCount: 1))
         XCTAssertEqual(controller.classicRulerStateForTesting.column, 37)
+        XCTAssertEqual(controller.classicRulerMaximumColumnForTesting, 160)
         XCTAssertLessThan(controller.classicRulerStateForTesting.origin, 64,
                           "a collapsed sidebar must not leave stale horizontal space before the ruler")
     }

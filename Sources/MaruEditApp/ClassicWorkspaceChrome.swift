@@ -62,10 +62,11 @@ final class ClassicWorkspaceChrome: NSView {
     }
 
     func updateHeading(_ value: String) { heading.stringValue = value }
-    func updateRuler(editorOrigin: CGFloat, currentColumn: Int) {
+    func updateRuler(editorOrigin: CGFloat, currentColumn: Int, cellWidth: CGFloat) {
         rulerStartX = max(0, editorOrigin)
         ruler.editorOrigin = 0
         ruler.currentColumn = currentColumn
+        ruler.cellWidth = max(1, cellWidth)
         needsLayout = true
     }
 
@@ -94,6 +95,7 @@ final class ClassicWorkspaceChrome: NSView {
     var rulerStateForTesting: (origin: CGFloat, column: Int) {
         (rulerStartX, ruler.currentColumn)
     }
+    var rulerMaximumColumnForTesting: Int { ruler.maximumColumn }
 }
 
 /// Original, compact icon bar modeled after the information density and
@@ -298,8 +300,11 @@ private final class ClassicToolbarButton: NSButton {
 }
 
 private final class CharacterRulerView: NSView {
+    /// Hidemaru's default fixed-width/wrapping reference is 160 columns.
+    let maximumColumn = 160
     var editorOrigin: CGFloat = 46 { didSet { needsDisplay = true } }
     var currentColumn: Int = 1 { didSet { needsDisplay = true } }
+    var cellWidth: CGFloat = 8 { didSet { needsDisplay = true } }
     override var isFlipped: Bool { true }
 
     override init(frame: NSRect) {
@@ -321,14 +326,13 @@ private final class CharacterRulerView: NSView {
         baseline.line(to: NSPoint(x: bounds.maxX, y: bounds.maxY - 0.5))
         baseline.stroke()
 
-        let cell: CGFloat = 8
         let attributes: [NSAttributedString.Key: Any] = [
             .font: NSFont.monospacedSystemFont(ofSize: 8, weight: .regular),
             .foregroundColor: NSColor.secondaryLabelColor,
         ]
         var column = 1
         var x: CGFloat = editorOrigin
-        while x < bounds.maxX {
+        while x < bounds.maxX && column <= maximumColumn {
             let major = column.isMultiple(of: 10)
             let middle = column.isMultiple(of: 5)
             let tick = NSBezierPath()
@@ -337,9 +341,9 @@ private final class CharacterRulerView: NSView {
             tick.stroke()
             if major { String(column).draw(at: NSPoint(x: x + 2, y: 0), withAttributes: attributes) }
             column += 1
-            x += cell
+            x += cellWidth
         }
-        let cursorX = editorOrigin + CGFloat(max(0, currentColumn - 1)) * cell
+        let cursorX = editorOrigin + CGFloat(max(0, currentColumn - 1)) * cellWidth
         if cursorX >= editorOrigin && cursorX <= bounds.maxX {
             NSColor.controlAccentColor.setFill()
             let marker = NSBezierPath()

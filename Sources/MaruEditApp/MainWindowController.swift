@@ -202,6 +202,7 @@ final class MainWindowController: NSWindowController,
     var classicHeadingForTesting: String { classicChrome.headingText }
     var classicChromeVisibilityForTesting: ClassicChromeOptions { classicChrome.visibilityForTesting }
     var classicRulerStateForTesting: (origin: CGFloat, column: Int) { classicChrome.rulerStateForTesting }
+    var classicRulerMaximumColumnForTesting: Int { classicChrome.rulerMaximumColumnForTesting }
     var classicToolbarIdentifiersForTesting: [String] {
         classicChrome.toolbarCommandIDs
     }
@@ -272,7 +273,7 @@ final class MainWindowController: NSWindowController,
             height: cv.bounds.height - topTabH - findH - statusH - bottomTabH - paneH - classicTop - classicBottom
         )
         updateTabBarFrame()
-        classicChrome.updateRuler(editorOrigin: rulerOrigin(), currentColumn: lastCursorColumn)
+        updateClassicRuler(currentColumn: lastCursorColumn)
     }
 
     private static let outputPaneHeight: CGFloat = 200
@@ -309,6 +310,12 @@ final class MainWindowController: NSWindowController,
         // Hidemaru's character ruler begins immediately after the fixed line
         // number gutter and is not indented by auxiliary panes.
         48
+    }
+
+    private func updateClassicRuler(currentColumn: Int) {
+        let cellWidth = ("0" as NSString).size(withAttributes: [.font: editorVC.currentEditorFont]).width
+        classicChrome.updateRuler(
+            editorOrigin: rulerOrigin(), currentColumn: currentColumn, cellWidth: cellWidth)
     }
 
     // MARK: - Cursor persistence across tab switches
@@ -1576,7 +1583,7 @@ final class MainWindowController: NSWindowController,
     }
     func editorCursorMoved(_ vc: EditorViewController, state: EditorCursorState) {
         lastCursorColumn = state.displayColumn
-        classicChrome.updateRuler(editorOrigin: rulerOrigin(), currentColumn: state.displayColumn)
+        updateClassicRuler(currentColumn: state.displayColumn)
         statusBar.updateCursor(state)
         statusBar.updateInputMode(curDoc?.inputMode ?? .insert)
         if let title = sidebarVC.selectOutlineSymbol(containingLine: state.lineNumber - 1) {
