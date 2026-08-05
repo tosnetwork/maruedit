@@ -48,6 +48,17 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError() }
 
+    func show(group: Group) {
+        settingsQuery = ""; searchField.stringValue = ""
+        if group == .advanced { level = .advanced; levelPopup.selectItem(at: Level.advanced.rawValue) }
+        refreshGroupVisibility()
+        select(group)
+        showWindow(nil)
+        window?.makeKeyAndOrderFront(nil)
+    }
+
+    var selectedGroupForTesting: Group { selectedGroup }
+
     private func buildUI() {
         guard let root = window?.contentView else { return }
         searchField.translatesAutoresizingMaskIntoConstraints = false

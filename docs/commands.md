@@ -36,6 +36,9 @@ significantly, replace this with a small script that generates it from
 | `help.shortcuts` | Keyboard Shortcut Reference | Help | — | `AppCoordinator.showShortcutReference()` |
 | `help.checkUpdates` | Check for Updates… | Help | — | Opens the latest GitHub release |
 | `help.support` | Support and Report an Issue… | Help | — | Opens the GitHub issue tracker |
+| `other.fileTypeProfiles` | File-Type Profiles… | Other | — | Opens Settings directly at Files |
+| `other.keyAssignments` | Key Assignments… | Other | — | Opens Settings directly at Key Bindings |
+| `other.commandList` | Command List… | Other | — | Opens the complete registered-command list/customizer |
 | `convert.halfWidth` | Convert to Half-Width | Convert | — | `LineEditCommand.halfWidth` |
 | `convert.fullWidth` | Convert to Full-Width | Convert | — | `LineEditCommand.fullWidth` |
 | `convert.hiragana` | Convert to Hiragana | Convert | — | `LineEditCommand.hiragana` |

@@ -6,6 +6,13 @@ import MaruEditCore
 
 @preconcurrency @MainActor
 final class SettingsWindowTests: XCTestCase {
+    func testDirectEntryCanSelectFilesAndKeyBindingGroups() async {
+        let controller = SettingsWindowController(preferences: .defaults) { _ in }
+        controller.show(group: .files)
+        XCTAssertEqual(controller.selectedGroupForTesting, .files)
+        controller.show(group: .keyBindings)
+        XCTAssertEqual(controller.selectedGroupForTesting, .keyBindings)
+    }
     func testLocalizationCoversEnglishJapaneseAndSimplifiedChinese() async {
         XCTAssertEqual(SettingsLocalization.text("settings", language: .english), "Settings")
         XCTAssertEqual(SettingsLocalization.text("settings", language: .japanese), "設定")

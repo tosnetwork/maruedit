@@ -61,6 +61,10 @@ final class AppCoordinator {
     }
 
     func showSettings() {
+        showSettings(group: nil)
+    }
+
+    private func showSettings(group: SettingsWindowController.Group?) {
         if settingsWindowController == nil {
             settingsWindowController = SettingsWindowController(preferences: preferences) { [weak self] updated in
                 guard let self else { return }
@@ -69,10 +73,16 @@ final class AppCoordinator {
                 self.windowController?.applyPreferences(updated)
             }
         }
-        settingsWindowController?.showWindow(nil)
-        settingsWindowController?.window?.makeKeyAndOrderFront(nil)
+        if let group { settingsWindowController?.show(group: group) }
+        else {
+            settingsWindowController?.showWindow(nil)
+            settingsWindowController?.window?.makeKeyAndOrderFront(nil)
+        }
         NSApp.activate(ignoringOtherApps: true)
     }
+
+    func showFileTypeProfiles() { showSettings(group: .files) }
+    func showKeyAssignments() { showSettings(group: .keyBindings) }
 
     func showMacroMenu() { onShowMacroMenu?() }
     func showHelp() {

@@ -342,6 +342,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let otherItem = NSMenuItem()
         let otherMenu = NSMenu(title: "Other")
         otherMenu.addItem(commandItem(.appSettings))
+        otherMenu.addItem(commandItem(.otherFileTypeProfiles))
+        otherMenu.addItem(commandItem(.otherKeyAssignments))
+        otherMenu.addItem(commandItem(.otherCommandList))
         otherMenu.addItem(commandItem(.viewShowFonts))
         otherMenu.addItem(commandItem(.viewCustomizeMenus))
         otherItem.submenu = otherMenu

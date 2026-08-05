@@ -65,6 +65,7 @@ final class CommandRegistryTests: XCTestCase {
         let ids: [CommandID] = [
             .appSettings, .appMacroMenu, .appHelp, .helpMacros, .helpShortcuts,
             .helpCheckUpdates, .helpSupport,
+            .otherFileTypeProfiles, .otherKeyAssignments, .otherCommandList,
             .fileNew, .fileNewFromTemplate, .fileOpen, .fileOpenFolder, .fileOpenPartial,
             .fileSave, .fileSaveAs,
             .fileCloseAndOpen, .fileCloseTab, .windowNextTab, .windowPreviousTab,

@@ -11,6 +11,9 @@ extension CommandID {
     static let helpShortcuts    = CommandID("help.shortcuts")
     static let helpCheckUpdates = CommandID("help.checkUpdates")
     static let helpSupport      = CommandID("help.support")
+    static let otherFileTypeProfiles = CommandID("other.fileTypeProfiles")
+    static let otherKeyAssignments = CommandID("other.keyAssignments")
+    static let otherCommandList = CommandID("other.commandList")
     static let fileNew          = CommandID("file.new")
     static let fileNewFromTemplate = CommandID("file.newFromTemplate")
     static let fileOpen         = CommandID("file.open")
@@ -150,6 +153,15 @@ enum AppCommands {
         })
         registry.register(CommandDefinition(id: .helpSupport, title: "Support and Report an Issue…") {
             $0.coordinator.showSupport()
+        })
+        registry.register(CommandDefinition(id: .otherFileTypeProfiles, title: "File-Type Profiles…") {
+            $0.coordinator.showFileTypeProfiles()
+        })
+        registry.register(CommandDefinition(id: .otherKeyAssignments, title: "Key Assignments…") {
+            $0.coordinator.showKeyAssignments()
+        })
+        registry.register(CommandDefinition(id: .otherCommandList, title: "Command List…") {
+            $0.coordinator.showMenuCustomization()
         })
         registry.register(CommandDefinition(id: .fileNew, title: "New File") { ctx in
             ctx.coordinator.newDocument()
