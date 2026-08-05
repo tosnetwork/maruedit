@@ -22,6 +22,7 @@ significantly, replace this with a small script that generates it from
 | `file.open` | Open... | File | ⌘O | `AppCoordinator.openDocument()` |
 | `file.openFolder` | Open Folder... | File | ⌘⇧O | `AppCoordinator.openFolderPanel()` |
 | `file.openPartial` | Open Partial File… | File | — | `AppCoordinator.openPartialFile()` |
+| `file.openBinary` | Open in Binary Mode… | File | — | Opens editable comma-separated hexadecimal bytes, 16 per line |
 | `file.closeAndOpen` | Close and Open… | File | — | `AppCoordinator.closeAndOpen()` |
 | `window.tabList` | Tab List… | Window | — | Selects an open document from a complete list |
 | `window.closeOtherTabs` | Close Other Tabs | Window | — | Closes all tabs except the active tab with save confirmation |

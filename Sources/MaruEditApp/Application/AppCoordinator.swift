@@ -180,6 +180,7 @@ final class AppCoordinator {
     func appendSave()                 { ensureWindowControllerReady().appendSave() }
     func renameFile()                 { ensureWindowControllerReady().renameFile() }
     func openPartialFile()            { ensureWindowControllerReady().openPartialFile() }
+    func openBinaryFile()             { ensureWindowControllerReady().openBinaryFile() }
     func closeAndOpen()               { ensureWindowControllerReady().closeAndOpen() }
     func showFind()                   { ensureWindowControllerReady().showFind() }
     func showReplace()                { ensureWindowControllerReady().showFind(showingReplace: true) }

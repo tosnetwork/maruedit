@@ -527,6 +527,28 @@ final class MainWindowController: NSWindowController,
         }
     }
 
+    func openBinaryFile() {
+        guard let window else { return }
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.beginSheetModal(for: window) { [weak self] response in
+            guard response == .OK, let url = panel.url else { return }
+            self?.openBinaryFile(url)
+        }
+    }
+
+    func openBinaryFile(_ url: URL) {
+        do {
+            let document = try Document.openBinary(url: url)
+            documentController.addDocument(document)
+            finishOpening((document, false), url: url)
+        } catch {
+            NSAlert(error: error).runModal()
+        }
+    }
+
     func openFile(_ url: URL) {
         saveCursorPosition()
         do {

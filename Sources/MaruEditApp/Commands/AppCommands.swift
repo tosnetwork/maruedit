@@ -45,6 +45,7 @@ extension CommandID {
     static let fileAppendSave = CommandID("file.appendSave")
     static let fileRename = CommandID("file.rename")
     static let fileOpenPartial = CommandID("file.openPartial")
+    static let fileOpenBinary = CommandID("file.openBinary")
     static let fileCloseAndOpen = CommandID("file.closeAndOpen")
     static let searchFind       = CommandID("search.find")
     static let searchFindNext   = CommandID("search.findNext")
@@ -237,6 +238,7 @@ enum AppCommands {
         registry.register(CommandDefinition(id: .fileAppendSave, title: "Append Save…") { $0.coordinator.appendSave() })
         registry.register(CommandDefinition(id: .fileRename, title: "Rename File…") { $0.coordinator.renameFile() })
         registry.register(CommandDefinition(id: .fileOpenPartial, title: "Open Partial File…") { $0.coordinator.openPartialFile() })
+        registry.register(CommandDefinition(id: .fileOpenBinary, title: "Open in Binary Mode…") { $0.coordinator.openBinaryFile() })
         registry.register(CommandDefinition(id: .fileCloseAndOpen, title: "Close and Open…") { $0.coordinator.closeAndOpen() })
         registry.register(CommandDefinition(id: .searchFind, title: "Find...") { ctx in
             ctx.coordinator.showFind()

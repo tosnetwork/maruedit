@@ -43,6 +43,7 @@ final class Document: @unchecked Sendable {
     /// concept doesn't apply until there's a real file to be locked.
     var isReadOnly: Bool = false
     var isViewMode: Bool = false
+    var isBinaryMode: Bool = false
     var largeFileMode: LargeFileMode = .normal
     var hasExplicitlyEnabledLargeFileFeatures = false
     var cursorPosition: Int = 0
@@ -164,6 +165,26 @@ final class Document: @unchecked Sendable {
         return document
     }
 
+    static func openBinary(url: URL) throws -> Document {
+        let size = try LargeFilePolicy.fileSize(at: url)
+        guard LargeFilePolicy.recommendation(forByteCount: size) != .tooLarge else {
+            throw DocumentOpenError.fileTooLarge(
+                size: size, maximum: LargeFilePolicy.maximumMaterializedSize)
+        }
+        let data = try Data(contentsOf: url, options: .mappedIfSafe)
+        let document = Document(
+            fileURL: url,
+            content: BinaryDocumentCodec.format(data),
+            language: .plainText)
+        document.isBinaryMode = true
+        document.fileIdentity = FileIdentity.of(url)
+        let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
+        document.lastKnownModificationDate = attributes?[.modificationDate] as? Date
+        document.posixPermissions = (attributes?[.posixPermissions] as? NSNumber)?.intValue
+        document.isReadOnly = !FileManager.default.isWritableFile(atPath: url.path)
+        return document
+    }
+
     /// Re-checks whether `fileURL` is currently writable, updating
     /// `isReadOnly` in place. Returns whether the value changed, so
     /// callers know whether to refresh any UI showing it.
@@ -215,6 +236,22 @@ final class Document: @unchecked Sendable {
 
     func save() throws {
         guard let url = fileURL else { return }
+        if isBinaryMode {
+            let data: Data
+            do { data = try BinaryDocumentCodec.parse(content) }
+            catch { throw DocumentSaveError.invalidBinary(error.localizedDescription) }
+            do {
+                let info = try TextFileSaver.save(
+                    data, to: url, preservingPermissionsFrom: posixPermissions)
+                fileIdentity = info.fileIdentity
+                lastKnownModificationDate = info.modificationDate
+                posixPermissions = info.posixPermissions
+                markSaved()
+            } catch let error as TextFileSaverError {
+                throw DocumentSaveError.writeFailed(underlying: error)
+            }
+            return
+        }
         guard let foundationEncoding = encoding.foundationEncoding else {
             throw DocumentSaveError.unrepresentable(encoding: encoding, characters: [])
         }
@@ -367,6 +404,7 @@ enum DocumentSaveError: Error {
     case writeFailed(underlying: TextFileSaverError)
     case policyFailed(String)
     case appendFailed(path: String)
+    case invalidBinary(String)
 }
 
 enum DocumentOpenError: LocalizedError, Equatable {
@@ -394,6 +432,7 @@ extension DocumentSaveError: LocalizedError {
             return underlying.errorDescription
         case .policyFailed(let message): return message
         case .appendFailed(let path): return "Could not append text to \(path)."
+        case .invalidBinary(let message): return message
         }
     }
 }

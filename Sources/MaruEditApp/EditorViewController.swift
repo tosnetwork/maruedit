@@ -320,6 +320,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     override func viewDidAppear() {
         super.viewDidAppear()
         configureLargeFileEditingMode()
+        lineNumbers?.isBinaryMode = document?.isBinaryMode ?? false
         DispatchQueue.main.async { [weak self] in
             self?.textView.window?.makeFirstResponder(self?.textView)
         }
@@ -399,6 +400,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         suppressTextChange = false
         lineIndex = LineIndex(textView.string)
         configureLargeFileEditingMode()
+        lineNumbers?.isBinaryMode = doc.isBinaryMode
         let cursor = NSRange(location: min(doc.cursorPosition, lm.textStorage?.length ?? 0), length: 0)
         setSelections([cursor], primaryRange: cursor)
         refreshBookmarkGutter()

@@ -7,6 +7,12 @@ import MaruEditCore
 final class LineNumberView: NSView {
     private weak var textView: NSTextView?
     private var gutterWidth: NSLayoutConstraint!
+    var isBinaryMode = false {
+        didSet {
+            gutterWidth.constant = isHidden ? 0 : (isBinaryMode ? 76 : 48)
+            needsDisplay = true
+        }
+    }
     var bookmarkOffsets: Set<Int> = [] { didSet { needsDisplay = true } }
     var markerColors: [Int: MarkerColor] = [:] { didSet { needsDisplay = true } }
     var foldRegions: [FoldRegion] = [] { didSet { needsDisplay = true } }
@@ -27,7 +33,7 @@ final class LineNumberView: NSView {
 
     func setVisible(_ visible: Bool) {
         isHidden = !visible
-        gutterWidth.constant = visible ? 48 : 0
+        gutterWidth.constant = visible ? (isBinaryMode ? 76 : 48) : 0
     }
 
     override func draw(_ dirtyRect: NSRect) {
@@ -99,7 +105,7 @@ final class LineNumberView: NSView {
             .font: Theme.lineNumFont,
             .foregroundColor: active ? Theme.gutterActiveText : Theme.gutterText
         ]
-        let str = "\(num)" as NSString
+        let str = formattedLineLabel(num) as NSString
         let sz = str.size(withAttributes: attrs)
         let pt = NSPoint(x: bounds.width - sz.width - 10,
                          y: y + (Theme.editorFont.ascender - sz.height) / 2 + 2)
@@ -135,6 +141,10 @@ final class LineNumberView: NSView {
             Theme.gutterText.setFill()
             path.fill()
         }
+    }
+
+    func formattedLineLabel(_ lineNumber: Int) -> String {
+        isBinaryMode ? String(format: "%08X", max(0, lineNumber - 1) * 16) : "\(lineNumber)"
     }
 
     override func mouseDown(with event: NSEvent) {
