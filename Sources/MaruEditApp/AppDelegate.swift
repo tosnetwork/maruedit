@@ -250,6 +250,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         viewMenu.addItem(commandItem(.viewShowFonts))
         viewMenu.addItem(.separator())
         viewMenu.addItem(commandItem(.viewCustomizeMenus))
+        viewMenu.addItem(commandItem(.viewSplitVertical))
+        viewMenu.addItem(commandItem(.viewSplitHorizontal))
+        viewMenu.addItem(commandItem(.viewCloseSplit))
+        viewMenu.addItem(commandItem(.viewToggleLinkedScrolling))
         viewItem.submenu = viewMenu
         main.addItem(viewItem)
 

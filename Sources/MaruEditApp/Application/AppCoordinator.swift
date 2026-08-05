@@ -125,6 +125,10 @@ final class AppCoordinator {
     func nextMarker()                    { ensureWindowControllerReady().nextMarker() }
     func previousMarker()                { ensureWindowControllerReady().previousMarker() }
     func clearMarkers()                  { ensureWindowControllerReady().clearMarkers() }
+    func splitEditorVertical()           { ensureWindowControllerReady().showEditorSplit(.vertical) }
+    func splitEditorHorizontal()         { ensureWindowControllerReady().showEditorSplit(.horizontal) }
+    func closeEditorSplit()              { ensureWindowControllerReady().closeEditorSplit() }
+    func toggleLinkedEditorScrolling()   { ensureWindowControllerReady().toggleLinkedEditorScrolling() }
     func toggleFold()                    { ensureWindowControllerReady().toggleFold() }
     func collapseAllFolds()              { ensureWindowControllerReady().collapseAllFolds() }
     func expandAllFolds()                { ensureWindowControllerReady().expandAllFolds() }

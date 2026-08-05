@@ -63,6 +63,8 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
 
     private var suppressTextChange = false
     private var suppressAutoIndent = false
+    private var suppressScrollCallback = false
+    var onScroll: ((NSPoint) -> Void)?
     private var isApplyingSelectionSet = false
     private var markedTextSnapshot: (text: String, ranges: [NSRange], primary: NSRange)?
     private var isCompositionCommitScheduled = false
@@ -302,6 +304,35 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     @objc private func boundsChanged(_ n: Notification) {
         lineNumbers?.needsDisplay = true
         scheduleScrollHighlight()
+        if !suppressScrollCallback { onScroll?(scrollView.contentView.bounds.origin) }
+    }
+
+    func setLinkedScrollOffset(_ origin: NSPoint) {
+        suppressScrollCallback = true
+        scrollView.contentView.scroll(to: origin)
+        scrollView.reflectScrolledClipView(scrollView.contentView)
+        suppressScrollCallback = false
+    }
+
+    func synchronizeSharedDocumentState() {
+        if let document, textView.string != document.content, let storage = textView.textStorage {
+            let selections = textView.selectedRanges
+            suppressTextChange = true
+            storage.replaceCharacters(
+                in: NSRange(location: 0, length: storage.length), with: document.content)
+            suppressTextChange = false
+            let length = (document.content as NSString).length
+            textView.selectedRanges = selections.map {
+                let range = $0.rangeValue
+                let location = min(range.location, length)
+                return NSValue(range: NSRange(
+                    location: location,
+                    length: min(range.length, max(0, length - location))))
+            }
+        }
+        lineIndex = LineIndex(textView.string)
+        refreshBookmarkGutter()
+        lineNumbers?.needsDisplay = true
     }
 
     private func scheduleScrollHighlight() {

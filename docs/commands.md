@@ -44,6 +44,10 @@ significantly, replace this with a small script that generates it from
 | `view.tabWidth8` | 8 Spaces | View > Tab Width | — | `AppCoordinator.setTabWidth(8)` |
 | `view.showFonts` | Show Fonts | View | — | `AppCoordinator.showFontPanel()` |
 | `view.customizeMenus` | Customize Menus... | View | — | `AppCoordinator.showMenuCustomization()` |
+| `view.splitVertical` | Split Editor Vertically | View | — | `AppCoordinator.splitEditorVertical()` |
+| `view.splitHorizontal` | Split Editor Horizontally | View | — | `AppCoordinator.splitEditorHorizontal()` |
+| `view.closeSplit` | Close Editor Split | View | — | `AppCoordinator.closeEditorSplit()` |
+| `view.toggleLinkedScrolling` | Linked Editor Scrolling | View | — | `AppCoordinator.toggleLinkedEditorScrolling()` |
 | `edit.addCursorAbove` | Add Cursor Above | Edit | ⌥⌘↑ | `AppCoordinator.addCursorAbove()` |
 | `edit.addCursorBelow` | Add Cursor Below | Edit | ⌥⌘↓ | `AppCoordinator.addCursorBelow()` |
 | `edit.selectNextOccurrence` | Select Next Occurrence | Edit | ⌘D | `AppCoordinator.selectNextOccurrence()` |

@@ -17,6 +17,9 @@ final class MainWindowController: NSWindowController,
     private var tabBar: TabBarView!
     private var findBar: FindBarView!
     private var editorVC: EditorViewController!
+    private var editorSplitView: NSSplitView!
+    private var secondaryEditorVC: EditorViewController?
+    private var linkedEditorScrolling = false
     private var statusBar: StatusBarView!
     private var classicChrome: ClassicWorkspaceChrome!
     private var workspaceStyle: WorkspaceStyle = .classic
@@ -144,11 +147,17 @@ final class MainWindowController: NSWindowController,
 
         editorVC = EditorViewController()
         editorVC.delegate = self
+        editorSplitView = NSSplitView()
+        editorSplitView.isVertical = true
+        editorSplitView.dividerStyle = .thin
+        editorSplitView.setFrameSize(NSSize(
+            width: splitView.bounds.width - 221, height: splitView.bounds.height))
         let editorView = editorVC.view
-        editorView.setFrameSize(NSSize(width: splitView.bounds.width - 221, height: splitView.bounds.height))
+        editorView.frame = editorSplitView.bounds
+        editorSplitView.addSubview(editorView)
 
         splitView.addSubview(sideView)
-        splitView.addSubview(editorView)
+        splitView.addSubview(editorSplitView)
         splitView.setHoldingPriority(.defaultHigh, forSubviewAt: 0)
         splitView.setHoldingPriority(.defaultLow, forSubviewAt: 1)
 
@@ -175,6 +184,7 @@ final class MainWindowController: NSWindowController,
         statusBar.applyTheme()
         sidebarVC.applyTheme()
         editorVC.applyPreferences(preferences)
+        secondaryEditorVC?.applyPreferences(preferences)
         layoutContentViews()
         refreshStatus()
     }
@@ -1145,6 +1155,7 @@ final class MainWindowController: NSWindowController,
 
     private func refreshStatus() {
         if let doc = curDoc {
+            if secondaryEditorVC?.document !== doc { secondaryEditorVC?.document = doc }
             refreshOutline(for: doc)
             refreshMarkerResults()
             statusBar.updateLanguage(doc.language, profileName: doc.fileTypeProfile?.name)
@@ -1389,11 +1400,14 @@ final class MainWindowController: NSWindowController,
 
     func editorTextDidChange(_ vc: EditorViewController) {
         if let doc = curDoc {
+            doc.cachedTextStorage = vc.textView.textStorage
             tabBar.updateTab(at: curIdx, item: TabItem(title: doc.displayName, isModified: doc.isModified))
             scheduleRecoverySaveIfUnnamed(doc)
             refreshOutline(for: doc)
         }
         scheduleSessionSave()
+        if vc === editorVC { secondaryEditorVC?.synchronizeSharedDocumentState() }
+        else { editorVC.synchronizeSharedDocumentState() }
     }
     func editorCursorMoved(_ vc: EditorViewController, state: EditorCursorState) {
         statusBar.updateCursor(state)
@@ -1525,6 +1539,43 @@ final class MainWindowController: NSWindowController,
     func nextMarker() { editorVC.nextMarker() }
     func previousMarker() { editorVC.previousMarker() }
     func clearMarkers() { editorVC.clearMarkers(); refreshMarkerResults() }
+
+    enum EditorSplitOrientation { case vertical, horizontal }
+
+    func showEditorSplit(_ orientation: EditorSplitOrientation) {
+        editorSplitView.isVertical = orientation == .vertical
+        if secondaryEditorVC == nil {
+            let secondary = EditorViewController()
+            secondary.delegate = self
+            _ = secondary.view
+            secondary.document = curDoc
+            secondary.applyPreferences(editorVC.appliedPreferences)
+            secondary.onScroll = { [weak self] origin in
+                guard let self, self.linkedEditorScrolling else { return }
+                self.editorVC.setLinkedScrollOffset(origin)
+            }
+            editorVC.onScroll = { [weak self] origin in
+                guard let self, self.linkedEditorScrolling else { return }
+                self.secondaryEditorVC?.setLinkedScrollOffset(origin)
+            }
+            secondaryEditorVC = secondary
+            editorSplitView.addSubview(secondary.view)
+        }
+        editorSplitView.adjustSubviews()
+    }
+
+    func closeEditorSplit() {
+        secondaryEditorVC?.view.removeFromSuperview()
+        secondaryEditorVC = nil
+        editorVC.onScroll = nil
+        editorSplitView.adjustSubviews()
+    }
+
+    func toggleLinkedEditorScrolling() { linkedEditorScrolling.toggle() }
+    var isEditorSplitForTesting: Bool { secondaryEditorVC != nil }
+    var editorSplitIsVerticalForTesting: Bool { editorSplitView.isVertical }
+    var isLinkedEditorScrollingForTesting: Bool { linkedEditorScrolling }
+    var secondaryEditorForTesting: EditorViewController? { secondaryEditorVC }
 
     private func refreshMarkerResults() {
         guard let doc = curDoc else { return }

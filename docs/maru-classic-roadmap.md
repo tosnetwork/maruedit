@@ -38,8 +38,8 @@ that would weaken MaruEdit's security model.
 
 ## MC4 — Split, compare and navigation
 
-- [ ] Horizontal/vertical editor split and independent selections.
-- [ ] Optional linked scrolling.
+- [x] Horizontal/vertical editor split and independent selections.
+- [x] Optional linked scrolling.
 - [ ] Native text diff, next/previous difference and merge-safe actions.
 - [ ] Tag jump, direct tag jump and back-tag stack.
 
