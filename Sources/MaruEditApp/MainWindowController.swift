@@ -2002,10 +2002,9 @@ final class MainWindowController: NSWindowController,
             return
         }
         let existing = pane.matches
-        grepQueue.async { [weak self] in
+        grepQueue.async { [self] in
             let result = Result { try InMemoryGrepService.refine(existing, query: query) }
             Task { @MainActor in
-                guard let self else { return }
                 switch result {
                 case .success(let matches): self.presentMemoryGrep(matches, pattern: query.pattern)
                 case .failure(let error): self.showStatusMessage(error.localizedDescription)
@@ -2040,10 +2039,9 @@ final class MainWindowController: NSWindowController,
         let pane = ensureOutputPane()
         pane.beginRun(pattern: query.pattern)
         layoutContentViews()
-        grepQueue.async { [weak self] in
+        grepQueue.async { [self] in
             let result = Result { try InMemoryGrepService.search(documents, query: query) }
             Task { @MainActor in
-                guard let self else { return }
                 switch result {
                 case .success(let matches): self.presentMemoryGrep(matches, pattern: query.pattern)
                 case .failure(let error): self.showStatusMessage(error.localizedDescription)
