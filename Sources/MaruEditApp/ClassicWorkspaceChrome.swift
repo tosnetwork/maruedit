@@ -14,6 +14,8 @@ final class ClassicWorkspaceChrome: NSView {
     private let ruler = CharacterRulerView()
     private let commandStrip = ClassicCommandStripView()
     private var rulerStartX: CGFloat = 46
+    private var configuredVisibility = ClassicChromeOptions.allVisible
+    private var isSingleDocument = true
     var externalTopGap: CGFloat = 0 { didSet { needsLayout = true } }
 
     var headingText: String { heading.stringValue }
@@ -62,6 +64,10 @@ final class ClassicWorkspaceChrome: NSView {
     }
 
     func updateHeading(_ value: String) { heading.stringValue = value }
+    func setDocumentCount(_ count: Int) {
+        isSingleDocument = count <= 1
+        applyEffectiveVisibility()
+    }
     func updateRuler(editorOrigin: CGFloat, currentColumn: Int, cellWidth: CGFloat) {
         rulerStartX = max(0, editorOrigin)
         ruler.editorOrigin = 0
@@ -80,18 +86,23 @@ final class ClassicWorkspaceChrome: NSView {
     func activateToolbarCommand(_ command: CommandID) { toolbar.activate(command) }
 
     func applyVisibility(_ options: ClassicChromeOptions) {
-        heading.isHidden = !options.showHeading
-        ruler.isHidden = !options.showRuler
-        commandStrip.isHidden = !options.showCommandStrip
+        configuredVisibility = options
+        applyEffectiveVisibility()
+    }
+
+    private func applyEffectiveVisibility() {
+        // With one document Hidemaru does not repeat its filename in a
+        // separate strip above the line-number gutter.
+        heading.isHidden = !configuredVisibility.showHeading || isSingleDocument
+        ruler.isHidden = !configuredVisibility.showRuler
+        commandStrip.isHidden = !configuredVisibility.showCommandStrip
         needsLayout = true
     }
 
     var visibilityForTesting: ClassicChromeOptions {
-        ClassicChromeOptions(
-            showHeading: !heading.isHidden,
-            showRuler: !ruler.isHidden,
-            showCommandStrip: !commandStrip.isHidden)
+        configuredVisibility
     }
+    var isHeadingActuallyVisibleForTesting: Bool { !heading.isHidden }
     var rulerStateForTesting: (origin: CGFloat, column: Int) {
         (rulerStartX, ruler.currentColumn)
     }

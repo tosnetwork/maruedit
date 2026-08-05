@@ -203,6 +203,7 @@ final class MainWindowController: NSWindowController,
     var classicChromeVisibilityForTesting: ClassicChromeOptions { classicChrome.visibilityForTesting }
     var classicRulerStateForTesting: (origin: CGFloat, column: Int) { classicChrome.rulerStateForTesting }
     var classicRulerMaximumColumnForTesting: Int { classicChrome.rulerMaximumColumnForTesting }
+    var isClassicHeadingVisibleForTesting: Bool { classicChrome.isHeadingActuallyVisibleForTesting }
     var classicToolbarIdentifiersForTesting: [String] {
         classicChrome.toolbarCommandIDs
     }
@@ -1318,8 +1319,10 @@ final class MainWindowController: NSWindowController,
 
     private func refreshTabs() {
         let items = documentController.documents.map { TabItem(title: $0.displayName, isModified: $0.isModified) }
+        classicChrome.setDocumentCount(items.count)
         tabBar.setTabs(items, selectedIndex: curIdx)
         classicChrome.updateHeading(curDoc?.displayName ?? "Untitled")
+        layoutContentViews()
     }
 
     private func refreshStatus() {

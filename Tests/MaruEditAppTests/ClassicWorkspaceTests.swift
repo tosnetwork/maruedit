@@ -114,6 +114,17 @@ final class ClassicWorkspaceTests: XCTestCase {
         XCTAssertEqual(controller.classicChromeVisibilityForTesting, preferences.classicChrome)
     }
 
+    func testSingleDocumentDoesNotRepeatFilenameAboveLineNumbers() async {
+        let controller = MainWindowController()
+        controller.applyPreferences(.defaults)
+        XCTAssertFalse(controller.isClassicHeadingVisibleForTesting)
+
+        controller.newDocument()
+        XCTAssertTrue(controller.isClassicHeadingVisibleForTesting)
+        controller.closeCurrentTab()
+        XCTAssertFalse(controller.isClassicHeadingVisibleForTesting)
+    }
+
     func testRulerTracksEditorOriginAndCurrentDisplayColumn() async {
         let controller = MainWindowController()
         controller.applyPreferences(.defaults)
