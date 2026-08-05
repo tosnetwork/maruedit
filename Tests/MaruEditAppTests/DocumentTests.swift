@@ -55,6 +55,20 @@ final class DocumentTests: XCTestCase {
         XCTAssertEqual(reopened.displayName, url.lastPathComponent)
     }
 
+    func testOpenPartialCreatesModifiedUntitledDocumentWithoutSourceIdentity() async throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MaruEditPartial-\(UUID().uuidString).txt")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try Data("A日B".utf8).write(to: url)
+
+        let document = try Document.openPartial(url: url, offset: 1, length: 3, forcing: .utf8)
+        XCTAssertEqual(document.content, "日")
+        XCTAssertEqual(document.encoding, .utf8)
+        XCTAssertEqual(document.displayName, "\(url.lastPathComponent) [Partial]")
+        XCTAssertNil(document.fileURL, "a partial document must never overwrite its source")
+        XCTAssertTrue(document.isModified, "a partial document requires an explicit save destination")
+    }
+
     func testAppendSavePreservesDocumentIdentityAndUsesItsEncodingAndLineEndings() async throws {
         let target = FileManager.default.temporaryDirectory
             .appendingPathComponent("MaruEditAppend-\(UUID().uuidString).txt")

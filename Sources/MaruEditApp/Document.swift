@@ -8,6 +8,7 @@ enum EditorInputMode: String { case insert, overwrite }
 /// mutation and all `cachedTextStorage` access are main-actor confined.
 final class Document: @unchecked Sendable {
     var fileURL: URL?
+    private var displayNameOverride: String?
     var content: String
     var isModified: Bool = false
     var language: Language
@@ -84,7 +85,7 @@ final class Document: @unchecked Sendable {
         return doc
     }
 
-    var displayName: String { fileURL?.lastPathComponent ?? "Untitled" }
+    var displayName: String { displayNameOverride ?? fileURL?.lastPathComponent ?? "Untitled" }
     var title: String { isModified ? "\(displayName) •" : displayName }
     var isEditingDisabled: Bool { isReadOnly || isViewMode }
 
@@ -279,6 +280,22 @@ final class Document: @unchecked Sendable {
 
     static func normalizedText(contentsOf url: URL) throws -> String {
         LineEndingDetector.normalize(try TextFileLoader.load(contentsOf: url).content)
+    }
+
+    static func openPartial(
+        url: URL, offset: Int64, length: Int, forcing encoding: TextEncoding? = nil
+    ) throws -> Document {
+        let loaded = try TextFileLoader.loadPartial(
+            contentsOf: url, offset: offset, length: length, forcing: encoding)
+        let document = Document(
+            content: LineEndingDetector.normalize(loaded.content),
+            language: Language.detect(for: url))
+        document.displayNameOverride = "\(url.lastPathComponent) [Partial]"
+        document.encoding = loaded.encoding
+        document.lineEnding = LineEndingDetector.detect(loaded.content)
+        document.savedContent = ""
+        document.markFormatModified()
+        return document
     }
 
     /// Appends encoded text without changing this document's identity or

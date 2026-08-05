@@ -480,6 +480,40 @@ final class MainWindowController: NSWindowController,
         }
     }
 
+    func openPartialFile() {
+        guard let window else { return }
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = false; panel.canChooseFiles = true
+        panel.beginSheetModal(for: window) { [weak self] response in
+            guard let self, response == .OK, let url = panel.url else { return }
+            let offsetField = NSTextField(string: "0")
+            let fileSize = (try? LargeFilePolicy.fileSize(at: url)) ?? 1
+            let defaultLength = max(1, min(1_048_576, fileSize))
+            let lengthField = NSTextField(string: String(defaultLength))
+            for field in [offsetField, lengthField] { field.widthAnchor.constraint(equalToConstant: 180).isActive = true }
+            let stack = NSStackView(views: [
+                NSTextField(labelWithString: "Start byte offset"), offsetField,
+                NSTextField(labelWithString: "Number of bytes"), lengthField,
+            ])
+            stack.orientation = .vertical; stack.spacing = 5
+            let alert = NSAlert()
+            alert.messageText = "Open Partial File"
+            alert.informativeText = "The selected bytes open as a new document. The source file is never overwritten."
+            alert.accessoryView = stack
+            alert.addButton(withTitle: "Open"); alert.addButton(withTitle: "Cancel")
+            alert.beginSheetModal(for: window) { result in
+                guard result == .alertFirstButtonReturn,
+                      let offset = Int64(offsetField.stringValue),
+                      let length = Int(lengthField.stringValue) else { return }
+                do {
+                    let document = try Document.openPartial(url: url, offset: offset, length: length)
+                    let adopted = self.documentController.adoptOpenedDocument(document)
+                    self.finishOpening(adopted, url: url)
+                } catch { NSAlert(error: error).beginSheetModal(for: window) }
+            }
+        }
+    }
+
     func openFile(_ url: URL) {
         saveCursorPosition()
         do {

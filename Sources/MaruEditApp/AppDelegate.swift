@@ -137,6 +137,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         fileMenu.addItem(commandItem(.fileNewFromTemplate))
         fileMenu.addItem(commandItem(.fileOpen))
         fileMenu.addItem(commandItem(.fileOpenFolder))
+        fileMenu.addItem(commandItem(.fileOpenPartial))
 
         recentMenu = NSMenu(title: "Open Recent")
         recentMenu.delegate = self

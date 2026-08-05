@@ -30,6 +30,34 @@ final class TextFileLoaderTests: XCTestCase {
         }
     }
 
+    func testPartialLoadReadsOnlyRequestedUTF8Character() throws {
+        let url = try tempFile(named: "partial.txt", contents: Data("A日B".utf8))
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let loaded = try TextFileLoader.loadPartial(
+            contentsOf: url, offset: 1, length: 3, forcing: .utf8)
+        XCTAssertEqual(loaded.content, "日")
+        XCTAssertEqual(loaded.encoding, .utf8)
+    }
+
+    func testPartialLoadRejectsSplitCharacterAndInvalidRange() throws {
+        let url = try tempFile(named: "partial-errors.txt", contents: Data("A日B".utf8))
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        XCTAssertThrowsError(try TextFileLoader.loadPartial(
+            contentsOf: url, offset: 2, length: 2, forcing: .utf8)) { error in
+            guard case TextFileLoaderError.partialRangeSplitsCharacter = error else {
+                return XCTFail("expected partialRangeSplitsCharacter, got \(error)")
+            }
+        }
+        XCTAssertThrowsError(try TextFileLoader.loadPartial(
+            contentsOf: url, offset: 4, length: 2, forcing: .utf8)) { error in
+            guard case TextFileLoaderError.invalidByteRange = error else {
+                return XCTFail("expected invalidByteRange, got \(error)")
+            }
+        }
+    }
+
     // MARK: - Acceptance: each initial-target encoding "opens as expected"
 
     func testUTF8SampleOpensAsExpected() throws {
