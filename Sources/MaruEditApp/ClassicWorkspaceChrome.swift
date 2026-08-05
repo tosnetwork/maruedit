@@ -17,6 +17,7 @@ final class ClassicWorkspaceChrome: NSView {
     private var configuredVisibility = ClassicChromeOptions.allVisible
     private var isSingleDocument = true
     private var isStatusBarVisible = true
+    private var mergedCommandStripWidth: CGFloat = 0
     private(set) var isToolbarFloating = false
     var externalTopGap: CGFloat = 0 { didSet { needsLayout = true } }
     var onLayoutChange: (() -> Void)?
@@ -31,9 +32,10 @@ final class ClassicWorkspaceChrome: NSView {
             ? 0 : Self.commandStripHeight
     }
     var isFunctionKeyStripMerged: Bool { commandStrip.isMergedWithStatusBar }
-    func mergedFunctionKeyWidth(totalWidth: CGFloat) -> CGFloat {
-        commandStrip.isHidden || !commandStrip.isMergedWithStatusBar || !isStatusBarVisible
-            ? 0 : totalWidth * 0.55
+    func mergedFunctionKeyWidth(totalWidth: CGFloat, trailingStatusWidth: CGFloat) -> CGFloat {
+        mergedCommandStripWidth = commandStrip.isHidden || !commandStrip.isMergedWithStatusBar
+            || !isStatusBarVisible ? 0 : max(0, totalWidth - trailingStatusWidth)
+        return mergedCommandStripWidth
     }
 
     override init(frame: NSRect) {
@@ -78,7 +80,7 @@ final class ClassicWorkspaceChrome: NSView {
         commandStrip.frame = NSRect(
             x: 0, y: 0,
             width: commandStrip.isMergedWithStatusBar && isStatusBarVisible
-                ? bounds.width * 0.55 : bounds.width,
+                ? mergedCommandStripWidth : bounds.width,
             height: Self.commandStripHeight)
     }
 

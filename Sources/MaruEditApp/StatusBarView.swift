@@ -70,6 +70,7 @@ private final class ActionableStatusLabel: NSTextField {
 
 final class StatusBarView: NSView {
     weak var delegate: StatusBarViewDelegate?
+    var onPreferredWidthChange: (() -> Void)?
 
     private let lineColLabel = ActionableStatusLabel(labelWithString: "Ln 1, Col 1")
     private let messageLabel = NSTextField(labelWithString: "")
@@ -138,6 +139,17 @@ final class StatusBarView: NSView {
         largeFileModeLabel.isHidden ? nil : largeFileModeLabel.stringValue
     }
     var configuredFieldIDs: Set<String> { Set(configuredFields.map(\.rawValue)) }
+    var preferredMergedWidth: CGFloat {
+        applyConfiguredVisibility()
+        let visibleRight = rightFields.filter { !$0.1.isHidden }
+        let rightWidth = visibleRight.reduce(CGFloat.zero) { result, item in
+            result + max(0, item.1.intrinsicContentSize.width)
+        } + CGFloat(visibleRight.count * 14)
+        let visibleLeft = leftFields.filter { !$0.1.isHidden }
+        let leftWidth = visibleLeft.reduce(CGFloat.zero) { $0 + $1.2 }
+            + CGFloat(max(0, visibleLeft.count - 1) * 4)
+        return ceil(max(80, rightWidth + leftWidth))
+    }
     var isMessageAreaVisible: Bool { !messageLabel.isHidden }
     var displayedCapsLockText: String? { capsLockLabel.isHidden ? nil : capsLockLabel.stringValue }
     var displayedMacroActivityText: String? {
@@ -174,7 +186,7 @@ final class StatusBarView: NSView {
         for (field, label) in rightFields.reversed() where !label.isHidden {
             guard configuredFields.contains(field) else { continue }
             label.sizeToFit()
-            if right - label.frame.width < 4 {
+            if right - label.frame.width < (isMergedMode ? 0 : 4) {
                 label.isHidden = true
             } else {
                 right -= label.frame.width
@@ -466,6 +478,7 @@ final class StatusBarView: NSView {
             ? "Unicode (UTF-8)" : encoding.displayName
         updateCharacterCode(at: cursorUTF16Offset)
         needsLayout = true
+        if isMergedMode { onPreferredWidthChange?() }
     }
 
     func updateByteOrderMark(_ hasByteOrderMark: Bool) {
@@ -490,6 +503,8 @@ final class StatusBarView: NSView {
         let name = mode == .insert ? "insert" : "overwrite"
         inputModeLabel.setAccessibilityLabel("Input mode: \(name)")
         inputModeLabel.toolTip = "Current input mode: \(name)"
+        needsLayout = true
+        if isMergedMode { onPreferredWidthChange?() }
     }
 
     func updateLayoutMode(isVertical: Bool, isColumn: Bool, columnCount: Int) {

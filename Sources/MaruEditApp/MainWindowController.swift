@@ -211,6 +211,7 @@ final class MainWindowController: NSWindowController,
             self?.performToolbarSearch(pattern)
         }
         classicChrome.onLayoutChange = { [weak self] in self?.layoutContentViews() }
+        statusBar.onPreferredWidthChange = { [weak self] in self?.layoutContentViews() }
         classicChrome.autoresizingMask = [.width, .height]
         cv.addSubview(classicChrome)
 
@@ -382,6 +383,7 @@ final class MainWindowController: NSWindowController,
         layoutContentViews()
     }
     var statusBarFrameForTesting: NSRect { statusBar.frame }
+    var statusBarEncodingFrameForTesting: NSRect? { statusBar.frame(for: .encoding) }
     var classicChromeFrameForTesting: NSRect { classicChrome.frame }
     func performClassicToolbarSearchForTesting(_ pattern: String) {
         classicChrome.performToolbarSearchForTesting(pattern)
@@ -445,11 +447,13 @@ final class MainWindowController: NSWindowController,
         let classicTop = workspaceStyle == .classic ? classicChrome.topChromeHeight : 0
         let classicBottom = workspaceStyle == .classic ? classicChrome.bottomChromeHeight : 0
         let baseY = bottomTabH + paneH
-        let mergedFunctionWidth = classicChrome.mergedFunctionKeyWidth(totalWidth: cv.bounds.width)
         let merged = workspaceStyle == .classic && classicChrome.isFunctionKeyStripMerged
-            && isStatusBarVisible && mergedFunctionWidth > 0
+            && isStatusBarVisible
         statusBar.setMergedMode(merged)
         statusBar.setClassicAppearance(workspaceStyle == .classic)
+        let mergedFunctionWidth = classicChrome.mergedFunctionKeyWidth(
+            totalWidth: cv.bounds.width,
+            trailingStatusWidth: merged ? statusBar.preferredMergedWidth : 0)
 
         classicChrome.externalTopGap = topTabH + findH
         findBar.frame = NSRect(

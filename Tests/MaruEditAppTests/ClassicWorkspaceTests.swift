@@ -86,6 +86,25 @@ final class ClassicWorkspaceTests: XCTestCase {
         XCTAssertGreaterThan(controller.classicChromeFrameForTesting.minY,
                              controller.statusBarFrameForTesting.minY)
     }
+
+    func testMergedCommandCellsConsumeAllSpaceBeforeEncodingWhileResizing() {
+        let controller = MainWindowController()
+        controller.applyPreferences(.defaults)
+        controller.setFunctionKeyStripMergedForTesting(true)
+        controller.setStatusBarFieldsForTesting([.encoding, .inputMode])
+
+        controller.window?.setContentSize(NSSize(width: 760, height: 520))
+        let narrowStatus = controller.statusBarFrameForTesting
+        XCTAssertEqual(controller.statusBarEncodingFrameForTesting?.minX ?? -1, 0, accuracy: 1)
+
+        controller.window?.setContentSize(NSSize(width: 1_200, height: 760))
+        let wideStatus = controller.statusBarFrameForTesting
+        XCTAssertEqual(controller.statusBarEncodingFrameForTesting?.minX ?? -1, 0, accuracy: 1)
+        XCTAssertEqual(wideStatus.width, narrowStatus.width, accuracy: 2,
+                       "status fields should retain their content width")
+        XCTAssertEqual(wideStatus.minX - narrowStatus.minX, 440, accuracy: 2,
+                       "all resized width should be distributed across command cells")
+    }
     func testClassicIsDefaultAndCanSwitchToModernWithoutChangingDocument() async {
         let controller = MainWindowController()
         controller.macroEditor.textView.string = "classic content"
