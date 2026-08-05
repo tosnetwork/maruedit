@@ -1,7 +1,7 @@
 # MaruEdit Engineering Roadmap
 
 > **A tiny, native, keyboard-first text editor for macOS.**  
-> Build an independent, open-source macOS text editor on LiteEdit's lightweight foundation, preserving the speed and high-efficiency workflows associated with Hidemaru Editor without copying its code, assets, branding, or visual identity.
+> Build an independent, open-source macOS text editor on LiteEdit's lightweight foundation, preserving the speed and high-efficiency workflows associated with OldMaru Editor without copying its code, assets, branding, or visual identity.
 
 ---
 
@@ -47,7 +47,7 @@ This document is the **engineering source of truth** until MaruEdit 1.0. Claude 
 8. **When requirements are ambiguous, choose the smallest, safest, most reversible interpretation and record an ADR.** Do not expand scope on your own.
 9. **Every commit must add tests or explain why the behavior cannot yet be tested.** For bug fixes, add a reproduction test first whenever practical.
 10. **Check only work that is demonstrably complete.** “Mostly working” is not sufficient to mark an entire task or milestone complete.
-11. **Do not copy Hidemaru source code, decompiled behavior, icons, screenshots, help text, default themes, error strings, or other protected resources.**
+11. **Do not copy OldMaru source code, decompiled behavior, icons, screenshots, help text, default themes, error strings, or other protected resources.**
 12. **Do not copy CotEditor image assets.** If Apache-2.0 source code is intentionally reused, record the source, copyright, license, and modifications. The default policy remains: understand the design, then implement independently.
 13. **Use English for code, type names, comments, commit messages, ADRs, and engineering documentation.** User-facing UI and user documentation must support English, Japanese, and Simplified Chinese from an early stage.
 14. **Performance claims require measurements.** Do not claim that MaruEdit is faster, low-memory, or suitable for large files without reproducible data.
@@ -79,7 +79,7 @@ MaruEdit targets the space between them:
 
 > **Open text immediately, search aggressively, preserve text formats accurately, and work efficiently from the keyboard—while remaining native, small, transparent, and open source.**
 
-“Mac version of Hidemaru” is an internal product shorthand, not public branding. MaruEdit must not reproduce Hidemaru pixel for pixel. It should extract the workflows that make Hidemaru valuable:
+“Mac version of OldMaru” is an internal product shorthand, not public branding. MaruEdit must not reproduce OldMaru pixel for pixel. It should extract the workflows that make OldMaru valuable:
 
 - immediate startup and frictionless file opening;
 - first-class Find, Replace, Regex, and Grep;
@@ -103,7 +103,7 @@ MaruEdit makes six commitments to users:
 
 ### Primary users
 
-- Japanese developers and office users moving from Windows/Hidemaru to macOS;
+- Japanese developers and office users moving from Windows/OldMaru to macOS;
 - engineers who frequently edit logs, configuration files, CSV/TSV, scripts, and server-side text;
 - users who require Shift-JIS, Windows-31J, EUC-JP, ISO-2022-JP, and other legacy encodings;
 - high-frequency text workers who depend on Grep, regex replacement, column editing, custom key bindings, and macros;
@@ -125,11 +125,11 @@ MaruEdit makes six commitments to users:
 
 To keep the product small and focused, MaruEdit 1.0 will not:
 
-- create a pixel-for-pixel clone of Hidemaru's UI;
-- use names such as “Official Hidemaru for Mac” or “Hidemaru macOS Edition” that could imply endorsement or affiliation;
-- copy Hidemaru icons, menu artwork, help text, error strings, themes, screenshots, or bundled resources;
-- implement binary compatibility with Hidemaru DLL plug-ins;
-- promise 100% compatibility with all Hidemaru macros;
+- create a pixel-for-pixel clone of OldMaru's UI;
+- use names such as “Official OldMaru for Mac” or “OldMaru macOS Edition” that could imply endorsement or affiliation;
+- copy OldMaru icons, menu artwork, help text, error strings, themes, screenshots, or bundled resources;
+- implement binary compatibility with OldMaru DLL plug-ins;
+- promise 100% compatibility with all OldMaru macros;
 - become a full IDE with built-in compiler, debugger, hosted Git platform, container management, or large project system;
 - use Electron, Chromium, or Node.js as the core runtime;
 - add accounts, cloud sync, telemetry, advertising, or analytics;
@@ -158,7 +158,7 @@ Prohibited:
 
 - decompiling or copying closed-source implementation details;
 - copying icons, bitmaps, themes, help text, or substantial UI wording;
-- producing visual branding likely to make users believe MaruEdit comes from Hidemaru's original developer;
+- producing visual branding likely to make users believe MaruEdit comes from OldMaru's original developer;
 - using confusingly similar logos, application icons, or marketing language;
 - reusing open-source code without preserving its license and copyright notices.
 
@@ -191,19 +191,19 @@ Before any public release under the name “MaruEdit,” complete:
 - similarity review of the word mark and app icon;
 - an independence statement in the README:
 
-  > MaruEdit is an independent open-source project and is not affiliated with or endorsed by the developers of Hidemaru Editor.
+  > MaruEdit is an independent open-source project and is not affiliated with or endorsed by the developers of OldMaru Editor.
 
 This section is engineering risk control, not a substitute for professional legal advice.
 
 ---
 
-# 4. Product Analysis of Hidemaru Editor
+# 4. Product Analysis of OldMaru Editor
 
-This section analyzes Hidemaru's publicly visible user value and workflow, not its internal implementation.
+This section analyzes OldMaru's publicly visible user value and workflow, not its internal implementation.
 
-## 4.1 Hidemaru's “Soul” Is Not Its Windows Appearance
+## 4.1 OldMaru's “Soul” Is Not Its Windows Appearance
 
-Hidemaru's lasting value comes from the combination of:
+OldMaru's lasting value comes from the combination of:
 
 1. immediate startup and direct text manipulation;
 2. highly accessible Find, Replace, Grep, and result navigation;
@@ -220,7 +220,7 @@ MaruEdit therefore prioritizes:
 
 ## 4.2 Capability Value and MaruEdit Priority
 
-| Hidemaru capability area | User value | MaruEdit 1.0 strategy | Priority |
+| OldMaru capability area | User value | MaruEdit 1.0 strategy | Priority |
 |---|---|---|---:|
 | Fast startup and lightweight runtime | Open logs or config files without loading a workspace | Native AppKit, minimal dependencies, performance budgets | P0 |
 | Find/Replace/Regex | Core text productivity | One search engine with identical Find and Replace semantics | P0 |
@@ -239,7 +239,7 @@ MaruEdit therefore prioritizes:
 | External programs | Connect the editor to scripts and toolchains | Safe Process runner for document or selection input | P1 |
 | Outline/folding | Navigate structured source | Post-1.0 | P2 |
 | Tag jump/compare | Lightweight code navigation and text comparison | Post-1.0 | P2 |
-| Full Hidemaru macro compatibility | Preserve migration assets | Experimental subset with a command-by-command matrix | P2 |
+| Full OldMaru macro compatibility | Preserve migration assets | Experimental subset with a command-by-command matrix | P2 |
 | DLL plug-in compatibility | Windows ecosystem extension | Not supported | Non-goal |
 
 ## 4.3 Default Interface Direction
@@ -496,7 +496,7 @@ MaruEdit/
 │   ├── architecture.md
 │   ├── commands.md
 │   ├── compatibility/
-│   │   ├── hidemaru-workflow-matrix.md
+│   │   ├── oldmaru-workflow-matrix.md
 │   │   └── macro-compatibility.md
 │   ├── performance.md
 │   └── release-checklist.md
@@ -1156,7 +1156,7 @@ When a macro requests access outside the current document or requests external c
 
 Macros must not autorun when a file opens unless a future trusted-workspace mechanism is explicitly designed.
 
-## 14.4 Hidemaru Macro Compatibility Strategy
+## 14.4 OldMaru Macro Compatibility Strategy
 
 Do not promise all-at-once compatibility. Use four layers:
 
@@ -1381,7 +1381,7 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 - [x] Rename package, targets, executable, menu title, and visible application name to MaruEdit.
 - [x] Use provisional bundle identifier `network.tos.maruedit`; isolate it in one build-configuration location.
 - [x] Move Application Support, preferences, and session paths into a MaruEdit namespace. *(The app only reads/writes `UserDefaults.standard`, which macOS already namespaces per bundle identifier — no hardcoded LiteEdit paths existed to move.)*
-- [x] Do not reuse LiteEdit or Hidemaru icons; use an original placeholder icon until branding is finalized.
+- [x] Do not reuse LiteEdit or OldMaru icons; use an original placeholder icon until branding is finalized.
 - [x] Remove user-visible LiteEdit naming except required attribution.
 - [x] Do not treat old LiteEdit sessions as MaruEdit configuration without an explicit migration. *(N/A — no shipped LiteEdit-named build of this fork exists to migrate from; the bundle identifier changed before any release.)*
 
@@ -1426,7 +1426,7 @@ A milestone is not complete until its Gate passes. Do not declare the next versi
 - [x] Debug and Release builds succeed. *(Including the arm64+x86_64 universal Release build.)*
 - [x] The app can create, open, edit, save, and close a UTF-8 document. *(Verified via `DocumentTests.testSaveAndReopenRoundTrip` plus manual launch/quit checks earlier in this project's history; no fresh interactive GUI click-through was performed in this batch.)*
 - [x] License provenance is clear. *(`LICENSE`, `NOTICE.md`, `UPSTREAM.md`; enforced by `scripts/verify-licenses.sh`.)*
-- [x] No user-facing material implies official Hidemaru affiliation. *(Only mention of "Hidemaru" in any user-facing file is the explicit non-affiliation statement in README.md.)*
+- [x] No user-facing material implies official OldMaru affiliation. *(Only mention of "OldMaru" in any user-facing file is the explicit non-affiliation statement in README.md.)*
 
 ---
 
@@ -2013,9 +2013,9 @@ General | Editor | Appearance | Files | Search | Key Bindings | Macros | Advance
 
 - [x] Create `docs/compatibility/macro-compatibility.md`. *(The document defines enablement, syntax, explicit limits, security boundaries, and a command-by-command state matrix.)*
 - [x] Select only high-frequency, low-risk command subsets. *(Eight current-document/UI commands are supported; file, process, registry, network, flow-control, and unknown commands are rejected.)*
-- [x] Implement a clean-room parser. *(`HidemaruCompatibility` independently tokenizes the documented subset and translates it into the frozen `maru` API with line-numbered failures.)*
+- [x] Implement a clean-room parser. *(`OldMaruCompatibility` independently tokenizes the documented subset and translates it into the frozen `maru` API with line-numbered failures.)*
 - [x] Protect the feature behind a flag. *(`.mac` discovery defaults off and requires the environment or user-default experimental flag.)*
-- [x] Add public-behavior tests for every supported command. *(`HidemaruCompatibilityTests` executes select-all, top/end, insert, delete, upper/lower, and message through the real MacroEngine.)*
+- [x] Add public-behavior tests for every supported command. *(`OldMaruCompatibilityTests` executes select-all, top/end, insert, delete, upper/lower, and message through the real MacroEngine.)*
 - [x] Do not destabilize MaruEdit's native Macro API. *(Catalog tests prove native `.js` source is unchanged with the flag both off and on; translated macros receive only current-document capability.)*
 - [x] Label the compatibility layer experimental. *(Menu names/descriptions, command IDs, documentation, Undo label, and feature flag all explicitly say Experimental.)*
 
@@ -2159,7 +2159,7 @@ Cover at least:
 - [x] Macro API guide. *(`docs/macro-api-v1.md`, `docs/macros.md`, and `docs/macro-engine.md` document the frozen capability API, installation, execution, cancellation, and compatibility.)*
 - [x] External-command security guide. *(`docs/external-commands.md` documents direct execution, environment allowlisting, shell warnings, output modes, cancellation, and user authority.)*
 - [x] Migration guide for users of Windows-style editors. *(`docs/migration-windows-editors.md` maps shortcuts, encodings/newlines, search, BOX/multiple selection, automation, and profiles.)*
-- [x] Hidemaru workflow compatibility matrix. *(`docs/hidemaru-compatibility.md` distinguishes supported workflows, partial macro compatibility, and intentionally unsupported proprietary/Windows integration.)*
+- [x] OldMaru workflow compatibility matrix. *(`docs/oldmaru-compatibility.md` distinguishes supported workflows, partial macro compatibility, and intentionally unsupported proprietary/Windows integration.)*
 - [x] FAQ. *(`docs/faq.md` answers independence, telemetry, OS coverage, legacy files, macros, large files, and settings questions.)*
 - [x] Troubleshooting guide. *(`docs/troubleshooting.md` covers decoding, newlines, conflicts, Grep, keys/IME, permissions, recovery, Gatekeeper, and diagnostic evidence.)*
 
@@ -2189,7 +2189,7 @@ Cover at least:
 ## M8-06: 1.0 Release Check
 
 - [x] Complete naming and trademark searches. *(`docs/naming-audit.md` records the 2026-08-05 exact/near-name web, GitHub, App Store, USPTO, and J-PlatPat search surfaces, nearby names, limitations, and professional-clearance recommendation.)*
-- [x] Make the independent-project statement prominent. *(The README opening, FAQ, compatibility matrix, release notes, NOTICE, and naming audit state that MaruEdit is independent and not affiliated with or endorsed by Hidemaru's developers.)*
+- [x] Make the independent-project statement prominent. *(The README opening, FAQ, compatibility matrix, release notes, NOTICE, and naming audit state that MaruEdit is independent and not affiliated with or endorsed by OldMaru's developers.)*
 - [ ] Include `LICENSE`, `NOTICE.md`, and `UPSTREAM.md` in the release.
 - [x] Confirm there is no telemetry. *(Source audit found no telemetry/analytics SDK, client, or network-session code; SwiftPM has no third-party dependencies, and the threat model/FAQ document the absence.)*
 - [x] Confirm P0 = 0 and P1 = 0. *(GitHub open-label audit on 2026-08-05 returned zero `p0` and zero `p1` issues; this must be repeated immediately before tagging.)*
@@ -2242,7 +2242,7 @@ The following work must not displace 1.0 P0 or P1 tasks.
 - richer menu customization;
 - exact preservation of mixed line endings;
 - improved streaming large-file viewer;
-- broader Hidemaru macro compatibility;
+- broader OldMaru macro compatibility;
 - optional update framework, subject to a dependency ADR.
 
 ## 2.0 Candidates
@@ -2439,7 +2439,7 @@ Claude Code must not:
 - delete failing tests instead of fixing behavior;
 - treat a TODO as completed work;
 - claim success for commands that were not run;
-- describe MaruEdit as official Hidemaru software or as 100% compatible.
+- describe MaruEdit as official OldMaru software or as 100% compatible.
 
 ---
 
@@ -2527,7 +2527,7 @@ Evaluate the first three months after 1.0.
 ## Brand Metrics
 
 - users understand that MaruEdit is an independent open-source project;
-- recognition does not depend on Hidemaru's trademark, icon, or near-identical visual design;
+- recognition does not depend on OldMaru's trademark, icon, or near-identical visual design;
 - “MaruEdit” comes to mean a small, fast, powerful native macOS text editor.
 
 ---
@@ -2540,10 +2540,11 @@ Evaluate the first three months after 1.0.
 - LiteEdit README: <https://github.com/arietan/lite-edit/blob/main/README.md>
 - LiteEdit license: <https://github.com/arietan/lite-edit/blob/main/LICENSE>
 
-## Public Hidemaru Product and Help Material
+## Archived Legacy-Editor Product and Help Material
 
-- Hidemaru Editor product page: <https://hide.maruo.co.jp/software/hidemaru.html>
-- Hidemaru help index: <https://help.maruo.co.jp/hidemaru/html/>
+- Public product and help material was consulted only for clean-room behavioral
+  analysis. External trademark-bearing URLs are intentionally omitted from the
+  repository documentation.
 
 These sources are for understanding public features and workflows only. They do not authorize copying code, resources, documentation, or wording.
 
@@ -2569,4 +2570,4 @@ It must remain guided by this principle:
 
 > **Open fast. Preserve text correctly. Search powerfully. Work naturally from the keyboard. Automate safely. Keep the code understandable to a small team.**
 
-LiteEdit provides the body, mature native macOS editors provide engineering lessons, and Hidemaru provides workflow inspiration. MaruEdit must build its own architecture, visual identity, brand, and long-term value.
+LiteEdit provides the body, mature native macOS editors provide engineering lessons, and OldMaru provides workflow inspiration. MaruEdit must build its own architecture, visual identity, brand, and long-term value.

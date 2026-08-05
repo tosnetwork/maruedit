@@ -16,7 +16,7 @@ v1 preference blob supplies `false` for all four, preserving the previous
 appearance. Marker drawing visits only the visible glyph range and is disabled
 entirely above 100,000 UTF-16 units.
 
-Preferences schema v6 adds Hidemaru-style wrapping modes: no wrapping, window
+Preferences schema v6 adds OldMaru-style wrapping modes: no wrapping, window
 width, fixed columns, and maximum width (8,000 columns). Fixed width defaults
 to 160 columns and is calculated from the active editor font's half-width
 character advance. The mode and column are editable in Settings > Editor.

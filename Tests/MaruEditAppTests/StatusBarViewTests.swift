@@ -74,7 +74,7 @@ final class StatusBarViewTests: XCTestCase {
         XCTAssertEqual(status.displayedLanguageProfileText, "Swift · Swift")
     }
 
-    func testHidemaruMetricsCharacterCodeAndInteractiveSegments() async {
+    func testOldMaruMetricsCharacterCodeAndInteractiveSegments() async {
         let status = StatusBarView(frame: NSRect(x: 0, y: 0, width: 1100, height: 24))
         let delegate = Delegate(); status.delegate = delegate
         status.updateDocumentMetrics(text: "A日\nthird", fontSize: 15)
@@ -94,7 +94,7 @@ final class StatusBarViewTests: XCTestCase {
         XCTAssertEqual(delegate.controls, [.cursorPosition, .totals, .characterCode, .inputMode, .fontSize])
     }
 
-    func testCharacterCountUsesConfigurableHidemaruCategoryWeightsAndRoundsUp() async {
+    func testCharacterCountUsesConfigurableOldMaruCategoryWeightsAndRoundsUp() async {
         let status = StatusBarView(frame: NSRect(x: 0, y: 0, width: 1100, height: 24))
         defer { status.setCharacterCountConfiguration(.standard) }
         status.setCharacterCountConfiguration(CharacterCountConfiguration(

@@ -9,7 +9,7 @@ A fast native editor for opening, browsing, and editing text on macOS, built ent
 
 **[Download](https://github.com/tosnetwork/maruedit/releases/latest)** · **[Source](https://github.com/tosnetwork/maruedit)**
 
-> MaruEdit is an independent open-source project and is not affiliated with or endorsed by the developers of Hidemaru Editor. It began as a fork of [LiteEdit](https://github.com/arietan/lite-edit) (MIT licensed) — see [`NOTICE.md`](NOTICE.md) and [`UPSTREAM.md`](UPSTREAM.md) for attribution details, and [`ROADMAP.md`](ROADMAP.md) for where the project is headed.
+> MaruEdit is an independent open-source project and is not affiliated with or endorsed by the developers of OldMaru Editor. It began as a fork of [LiteEdit](https://github.com/arietan/lite-edit) (MIT licensed) — see [`NOTICE.md`](NOTICE.md) and [`UPSTREAM.md`](UPSTREAM.md) for attribution details, and [`ROADMAP.md`](ROADMAP.md) for where the project is headed.
 
 ---
 
@@ -191,7 +191,7 @@ maruedit/
 - [Search and Grep](docs/search-and-grep.md): Find, Replace, folder Grep, and Grep Replace
 - [Key bindings](docs/key-bindings.md) and the complete [command catalog](docs/commands.md)
 - [Macros](docs/macros.md), [Macro API v1](docs/macro-api-v1.md), and [external-command security](docs/external-commands.md)
-- [Windows-editor migration](docs/migration-windows-editors.md) and [Hidemaru workflow compatibility](docs/hidemaru-compatibility.md)
+- [Windows-editor migration](docs/migration-windows-editors.md) and [OldMaru workflow compatibility](docs/oldmaru-compatibility.md)
 - [FAQ](docs/faq.md) and [Troubleshooting](docs/troubleshooting.md)
 
 ## License

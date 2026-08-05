@@ -56,7 +56,7 @@ public enum TextConversionError: LocalizedError, Equatable {
 }
 
 /// Ordered conversion registry used by both built-in commands and the
-/// Hidemaru-compatible conversion-dialog preset chain.
+/// OldMaru-compatible conversion-dialog preset chain.
 public struct TextConversionRegistry: Sendable {
     private var modules: [String: TextConversionModule]
 

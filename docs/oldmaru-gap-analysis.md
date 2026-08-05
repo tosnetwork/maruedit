@@ -1,8 +1,8 @@
-# MaruEdit / Hidemaru Product Gap Analysis
+# MaruEdit / OldMaru Product Gap Analysis
 
-Audit date: 2026-08-05. Reference: Hidemaru Editor 9.57 public product and
+Audit date: 2026-08-05. Reference: OldMaru Editor 9.57 public product and
 help pages. This is a clean-room comparison of publicly documented behavior.
-It does not authorize copying Hidemaru code, binaries, icons, screenshots,
+It does not authorize copying OldMaru code, binaries, icons, screenshots,
 help text, product dress, or trademarks.
 
 ## Executive conclusion
@@ -13,9 +13,9 @@ Grep Replace preview, multiple/BOX selections, IME handling, key profiles,
 file-type profiles, controlled macros, and controlled processes. Those are the
 right foundations for a native macOS editor.
 
-It is not yet a close Hidemaru workflow replacement. The present window reads
+It is not yet a close OldMaru workflow replacement. The present window reads
 as a small project/code editor: a large file-tree sidebar, custom dark tabs,
-and a sparse editor/status area. Hidemaru's recognizable working surface is a
+and a sparse editor/status area. OldMaru's recognizable working surface is a
 dense document editor: menu and configurable toolbar, compact document tab,
 optional outline/file/output pane, current-outline heading, horizontal ruler,
 line-number/mark gutter, visible whitespace, function-key command strip, and a
@@ -24,7 +24,7 @@ feature breadth, not simply color matching.
 
 ## Capability matrix
 
-| Area | Hidemaru public behavior | MaruEdit now | Gap / decision |
+| Area | OldMaru public behavior | MaruEdit now | Gap / decision |
 |---|---|---|---|
 | Encodings and newlines | Broad encoding controls, per-type load/save behavior | UTF plus principal Japanese legacy formats; BOM and LF/CRLF/CR modeled separately | Strong baseline; broaden candidate order and formats only from real fixtures |
 | Search/Replace | Regex, multiline inputs, selection scope, history, markers | Literal/regex, capture replacement, scope, history | Add multiline expanding fields and persistent color-marker workflow |
@@ -93,7 +93,7 @@ Required visual changes:
    insert/overwrite and selection/BOX state.
 7. Ship **Maru Classic Light** as the migration default and retain the current
    dark appearance as **Maru Modern Dark**. Use original colors/SF Symbols;
-   never package Hidemaru icons or bitmaps.
+   never package OldMaru icons or bitmaps.
 
 ## Prioritized compatibility backlog
 
@@ -109,7 +109,7 @@ Required visual changes:
 - Multiline Find/Replace fields and color markers.
 - Real VoiceOver smoke test for the complete Classic surface.
 
-### P1 — daily Hidemaru workflows
+### P1 — daily OldMaru workflows
 
 - Grep current unsaved content, all open documents, output-as-document and
   result refinement.
@@ -141,13 +141,13 @@ Required visual changes:
   the Maru Classic profile supplies familiar alternatives without fighting the
   platform.
 
-## Acceptance criteria for “credible Hidemaru alternative”
+## Acceptance criteria for “credible OldMaru alternative”
 
-A Windows Hidemaru user should be able to install MaruEdit, choose **Maru
+A Windows OldMaru user should be able to install MaruEdit, choose **Maru
 Classic**, and within ten minutes find the toolbar, outline, ruler, markers,
 status segments, familiar search/Grep scopes, completion, split/compare, keys,
 file-type settings and macros without reading source code. A usability test
-with at least five experienced Hidemaru users should complete a scripted task
+with at least five experienced OldMaru users should complete a scripted task
 set and record time, errors, missing commands and subjective familiarity. Visual
 similarity alone is not a pass if daily workflows remain absent.
 

@@ -22,4 +22,4 @@ Known limitations:
 Before installation, compare the downloaded DMG with the published SHA-256.
 The final release must also pass `codesign`, Gatekeeper (`spctl`), and notarized
 ticket (`stapler`) validation. MaruEdit is not affiliated with or endorsed by
-the developers of Hidemaru Editor; attribution is in NOTICE.md and UPSTREAM.md.
+the developers of OldMaru Editor; attribution is in NOTICE.md and UPSTREAM.md.

@@ -83,7 +83,7 @@ Macro	Macro help	stable	macro.help	Open macro documentation
 Insert	Date and Time	stable	insert.dateTime	Insert locale-formatted current date and time
 Insert	Return	stable	insert.newline	Insert a logical newline at every active selection
 Insert	Form feed	stable	insert.pageBreak	Insert the form-feed control character
-Insert	Insert tab	stable	insert.tab	Insert a literal tab according to Hidemaru tab behavior
+Insert	Insert tab	stable	insert.tab	Insert a literal tab according to OldMaru tab behavior
 Insert	Duplicate line	stable	edit.duplicateLine	Duplicate current lines or selections in one Undo transaction
 Insert	Insert line	stable	insert.blankLine	Insert an indentation-preserving blank line
 Insert	Insert control code...	stable	insert.controlCode	Insert a validated C0 or DEL control code

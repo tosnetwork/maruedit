@@ -69,7 +69,7 @@ final class ClassicWorkspaceTests: XCTestCase {
     func testWindowHasACompleteForwardAndReverseKeyboardFocusLoop() {
         let controller = MainWindowController()
         controller.applyPreferences(.defaults)
-        controller.newDocument() // make the tab bar visible under the Hidemaru default
+        controller.newDocument() // make the tab bar visible under the OldMaru default
         controller.showFind(showingReplace: true)
         controller.showOutputPane()
 

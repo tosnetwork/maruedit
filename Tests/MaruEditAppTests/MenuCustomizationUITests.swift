@@ -68,14 +68,37 @@ final class MenuCustomizationUITests: XCTestCase {
         }
     }
 
-    func testBusinessMenuOrderMatchesHidemaru() async {
+    func testBusinessMenuOrderMatchesOldMaru() async {
         _ = NSApplication.shared
         let delegate = AppDelegate(); delegate.buildMenu()
-        let titles = NSApp.mainMenu?.items.compactMap { $0.submenu?.title } ?? []
+        let titles = NSApp.mainMenu?.items.filter { !$0.isHidden }.compactMap { $0.submenu?.title } ?? []
         XCTAssertEqual(Array(titles.dropFirst()), [
+            "File", "Edit", "View", "Search", "Window", "Macro", "Other",
+        ])
+
+        AppDelegate.applyMenuCustomization(
+            MenuCustomization(hiddenTopLevelMenus: []),
+            protectedCommandIDs: AppDelegate.protectedCommandIDs, to: NSApp.mainMenu!)
+        let expanded = NSApp.mainMenu?.items.filter { !$0.isHidden }.compactMap { $0.submenu?.title } ?? []
+        XCTAssertEqual(Array(expanded.dropFirst()), [
             "File", "Edit", "Convert", "View", "Insert", "Search", "Highlight",
             "Bookmark", "Tools", "Window", "Macro", "Other", "Help",
         ])
+    }
+
+    func testMenuEditorCanEnableEveryExtendedTopLevelMenu() async {
+        var changes: [MenuCustomization] = []
+        let controller = MenuCustomizationWindowController(
+            definitions: [settings, find], protectedCommandIDs: [.appSettings],
+            customization: .defaults, onChange: { changes.append($0) })
+        for menu in MenuCustomization.optionalTopLevelMenus {
+            XCTAssertEqual(controller.menuCheckboxForTesting(menu)?.state, .off)
+            controller.setMenuVisibleForTesting(true, menu: menu)
+            XCTAssertFalse(changes.last!.hiddenMenus.contains(menu))
+        }
+        XCTAssertEqual(changes.last?.hiddenTopLevelMenus, [])
+        controller.restoreForTesting()
+        XCTAssertEqual(controller.currentCustomization, .defaults)
     }
 
     func testToolsMenuGroupsCompareTagsExternalCommandsAndCommandList() async {

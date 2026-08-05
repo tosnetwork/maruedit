@@ -478,7 +478,7 @@ final class MainWindowController: NSWindowController,
     private var lastCursorColumn = 1
 
     private func rulerOrigin() -> CGFloat {
-        // Hidemaru's character ruler begins immediately after the fixed line
+        // OldMaru's character ruler begins immediately after the fixed line
         // number gutter and is not indented by auxiliary panes.
         48
     }
@@ -624,7 +624,7 @@ final class MainWindowController: NSWindowController,
         }
     }
 
-    /// Hidemaru's “Close and Open” keeps the editor window in place while
+    /// OldMaru's “Close and Open” keeps the editor window in place while
     /// applying the normal unsaved-changes protection to the current tab.
     func closeAndOpen() {
         guard closeCurrentTab() else { return }
@@ -1330,7 +1330,7 @@ final class MainWindowController: NSWindowController,
         return base.appendingPathComponent(expanded).standardizedFileURL
     }
 
-    /// Hidemaru-style tab-order traversal. Both directions wrap at the ends.
+    /// OldMaru-style tab-order traversal. Both directions wrap at the ends.
     func selectRelativeTab(_ offset: Int) {
         let count = documentController.documents.count
         guard count > 1 else { return }

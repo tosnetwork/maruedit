@@ -4,18 +4,18 @@ Maru Classic is a clean-room macOS workspace for users whose muscle memory
 comes from dense, keyboard-oriented Japanese editors. It recreates layout,
 information density, and command placement, while using original code, SF
 Symbols, native AppKit controls, and MaruEdit branding. It does not copy
-Hidemaru artwork, binaries, icons, or trademarks.
+OldMaru artwork, binaries, icons, or trademarks.
 
 ## Reference structure
 
-Public Hidemaru documentation consistently presents this vertical hierarchy:
+The archived public behavior notes used by this clean-room study consistently
+present this vertical hierarchy:
 menu, one-click toolbar, tabs, auxiliary pane/editor, and segmented status
 information. Older and current descriptions also document the character ruler,
 top toolbar, bottom function-key display, and user-selectable toolbar contents.
 
-- <https://hide.maruo.co.jp/software/hidemaru8/index.html>
-- <https://stakiran.github.io/ebook_hidemarueditor/preview.html>
-- <https://hidemaru.iinaa.net/helpsite/hidemaru7/html/070_Env_Win_ToolbarDesign.html>
+The source URLs are intentionally not reproduced in project-facing material;
+the checked-in specification records only independently observed behavior.
 
 ## Shipped geometry
 

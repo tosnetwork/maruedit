@@ -542,7 +542,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         winItem.submenu = winMenu
         main.addItem(winItem)
 
-        // Hidemaru-compatible business-menu groups. macOS keeps its required
+        // OldMaru-compatible business-menu groups. macOS keeps its required
         // application menu before this sequence.
         let convertItem = NSMenuItem()
         let convertMenu = NSMenu(title: "Convert")
@@ -774,6 +774,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         }
         apply(root)
+        for item in root.items {
+            guard let title = item.submenu?.title else { continue }
+            if customization.hiddenMenus.contains(title) { item.isHidden = true }
+        }
     }
 
     func activateKeyBindingProfile(_ profile: KeyBindingProfile) throws {

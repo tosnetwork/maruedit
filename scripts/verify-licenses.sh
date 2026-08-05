@@ -46,7 +46,7 @@ check_file_exists "UPSTREAM.md"
 check_contains "UPSTREAM.md" "Base commit SHA" "recorded base commit SHA"
 
 check_file_exists "README.md"
-check_contains "README.md" "not affiliated with or endorsed by the developers of Hidemaru Editor" \
+check_contains "README.md" "not affiliated with or endorsed by the developers of OldMaru Editor" \
   "independent-project / non-affiliation statement"
 
 if [ "$fail" -ne 0 ]; then

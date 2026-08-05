@@ -65,7 +65,7 @@ final class TabBarView: NSView {
     }
     var hidesForSingleTab: Bool {
         get {
-            // Match Hidemaru's compact single-document workspace while still
+            // Match OldMaru's compact single-document workspace while still
             // respecting an explicit user choice to keep the bar visible.
             UserDefaults.standard.object(forKey: "MaruTabBarHideSingle") == nil
                 ? true
@@ -141,7 +141,7 @@ final class TabBarView: NSView {
     override func layout() {
         super.layout()
         let b = bounds
-        // Hidemaru's automatic-width mode keeps every tab in the available
+        // OldMaru's automatic-width mode keeps every tab in the available
         // row instead of introducing a horizontal scroller.
         tabWidth = tabs.isEmpty ? 180 : min(220, max(1, floor(b.width / CGFloat(tabs.count))))
         bottomBorder.frame = NSRect(x: 0, y: tabHeight - 1, width: b.width, height: 1)

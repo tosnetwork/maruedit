@@ -1,8 +1,8 @@
-# Experimental Hidemaru Macro Compatibility
+# Experimental OldMaru Macro Compatibility
 
-This feature is experimental, incomplete, and disabled by default. It is a clean-room implementation of the public behavior documented below; it does not contain or depend on Hidemaru source code, binaries, private APIs, or copied help text. MaruEdit does not claim general Hidemaru macro compatibility.
+This feature is experimental, incomplete, and disabled by default. It is a clean-room implementation of the public behavior documented below; it does not contain or depend on OldMaru source code, binaries, private APIs, or copied help text. MaruEdit does not claim general OldMaru macro compatibility.
 
-Enable it for one launch with `MARUEDIT_ENABLE_HIDEMARU_COMPATIBILITY=1`, or set the `ExperimentalHidemaruMacroCompatibility` user default to `true`, then reload macros. UTF-8 `.mac` files in the normal MaruEdit Macros directory appear with “(Experimental)” in their menu title and a separate `macro.compat.*` command ID. When disabled, `.mac` files are ignored.
+Enable it for one launch with `MARUEDIT_ENABLE_OLDMARU_COMPATIBILITY=1`, or set the `ExperimentalOldMaruMacroCompatibility` user default to `true`, then reload macros. UTF-8 `.mac` files in the normal MaruEdit Macros directory appear with “(Experimental)” in their menu title and a separate `macro.compat.*` command ID. When disabled, `.mac` files are ignored.
 
 The parser accepts case-insensitive commands, semicolon-separated statements,
 comments, quoted strings, numeric `#variables`, string `$variables`, guarded
@@ -30,7 +30,7 @@ cancellation checks. Unsupported input fails with a line-numbered diagnostic.
 
 All document changes produced by one translated macro are committed through the existing frozen `maru` API inside one Undo group. The translator receives only `currentDocument` permission. It cannot read arbitrary files, execute a process, access the clipboard, or expand the native JavaScript API. Native `.js` macro loading and execution are byte-for-byte unchanged whether the compatibility flag is on or off.
 
-The executable clean-room corpus in `HidemaruCompatibilityCorpus.swift` is
+The executable clean-room corpus in `OldMaruCompatibilityCorpus.swift` is
 dedicated to CC0-1.0 and contains no copied vendor material. Tests execute its
 language, editing, search, window/outline, and diagnostic cases and generate
 `generated-macro-compatibility-report.md`; any FAIL blocks completion.

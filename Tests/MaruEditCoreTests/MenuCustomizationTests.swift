@@ -12,7 +12,21 @@ final class MenuCustomizationTests: XCTestCase {
 
         let json = String(data: try JSONEncoder().encode(value), encoding: .utf8)!
         XCTAssertTrue(json.contains("hiddenCommandIDs"))
+        XCTAssertTrue(json.contains("hiddenTopLevelMenus"))
         XCTAssertFalse(json.contains("Find"), "localized titles must never enter the schema")
+    }
+
+    func testOldMaruDefaultMenusAndExtendedMenuVisibility() {
+        var value = MenuCustomization.defaults
+        XCTAssertEqual(value.hiddenTopLevelMenus, [
+            "Bookmark", "Convert", "Help", "Highlight", "Insert", "Tools",
+        ])
+        value.setMenuVisible(true, menu: "Convert")
+        XCTAssertFalse(value.hiddenMenus.contains("Convert"))
+        value.setMenuVisible(false, menu: "Convert")
+        XCTAssertTrue(value.hiddenMenus.contains("Convert"))
+        value.setMenuVisible(false, menu: "File")
+        XCTAssertFalse(value.hiddenMenus.contains("File"), "the seven default menus cannot be hidden")
     }
 
     func testStoreRoundTripRestoreMigrationAndFutureFallback() throws {

@@ -23,9 +23,9 @@ final class ChromeParityAuditTests: XCTestCase {
         XCTAssertEqual(documentedIDs.count, Set(documentedIDs).count, "command documentation has duplicates")
     }
 
-    func testOfficialHidemaru957InventoryIsCompleteAndWellFormed() throws {
+    func testOfficialOldMaru957InventoryIsCompleteAndWellFormed() throws {
         let inventory = try String(contentsOf: repositoryRoot
-            .appendingPathComponent("docs/hidemaru-9.57-menu-inventory.tsv"))
+            .appendingPathComponent("docs/oldmaru-9.57-menu-inventory.tsv"))
         let lines = inventory.split(separator: "\n")
         XCTAssertEqual(lines.first, "menu\tofficial_label_ja\tofficial_label_en\tplacement")
 
@@ -55,8 +55,8 @@ final class ChromeParityAuditTests: XCTestCase {
     }
 
     func testAuditedOfficialMappingsResolveToRegisteredOrExplainedTargets() throws {
-        let inventory = try tsv(named: "docs/hidemaru-9.57-menu-inventory.tsv", columns: 4)
-        let mappings = try tsv(named: "docs/hidemaru-9.57-menu-mapping.tsv", columns: 5)
+        let inventory = try tsv(named: "docs/oldmaru-9.57-menu-inventory.tsv", columns: 4)
+        let mappings = try tsv(named: "docs/oldmaru-9.57-menu-mapping.tsv", columns: 5)
         let appCommands = try String(contentsOf: repositoryRoot
             .appendingPathComponent("Sources/MaruEditApp/Commands/AppCommands.swift"))
         let registeredIDs = Set(captures(#"CommandID\("([^"]+)"\)"#, in: appCommands))
@@ -93,7 +93,7 @@ final class ChromeParityAuditTests: XCTestCase {
 
     func testPublishedParityMatrixHasNoUnresolvedCompatibleStatus() throws {
         let matrix = try String(contentsOf: repositoryRoot
-            .appendingPathComponent("docs/hidemaru-chrome-parity.md"))
+            .appendingPathComponent("docs/oldmaru-chrome-parity.md"))
         XCTAssertFalse(matrix.contains("| Missing |"))
         XCTAssertFalse(matrix.contains("| Partial |"))
         XCTAssertFalse(matrix.contains("missing "))
@@ -102,7 +102,7 @@ final class ChromeParityAuditTests: XCTestCase {
     }
 
     func testPlatformMappingsAreExplicitAndNoCapabilityIsUnsupported() throws {
-        let mappings = try tsv(named: "docs/hidemaru-9.57-menu-mapping.tsv", columns: 5)
+        let mappings = try tsv(named: "docs/oldmaru-9.57-menu-mapping.tsv", columns: 5)
         XCTAssertFalse(mappings.contains { $0[2] == "unsupported" })
         let nativeTargets = Set(mappings.filter { $0[2] == "native" }.map { $0[3] })
         XCTAssertEqual(nativeTargets, Set([
@@ -123,7 +123,7 @@ final class ChromeParityAuditTests: XCTestCase {
     func testEveryStableOfficialMappingIsPlacedInItsCorrespondingMenu() throws {
         _ = NSApplication.shared
         let app = AppDelegate(); app.buildMenu()
-        let mappings = try tsv(named: "docs/hidemaru-9.57-menu-mapping.tsv", columns: 5)
+        let mappings = try tsv(named: "docs/oldmaru-9.57-menu-mapping.tsv", columns: 5)
         let displayedMenu = [
             "Conv": "Convert", "Disp": "View", "Hilight": "Highlight", "Tool": "Tools",
         ]

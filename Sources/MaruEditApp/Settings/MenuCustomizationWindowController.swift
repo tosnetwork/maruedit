@@ -7,6 +7,7 @@ final class MenuCustomizationWindowController: NSWindowController {
     private var customization: MenuCustomization
     private let onChange: (MenuCustomization) -> Void
     private var checkboxes: [CommandID: NSButton] = [:]
+    private var menuCheckboxes: [String: NSButton] = [:]
 
     init(
         definitions: [CommandDefinition],
@@ -35,7 +36,7 @@ final class MenuCustomizationWindowController: NSWindowController {
     private func buildUI() {
         guard let root = window?.contentView else { return }
         let explanation = NSTextField(wrappingLabelWithString:
-            "Choose which MaruEdit commands appear in menus. Required macOS items are always shown.")
+            "OldMaru's seven-menu default is shown first. Enable extended top-level menus or choose individual commands below. Required macOS items are always shown.")
         explanation.translatesAutoresizingMaskIntoConstraints = false
         root.addSubview(explanation)
 
@@ -49,6 +50,21 @@ final class MenuCustomizationWindowController: NSWindowController {
         stack.alignment = .leading
         stack.spacing = 6
         stack.edgeInsets = NSEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
+        let menuHeading = NSTextField(labelWithString: "Extended Top-Level Menus")
+        menuHeading.font = .systemFont(ofSize: 13, weight: .semibold)
+        stack.addArrangedSubview(menuHeading)
+        for menu in MenuCustomization.optionalTopLevelMenus {
+            let checkbox = NSButton(
+                checkboxWithTitle: menu, target: self, action: #selector(menuVisibilityChanged(_:)))
+            checkbox.identifier = NSUserInterfaceItemIdentifier("menu.\(menu)")
+            checkbox.state = customization.hiddenMenus.contains(menu) ? .off : .on
+            checkbox.setAccessibilityLabel("Show \(menu) top-level menu")
+            stack.addArrangedSubview(checkbox)
+            menuCheckboxes[menu] = checkbox
+        }
+        let commandHeading = NSTextField(labelWithString: "Commands")
+        commandHeading.font = .systemFont(ofSize: 13, weight: .semibold)
+        stack.addArrangedSubview(commandHeading)
         for definition in definitions {
             let protected = protectedCommandIDs.contains(definition.id)
             let suffix = protected ? " — Required" : ""
@@ -99,9 +115,19 @@ final class MenuCustomizationWindowController: NSWindowController {
         onChange(customization)
     }
 
+    @objc private func menuVisibilityChanged(_ sender: NSButton) {
+        guard let raw = sender.identifier?.rawValue, raw.hasPrefix("menu.") else { return }
+        let menu = String(raw.dropFirst("menu.".count))
+        customization.setMenuVisible(sender.state == .on, menu: menu)
+        onChange(customization)
+    }
+
     @objc private func restoreDefaults() {
         customization = .defaults
         for checkbox in checkboxes.values { checkbox.state = .on }
+        for (menu, checkbox) in menuCheckboxes {
+            checkbox.state = customization.hiddenMenus.contains(menu) ? .off : .on
+        }
         onChange(customization)
     }
 
@@ -113,4 +139,10 @@ final class MenuCustomizationWindowController: NSWindowController {
     }
     func restoreForTesting() { restoreDefaults() }
     func checkboxForTesting(_ command: CommandID) -> NSButton? { checkboxes[command] }
+    func setMenuVisibleForTesting(_ visible: Bool, menu: String) {
+        guard let checkbox = menuCheckboxes[menu] else { return }
+        checkbox.state = visible ? .on : .off
+        menuVisibilityChanged(checkbox)
+    }
+    func menuCheckboxForTesting(_ menu: String) -> NSButton? { menuCheckboxes[menu] }
 }

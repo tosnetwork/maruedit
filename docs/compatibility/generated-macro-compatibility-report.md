@@ -1,4 +1,4 @@
-# Generated Hidemaru Compatibility Report
+# Generated OldMaru Compatibility Report
 
 Corpus license: CC0-1.0
 
