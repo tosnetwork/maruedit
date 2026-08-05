@@ -41,6 +41,7 @@ final class Document: @unchecked Sendable {
     /// document is open"). Always `false` for an unnamed document — the
     /// concept doesn't apply until there's a real file to be locked.
     var isReadOnly: Bool = false
+    var isViewMode: Bool = false
     var largeFileMode: LargeFileMode = .normal
     var hasExplicitlyEnabledLargeFileFeatures = false
     var cursorPosition: Int = 0
@@ -85,6 +86,14 @@ final class Document: @unchecked Sendable {
 
     var displayName: String { fileURL?.lastPathComponent ?? "Untitled" }
     var title: String { isModified ? "\(displayName) •" : displayName }
+    var isEditingDisabled: Bool { isReadOnly || isViewMode }
+
+    var propertiesSummary: String {
+        let path = fileURL?.path ?? "Not saved"
+        let size = ByteCountFormatter.string(fromByteCount: Int64(content.utf8.count), countStyle: .file)
+        let mode = isViewMode ? "View" : isReadOnly ? "Read-Only" : "Editable"
+        return "Path: \(path)\nEncoding: \(encoding.displayName)\nLine Ending: \(lineEnding.displayName)\nUTF-8 Size: \(size)\nMode: \(mode)"
+    }
 
     func markModified() {
         isModified = content != savedContent || isFormatModified

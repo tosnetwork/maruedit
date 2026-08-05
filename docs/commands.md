@@ -38,6 +38,9 @@ significantly, replace this with a small script that generates it from
 | `file.clearRecoveryData` | Clear Recovery Data... | File | — | `AppCoordinator.clearRecoveryData()` |
 | `file.pageSetup` | Page Setup… | File | — | `AppCoordinator.showPageSetup()` |
 | `file.print` | Print… | File | — | `AppCoordinator.printDocument()` |
+| `file.reload` | Reload from Disk | File | — | `AppCoordinator.reloadDocument()` |
+| `file.toggleViewMode` | View Mode | File | — | `AppCoordinator.toggleViewMode()` |
+| `file.properties` | File Properties… | File | — | `AppCoordinator.showFileProperties()` |
 | `search.find` | Find... | Find | ⌘F | `AppCoordinator.showFind()` |
 | `search.replace` | Find and Replace... | Find | ⌥⌘F | `AppCoordinator.showReplace()` |
 | `search.replaceAll` | Replace All | Find | — | `AppCoordinator.replaceAll()` |

@@ -151,6 +151,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         reopenItem.submenu = reopenWithEncodingMenu
         reopenItem.identifier = NSUserInterfaceItemIdentifier("menu.dynamic.reopenEncoding")
         fileMenu.addItem(reopenItem)
+        fileMenu.addItem(commandItem(.fileReload))
+        fileMenu.addItem(commandItem(.fileToggleViewMode))
+        fileMenu.addItem(commandItem(.fileProperties))
 
         fileMenu.addItem(.separator())
         fileMenu.addItem(commandItem(.fileSave))

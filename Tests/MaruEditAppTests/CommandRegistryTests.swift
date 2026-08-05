@@ -67,6 +67,7 @@ final class CommandRegistryTests: XCTestCase {
             .fileNew, .fileNewFromTemplate, .fileOpen, .fileOpenFolder, .fileSave, .fileSaveAs,
             .fileCloseTab, .windowNextTab, .windowPreviousTab,
             .fileClearRecoveryData, .filePageSetup, .filePrint,
+            .fileReload, .fileToggleViewMode, .fileProperties,
             .searchFind, .searchReplace, .searchReplaceAll, .searchFindNext,
             .searchFindPrevious, .searchGoToLine, .searchQuickOpen, .searchGrep,
             .searchGrepCurrentDocument, .searchGrepOpenDocuments,

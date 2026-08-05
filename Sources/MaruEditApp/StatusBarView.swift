@@ -282,7 +282,15 @@ final class StatusBarView: NSView {
     }
 
     func updateReadOnly(_ isReadOnly: Bool) {
-        self.isReadOnly = isReadOnly
+        updateAccessMode(isReadOnly: isReadOnly, isViewMode: false)
+    }
+
+    func updateAccessMode(isReadOnly: Bool, isViewMode: Bool) {
+        self.isReadOnly = isReadOnly || isViewMode
+        readOnlyLabel.stringValue = isViewMode ? "View Mode" : "Read-Only"
+        readOnlyLabel.toolTip = isViewMode
+            ? "View Mode prevents editing without changing the file"
+            : "This file is read-only on disk; use Save As to save changes"
         applyConfiguredVisibility()
         needsLayout = true
     }

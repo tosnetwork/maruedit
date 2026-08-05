@@ -12,6 +12,14 @@ final class StatusBarViewTests: XCTestCase {
         bar.updateInputMode(.overwrite)
         XCTAssertEqual(bar.displayedInputModeText, "OVR")
     }
+    func testAccessModeDistinguishesViewModeFromDiskReadOnly() async {
+        let bar = StatusBarView(frame: NSRect(x: 0, y: 0, width: 900, height: 24))
+        bar.updateAccessMode(isReadOnly: false, isViewMode: true)
+        bar.layoutSubtreeIfNeeded()
+        XCTAssertTrue(bar.subviews.compactMap { ($0 as? NSTextField)?.stringValue }.contains("View Mode"))
+        bar.updateAccessMode(isReadOnly: true, isViewMode: false)
+        XCTAssertTrue(bar.subviews.compactMap { ($0 as? NSTextField)?.stringValue }.contains("Read-Only"))
+    }
     private final class Delegate: StatusBarViewDelegate {
         var controls: [StatusBarControl] = []
         func statusBar(

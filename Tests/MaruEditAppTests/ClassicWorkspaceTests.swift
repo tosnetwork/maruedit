@@ -187,6 +187,15 @@ final class ClassicWorkspaceTests: XCTestCase {
         XCTAssertGreaterThan(controller.editorTextForTesting.count, 1)
     }
 
+    func testViewModeImmediatelyLocksAndUnlocksTheEditor() async {
+        let controller = MainWindowController()
+        XCTAssertTrue(controller.macroEditor.textView.isEditable)
+        controller.toggleViewMode()
+        XCTAssertFalse(controller.macroEditor.textView.isEditable)
+        controller.toggleViewMode()
+        XCTAssertTrue(controller.macroEditor.textView.isEditable)
+    }
+
     func testRulerTracksEditorOriginAndCurrentDisplayColumn() async {
         let controller = MainWindowController()
         controller.applyPreferences(.defaults)

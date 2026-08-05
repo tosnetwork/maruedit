@@ -558,7 +558,7 @@ final class MainWindowController: NSWindowController,
         // Checked before the mixed-line-ending prompt: no point asking the
         // user to pick LF/CRLF/CR for a write that can't happen anyway
         // (ROADMAP.md M2-08, "never presented as normally overwriteable").
-        if doc.isReadOnly {
+        if doc.isEditingDisabled {
             presentReadOnlySaveBlocked(doc)
             return
         }
@@ -769,14 +769,45 @@ final class MainWindowController: NSWindowController,
         }
     }
 
-    private func reloadFromDisk(_ doc: Document) {
+    @discardableResult
+    private func reloadFromDisk(_ doc: Document) -> Bool {
         do {
             try doc.reopen(forcing: doc.encoding)
             editorVC.reloadCurrentDocument()
             refreshTabs(); refreshStatus()
+            return true
         } catch {
             NSAlert(error: error).runModal()
+            return false
         }
+    }
+
+    func reloadDocument() {
+        guard let doc = curDoc, doc.fileURL != nil else { return }
+        if doc.isModified {
+            let alert = NSAlert()
+            alert.alertStyle = .warning
+            alert.messageText = "Reload \(doc.displayName)?"
+            alert.informativeText = "Reloading from disk discards unsaved changes."
+            alert.addButton(withTitle: "Reload"); alert.addButton(withTitle: "Cancel")
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+        }
+        _ = reloadFromDisk(doc)
+    }
+
+    func toggleViewMode() {
+        guard let doc = curDoc else { return }
+        doc.isViewMode.toggle()
+        editorVC.reloadCurrentDocument(); refreshStatus()
+    }
+
+    func showFileProperties() {
+        guard let doc = curDoc, let window else { return }
+        let alert = NSAlert()
+        alert.messageText = doc.displayName
+        alert.informativeText = doc.propertiesSummary
+        alert.addButton(withTitle: "OK")
+        alert.beginSheetModal(for: window)
     }
 
     @discardableResult
@@ -1379,7 +1410,7 @@ final class MainWindowController: NSWindowController,
             statusBar.updateIndentation(
                 style: settings?.indentStyle ?? .spaces,
                 width: editorVC.effectiveTabWidth)
-            statusBar.updateReadOnly(doc.isReadOnly)
+            statusBar.updateAccessMode(isReadOnly: doc.isReadOnly, isViewMode: doc.isViewMode)
             statusBar.updateLargeFileMode(doc.largeFileMode)
             statusBar.updateDocumentMetrics(
                 text: doc.content, fontSize: editorVC.currentEditorFont.pointSize)

@@ -558,7 +558,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     }
 
     private func configureLargeFileEditingMode() {
-        textView.isEditable = !(document?.isReadOnly ?? false)
+        textView.isEditable = !(document?.isEditingDisabled ?? false)
         textView.undoManager?.levelsOfUndo = document?.largeFileMode.usesReducedFeatures == true ? 20 : 0
     }
 

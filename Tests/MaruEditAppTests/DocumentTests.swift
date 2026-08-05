@@ -410,6 +410,17 @@ final class DocumentTests: XCTestCase {
         XCTAssertFalse(Document().isReadOnly)
     }
 
+    func testViewModeDisablesEditingWithoutChangingFilesystemReadOnlyState() async {
+        let doc = Document(content: "inspect")
+        XCTAssertFalse(doc.isEditingDisabled)
+        doc.isViewMode = true
+        XCTAssertTrue(doc.isEditingDisabled)
+        XCTAssertFalse(doc.isReadOnly)
+        XCTAssertTrue(doc.propertiesSummary.contains("Mode: View"))
+        doc.isViewMode = false
+        XCTAssertFalse(doc.isEditingDisabled)
+    }
+
     func testOpeningWritableFileLeavesIsReadOnlyFalse() async throws {
         let url = try write(Array("hello".utf8))
         defer { try? FileManager.default.removeItem(at: url) }
