@@ -33,6 +33,14 @@ mkdir -p "${BUNDLE}/Contents/Resources"
 
 cp "${BUILD}/${PRODUCT}" "${BUNDLE}/Contents/MacOS/${APP}"
 
+RESOURCE_BUNDLE="MaruEdit_MaruEditApp.bundle"
+RESOURCE_BUNDLE_PATH="${BUILD}/${RESOURCE_BUNDLE}"
+if [ ! -d "${RESOURCE_BUNDLE_PATH}" ]; then
+  echo "Missing SwiftPM resource bundle: ${RESOURCE_BUNDLE_PATH}" >&2
+  exit 1
+fi
+ditto "${RESOURCE_BUNDLE_PATH}" "${BUNDLE}/Contents/Resources/${RESOURCE_BUNDLE}"
+
 if [ -f "MaruEdit.icns" ]; then
   cp "MaruEdit.icns" "${BUNDLE}/Contents/Resources/AppIcon.icns"
 fi
@@ -88,6 +96,11 @@ PLIST
 
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${VERSION}" "${BUNDLE}/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${VERSION}" "${BUNDLE}/Contents/Info.plist"
+
+# Seal the complete bundle for integrity. A future Developer ID release will
+# replace this ad-hoc signature before notarization.
+codesign --force --deep --sign - "${BUNDLE}"
+codesign --verify --deep --strict --verbose=2 "${BUNDLE}"
 
 echo ""
 echo "✓ Built universal ${BUNDLE} ($(du -sh "${BUNDLE}" | cut -f1) on disk)"

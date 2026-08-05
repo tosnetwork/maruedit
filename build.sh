@@ -25,20 +25,20 @@ mkdir -p "${BUNDLE}/Contents/Resources"
 # the process name, Activity Monitor, etc. stay user-facing as "MaruEdit".
 cp "${BUILD}/${PRODUCT}" "${BUNDLE}/Contents/MacOS/${APP}"
 
-# SwiftPM's generated Bundle.module accessor looks for this resource bundle
-# beside the main .app bundle URL. Keep the generated name intact so bundled
-# Help works after the application is moved away from the build directory.
+# SwiftPM's generated Bundle.module accessor first looks below
+# Bundle.main.resourceURL. Keep the generated name intact and package it in
+# the standard Contents/Resources location.
 RESOURCE_BUNDLE="MaruEdit_MaruEditApp.bundle"
 RESOURCE_BUNDLE_PATH="$(find .build -path "*/release/${RESOURCE_BUNDLE}" -type d -print -quit)"
 if [ -z "${RESOURCE_BUNDLE_PATH}" ]; then
   echo "Missing SwiftPM resource bundle: ${RESOURCE_BUNDLE}" >&2
   exit 1
 fi
-cp -R "${RESOURCE_BUNDLE_PATH}" "${BUNDLE}/${RESOURCE_BUNDLE}"
+ditto "${RESOURCE_BUNDLE_PATH}" "${BUNDLE}/Contents/Resources/${RESOURCE_BUNDLE}"
 # Remove pre-PDF Help artifacts that may survive an incremental SwiftPM build.
-rm -f "${BUNDLE}/${RESOURCE_BUNDLE}/user-guide.html" \
-      "${BUNDLE}/${RESOURCE_BUNDLE}/macros.html" \
-      "${BUNDLE}/${RESOURCE_BUNDLE}/key-bindings.html"
+rm -f "${BUNDLE}/Contents/Resources/${RESOURCE_BUNDLE}/user-guide.html" \
+      "${BUNDLE}/Contents/Resources/${RESOURCE_BUNDLE}/macros.html" \
+      "${BUNDLE}/Contents/Resources/${RESOURCE_BUNDLE}/key-bindings.html"
 
 if [ -f "MaruEdit.icns" ]; then
   cp "MaruEdit.icns" "${BUNDLE}/Contents/Resources/AppIcon.icns"
@@ -95,6 +95,13 @@ PLIST
 
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${VERSION}" "${BUNDLE}/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${VERSION}" "${BUNDLE}/Contents/Info.plist"
+
+# SwiftPM linker-signs the executable only. Seal the complete hand-built app
+# with an ad-hoc signature so local builds have internally consistent code and
+# resources. This is not a Developer ID signature and does not grant Gatekeeper
+# trust to downloaded builds.
+codesign --force --deep --sign - "${BUNDLE}"
+codesign --verify --deep --strict --verbose=2 "${BUNDLE}"
 
 echo ""
 echo "✓ Built ${BUNDLE} ($(du -sh "${BUNDLE}" | cut -f1) on disk)"

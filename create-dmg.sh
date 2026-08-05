@@ -16,7 +16,28 @@ if [ ! -d "${BUNDLE}" ]; then
   exit 1
 fi
 
-echo "▸ Step 2: Creating DMG…"
+echo "▸ Step 2: Verifying app bundle…"
+PLIST="${BUNDLE}/Contents/Info.plist"
+EXECUTABLE="${BUNDLE}/Contents/MacOS/${APP}"
+RESOURCE_BUNDLE="${BUNDLE}/Contents/Resources/MaruEdit_MaruEditApp.bundle"
+
+plutil -lint "${PLIST}"
+test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "${PLIST}")" = "${VERSION}"
+test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "${PLIST}")" = "${VERSION}"
+ARCHS="$(lipo -archs "${EXECUTABLE}")"
+[[ " ${ARCHS} " == *" arm64 "* && " ${ARCHS} " == *" x86_64 "* ]]
+test -f "${RESOURCE_BUNDLE}/Contents/Resources/maruedit.pdf"
+test -f "${RESOURCE_BUNDLE}/Contents/Resources/en.lproj/Localizable.strings"
+test -f "${RESOURCE_BUNDLE}/Contents/Resources/ja.lproj/Localizable.strings"
+codesign --verify --deep --strict --verbose=2 "${BUNDLE}"
+
+if spctl --assess --type execute --verbose=2 "${BUNDLE}"; then
+  echo "✓ Gatekeeper accepted ${BUNDLE}"
+else
+  echo "⚠ Gatekeeper rejection is expected for this ad-hoc, unnotarized preview" >&2
+fi
+
+echo "▸ Step 3: Creating DMG…"
 rm -rf "${STAGING}" "${DMG}"
 
 mkdir -p "${STAGING}"

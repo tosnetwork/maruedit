@@ -113,6 +113,16 @@ Published artifacts are listed on the [Releases page](https://github.com/tosnetw
 
 MaruEdit requires **macOS 13 Ventura or later**.
 
+Current preview builds are not yet Developer ID signed or notarized. After
+copying MaruEdit to Applications, Control-click it and choose **Open**. If
+macOS still blocks it, use **System Settings → Privacy & Security → Open
+Anyway**. As a last resort, after independently verifying the downloaded
+SHA-256 checksum, remove only MaruEdit's quarantine attribute:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/MaruEdit.app
+```
+
 ## Build from source
 
 Install Xcode Command Line Tools, clone the repository, and run:
