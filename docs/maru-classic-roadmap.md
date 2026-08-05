@@ -19,7 +19,8 @@ that would weaken MaruEdit's security model.
 - [x] Native customizable toolbar backed by Command Registry IDs.
 - [x] Files / Outline / Results pane switcher and single-file closed default.
 - [x] User-configurable visibility for heading, ruler and command strip.
-- [ ] Real VoiceOver and visible screenshot verification.
+- [x] Visible screenshot verification. *(`screenshots/main-editor.png` was recaptured from the current Maru Classic build on 2026-08-05.)*
+- [ ] Real VoiceOver spoken-navigation verification.
 
 ## MC2 — Outline and folding
 
