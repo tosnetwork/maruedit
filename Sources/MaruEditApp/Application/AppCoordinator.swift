@@ -90,6 +90,8 @@ final class AppCoordinator {
     func saveDocument()               { ensureWindowControllerReady().saveDocument() }
     func saveDocumentAs()             { ensureWindowControllerReady().saveDocumentAs() }
     func closeCurrentTab()            { ensureWindowControllerReady().closeCurrentTab() }
+    func selectNextTab()              { ensureWindowControllerReady().selectRelativeTab(1) }
+    func selectPreviousTab()          { ensureWindowControllerReady().selectRelativeTab(-1) }
     func showPageSetup()              { ensureWindowControllerReady().showPageSetup() }
     func printDocument()              { ensureWindowControllerReady().printDocument() }
     func showFind()                   { ensureWindowControllerReady().showFind() }

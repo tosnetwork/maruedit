@@ -5,10 +5,12 @@ protocol TabBarViewDelegate: AnyObject {
     func tabBarDidSelectTab(at index: Int)
     func tabBarDidCloseTab(at index: Int)
     func tabBarDidMoveTab(from source: Int, to destination: Int)
+    func tabBarDidRequestClose(_ scope: TabCloseScope, at index: Int)
     func tabBarLayoutOptionsDidChange()
 }
 
 enum TabBarPosition: String { case top, bottom }
+enum TabCloseScope { case current, others, left, right }
 
 struct TabItem: Equatable {
     let title: String
@@ -34,6 +36,8 @@ final class TabBarView: NSView {
     }
     var effectiveHeight: CGFloat { hidesForSingleTab && tabs.count <= 1 ? 0 : tabHeight }
     private var pressedIndex: Int?
+    private var hoveredIndex: Int? { didSet { updateAppearance() } }
+    private var trackingArea: NSTrackingArea?
 
     private var bgLayers: [NSView] = []
     private var accentLayers: [NSView] = []
@@ -94,18 +98,34 @@ final class TabBarView: NSView {
     override func layout() {
         super.layout()
         let b = bounds
-        tabWidth = tabs.isEmpty ? 180 : min(220, max(92, floor(b.width / CGFloat(tabs.count))))
+        // Hidemaru's automatic-width mode keeps every tab in the available
+        // row instead of introducing a horizontal scroller.
+        tabWidth = tabs.isEmpty ? 180 : min(220, max(1, floor(b.width / CGFloat(tabs.count))))
         bottomBorder.frame = NSRect(x: 0, y: tabHeight - 1, width: b.width, height: 1)
 
         for (i, bg) in bgLayers.enumerated() {
             let x = CGFloat(i) * tabWidth
             bg.frame = NSRect(x: x, y: 0, width: tabWidth, height: tabHeight)
             accentLayers[i].frame = NSRect(x: x, y: 0, width: tabWidth, height: 2)
-            titleLabels[i].frame = NSRect(x: x + (compactStyle ? 8 : 14), y: 8, width: tabWidth - (compactStyle ? 34 : 42), height: 16)
+            titleLabels[i].frame = NSRect(x: x + (compactStyle ? 8 : 14), y: 8, width: max(0, tabWidth - (compactStyle ? 34 : 42)), height: 16)
             closeLabels[i].frame = NSRect(x: x + tabWidth - 24, y: 8, width: 14, height: 16)
             separators[i].frame = NSRect(x: x + tabWidth - 1, y: 4, width: 1, height: tabHeight - 8)
         }
     }
+
+    override func updateTrackingAreas() {
+        if let trackingArea { removeTrackingArea(trackingArea) }
+        let area = NSTrackingArea(rect: bounds, options: [.activeInKeyWindow, .mouseMoved, .mouseEnteredAndExited], owner: self)
+        addTrackingArea(area)
+        trackingArea = area
+        super.updateTrackingAreas()
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        hoveredIndex = tabIndex(at: convert(event.locationInWindow, from: nil))
+    }
+
+    override func mouseExited(with event: NSEvent) { hoveredIndex = nil }
 
     private func clearAll() {
         for arr: [NSView] in [bgLayers, accentLayers, titleLabels, closeLabels, separators] {
@@ -178,19 +198,19 @@ final class TabBarView: NSView {
             titleLabels[i].textColor = compactStyle
                 ? NSColor.labelColor : (active ? Theme.tabTextActive : Theme.tabText)
             titleLabels[i].font = NSFont.systemFont(ofSize: 12, weight: active ? .medium : .regular)
-            closeLabels[i].textColor = active ? Theme.tabText : Theme.tabText.withAlphaComponent(0.3)
+            closeLabels[i].isHidden = tabWidth < 42 || (i != hoveredIndex && !active)
+            closeLabels[i].textColor = active ? Theme.tabText : Theme.tabText.withAlphaComponent(0.75)
             separators[i].isHidden = active
         }
     }
 
     override func mouseDown(with event: NSEvent) {
         let pt = convert(event.locationInWindow, from: nil)
-        let idx = Int(pt.x / tabWidth)
-        guard idx >= 0, idx < tabs.count else { return }
+        guard let idx = tabIndex(at: pt) else { return }
         pressedIndex = idx
 
         let tabRight = CGFloat(idx + 1) * tabWidth
-        if pt.x > tabRight - 30 {
+        if !closeLabels[idx].isHidden, pt.x > tabRight - 30 {
             delegate?.tabBarDidCloseTab(at: idx)
         } else {
             delegate?.tabBarDidSelectTab(at: idx)
@@ -216,7 +236,16 @@ final class TabBarView: NSView {
     }
 
     override func rightMouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        let clickedIndex = tabIndex(at: point)
         let menu = NSMenu(title: "Tab Bar")
+        if let clickedIndex {
+            addCloseItem("Close Tab", scope: .current, index: clickedIndex, to: menu)
+            addCloseItem("Close Other Tabs", scope: .others, index: clickedIndex, to: menu)
+            addCloseItem("Close Tabs to the Left", scope: .left, index: clickedIndex, to: menu)
+            addCloseItem("Close Tabs to the Right", scope: .right, index: clickedIndex, to: menu)
+            menu.addItem(.separator())
+        }
         let top = NSMenuItem(title: "Tab Bar at Top", action: #selector(placeAtTop), keyEquivalent: "")
         top.target = self; top.state = position == .top ? .on : .off; menu.addItem(top)
         let bottom = NSMenuItem(title: "Tab Bar at Bottom", action: #selector(placeAtBottom), keyEquivalent: "")
@@ -224,6 +253,43 @@ final class TabBarView: NSView {
         let single = NSMenuItem(title: "Hide When One Tab", action: #selector(toggleHideSingle), keyEquivalent: "")
         single.target = self; single.state = hidesForSingleTab ? .on : .off; menu.addItem(single)
         NSMenu.popUpContextMenu(menu, with: event, for: self)
+    }
+
+    private func tabIndex(at point: NSPoint) -> Int? {
+        guard tabWidth > 0 else { return nil }
+        let index = Int(point.x / tabWidth)
+        return tabs.indices.contains(index) ? index : nil
+    }
+
+    private func addCloseItem(_ title: String, scope: TabCloseScope, index: Int, to menu: NSMenu) {
+        let item = NSMenuItem(title: title, action: #selector(closeFromMenu(_:)), keyEquivalent: "")
+        item.target = self
+        item.representedObject = [scopeValue(scope), index]
+        switch scope {
+        case .left: item.isEnabled = index > 0
+        case .right: item.isEnabled = index + 1 < tabs.count
+        case .others: item.isEnabled = tabs.count > 1
+        case .current: break
+        }
+        menu.addItem(item)
+    }
+
+    private func scopeValue(_ scope: TabCloseScope) -> Int {
+        switch scope { case .current: 0; case .others: 1; case .left: 2; case .right: 3 }
+    }
+
+    @objc private func closeFromMenu(_ sender: NSMenuItem) {
+        guard let values = sender.representedObject as? [Int], values.count == 2 else { return }
+        let scopes: [TabCloseScope] = [.current, .others, .left, .right]
+        guard scopes.indices.contains(values[0]) else { return }
+        delegate?.tabBarDidRequestClose(scopes[values[0]], at: values[1])
+    }
+
+    // Deterministic geometry hooks for interaction tests.
+    var tabWidthForTesting: CGFloat { tabWidth }
+    func setHoveredIndexForTesting(_ index: Int?) { hoveredIndex = index }
+    var visibleCloseIndicesForTesting: [Int] {
+        closeLabels.indices.filter { !closeLabels[$0].isHidden }
     }
 
     @objc private func placeAtTop() { position = .top }

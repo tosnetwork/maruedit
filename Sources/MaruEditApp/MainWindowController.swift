@@ -744,8 +744,9 @@ final class MainWindowController: NSWindowController,
         }
     }
 
-    func closeCurrentTab() {
-        guard let doc = curDoc else { return }
+    @discardableResult
+    func closeCurrentTab() -> Bool {
+        guard let doc = curDoc else { return false }
         let indexToClose = curIdx
         if doc.isModified {
             let a = NSAlert()
@@ -755,8 +756,12 @@ final class MainWindowController: NSWindowController,
             a.addButton(withTitle: "Don't Save")
             a.addButton(withTitle: "Cancel")
             let resp = a.runModal()
-            if resp == .alertFirstButtonReturn { saveDocument() }
-            else if resp == .alertThirdButtonReturn { return }
+            if resp == .alertFirstButtonReturn {
+                saveDocument()
+                // Save panels can themselves be cancelled.
+                if doc.isModified { return false }
+            }
+            else if resp == .alertThirdButtonReturn { return false }
             else if resp == .alertSecondButtonReturn, doc.fileURL == nil {
                 // Explicitly discarded (ROADMAP.md M2-07: "Delete recovery
                 // data after a normal close with 'Don't Save.'").
@@ -769,8 +774,17 @@ final class MainWindowController: NSWindowController,
         editorVC.document = curDoc
         refreshTabs(); refreshStatus()
         scheduleSessionSave()
-        if emptiedAndReplaced { return }
+        if emptiedAndReplaced { return true }
         deferredRestoreCursor()
+        return true
+    }
+
+    /// Hidemaru-style tab-order traversal. Both directions wrap at the ends.
+    func selectRelativeTab(_ offset: Int) {
+        let count = documentController.documents.count
+        guard count > 1 else { return }
+        let destination = (curIdx + offset % count + count) % count
+        tabBarDidSelectTab(at: destination)
     }
 
     func openFolder() {
@@ -1606,7 +1620,34 @@ final class MainWindowController: NSWindowController,
         scheduleSessionSave()
     }
 
+    func tabBarDidRequestClose(_ scope: TabCloseScope, at index: Int) {
+        guard documentController.documents.indices.contains(index) else { return }
+        switch scope {
+        case .current:
+            tabBarDidCloseTab(at: index)
+        case .others, .left, .right:
+            let anchor = documentController.documents[index]
+            let indices: [Int]
+            switch scope {
+            case .others: indices = documentController.documents.indices.filter { $0 != index }
+            case .left: indices = Array(documentController.documents.indices.prefix(index))
+            case .right: indices = Array(documentController.documents.indices.suffix(from: index + 1))
+            case .current: indices = []
+            }
+            for target in indices.reversed() {
+                documentController.selectDocument(at: target)
+                if !closeCurrentTab() { break }
+            }
+            if let anchorIndex = documentController.documents.firstIndex(where: { $0 === anchor }) {
+                tabBarDidSelectTab(at: anchorIndex)
+            }
+        }
+    }
+
     func tabBarLayoutOptionsDidChange() { layoutContentViews() }
+
+    var selectedTabIndexForTesting: Int { curIdx }
+    var tabCountForTesting: Int { documentController.documents.count }
 
     // MARK: - SidebarDelegate
 

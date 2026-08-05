@@ -58,6 +58,8 @@ final class KeyBindingManagerTests: XCTestCase {
         XCTAssertEqual(standard.command(for: [KeyGesture("cmd+f")!]), "search.find")
         XCTAssertEqual(classic.command(for: [KeyGesture("ctrl+f")!]), "search.find")
         XCTAssertNil(classic.command(for: [KeyGesture("cmd+f")!]))
+        XCTAssertEqual(standard.command(for: [KeyGesture("ctrl+tab")!]), "window.nextTab")
+        XCTAssertEqual(classic.command(for: [KeyGesture("ctrl+shift+tab")!]), "window.previousTab")
         XCTAssertTrue(standard.conflicts.isEmpty)
         XCTAssertTrue(classic.conflicts.isEmpty)
     }

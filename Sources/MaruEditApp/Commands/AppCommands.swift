@@ -13,6 +13,8 @@ extension CommandID {
     static let fileSave         = CommandID("file.save")
     static let fileSaveAs       = CommandID("file.saveAs")
     static let fileCloseTab     = CommandID("file.closeTab")
+    static let windowNextTab    = CommandID("window.nextTab")
+    static let windowPreviousTab = CommandID("window.previousTab")
     static let fileClearRecoveryData = CommandID("file.clearRecoveryData")
     static let filePageSetup = CommandID("file.pageSetup")
     static let filePrint = CommandID("file.print")
@@ -128,6 +130,12 @@ enum AppCommands {
         })
         registry.register(CommandDefinition(id: .fileCloseTab, title: "Close Tab") { ctx in
             ctx.coordinator.closeCurrentTab()
+        })
+        registry.register(CommandDefinition(id: .windowNextTab, title: "Next Tab") {
+            $0.coordinator.selectNextTab()
+        })
+        registry.register(CommandDefinition(id: .windowPreviousTab, title: "Previous Tab") {
+            $0.coordinator.selectPreviousTab()
         })
         registry.register(CommandDefinition(id: .fileClearRecoveryData, title: "Clear Recovery Data...") { ctx in
             ctx.coordinator.clearRecoveryData()
