@@ -83,6 +83,16 @@ final class StatusBarViewTests: XCTestCase {
         XCTAssertEqual(delegate.controls, [.cursorPosition, .characterCode, .inputMode, .fontSize])
     }
 
+    func testBoxSelectionDimensionsAreDisplayed() async {
+        let status = StatusBarView(frame: NSRect(x: 0, y: 0, width: 1100, height: 24))
+        status.updateCursor(EditorCursorState(
+            lineNumber: 2, displayColumn: 8, utf16Offset: 12,
+            selectedCharacterCount: 12, selectedUTF16Length: 12,
+            selectionRangeCount: 3, selectedLineCount: 3,
+            boxWidth: 4, boxHeight: 3))
+        XCTAssertTrue(status.displayedSelectionText.contains("BOX 4×3"))
+    }
+
     func testEveryFormatFieldRoutesAsAClickableControl() async {
         let status = StatusBarView(frame: NSRect(x: 0, y: 0, width: 900, height: 24))
         let delegate = Delegate()

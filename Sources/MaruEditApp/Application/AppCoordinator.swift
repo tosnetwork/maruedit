@@ -51,6 +51,7 @@ final class AppCoordinator {
             guard let self else { return }
             _ = self.commandRegistry.execute(id, context: CommandContext(coordinator: self))
         }
+        wc.configureClassicCommands(commandRegistry.allDefinitions.map { ($0.id, $0.title) })
         windowController = wc
         wc.showWindow(nil)
         wc.applyPreferences(preferences)

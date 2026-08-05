@@ -106,6 +106,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     let selectionSet = SelectionSet()
     var selectionHistory: [[NSRange]] = []
     var columnSelectionRows: [BoxSelectionRow]?
+    private var columnSelectionDimensions: (width: Int, height: Int)?
     private var columnSelectionAnchor: TextCoordinate?
 
     /// Compatibility access for the M1 prototype. M4-02/M4-03 remove the
@@ -140,6 +141,9 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         let current = BoxSelectionModel.coordinate(atUTF16Offset: offset, in: textView.string)
         let rows = BoxSelectionModel.rows(in: textView.string, anchor: anchor, current: current)
         columnSelectionRows = rows
+        columnSelectionDimensions = (
+            abs(current.visualColumn - anchor.visualColumn),
+            abs(current.line - anchor.line) + 1)
         let ranges = rows.map(\.range)
         setSelections(ranges, primaryRange: ranges.first)
         isMultiEditActive = ranges.count > 1
@@ -154,6 +158,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     func cancelColumnSelection() {
         columnSelectionAnchor = nil
         columnSelectionRows = nil
+        columnSelectionDimensions = nil
     }
 
     func copiedColumnText() -> String? {
@@ -173,6 +178,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         }
         batchReplace(rows.map(\.range), with: replacements)
         columnSelectionRows = nil
+        columnSelectionDimensions = nil
     }
 
     /// Where incremental Find restarts from on each keystroke — captured
@@ -1006,7 +1012,9 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
                 return count + ns.substring(with: NSIntersectionRange(
                     range, NSRange(location: 0, length: ns.length)))
                     .reduce(1) { $1 == "\n" ? $0 + 1 : $0 }
-            }
+            },
+            boxWidth: columnSelectionDimensions?.width,
+            boxHeight: columnSelectionDimensions?.height
         ))
     }
 

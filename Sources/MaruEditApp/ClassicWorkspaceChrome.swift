@@ -87,6 +87,10 @@ final class ClassicWorkspaceChrome: NSView {
     var functionKeyCommandIDs: [String?] { commandStrip.commandIDs }
 
     func activateToolbarCommand(_ command: CommandID) { toolbar.activate(command) }
+    func configureAvailableCommands(_ commands: [(CommandID, String)]) {
+        toolbar.configureAvailableCommands(commands)
+        commandStrip.configureAvailableCommands(commands)
+    }
     func setToolbarLayoutForTesting(_ entries: [String]) { toolbar.setLayoutForTesting(entries) }
     func setToolbarDisplayModeForTesting(_ mode: ToolbarDisplayMode) {
         toolbar.setDisplayModeForTesting(mode)
@@ -179,9 +183,10 @@ private final class ClassicToolbarView: NSView {
     private static let layoutDefaultsKey = "MaruClassicToolbarLayout"
     private static let displayModeDefaultsKey = "MaruClassicToolbarDisplayMode"
     private static let hiddenDefaultsKey = "MaruClassicToolbarHiddenItems"
-    private static var catalog: [String: Item] {
+    private static var builtInCatalog: [String: Item] {
         Dictionary(uniqueKeysWithValues: groups.flatMap { $0 }.map { (key(for: $0), $0) })
     }
+    private var catalog = builtInCatalog
     private static var defaultEntries: [String] {
         groups.enumerated().flatMap { index, group in
             (index == 0 ? [] : [ToolbarLayout.separator]) + group.map { key(for: $0) }
@@ -260,7 +265,7 @@ private final class ClassicToolbarView: NSView {
             menu.addItem(.separator())
         }
         let addMenu = NSMenu(title: "Add Command")
-        for (key, item) in Self.catalog.sorted(by: { $0.value.title < $1.value.title })
+        for (key, item) in catalog.sorted(by: { $0.value.title < $1.value.title })
             where !toolbarLayout.entries.contains(key) {
             let menuItem = NSMenuItem(
                 title: item.title, action: #selector(addToolbarItem(_:)), keyEquivalent: "")
@@ -293,7 +298,7 @@ private final class ClassicToolbarView: NSView {
 
     @objc private func addToolbarItem(_ sender: NSMenuItem) {
         guard let key = sender.representedObject as? String else { return }
-        toolbarLayout.append(key, availableKeys: Set(Self.catalog.keys))
+        toolbarLayout.append(key, availableKeys: Set(catalog.keys))
         applyCustomization()
     }
 
@@ -308,7 +313,7 @@ private final class ClassicToolbarView: NSView {
 
     private func moveContextItem(by offset: Int) {
         guard let contextKey else { return }
-        toolbarLayout.move(contextKey, offset: offset, availableKeys: Set(Self.catalog.keys))
+        toolbarLayout.move(contextKey, offset: offset, availableKeys: Set(catalog.keys))
         applyCustomization()
     }
 
@@ -341,7 +346,7 @@ private final class ClassicToolbarView: NSView {
     }
 
     private func applyCustomization() {
-        toolbarLayout = toolbarLayout.normalized(availableKeys: Set(Self.catalog.keys))
+        toolbarLayout = toolbarLayout.normalized(availableKeys: Set(catalog.keys))
         UserDefaults.standard.set(toolbarLayout.entries, forKey: Self.layoutDefaultsKey)
         rebuildSubviews()
         needsLayout = true
@@ -350,11 +355,14 @@ private final class ClassicToolbarView: NSView {
     private func loadLayout() -> ToolbarLayout {
         let defaults = UserDefaults.standard
         if let entries = defaults.stringArray(forKey: Self.layoutDefaultsKey) {
-            return ToolbarLayout(entries: entries).normalized(availableKeys: Set(Self.catalog.keys))
+            // Keep registry-backed command IDs until AppCoordinator injects
+            // the full catalog. Rebuilding safely skips unknown entries in
+            // the brief interval before configuration.
+            return ToolbarLayout(entries: entries)
         }
         let hidden = Set(defaults.stringArray(forKey: Self.hiddenDefaultsKey) ?? [])
         return ToolbarLayout(entries: Self.defaultEntries.filter { $0 == ToolbarLayout.separator || !hidden.contains($0) })
-            .normalized(availableKeys: Set(Self.catalog.keys))
+            .normalized(availableKeys: Set(catalog.keys))
     }
 
     private func rebuildSubviews() {
@@ -367,7 +375,7 @@ private final class ClassicToolbarView: NSView {
                 separator.wantsLayer = true
                 separator.layer?.backgroundColor = NSColor.separatorColor.cgColor
                 separators.append(separator); addSubview(separator)
-            } else if let item = Self.catalog[entry] {
+            } else if let item = catalog[entry] {
                 let button = ClassicToolbarButton()
                 button.bezelStyle = .inline; button.isBordered = false
                 button.imageScaling = .scaleProportionallyDown
@@ -400,13 +408,25 @@ private final class ClassicToolbarView: NSView {
 
     func setLayoutForTesting(_ entries: [String]) {
         toolbarLayout = ToolbarLayout(entries: entries)
-            .normalized(availableKeys: Set(Self.catalog.keys))
+            .normalized(availableKeys: Set(catalog.keys))
         rebuildSubviews()
         needsLayout = true
     }
 
     func setDisplayModeForTesting(_ mode: ToolbarDisplayMode) {
         displayMode = mode
+        rebuildSubviews(); needsLayout = true
+    }
+
+    func configureAvailableCommands(_ commands: [(CommandID, String)]) {
+        var updated = Self.builtInCatalog
+        for (command, title) in commands where updated[command.rawValue] == nil {
+            updated[command.rawValue] = Item(
+                command: command, title: title, symbol: "command",
+                tint: .controlAccentColor, responderAction: nil)
+        }
+        catalog = updated
+        toolbarLayout = toolbarLayout.normalized(availableKeys: Set(catalog.keys))
         rebuildSubviews(); needsLayout = true
     }
 
@@ -537,6 +557,7 @@ private final class ClassicCommandStripView: NSView {
     private static let defaultsKey = "MaruClassicFunctionKeyCommands"
     private var functionKeyLayout = FunctionKeyLayout(assignments: defaultCommands)
     private var buttons: [NSButton] = []
+    private var candidates: [(String, CommandID)] = ClassicCommandStripView.candidates
     var onCommand: ((CommandID) -> Void)?
     var commandIDs: [String?] { functionKeyLayout.assignments.map { $0?.rawValue } }
 
@@ -544,7 +565,7 @@ private final class ClassicCommandStripView: NSView {
         super.init(frame: frame)
         wantsLayer = true
         layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
-        let available = Set(Self.candidates.map(\.1))
+        let available = Set(candidates.map(\.1))
         if let values = UserDefaults.standard.array(forKey: Self.defaultsKey) as? [String] {
             functionKeyLayout = FunctionKeyLayout(assignments: values.map { $0.isEmpty ? nil : CommandID($0) })
                 .normalized(available: available)
@@ -596,7 +617,7 @@ private final class ClassicCommandStripView: NSView {
             super.rightMouseDown(with: event); return
         }
         let menu = NSMenu(title: "Customize F\(slot + 1)")
-        for (title, command) in Self.candidates {
+        for (title, command) in candidates {
             let item = NSMenuItem(title: title, action: #selector(assignCommand(_:)), keyEquivalent: "")
             item.target = self; item.representedObject = "\(slot)|\(command.rawValue)"
             item.state = functionKeyLayout.assignments[slot] == command ? .on : .off
@@ -633,12 +654,12 @@ private final class ClassicCommandStripView: NSView {
     }
 
     private func title(for command: CommandID) -> String? {
-        Self.candidates.first { $0.1 == command }?.0
+        candidates.first { $0.1 == command }?.0
     }
 
     func setCommandsForTesting(_ commands: [CommandID?]) {
         functionKeyLayout = FunctionKeyLayout(assignments: commands)
-            .normalized(available: Set(Self.candidates.map(\.1)))
+            .normalized(available: Set(candidates.map(\.1)))
         rebuildButtons(); needsLayout = true
     }
 
@@ -646,5 +667,13 @@ private final class ClassicCommandStripView: NSView {
         guard functionKeyLayout.assignments.indices.contains(index),
               let command = functionKeyLayout.assignments[index] else { return }
         onCommand?(command)
+    }
+
+    func configureAvailableCommands(_ commands: [(CommandID, String)]) {
+        let builtIns = Dictionary(uniqueKeysWithValues: Self.candidates.map { ($0.1, $0.0) })
+        candidates = commands.map { (builtIns[$0.0] ?? $0.1, $0.0) }
+            .sorted { $0.0.localizedCaseInsensitiveCompare($1.0) == .orderedAscending }
+        functionKeyLayout = functionKeyLayout.normalized(available: Set(candidates.map(\.1)))
+        rebuildButtons(); needsLayout = true
     }
 }

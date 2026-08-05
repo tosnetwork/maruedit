@@ -225,6 +225,9 @@ final class MainWindowController: NSWindowController,
     func setClassicToolbarLayoutForTesting(_ entries: [String]) {
         classicChrome.setToolbarLayoutForTesting(entries)
     }
+    func configureClassicCommands(_ commands: [(CommandID, String)]) {
+        classicChrome.configureAvailableCommands(commands)
+    }
     func setClassicToolbarDisplayModeForTesting(_ mode: ToolbarDisplayMode) {
         classicChrome.setToolbarDisplayModeForTesting(mode)
     }

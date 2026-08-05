@@ -84,6 +84,19 @@ final class ClassicWorkspaceTests: XCTestCase {
         XCTAssertEqual(labels, ["Grep", "Open"])
     }
 
+    func testClassicToolbarAndFunctionKeysAcceptAnyRegisteredCommand() async {
+        let controller = MainWindowController()
+        controller.configureClassicCommands([
+            (.fileOpen, "Open"), (.editSortLines, "Sort Lines"),
+        ])
+        controller.setClassicToolbarLayoutForTesting(["edit.sortLines"])
+        XCTAssertEqual(controller.classicToolbarLayoutForTesting, ["edit.sortLines"])
+        XCTAssertEqual(controller.classicToolbarIdentifiersForTesting, ["edit.sortLines"])
+
+        controller.setClassicFunctionKeyCommandsForTesting([.editSortLines])
+        XCTAssertEqual(controller.classicFunctionKeyCommandsForTesting.first!, "edit.sortLines")
+    }
+
     func testClassicToolbarSupportsIconTextAndTextOnlyDisplayModes() async {
         let controller = MainWindowController()
         controller.setClassicToolbarLayoutForTesting(["file.open", "search.grep"])

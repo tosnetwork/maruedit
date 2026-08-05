@@ -38,7 +38,7 @@ that functional parity is not complete.
 | Capability | Hidemaru | MaruEdit today | Status |
 |---|---|---|---|
 | Default editing buttons | File, clipboard, search/navigation groups | 21 colored SF Symbol buttons in similar groups | Partial |
-| Add any command | Almost every command is eligible | Fixed candidate list | Missing |
+| Add any command | Almost every command is eligible | Every registered stable command is eligible in toolbar and F-key customization | Present |
 | Reorder buttons | Supported | Context-menu left/right movement with persistence | Present |
 | Add/remove separators | Supported | Separators are part of the ordered persistent layout | Present |
 | Hide/remove buttons | Supported | Context-menu add/remove commands | Present |
@@ -57,7 +57,7 @@ that functional parity is not complete.
 | Read-only/view mode | Conditional state | Distinct conditional Read-Only and View Mode states | Present |
 | Cursor line/column | Display; click opens Go To | Display; click opens Go To Line | Present |
 | Selection characters/ranges | Display | Display | Present |
-| Selection line count/BOX dimensions | Display | Selection line count present; BOX dimensions missing | Partial |
+| Selection line count/BOX dimensions | Display | Selection line count and live BOX width×height are displayed | Present |
 | Total line/character count | Optional fields | Displayed and configurable | Present |
 | Character code at cursor | Display; click details | Display and click details | Present |
 | Insert/overwrite | Display; click toggles | Display and click toggles | Present |

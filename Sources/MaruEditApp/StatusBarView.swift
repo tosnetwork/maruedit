@@ -206,6 +206,9 @@ final class StatusBarView: NSView {
         if state.selectedLineCount > 0 {
             selectionLabel.stringValue += " · \(state.selectedLineCount) lines"
         }
+        if let width = state.boxWidth, let height = state.boxHeight {
+            selectionLabel.stringValue += " · BOX \(width)×\(height)"
+        }
         selectionLabel.toolTip = "Selected UTF-16 units: \(state.selectedUTF16Length)"
         needsLayout = true
     }
