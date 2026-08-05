@@ -676,7 +676,8 @@ final class MainWindowController: NSWindowController,
         }
     }
 
-    private func performSaveAs(_ doc: Document, to url: URL) {
+    @discardableResult
+    private func performSaveAs(_ doc: Document, to url: URL) -> Bool {
         let wasUnnamed = doc.fileURL == nil
         do {
             try doc.save(to: url)
@@ -689,12 +690,68 @@ final class MainWindowController: NSWindowController,
                 // record for its unnamed life is no longer needed.
                 recoveryStore.delete(doc.recoveryID)
             }
+            return true
         } catch let DocumentSaveError.unrepresentable(encoding, characters) {
             offerUTF8Conversion(for: doc, encoding: encoding, characters: characters) { [weak self] in
                 self?.performSaveAs(doc, to: url)
             }
+            return !doc.isModified
         } catch {
             NSAlert(error: error).runModal()
+            return false
+        }
+    }
+
+    func saveAndCloseCurrentTab() {
+        saveAndCloseCurrentTab { _ in }
+    }
+
+    func saveAllAndClose() {
+        saveAndClose(documents: documentController.documents)
+    }
+
+    private func saveAndClose(documents: [Document]) {
+        guard let document = documents.first else { return }
+        guard let index = documentController.documents.firstIndex(where: { $0 === document }) else {
+            saveAndClose(documents: Array(documents.dropFirst()))
+            return
+        }
+        tabBarDidSelectTab(at: index)
+        saveAndCloseCurrentTab { [weak self] closed in
+            guard closed else { return }
+            self?.saveAndClose(documents: Array(documents.dropFirst()))
+        }
+    }
+
+    private func saveAndCloseCurrentTab(completion: @escaping (Bool) -> Void) {
+        guard let doc = curDoc else { completion(false); return }
+        guard doc.isModified else { completion(closeCurrentTab()); return }
+
+        if doc.fileURL != nil {
+            saveDocument()
+            completion(!doc.isModified && closeCurrentTab())
+            return
+        }
+
+        guard resolveMixedLineEndingIfNeeded(for: doc), let window else {
+            completion(false)
+            return
+        }
+        let panel = NSSavePanel()
+        panel.canCreateDirectories = true
+        let accessory = SaveAsFormatAccessoryView(
+            initialEncoding: doc.encoding,
+            initialHasByteOrderMark: doc.hasByteOrderMark)
+        panel.accessoryView = accessory
+        panel.beginSheetModal(for: window) { [weak self] response in
+            guard let self, response == .OK, let url = panel.url else {
+                completion(false)
+                return
+            }
+            doc.encoding = accessory.selectedEncoding
+            doc.hasByteOrderMark = accessory.includesByteOrderMark
+            let saved = self.performSaveAs(doc, to: url)
+            completion(saved && self.closeCurrentTab())
         }
     }
 

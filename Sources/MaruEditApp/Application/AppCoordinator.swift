@@ -156,6 +156,8 @@ final class AppCoordinator {
     func openFolderPanel()            { ensureWindowControllerReady().openFolder() }
     func saveDocument()               { ensureWindowControllerReady().saveDocument() }
     func saveDocumentAs()             { ensureWindowControllerReady().saveDocumentAs() }
+    func saveAndCloseCurrentTab()     { ensureWindowControllerReady().saveAndCloseCurrentTab() }
+    func saveAllAndClose()            { ensureWindowControllerReady().saveAllAndClose() }
     func closeCurrentTab()            { ensureWindowControllerReady().closeCurrentTab() }
     func insertDateTime()             { ensureWindowControllerReady().insertDateTime() }
     func insertPageBreak()            { ensureWindowControllerReady().insertPageBreak() }

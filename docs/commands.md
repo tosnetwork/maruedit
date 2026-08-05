@@ -31,6 +31,8 @@ significantly, replace this with a small script that generates it from
 | `window.focusUtilityPane` | Focus Utility Pane | Window | — | Reveals and focuses the utility pane |
 | `file.save` | Save | File | ⌘S | `AppCoordinator.saveDocument()` |
 | `file.saveAs` | Save As... | File | ⌘⇧S | `AppCoordinator.saveDocumentAs()` |
+| `file.saveAndClose` | Save and Close | File | — | Saves the active tab when modified, then closes it only after a successful save |
+| `file.saveAllAndClose` | Save All and Close | File | — | Saves and closes every tab in order, stopping immediately on cancellation or save failure |
 | `file.closeTab` | Close Tab | File | ⌘W | `AppCoordinator.closeCurrentTab()` |
 | `window.nextTab` | Next Tab | Window | ⌃Tab | `AppCoordinator.selectNextTab()` |
 | `window.previousTab` | Previous Tab | Window | ⌃⇧Tab | `AppCoordinator.selectPreviousTab()` |

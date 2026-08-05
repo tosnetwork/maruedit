@@ -14,7 +14,7 @@ native menu before the Hidemaru-compatible business menus.
 
 | Hidemaru menu | MaruEdit today | Gap |
 |---|---|---|
-| File | File | Reload, properties, rename, View Mode, append save/read, bounded partial open and close-and-open are present; missing save-and-exit variants, project/desktop histories and binary mode |
+| File | File | Reload, properties, rename, View Mode, append save/read, bounded partial open, close-and-open, Save and Close, and Save All and Close are present; missing project/desktop histories and binary mode |
 | Edit | Edit | Clipboard/Undo and line editing, histories, quoted clipboard, restore deletion, selections, Caps Lock mistake correction and native IME reconversion are present; macOS retains ownership of the physical Caps Lock state | Native equivalent; no known compatible gap |
 | Convert | Dedicated Convert menu | Case, half/full-width, hiragana/katakana and Tab/space conversions are present | No known compatible gap |
 | View | View | Wrapping, invisibles, splits exist; missing ruler modes, tab-stop display, vertical/column layouts and several pane commands |
@@ -29,7 +29,7 @@ native menu before the Hidemaru-compatible business menus.
 | Help | Dedicated Help menu plus native About | User guide, macro help, shortcut reference, latest-release check and support/reporting entries are present | No known compatible gap |
 
 Official menu pages contain roughly 297 command references across these
-menus. MaruEdit currently registers 143 stable command IDs. Duplicate menu
+menus. MaruEdit currently registers 145 stable command IDs. Duplicate menu
 placements mean this is not a one-to-one command count, but it establishes
 that functional parity is not complete.
 

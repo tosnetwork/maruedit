@@ -24,6 +24,8 @@ extension CommandID {
     static let fileOpenFolder   = CommandID("file.openFolder")
     static let fileSave         = CommandID("file.save")
     static let fileSaveAs       = CommandID("file.saveAs")
+    static let fileSaveAndClose = CommandID("file.saveAndClose")
+    static let fileSaveAllAndClose = CommandID("file.saveAllAndClose")
     static let fileCloseTab     = CommandID("file.closeTab")
     static let windowNextTab    = CommandID("window.nextTab")
     static let windowPreviousTab = CommandID("window.previousTab")
@@ -206,6 +208,8 @@ enum AppCommands {
         registry.register(CommandDefinition(id: .fileSaveAs, title: "Save As...") { ctx in
             ctx.coordinator.saveDocumentAs()
         })
+        registry.register(CommandDefinition(id: .fileSaveAndClose, title: "Save and Close") { $0.coordinator.saveAndCloseCurrentTab() })
+        registry.register(CommandDefinition(id: .fileSaveAllAndClose, title: "Save All and Close") { $0.coordinator.saveAllAndClose() })
         registry.register(CommandDefinition(id: .fileCloseTab, title: "Close Tab") { ctx in
             ctx.coordinator.closeCurrentTab()
         })
