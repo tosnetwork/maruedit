@@ -7,4 +7,5 @@ MaruEdit.app/
 .DS_Store
 xcuserdata/
 *.dmg
+*.dmg.sha256
 dmg-staging/
