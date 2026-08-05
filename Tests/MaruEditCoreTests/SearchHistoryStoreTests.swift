@@ -47,6 +47,15 @@ final class SearchHistoryStoreTests: XCTestCase {
         XCTAssertEqual(state.grep, [])
     }
 
+    func testCategorizedClearPreservesOtherHistoriesAndPersists() {
+        var state = SearchHistoryState(find: ["a"], replace: ["b"], grep: ["c"])
+        store.clear(.replace, state: &state)
+        XCTAssertEqual(state.find, ["a"])
+        XCTAssertEqual(state.replace, [])
+        XCTAssertEqual(state.grep, ["c"])
+        XCTAssertEqual(store.load(), state)
+    }
+
     func testCorruptDataFallsBackWithoutCrashing() {
         defaults.set(Data("not-json".utf8), forKey: "MaruEditSearchHistory")
         XCTAssertEqual(store.load(), SearchHistoryState())

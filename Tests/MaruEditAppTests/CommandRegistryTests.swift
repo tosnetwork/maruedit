@@ -127,7 +127,10 @@ final class CommandRegistryTests: XCTestCase {
             .navigateToggleBookmark, .navigateNextBookmark,
             .navigatePreviousBookmark, .navigateBookmarkList, .navigateClearBookmarks
             , .navigateToggleFold, .navigateCollapseAllFolds, .navigateExpandAllFolds,
-            .navigateBeginPartialOutline, .navigateEndPartialOutline
+            .navigateBeginPartialOutline, .navigateEndPartialOutline,
+            .otherClearFindHistory, .otherClearReplaceHistory, .otherClearGrepHistory,
+            .otherClearClipboardHistory, .otherClearRecentFiles, .otherClearRecentFolders,
+            .otherClearRecentWorkspaces, .otherClearRecentEncodings, .otherClearAllHistories
         ]
         for id in ids {
             XCTAssertNotNil(registry.definition(for: id), "\(id.rawValue) should be registered")

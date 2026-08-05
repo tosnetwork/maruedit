@@ -321,6 +321,24 @@ final class AppCoordinator {
             clipboardHistory.clear()
         }
     }
+    func clearHistory(_ kind: SearchHistoryStore.Kind) {
+        ensureWindowControllerReady().clearSearchHistory(kind)
+    }
+    func clearClipboardHistory() {
+        clipboardHistory.clear()
+        showStatusMessage("Clipboard history cleared")
+    }
+    func clearRecentFiles() { RecentItems.clearFiles(); showStatusMessage("Recent files cleared") }
+    func clearRecentFolders() { RecentItems.clearFolders(); showStatusMessage("Recent project folders cleared") }
+    func clearRecentWorkspaces() { RecentItems.clearWorkspaces(); showStatusMessage("Recent workspaces cleared") }
+    func clearRecentEncodings() { RecentEncodings.clearAll(); showStatusMessage("Recent encodings cleared") }
+    func clearAllHistories() {
+        ensureWindowControllerReady().clearSearchHistory()
+        clipboardHistory.clear()
+        RecentItems.clearAll()
+        RecentEncodings.clearAll()
+        showStatusMessage("All histories cleared")
+    }
     func performLineCommand(_ command: LineEditCommand) { ensureWindowControllerReady().performLineCommand(command) }
     func toggleBookmark()               { ensureWindowControllerReady().toggleBookmark() }
     func nextBookmark()                 { ensureWindowControllerReady().nextBookmark() }

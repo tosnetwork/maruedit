@@ -73,6 +73,15 @@ public final class SearchHistoryStore {
         save(state)
     }
 
+    public func clear(_ kind: Kind, state: inout SearchHistoryState) {
+        switch kind {
+        case .find: state.find.removeAll()
+        case .replace: state.replace.removeAll()
+        case .grep: state.grep.removeAll()
+        }
+        save(state)
+    }
+
     public func setPersistenceEnabled(_ enabled: Bool, state: inout SearchHistoryState) {
         state.isPersistenceEnabled = enabled
         if !enabled {
@@ -83,7 +92,17 @@ public final class SearchHistoryStore {
         save(state)
     }
 
-    public enum Kind: Sendable { case find, replace, grep }
+    public enum Kind: Sendable {
+        case find, replace, grep
+
+        public var displayName: String {
+            switch self {
+            case .find: return "Find"
+            case .replace: return "Replace"
+            case .grep: return "Grep"
+            }
+        }
+    }
 
     private func normalized(_ state: SearchHistoryState) -> SearchHistoryState {
         var result = state

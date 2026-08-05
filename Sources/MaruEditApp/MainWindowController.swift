@@ -2380,6 +2380,12 @@ final class MainWindowController: NSWindowController,
         syncSearchHistoryUI()
     }
 
+    func clearSearchHistory(_ kind: SearchHistoryStore.Kind) {
+        searchHistoryStore.clear(kind, state: &searchHistory)
+        syncSearchHistoryUI()
+        showStatusMessage("\(kind.displayName) history cleared")
+    }
+
     func addCursorAbove() { editorVC.addCursorAbove() }
     func addCursorBelow() { editorVC.addCursorBelow() }
     func selectNextOccurrence() { editorVC.selectNextOccurrence() }

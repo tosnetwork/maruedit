@@ -64,6 +64,15 @@ significantly, replace this with a small script that generates it from
 | `other.fileTypeProfiles` | File-Type Profiles… | Other | — | Opens Settings directly at Files |
 | `other.keyAssignments` | Key Assignments… | Other | — | Opens Settings directly at Key Bindings |
 | `other.commandList` | Command List… | Other | — | Opens the complete registered-command list/customizer |
+| `other.clearHistory.find` | Clear Find History | Other › Clear History | — | Clears only Find entries |
+| `other.clearHistory.replace` | Clear Replace History | Other › Clear History | — | Clears only Replace entries |
+| `other.clearHistory.grep` | Clear Grep History | Other › Clear History | — | Clears only Grep entries |
+| `other.clearHistory.clipboard` | Clear Clipboard History | Other › Clear History | — | Clears only in-memory clipboard entries |
+| `other.clearHistory.recentFiles` | Clear Recent Files | Other › Clear History | — | Clears only recent files |
+| `other.clearHistory.recentFolders` | Clear Recent Project Folders | Other › Clear History | — | Clears only recent project folders |
+| `other.clearHistory.recentWorkspaces` | Clear Recent Workspaces | Other › Clear History | — | Clears only recent workspaces |
+| `other.clearHistory.recentEncodings` | Clear Recent Encodings | Other › Clear History | — | Clears only recent reopen encodings |
+| `other.clearHistory.all` | Clear All Histories | Other › Clear History | — | Clears every preceding category |
 | `convert.halfWidth` | Convert to Half-Width | Convert | — | `LineEditCommand.halfWidth` |
 | `convert.fullWidth` | Convert to Full-Width | Convert | — | `LineEditCommand.fullWidth` |
 | `convert.hiragana` | Convert to Hiragana | Convert | — | `LineEditCommand.hiragana` |

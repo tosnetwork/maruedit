@@ -452,6 +452,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         otherMenu.addItem(commandItem(.otherCommandList))
         otherMenu.addItem(commandItem(.viewShowFonts))
         otherMenu.addItem(commandItem(.viewCustomizeMenus))
+        otherMenu.addItem(.separator())
+        let clearHistoryItem = NSMenuItem(title: "Clear History", action: nil, keyEquivalent: "")
+        let clearHistoryMenu = NSMenu(title: "Clear History")
+        for id: CommandID in [
+            .otherClearFindHistory, .otherClearReplaceHistory, .otherClearGrepHistory,
+            .otherClearClipboardHistory, .otherClearRecentFiles, .otherClearRecentFolders,
+            .otherClearRecentWorkspaces, .otherClearRecentEncodings,
+        ] { clearHistoryMenu.addItem(commandItem(id)) }
+        clearHistoryMenu.addItem(.separator())
+        clearHistoryMenu.addItem(commandItem(.otherClearAllHistories))
+        clearHistoryItem.submenu = clearHistoryMenu
+        otherMenu.addItem(clearHistoryItem)
         otherItem.submenu = otherMenu
 
         let helpItem = NSMenuItem()

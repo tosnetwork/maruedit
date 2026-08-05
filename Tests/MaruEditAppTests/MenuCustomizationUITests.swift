@@ -98,4 +98,15 @@ final class MenuCustomizationUITests: XCTestCase {
         for slot in 1...6 { XCTAssertTrue(titles.contains("External Help \(slot)")) }
         XCTAssertTrue(titles.contains("Configure External Help…"))
     }
+
+    func testOtherMenuProvidesCategorizedHistoryClearing() async {
+        let app = AppDelegate(); app.buildMenu()
+        let other = NSApp.mainMenu?.items.compactMap(\.submenu).first { $0.title == "Other" }
+        let clear = other?.item(withTitle: "Clear History")?.submenu
+        XCTAssertEqual(clear?.items.filter { !$0.isSeparatorItem }.map(\.title), [
+            "Clear Find History", "Clear Replace History", "Clear Grep History",
+            "Clear Clipboard History", "Clear Recent Files", "Clear Recent Project Folders",
+            "Clear Recent Workspaces", "Clear Recent Encodings", "Clear All Histories",
+        ])
+    }
 }

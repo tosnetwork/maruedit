@@ -36,8 +36,20 @@ enum RecentItems {
     }
 
     static func clearAll() {
+        clearFiles()
+        clearFolders()
+        clearWorkspaces()
+    }
+
+    static func clearFiles() {
         UserDefaults.standard.removeObject(forKey: filesKey)
+    }
+
+    static func clearFolders() {
         UserDefaults.standard.removeObject(forKey: foldersKey)
+    }
+
+    static func clearWorkspaces() {
         UserDefaults.standard.removeObject(forKey: workspacesKey)
     }
 
