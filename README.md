@@ -1,6 +1,8 @@
 # MaruEdit
 
-MaruEdit is a fast, native text and code editor for macOS. It combines AppKit performance with a keyboard-focused **Maru Classic** workspace: a configurable command toolbar, tabs, horizontal ruler, utility pane, function-key strip, and a compact status area designed for long editing sessions.
+**The AI-native text editor for developers.**
+
+MaruEdit is a fast, native text and code editor for macOS, built for modern developer workflows. It combines AppKit performance with a keyboard-focused **Maru Classic** workspace: a configurable command toolbar, tabs, horizontal ruler, utility pane, function-key strip, and a compact status area designed for long editing sessions.
 
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-147EFB)
 ![Swift 5.9](https://img.shields.io/badge/Swift-5.9-F05138)
@@ -8,8 +10,6 @@ MaruEdit is a fast, native text and code editor for macOS. It combines AppKit pe
 [![Latest release](https://img.shields.io/github/v/release/tosnetwork/maruedit?label=release)](https://github.com/tosnetwork/maruedit/releases/latest)
 
 **[Releases](https://github.com/tosnetwork/maruedit/releases)** · **[User guide](docs/user-guide.md)** · **[Command catalog](docs/commands.md)** · **[Roadmap](ROADMAP.md)**
-
-> MaruEdit is an independent open-source project and is not affiliated with or endorsed by any commercial editor vendor. It began as a fork of [LiteEdit](https://github.com/arietan/lite-edit), which is MIT licensed. See [NOTICE.md](NOTICE.md) and [UPSTREAM.md](UPSTREAM.md) for attribution.
 
 ## The editor today
 
@@ -198,3 +198,5 @@ Issues and pull requests are welcome. Run `swift test`, keep AppKit-specific beh
 ## License
 
 MaruEdit is available under the [MIT License](LICENSE).
+
+MaruEdit is an independent open-source project and is not affiliated with or endorsed by any commercial editor vendor. It began as a fork of [LiteEdit](https://github.com/arietan/lite-edit), which is MIT licensed. See [NOTICE.md](NOTICE.md) and [UPSTREAM.md](UPSTREAM.md) for attribution.
