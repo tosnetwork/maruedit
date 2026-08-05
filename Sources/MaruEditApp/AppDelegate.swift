@@ -179,7 +179,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         for id: CommandID in [
             .editMoveWordLeft, .editMoveWordRight, .editMoveParagraphStart,
             .editMoveParagraphEnd, .editDeleteWordBackward, .editDeleteWordForward,
-            .editTitlecase,
+            .editTitlecase, .editCompleteWord,
         ] { editMenu.addItem(commandItem(id)) }
         for id: CommandID in [
             .navigateMarkerRed, .navigateMarkerYellow, .navigateMarkerBlue,

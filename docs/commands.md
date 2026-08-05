@@ -75,6 +75,7 @@ significantly, replace this with a small script that generates it from
 | `edit.deleteWordBackward` | Delete Word Backward | Edit | — | `AppCoordinator.deleteWordBackward()` |
 | `edit.deleteWordForward` | Delete Word Forward | Edit | — | `AppCoordinator.deleteWordForward()` |
 | `edit.titlecase` | Convert to Title Case | Edit | — | `performLineCommand(.titlecase)` |
+| `edit.completeWord` | Complete Word | Edit | — | `AppCoordinator.showCompletions()` |
 | `navigate.toggleBookmark` | Toggle Bookmark | Edit | — | `AppCoordinator.toggleBookmark()` |
 | `navigate.nextBookmark` | Next Bookmark | Edit | — | `AppCoordinator.nextBookmark()` |
 | `navigate.previousBookmark` | Previous Bookmark | Edit | — | `AppCoordinator.previousBookmark()` |

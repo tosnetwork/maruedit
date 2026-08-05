@@ -1428,6 +1428,9 @@ final class MainWindowController: NSWindowController,
     func editorDidChooseFont(_ vc: EditorViewController, font: NSFont) {
         onEditorFontChange?(font)
     }
+    func editorCompletionMessage(_ vc: EditorViewController, message: String) {
+        showStatusMessage(message)
+    }
 
     // MARK: - TabBarViewDelegate
 
@@ -1546,6 +1549,7 @@ final class MainWindowController: NSWindowController,
     func nextMarker() { editorVC.nextMarker() }
     func previousMarker() { editorVC.previousMarker() }
     func clearMarkers() { editorVC.clearMarkers(); refreshMarkerResults() }
+    func showCompletions() { editorVC.showCompletions() }
 
     enum EditorSplitOrientation { case vertical, horizontal }
 

@@ -32,7 +32,7 @@ final class FileTypeOutlineRuleTests: XCTestCase {
         try Data(json.utf8).write(to: directory.appendingPathComponent("legacy.json"))
 
         let loaded = try XCTUnwrap(FileTypeProfileStore(directory: directory).loadUserProfiles().first)
-        XCTAssertEqual(loaded.schemaVersion, 2)
+        XCTAssertEqual(loaded.schemaVersion, FileTypeProfile.currentSchemaVersion)
         XCTAssertNil(loaded.settings.outlineRules)
     }
 }

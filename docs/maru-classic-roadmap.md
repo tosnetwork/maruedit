@@ -45,10 +45,10 @@ that would weaken MaruEdit's security model.
 
 ## MC5 — Completion and spelling
 
-- [ ] Current-document word completion.
-- [ ] User dictionaries and per-profile completion sources/ranking.
-- [ ] Manual/automatic list, tooltip and status presentation.
-- [ ] Per-profile macOS spell checking and corrections.
+- [x] Current-document word completion.
+- [x] User dictionaries and per-profile completion sources/ranking.
+- [x] Manual/automatic list, tooltip and status presentation.
+- [x] Per-profile macOS spell checking and corrections.
 
 ## MC6 — Search/Grep parity
 

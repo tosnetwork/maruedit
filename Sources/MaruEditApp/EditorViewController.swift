@@ -7,10 +7,12 @@ protocol EditorViewControllerDelegate: AnyObject {
     func editorTextDidChange(_ vc: EditorViewController)
     func editorCursorMoved(_ vc: EditorViewController, state: EditorCursorState)
     func editorDidChooseFont(_ vc: EditorViewController, font: NSFont)
+    func editorCompletionMessage(_ vc: EditorViewController, message: String)
 }
 
 extension EditorViewControllerDelegate {
     func editorDidChooseFont(_ vc: EditorViewController, font: NSFont) {}
+    func editorCompletionMessage(_ vc: EditorViewController, message: String) {}
 }
 
 private final class FlippedView: NSView {
@@ -68,6 +70,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     private var isApplyingSelectionSet = false
     private var markedTextSnapshot: (text: String, ranges: [NSRange], primary: NSRange)?
     private var isCompositionCommitScheduled = false
+    private var completionDictionaries: [String] = []
     var inputLatencySignpostID: OSSignpostID?
     var lineIndex = LineIndex()
     private var preferences = Preferences.defaults
@@ -385,6 +388,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         lineNumbers?.needsDisplay = true
         applyPreferences(preferences)
         deferredHighlightVisible()
+        refreshCompletionDictionaries()
     }
 
     func refreshBookmarkGutter() {
@@ -420,6 +424,9 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         textView.textContainer?.widthTracksTextView = effectivePreferences.wrapLines
         textView.isHorizontallyResizable = !effectivePreferences.wrapLines
         scrollView.hasHorizontalScroller = !effectivePreferences.wrapLines
+        let spelling = document?.fileTypeProfile?.settings.spelling ?? SpellingSettings()
+        textView.isContinuousSpellCheckingEnabled = spelling.enabled
+        textView.isAutomaticSpellingCorrectionEnabled = spelling.enabled && spelling.automaticCorrection
         if effectivePreferences.wrapLines {
             textView.textContainer?.containerSize.width = scrollView.contentSize.width
         } else {
@@ -427,6 +434,35 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         }
         applyHighContrast(isHighContrast)
         lineNumbers?.needsDisplay = true
+    }
+
+    func showCompletions() {
+        let settings = document?.fileTypeProfile?.settings.completion ?? CompletionSettings()
+        let range = textView.rangeForUserCompletion
+        guard range.location != NSNotFound, NSMaxRange(range) <= (textView.string as NSString).length else { return }
+        let prefix = (textView.string as NSString).substring(with: range)
+        let words = WordCompletionEngine.candidates(
+            prefix: prefix, document: document?.content ?? textView.string,
+            dictionaries: completionDictionaries, settings: settings).map(\.word)
+        guard !words.isEmpty else { delegate?.editorCompletionMessage(self, message: "No completions"); return }
+        switch settings.presentation {
+        case .list: textView.complete(nil)
+        case .tooltip:
+            textView.toolTip = words.prefix(8).joined(separator: "  ")
+        case .status:
+            delegate?.editorCompletionMessage(self, message: words.prefix(5).joined(separator: "  "))
+        }
+    }
+
+    private func refreshCompletionDictionaries() {
+        let paths = document?.fileTypeProfile?.settings.completion?.dictionaryPaths ?? []
+        completionDictionaries = []
+        guard !paths.isEmpty else { return }
+        Task { [weak self] in
+            let loaded = await Task.detached { CompletionDictionaryLoader.load(paths: paths) }.value
+            guard self?.document?.fileTypeProfile?.settings.completion?.dictionaryPaths == paths else { return }
+            self?.completionDictionaries = loaded
+        }
     }
 
     var effectiveWrapLines: Bool {
@@ -581,6 +617,18 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         return false
     }
 
+    func textView(
+        _ textView: NSTextView, completions words: [String],
+        forPartialWordRange charRange: NSRange, indexOfSelectedItem index: UnsafeMutablePointer<Int>?
+    ) -> [String] {
+        guard NSMaxRange(charRange) <= (textView.string as NSString).length else { return words }
+        let settings = document?.fileTypeProfile?.settings.completion ?? CompletionSettings()
+        let prefix = (textView.string as NSString).substring(with: charRange)
+        return WordCompletionEngine.candidates(
+            prefix: prefix, document: document?.content ?? textView.string,
+            dictionaries: completionDictionaries, settings: settings).map(\.word)
+    }
+
     func textDidChange(_ n: Notification) {
         guard !suppressTextChange else { return }
         if scheduleCompositionCommitAfterUnmarkIfNeeded() { return }
@@ -598,6 +646,11 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         lineNumbers?.bookmarkOffsets = document?.bookmarks.offsets ?? []
         lineNumbers?.markerColors = document?.colorMarkers.markers ?? [:]
         emitCursor()
+
+        if document?.fileTypeProfile?.settings.completion?.automatic == true,
+           textView.rangeForUserCompletion.length >= 3 {
+            showCompletions()
+        }
 
         if let ts = textView.textStorage, ts.length > 0, let language = document?.language {
             let rehighlightRange: NSRange

@@ -21,6 +21,9 @@ semantic version tags.
   action for accepting the current hunk from the read-only right pane.
 - Added bounded, project-contained ctags navigation with prompt and cursor-word
   jumps plus a LIFO return stack.
+- Added bounded current-document and UTF-8 user-dictionary word completion with
+  profile-controlled ranking, manual/automatic list, tooltip or status display,
+  and per-profile macOS spelling and correction controls.
 - Added a Foundation-only incremental document-outline model with built-in
   symbol rules for source, markup, scripting, configuration, and SQL languages,
   plus bounded user-defined regex rules in versioned FileType Profiles. The
