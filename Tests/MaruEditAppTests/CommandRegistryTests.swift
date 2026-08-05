@@ -79,6 +79,8 @@ final class CommandRegistryTests: XCTestCase {
             .editMoveWordLeft, .editMoveWordRight, .editMoveParagraphStart,
             .editMoveParagraphEnd, .editDeleteWordBackward, .editDeleteWordForward,
             .editTitlecase,
+            .navigateMarkerRed, .navigateMarkerYellow, .navigateMarkerBlue,
+            .navigateNextMarker, .navigatePreviousMarker, .navigateClearMarkers,
             .navigateToggleBookmark, .navigateNextBookmark,
             .navigatePreviousBookmark, .navigateClearBookmarks
             , .navigateToggleFold, .navigateCollapseAllFolds, .navigateExpandAllFolds

@@ -8,6 +8,7 @@ final class LineNumberView: NSView {
     private weak var textView: NSTextView?
     private var gutterWidth: NSLayoutConstraint!
     var bookmarkOffsets: Set<Int> = [] { didSet { needsDisplay = true } }
+    var markerColors: [Int: MarkerColor] = [:] { didSet { needsDisplay = true } }
     var foldRegions: [FoldRegion] = [] { didSet { needsDisplay = true } }
     var collapsedFoldIDs: Set<String> = [] { didSet { needsDisplay = true } }
     var onToggleFold: ((String) -> Void)?
@@ -78,7 +79,8 @@ final class LineNumberView: NSView {
                 let active = NSLocationInRange(selectedRange.location, lr)
                 let fold = foldRegions.first { $0.startLine == lineNum - 1 }
                 drawNumber(lineNum, y: y, active: active,
-                           bookmarked: bookmarkOffsets.contains(lr.location), fold: fold)
+                           bookmarked: bookmarkOffsets.contains(lr.location), fold: fold,
+                           marker: markerColors[lr.location])
                 lineNum += 1
             }
             gi = NSMaxRange(effectiveRange)
@@ -91,7 +93,7 @@ final class LineNumberView: NSView {
 
     private func drawNumber(
         _ num: Int, y: CGFloat, active: Bool, bookmarked: Bool = false,
-        fold: FoldRegion? = nil
+        fold: FoldRegion? = nil, marker: MarkerColor? = nil
     ) {
         let attrs: [NSAttributedString.Key: Any] = [
             .font: Theme.lineNumFont,
@@ -105,6 +107,17 @@ final class LineNumberView: NSView {
         if bookmarked {
             Theme.accent.setFill()
             NSBezierPath(ovalIn: NSRect(x: 5, y: y + 5, width: 7, height: 7)).fill()
+        }
+        if let marker {
+            let color: NSColor = switch marker {
+            case .red: .systemRed
+            case .yellow: .systemYellow
+            case .blue: .systemBlue
+            case .green: .systemGreen
+            }
+            color.setFill()
+            NSBezierPath(roundedRect: NSRect(x: 2, y: y + 3, width: 4, height: 12),
+                         xRadius: 2, yRadius: 2).fill()
         }
         if let fold {
             let collapsed = collapsedFoldIDs.contains(fold.id)

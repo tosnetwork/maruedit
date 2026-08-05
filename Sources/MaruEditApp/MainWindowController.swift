@@ -1146,6 +1146,7 @@ final class MainWindowController: NSWindowController,
     private func refreshStatus() {
         if let doc = curDoc {
             refreshOutline(for: doc)
+            refreshMarkerResults()
             statusBar.updateLanguage(doc.language, profileName: doc.fileTypeProfile?.name)
             statusBar.updateEncoding(doc.encoding)
             statusBar.updateByteOrderMark(doc.hasByteOrderMark)
@@ -1520,6 +1521,15 @@ final class MainWindowController: NSWindowController,
     func moveToParagraphEnd() { editorVC.textView.moveToEndOfParagraph(nil) }
     func deleteWordBackward() { editorVC.textView.deleteWordBackward(nil) }
     func deleteWordForward() { editorVC.textView.deleteWordForward(nil) }
+    func toggleMarker(_ color: MarkerColor) { editorVC.toggleMarker(color); refreshMarkerResults() }
+    func nextMarker() { editorVC.nextMarker() }
+    func previousMarker() { editorVC.previousMarker() }
+    func clearMarkers() { editorVC.clearMarkers(); refreshMarkerResults() }
+
+    private func refreshMarkerResults() {
+        guard let doc = curDoc else { return }
+        sidebarVC.updateMarkerResults(doc.colorMarkers.markers, text: doc.content)
+    }
     func toggleFold() { editorVC.toggleFoldAtCursor() }
     func collapseAllFolds() { editorVC.collapseAllFolds() }
     func expandAllFolds() { editorVC.expandAllFolds() }

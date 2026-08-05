@@ -34,7 +34,7 @@ that would weaken MaruEdit's security model.
 - [x] Insert/overwrite editing modes with a visible status segment.
 - [x] IME, grapheme, BOX, multiple-selection and single-undo coverage.
 - [x] Richer word/paragraph movement, deletion and conversion commands.
-- [ ] Color markers, marker navigation and marker list.
+- [x] Color markers, marker navigation and marker list.
 
 ## MC4 — Split, compare and navigation
 

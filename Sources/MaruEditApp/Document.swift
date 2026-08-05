@@ -47,6 +47,7 @@ final class Document: @unchecked Sendable {
     var scrollOffset: NSPoint = .zero
     var cachedTextStorage: NSTextStorage?
     let bookmarks = BookmarkSet()
+    let colorMarkers = ColorMarkerSet()
     var foldModel: FoldModel
     var inputMode: EditorInputMode = .insert
     /// Stable for this document's lifetime, used to key its crash-

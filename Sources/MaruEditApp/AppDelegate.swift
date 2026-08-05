@@ -181,6 +181,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .editMoveParagraphEnd, .editDeleteWordBackward, .editDeleteWordForward,
             .editTitlecase,
         ] { editMenu.addItem(commandItem(id)) }
+        for id: CommandID in [
+            .navigateMarkerRed, .navigateMarkerYellow, .navigateMarkerBlue,
+            .navigateNextMarker, .navigatePreviousMarker, .navigateClearMarkers,
+        ] { editMenu.addItem(commandItem(id)) }
         editMenu.addItem(.separator())
         editMenu.addItem(commandItem(.navigateToggleBookmark))
         editMenu.addItem(commandItem(.navigateNextBookmark))

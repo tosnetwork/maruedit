@@ -13,6 +13,8 @@ semantic version tags.
   `edit.toggleInputMode` command.
 - Added registry-backed word and paragraph movement, forward/backward word
   deletion, and multiple-selection-aware Title Case conversion.
+- Added document-owned red/yellow/blue/green line markers with gutter colors,
+  edit/Undo-stable anchors, wrapped navigation, and a Results-pane marker list.
 - Added a Foundation-only incremental document-outline model with built-in
   symbol rules for source, markup, scripting, configuration, and SQL languages,
   plus bounded user-defined regex rules in versioned FileType Profiles. The

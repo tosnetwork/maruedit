@@ -78,6 +78,12 @@ significantly, replace this with a small script that generates it from
 | `navigate.toggleFold` | Toggle Fold | Edit | — | `AppCoordinator.toggleFold()` |
 | `navigate.collapseAllFolds` | Collapse All Folds | Edit | — | `AppCoordinator.collapseAllFolds()` |
 | `navigate.expandAllFolds` | Expand All Folds | Edit | — | `AppCoordinator.expandAllFolds()` |
+| `navigate.markerRed` | Toggle Red Marker | Edit | — | `AppCoordinator.toggleMarker(.red)` |
+| `navigate.markerYellow` | Toggle Yellow Marker | Edit | — | `AppCoordinator.toggleMarker(.yellow)` |
+| `navigate.markerBlue` | Toggle Blue Marker | Edit | — | `AppCoordinator.toggleMarker(.blue)` |
+| `navigate.nextMarker` | Next Marker | Edit | — | `AppCoordinator.nextMarker()` |
+| `navigate.previousMarker` | Previous Marker | Edit | — | `AppCoordinator.previousMarker()` |
+| `navigate.clearMarkers` | Clear Markers | Edit | — | `AppCoordinator.clearMarkers()` |
 
 All of them are enabled unconditionally right now (`isEnabled` always
 returns `true`) — the app has no state yet where one of them shouldn't be

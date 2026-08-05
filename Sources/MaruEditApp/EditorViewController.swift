@@ -17,7 +17,8 @@ private final class FlippedView: NSView {
     override var isFlipped: Bool { true }
 }
 
-final class EditorViewController: NSViewController, NSTextViewDelegate, NSLayoutManagerDelegate {
+final class EditorViewController: NSViewController, NSTextViewDelegate,
+    @preconcurrency NSLayoutManagerDelegate {
     static let inputLatencyLog = OSLog(subsystem: "com.maruedit.editor", category: "InputLatency")
     weak var delegate: EditorViewControllerDelegate?
 
@@ -485,6 +486,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSLayout
         }
         if suppressAutoIndent || replacement != "\n" {
             document?.bookmarks.applyEdit(range: range, replacement: replacement)
+            document?.colorMarkers.applyEdit(range: range, replacement: replacement)
             lineIndex.applyEdit(range: range, replacement: replacement)
             return true
         }
@@ -518,12 +520,14 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSLayout
             lineIndex = LineIndex(content)
         }
         document?.bookmarks.normalize(in: content as NSString)
+        document?.colorMarkers.normalize(in: content as NSString)
         document?.content = content
         document?.markModified()
         refreshFolding()
         delegate?.editorTextDidChange(self)
         lineNumbers?.needsDisplay = true
         lineNumbers?.bookmarkOffsets = document?.bookmarks.offsets ?? []
+        lineNumbers?.markerColors = document?.colorMarkers.markers ?? [:]
         emitCursor()
 
         if let ts = textView.textStorage, ts.length > 0, let language = document?.language {
@@ -583,7 +587,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSLayout
 
     var collapsedFoldCountForTesting: Int { document?.foldModel.collapsedRegionIDs.count ?? 0 }
 
-    nonisolated func layoutManager(
+    func layoutManager(
         _ layoutManager: NSLayoutManager,
         shouldGenerateGlyphs glyphs: UnsafePointer<CGGlyph>,
         properties props: UnsafePointer<NSLayoutManager.GlyphProperty>,
@@ -591,34 +595,30 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSLayout
         font: NSFont,
         forGlyphRange glyphRange: NSRange
     ) -> Int {
-        MainActor.assumeIsolated {
-            let hidden = document?.foldModel.collapsedRanges() ?? []
-            guard !hidden.isEmpty else { return 0 }
-            var properties = Array(UnsafeBufferPointer(start: props, count: glyphRange.length))
-            for index in properties.indices where hidden.contains(where: {
-                NSLocationInRange(charIndexes[index], $0)
-            }) {
-                properties[index].insert(.null)
-            }
-            properties.withUnsafeBufferPointer { propertyBuffer in
-                layoutManager.setGlyphs(
-                    glyphs, properties: propertyBuffer.baseAddress!,
-                    characterIndexes: charIndexes, font: font, forGlyphRange: glyphRange)
-            }
-            return glyphRange.length
+        let hidden = document?.foldModel.collapsedRanges() ?? []
+        guard !hidden.isEmpty else { return 0 }
+        var properties = Array(UnsafeBufferPointer(start: props, count: glyphRange.length))
+        for index in properties.indices where hidden.contains(where: {
+            NSLocationInRange(charIndexes[index], $0)
+        }) {
+            properties[index].insert(.null)
         }
+        properties.withUnsafeBufferPointer { propertyBuffer in
+            layoutManager.setGlyphs(
+                glyphs, properties: propertyBuffer.baseAddress!,
+                characterIndexes: charIndexes, font: font, forGlyphRange: glyphRange)
+        }
+        return glyphRange.length
     }
 
-    nonisolated func layoutManager(
+    func layoutManager(
         _ layoutManager: NSLayoutManager,
         shouldUse action: NSLayoutManager.ControlCharacterAction,
         forControlCharacterAt charIndex: Int
     ) -> NSLayoutManager.ControlCharacterAction {
-        MainActor.assumeIsolated {
-            let hidden = document?.foldModel.collapsedRanges() ?? []
-            return hidden.contains(where: { NSLocationInRange(charIndex, $0) })
-                ? .zeroAdvancement : action
-        }
+        let hidden = document?.foldModel.collapsedRanges() ?? []
+        return hidden.contains(where: { NSLocationInRange(charIndex, $0) })
+            ? .zeroAdvancement : action
     }
 
     func beginInputLatencySignpost() {

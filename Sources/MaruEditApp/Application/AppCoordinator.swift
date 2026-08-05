@@ -121,6 +121,10 @@ final class AppCoordinator {
     func moveToParagraphEnd()            { ensureWindowControllerReady().moveToParagraphEnd() }
     func deleteWordBackward()            { ensureWindowControllerReady().deleteWordBackward() }
     func deleteWordForward()             { ensureWindowControllerReady().deleteWordForward() }
+    func toggleMarker(_ color: MarkerColor) { ensureWindowControllerReady().toggleMarker(color) }
+    func nextMarker()                    { ensureWindowControllerReady().nextMarker() }
+    func previousMarker()                { ensureWindowControllerReady().previousMarker() }
+    func clearMarkers()                  { ensureWindowControllerReady().clearMarkers() }
     func toggleFold()                    { ensureWindowControllerReady().toggleFold() }
     func collapseAllFolds()              { ensureWindowControllerReady().collapseAllFolds() }
     func expandAllFolds()                { ensureWindowControllerReady().expandAllFolds() }

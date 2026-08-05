@@ -423,6 +423,7 @@ extension EditorViewController {
         ts.beginEditing()
         for operation in merged.reversed() {
             document?.bookmarks.applyEdit(range: operation.range, replacement: operation.replacement)
+            document?.colorMarkers.applyEdit(range: operation.range, replacement: operation.replacement)
             lineIndex.applyEdit(range: operation.range, replacement: operation.replacement)
             ts.replaceCharacters(in: operation.range, with: operation.replacement)
         }
@@ -461,6 +462,7 @@ extension EditorViewController {
         let selections: [NSRange]
         let primary: NSRange
         let bookmarks: Set<Int>
+        let markers: [Int: MarkerColor]
     }
 
     private func editorSnapshot() -> EditorSnapshot {
@@ -468,7 +470,8 @@ extension EditorViewController {
             text: textView.string,
             selections: selectionSet.ranges,
             primary: selectionSet.primaryRange,
-            bookmarks: document?.bookmarks.offsets ?? []
+            bookmarks: document?.bookmarks.offsets ?? [],
+            markers: document?.colorMarkers.markers ?? [:]
         )
     }
 
@@ -480,6 +483,7 @@ extension EditorViewController {
         ts.endEditing()
         document?.content = snapshot.text
         document?.bookmarks.restore(snapshot.bookmarks)
+        document?.colorMarkers.restore(snapshot.markers)
         document?.markModified()
         delegate?.editorTextDidChange(self)
         setSelections(snapshot.selections, primaryRange: snapshot.primary)

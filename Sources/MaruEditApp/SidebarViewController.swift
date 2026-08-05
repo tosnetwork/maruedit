@@ -92,6 +92,7 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
     private(set) var rootFolderURL: URL?
     private var suppressSelectionCallback = false
     private var outlineSymbols: [OutlineSymbol] = []
+    private var markerResultText = "No color markers."
 
     override func loadView() {
         let wrapper = NSView()
@@ -194,7 +195,7 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
             headerLabel.stringValue = "OUTLINE"
         case .results:
             headerLabel.stringValue = "RESULTS"
-            placeholderLabel.stringValue = "Search, Grep, and marker results will appear here."
+            placeholderLabel.stringValue = markerResultText
         }
         outlineView.reloadData()
     }
@@ -218,6 +219,21 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
     }
 
     var outlineTitlesForTesting: [String] { outlineSymbols.map(\.title) }
+
+    func updateMarkerResults(_ markers: [Int: MarkerColor], text: String) {
+        let ns = text as NSString
+        markerResultText = markers.sorted { $0.key < $1.key }.map { offset, color in
+            let safe = min(max(0, offset), ns.length)
+            let line = LineIndex(text).line(atUTF16Offset: safe) + 1
+            let range = ns.lineRange(for: NSRange(location: safe, length: 0))
+            let preview = ns.substring(with: range).trimmingCharacters(in: .whitespacesAndNewlines)
+            return "\(color.rawValue.capitalized) · Ln \(line): \(preview)"
+        }.joined(separator: "\n")
+        if markerResultText.isEmpty { markerResultText = "No color markers." }
+        if selectedUtilityPane == .results { placeholderLabel.stringValue = markerResultText }
+    }
+
+    var markerResultTextForTesting: String { markerResultText }
 
     func applyTheme() {
         view.layer?.backgroundColor = Theme.sidebarBg.cgColor
