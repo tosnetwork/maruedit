@@ -2,6 +2,10 @@ import XCTest
 @testable import MaruEditCore
 
 final class ToolbarLayoutTests: XCTestCase {
+    func testIconSizesHaveStablePersistenceValuesAndIncreasingPoints() {
+        XCTAssertEqual(ToolbarIconSize.allCases.map(\.rawValue), ["small", "medium", "large"])
+        XCTAssertEqual(ToolbarIconSize.allCases.map(\.pointSize), [13, 17, 21])
+    }
     private let available: Set<String> = ["a", "b", "c", "d"]
 
     func testNormalizationDropsUnknownDuplicatesAndOrphanSeparators() {

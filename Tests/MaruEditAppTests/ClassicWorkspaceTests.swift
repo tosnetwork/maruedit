@@ -4,6 +4,41 @@ import MaruEditCore
 
 @preconcurrency @MainActor
 final class ClassicWorkspaceTests: XCTestCase {
+    func testClassicToolbarHasConfigurableExecutableSearchBox() {
+        let controller = MainWindowController()
+        controller.prepareUITestDocument(content: "zero needle one needle", selections: [])
+        controller.setClassicToolbarSearchVisibleForTesting(true)
+        XCTAssertTrue(controller.isClassicToolbarSearchVisibleForTesting)
+        controller.performClassicToolbarSearchForTesting("needle")
+        XCTAssertEqual(controller.macroEditor.selectionSet.primaryRange,
+                       NSRange(location: 5, length: 6))
+        XCTAssertEqual(controller.macroEditor.searchHighlightRangesForTesting.count, 2)
+        controller.setClassicToolbarSearchVisibleForTesting(false)
+        XCTAssertFalse(controller.isClassicToolbarSearchVisibleForTesting)
+    }
+
+    func testToolbarSupportsThreeExplicitIconSizes() {
+        let controller = MainWindowController()
+        for size in ToolbarIconSize.allCases {
+            controller.setClassicToolbarIconSizeForTesting(size)
+            XCTAssertEqual(controller.classicToolbarIconSizeForTesting, size)
+        }
+        XCTAssertEqual(ToolbarIconSize.allCases.map(\.pointSize), [13, 17, 21])
+    }
+
+    func testFunctionKeysCanShareOnePhysicalRowWithStatusBar() {
+        let controller = MainWindowController()
+        controller.setFunctionKeyStripMergedForTesting(true)
+        XCTAssertTrue(controller.isFunctionKeyStripMergedForTesting)
+        XCTAssertGreaterThan(controller.statusBarFrameForTesting.minX, 0)
+        XCTAssertEqual(controller.statusBarFrameForTesting.minY,
+                       controller.classicChromeFrameForTesting.minY, accuracy: 0.5)
+
+        controller.setFunctionKeyStripMergedForTesting(false)
+        XCTAssertEqual(controller.statusBarFrameForTesting.minX, 0)
+        XCTAssertGreaterThan(controller.classicChromeFrameForTesting.minY,
+                             controller.statusBarFrameForTesting.minY)
+    }
     func testClassicIsDefaultAndCanSwitchToModernWithoutChangingDocument() async {
         let controller = MainWindowController()
         controller.macroEditor.textView.string = "classic content"

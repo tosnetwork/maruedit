@@ -37,17 +37,17 @@ that functional parity is not complete.
 
 | Capability | Hidemaru | MaruEdit today | Status |
 |---|---|---|---|
-| Default editing buttons | File, clipboard, search/navigation groups | 21 colored SF Symbol buttons in similar groups | Partial |
+| Default editing buttons | File, clipboard, search/navigation groups | 21 colored SF Symbol buttons grouped as file, undo, clipboard, search, navigation and tools | Present/native artwork |
 | Add any command | Almost every command is eligible | Every registered stable command is eligible in toolbar and F-key customization | Present |
 | Reorder buttons | Supported | Context-menu left/right movement with persistence | Present |
 | Add/remove separators | Supported | Separators are part of the ordered persistent layout | Present |
 | Hide/remove buttons | Supported | Context-menu add/remove commands | Present |
 | Reset defaults | Supported | Supported | Present |
-| Icon size/DPI | Automatic plus size choices | Native scaling only | Partial/native equivalent |
+| Icon size/DPI | Automatic plus size choices | Native Retina scaling plus persistent Small/Medium/Large symbol sizes | Present/native equivalent |
 | Text-only/fallback labels | Supported through definition JSON | Icons, icons plus text, or text-only; selection persists | Present |
-| Search box in toolbar | Supported/configurable | Find Bar is separate | Partial |
+| Search box in toolbar | Supported/configurable | Persistent configurable inline search box executes unified search, highlighting and history | Present |
 | Floating toolbar | Supported on Windows | No native equivalent | Intentional platform difference |
-| Function-key strip | Configurable and can merge with status bar | Twelve persistent configurable F-key slots; merge is not yet available | Partial |
+| Function-key strip | Configurable and can merge with status bar | Twelve persistent configurable F-key slots; optional physical-row merge with status bar | Present |
 
 ## Status bar
 
@@ -62,13 +62,13 @@ that functional parity is not complete.
 | Character code at cursor | Display; click details | Display and click details | Present |
 | Insert/overwrite | Display; click toggles | Display and click toggles | Present |
 | Font size | Display; click adjustment | Display; click opens font panel | Present/native equivalent |
-| File-type profile | Display; click list | Display; click language/profile menu | Partial |
+| File-type profile | Display; click list | Displays active profile; click menu groups and applies complete user/built-in profiles, with syntax-only overrides | Present |
 | CapsLock | Optional field | Conditional configurable CAPS indicator | Present |
 | Vertical/horizontal and column count | Display/click | HORZ/VERT/COL×n field reflects the live editable layout and opens a checked layout menu | Present |
 | Macro recording | Conditional state/click | Distinct REC recording state and MACRO execution state are shown | Present |
 | Large-file mode | No direct equivalent | MaruEdit-specific safety field | Native addition |
 | Configurable fields/clickability | Supported | Right-click field selection; interactive fields remain clickable | Present |
-| Merge with function-key strip | Supported | Separate rows | Missing |
+| Merge with function-key strip | Supported | Persistent merge shares one 24pt row and restores full-width F-key layout when status is hidden | Present |
 
 ## Acceptance gates
 

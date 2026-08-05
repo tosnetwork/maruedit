@@ -140,6 +140,10 @@ final class MainWindowController: NSWindowController,
         classicChrome.onCommand = { [weak self] command in
             self?.onClassicToolbarCommand?(command)
         }
+        classicChrome.onToolbarSearch = { [weak self] pattern in
+            self?.performToolbarSearch(pattern)
+        }
+        classicChrome.onLayoutChange = { [weak self] in self?.layoutContentViews() }
         classicChrome.autoresizingMask = [.width, .height]
         cv.addSubview(classicChrome)
 
@@ -229,6 +233,9 @@ final class MainWindowController: NSWindowController,
     }
     var classicToolbarLayoutForTesting: [String] { classicChrome.toolbarLayoutEntries }
     var classicToolbarDisplayModeForTesting: ToolbarDisplayMode { classicChrome.toolbarDisplayMode }
+    var classicToolbarIconSizeForTesting: ToolbarIconSize { classicChrome.toolbarIconSize }
+    var isClassicToolbarSearchVisibleForTesting: Bool { classicChrome.isToolbarSearchVisible }
+    var isFunctionKeyStripMergedForTesting: Bool { classicChrome.isFunctionKeyStripMerged }
     var classicFunctionKeyCommandsForTesting: [String?] { classicChrome.functionKeyCommandIDs }
 
     func setClassicToolbarLayoutForTesting(_ entries: [String]) {
@@ -239,6 +246,21 @@ final class MainWindowController: NSWindowController,
     }
     func setClassicToolbarDisplayModeForTesting(_ mode: ToolbarDisplayMode) {
         classicChrome.setToolbarDisplayModeForTesting(mode)
+    }
+    func setClassicToolbarSearchVisibleForTesting(_ visible: Bool) {
+        classicChrome.setToolbarSearchVisibleForTesting(visible)
+    }
+    func setClassicToolbarIconSizeForTesting(_ size: ToolbarIconSize) {
+        classicChrome.setToolbarIconSizeForTesting(size)
+    }
+    func setFunctionKeyStripMergedForTesting(_ merged: Bool) {
+        classicChrome.setFunctionKeyMergeForTesting(merged)
+        layoutContentViews()
+    }
+    var statusBarFrameForTesting: NSRect { statusBar.frame }
+    var classicChromeFrameForTesting: NSRect { classicChrome.frame }
+    func performClassicToolbarSearchForTesting(_ pattern: String) {
+        classicChrome.performToolbarSearchForTesting(pattern)
     }
     func setClassicFunctionKeyCommandsForTesting(_ ids: [CommandID?]) {
         classicChrome.setFunctionKeyCommandsForTesting(ids)
@@ -287,14 +309,19 @@ final class MainWindowController: NSWindowController,
     private func layoutContentViews() {
         guard let cv = window?.contentView else { return }
         let tabH = tabBar.effectiveHeight
-        let statusH: CGFloat = 24
+        let statusH: CGFloat = isStatusBarVisible ? 24 : 0
         let findH: CGFloat = findBar.isHidden ? 0 : (findBar.isReplaceRowVisible ? 66 : 34)
         let paneH: CGFloat = (outputPane?.isHidden == false) ? Self.outputPaneHeight : 0
-        let classicTop = workspaceStyle == .classic ? classicChrome.topChromeHeight : 0
-        let classicBottom = workspaceStyle == .classic ? classicChrome.bottomChromeHeight : 0
-
         let topTabH = tabBar.position == .top ? tabH : 0
         let bottomTabH = tabBar.position == .bottom ? tabH : 0
+        classicChrome.setStatusBarVisible(isStatusBarVisible)
+        let classicTop = workspaceStyle == .classic ? classicChrome.topChromeHeight : 0
+        let classicBottom = workspaceStyle == .classic ? classicChrome.bottomChromeHeight : 0
+        let baseY = bottomTabH + paneH
+        let mergedFunctionWidth = classicChrome.mergedFunctionKeyWidth(totalWidth: cv.bounds.width)
+        let merged = workspaceStyle == .classic && classicChrome.isFunctionKeyStripMerged
+            && isStatusBarVisible && mergedFunctionWidth > 0
+
         classicChrome.externalTopGap = topTabH + findH
         findBar.frame = NSRect(
             x: 0, y: cv.bounds.height
@@ -302,13 +329,19 @@ final class MainWindowController: NSWindowController,
                 - topTabH - findH,
             width: cv.bounds.width, height: findH
         )
-        outputPane?.frame = NSRect(x: 0, y: statusH + bottomTabH, width: cv.bounds.width, height: paneH)
+        outputPane?.frame = NSRect(
+            x: 0, y: bottomTabH + (merged ? 0 : statusH),
+            width: cv.bounds.width, height: paneH)
+        let statusX = merged ? mergedFunctionWidth : 0
+        statusBar.frame = NSRect(
+            x: statusX, y: bottomTabH + (merged ? paneH : 0),
+            width: max(0, cv.bounds.width - statusX), height: statusH)
         classicChrome.frame = NSRect(
-            x: 0, y: statusH + bottomTabH + paneH,
+            x: 0, y: (merged ? bottomTabH : statusH + bottomTabH) + paneH,
             width: cv.bounds.width,
-            height: cv.bounds.height - statusH - bottomTabH - paneH)
+            height: cv.bounds.height - (merged ? 0 : statusH) - bottomTabH - paneH)
         splitView.frame = NSRect(
-            x: 0, y: statusH + bottomTabH + paneH + classicBottom,
+            x: 0, y: statusH + baseY + classicBottom,
             width: cv.bounds.width,
             height: cv.bounds.height - topTabH - findH - statusH - bottomTabH - paneH - classicTop - classicBottom
         )
@@ -1202,6 +1235,19 @@ final class MainWindowController: NSWindowController,
         if !findBar.isHidden { findBar.showOutcome(outcome) }
     }
 
+    private func performToolbarSearch(_ pattern: String) {
+        let query = SearchQuery(pattern: pattern)
+        lastQuery = query
+        searchStartOffset = editorVC.selectionSet.primaryRange.location
+        let ranges = (try? SearchEngine.matches(for: query, in: curDoc?.content ?? ""))?.map(\.range) ?? []
+        editorVC.showSearchHighlights(ranges)
+        editorVC.showSearchMarkers(ranges)
+        sidebarVC.updateSearchResults(ranges, text: curDoc?.content ?? "")
+        let outcome = editorVC.find(query, direction: .next)
+        showStatusMessage(outcome.totalMatches == 0 ? "No results" : "1 of \(outcome.totalMatches)")
+        recordSearchHistory(query)
+    }
+
     private func currentSearchMatches() -> (SearchQuery, [NSRange])? {
         guard var query = activeSearchQuery(), !query.pattern.isEmpty else {
             showFind(); return nil
@@ -1957,17 +2003,39 @@ final class MainWindowController: NSWindowController,
 
     func buildLanguageProfileMenu() -> NSMenu {
         let menu = NSMenu()
-        if let profile = curDoc?.fileTypeProfile {
-            let item = NSMenuItem(title: "Profile: \(profile.name)", action: nil, keyEquivalent: "")
-            item.isEnabled = false
-            menu.addItem(item)
+        for source in [FileTypeProfileSource.user, .builtIn] {
+            let profiles = documentController.availableFileTypeProfiles.filter { $0.source == source }
+            guard !profiles.isEmpty else { continue }
+            let heading = NSMenuItem(
+                title: source == .user ? "User Profiles" : "Built-in Profiles",
+                action: nil, keyEquivalent: "")
+            heading.isEnabled = false; menu.addItem(heading)
+            for sourced in profiles.sorted(by: { $0.profile.name < $1.profile.name }) {
+                let item = NSMenuItem(
+                    title: sourced.profile.name, action: #selector(didSelectFileTypeProfile(_:)),
+                    keyEquivalent: "")
+                item.target = self; item.representedObject = sourced.profile.id
+                item.state = curDoc?.fileTypeProfile?.id == sourced.profile.id ? .on : .off
+                menu.addItem(item)
+            }
             menu.addItem(.separator())
         }
+        let languageHeading = NSMenuItem(title: "Syntax Only", action: nil, keyEquivalent: "")
+        languageHeading.isEnabled = false; menu.addItem(languageHeading)
         for language in Language.allCases where language != .plainText {
             menu.addItem(languageMenuItem(language))
         }
         menu.addItem(languageMenuItem(.plainText))
         return menu
+    }
+
+    @objc private func didSelectFileTypeProfile(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String,
+              let profile = documentController.fileTypeProfile(id: id), let doc = curDoc else { return }
+        doc.applyFileTypeProfile(profile)
+        editorVC.applyPreferences(editorVC.appliedPreferences)
+        editorVC.rehighlightEntireDocument()
+        refreshStatus()
     }
 
     private func languageMenuItem(_ language: Language) -> NSMenuItem {

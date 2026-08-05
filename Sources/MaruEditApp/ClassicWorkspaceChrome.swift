@@ -16,14 +16,24 @@ final class ClassicWorkspaceChrome: NSView {
     private var rulerStartX: CGFloat = 46
     private var configuredVisibility = ClassicChromeOptions.allVisible
     private var isSingleDocument = true
+    private var isStatusBarVisible = true
     var externalTopGap: CGFloat = 0 { didSet { needsLayout = true } }
+    var onLayoutChange: (() -> Void)?
 
     var headingText: String { heading.stringValue }
     var topChromeHeight: CGFloat {
         Self.toolbarHeight + (heading.isHidden ? 0 : Self.headingHeight)
             + (ruler.isHidden ? 0 : Self.rulerHeight)
     }
-    var bottomChromeHeight: CGFloat { commandStrip.isHidden ? 0 : Self.commandStripHeight }
+    var bottomChromeHeight: CGFloat {
+        commandStrip.isHidden || (commandStrip.isMergedWithStatusBar && isStatusBarVisible)
+            ? 0 : Self.commandStripHeight
+    }
+    var isFunctionKeyStripMerged: Bool { commandStrip.isMergedWithStatusBar }
+    func mergedFunctionKeyWidth(totalWidth: CGFloat) -> CGFloat {
+        commandStrip.isHidden || !commandStrip.isMergedWithStatusBar || !isStatusBarVisible
+            ? 0 : totalWidth * 0.55
+    }
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -36,6 +46,10 @@ final class ClassicWorkspaceChrome: NSView {
         addSubview(heading)
         addSubview(ruler)
         addSubview(commandStrip)
+        commandStrip.onMergeChange = { [weak self] in
+            self?.needsLayout = true
+            self?.onLayoutChange?()
+        }
     }
 
     @available(*, unavailable)
@@ -60,7 +74,10 @@ final class ClassicWorkspaceChrome: NSView {
                 - externalTopGap - (heading.isHidden ? 0 : Self.headingHeight) - Self.rulerHeight,
             width: max(0, bounds.width - rulerStartX), height: Self.rulerHeight)
         commandStrip.frame = NSRect(
-            x: 0, y: 0, width: bounds.width, height: Self.commandStripHeight)
+            x: 0, y: 0,
+            width: commandStrip.isMergedWithStatusBar && isStatusBarVisible
+                ? bounds.width * 0.55 : bounds.width,
+            height: Self.commandStripHeight)
     }
 
     func updateHeading(_ value: String) { heading.stringValue = value }
@@ -83,10 +100,16 @@ final class ClassicWorkspaceChrome: NSView {
         get { toolbar.onCommand }
         set { toolbar.onCommand = newValue; commandStrip.onCommand = newValue }
     }
+    var onToolbarSearch: ((String) -> Void)? {
+        get { toolbar.onSearch }
+        set { toolbar.onSearch = newValue }
+    }
 
     var toolbarCommandIDs: [String] { toolbar.commandIDs.map(\.rawValue) }
     var toolbarLayoutEntries: [String] { toolbar.layoutEntries }
     var toolbarDisplayMode: ToolbarDisplayMode { toolbar.displayMode }
+    var toolbarIconSize: ToolbarIconSize { toolbar.iconSize }
+    var isToolbarSearchVisible: Bool { toolbar.showsSearchField }
     var functionKeyCommandIDs: [String?] { commandStrip.commandIDs }
 
     func activateToolbarCommand(_ command: CommandID) { toolbar.activate(command) }
@@ -98,6 +121,13 @@ final class ClassicWorkspaceChrome: NSView {
     func setToolbarDisplayModeForTesting(_ mode: ToolbarDisplayMode) {
         toolbar.setDisplayModeForTesting(mode)
     }
+    func setToolbarSearchVisibleForTesting(_ visible: Bool) {
+        toolbar.setSearchVisibleForTesting(visible)
+    }
+    func setToolbarIconSizeForTesting(_ size: ToolbarIconSize) {
+        toolbar.setIconSizeForTesting(size)
+    }
+    func performToolbarSearchForTesting(_ text: String) { toolbar.performSearchForTesting(text) }
     func setFunctionKeyCommandsForTesting(_ ids: [CommandID?]) {
         commandStrip.setCommandsForTesting(ids)
     }
@@ -108,6 +138,14 @@ final class ClassicWorkspaceChrome: NSView {
         ruler.majorInterval = options.rulerInterval
         ruler.showsTabStops = options.showTabStops
         applyEffectiveVisibility()
+    }
+
+    func setStatusBarVisible(_ visible: Bool) {
+        isStatusBarVisible = visible; needsLayout = true
+    }
+
+    func setFunctionKeyMergeForTesting(_ merged: Bool) {
+        commandStrip.setMergedForTesting(merged)
     }
 
     private func applyEffectiveVisibility() {
@@ -181,16 +219,22 @@ private final class ClassicToolbarView: NSView {
     ]
 
     var onCommand: ((CommandID) -> Void)?
+    var onSearch: ((String) -> Void)?
     private var buttons: [NSButton] = []
     private var separators: [NSView] = []
     private var displayedItems: [Item] = []
     private var toolbarLayout = ToolbarLayout(entries: [])
     private(set) var displayMode: ToolbarDisplayMode = .iconOnly
+    private(set) var iconSize: ToolbarIconSize = .medium
     private var contextKey: String?
     private var contextSeparatorIndex: Int?
+    private let searchField = NSSearchField()
+    private(set) var showsSearchField = true
     private static let layoutDefaultsKey = "MaruClassicToolbarLayout"
     private static let displayModeDefaultsKey = "MaruClassicToolbarDisplayMode"
     private static let hiddenDefaultsKey = "MaruClassicToolbarHiddenItems"
+    private static let searchDefaultsKey = "MaruClassicToolbarSearchField"
+    private static let iconSizeDefaultsKey = "MaruClassicToolbarIconSize"
     private static var builtInCatalog: [String: Item] {
         Dictionary(uniqueKeysWithValues: groups.flatMap { $0 }.map { (key(for: $0), $0) })
     }
@@ -212,6 +256,16 @@ private final class ClassicToolbarView: NSView {
         toolbarLayout = loadLayout()
         displayMode = UserDefaults.standard.string(forKey: Self.displayModeDefaultsKey)
             .flatMap(ToolbarDisplayMode.init(rawValue:)) ?? .iconOnly
+        iconSize = UserDefaults.standard.string(forKey: Self.iconSizeDefaultsKey)
+            .flatMap(ToolbarIconSize.init(rawValue:)) ?? .medium
+        if UserDefaults.standard.object(forKey: Self.searchDefaultsKey) != nil {
+            showsSearchField = UserDefaults.standard.bool(forKey: Self.searchDefaultsKey)
+        }
+        searchField.placeholderString = "Search"
+        searchField.target = self; searchField.action = #selector(runToolbarSearch)
+        searchField.setAccessibilityLabel("Toolbar search")
+        searchField.toolTip = "Search the current document"
+        addSubview(searchField)
         rebuildSubviews()
     }
 
@@ -235,6 +289,12 @@ private final class ClassicToolbarView: NSView {
                 x += width
                 itemIndex += 1
             }
+        }
+        let searchWidth: CGFloat = 190
+        searchField.isHidden = !showsSearchField || x + searchWidth + 8 > bounds.width
+        if !searchField.isHidden {
+            searchField.frame = NSRect(
+                x: bounds.width - searchWidth - 8, y: 4, width: searchWidth, height: 24)
         }
         let border = NSBezierPath()
         NSColor.separatorColor.setStroke()
@@ -295,6 +355,21 @@ private final class ClassicToolbarView: NSView {
         }
         let style = NSMenuItem(title: "Display Style", action: nil, keyEquivalent: "")
         style.submenu = styleMenu; menu.addItem(style)
+        let sizeMenu = NSMenu(title: "Icon Size")
+        for size in ToolbarIconSize.allCases {
+            let item = NSMenuItem(
+                title: size.rawValue.capitalized, action: #selector(changeIconSize(_:)),
+                keyEquivalent: "")
+            item.target = self; item.representedObject = size.rawValue
+            item.state = iconSize == size ? .on : .off
+            sizeMenu.addItem(item)
+        }
+        let sizeItem = NSMenuItem(title: "Icon Size", action: nil, keyEquivalent: "")
+        sizeItem.submenu = sizeMenu; menu.addItem(sizeItem)
+        let search = NSMenuItem(
+            title: "Show Search Box", action: #selector(toggleSearchField), keyEquivalent: "")
+        search.target = self; search.state = showsSearchField ? .on : .off
+        menu.addItem(search)
         menu.addItem(.separator())
         let restore = NSMenuItem(
             title: "Restore Default Toolbar", action: #selector(restoreDefaultToolbar),
@@ -353,6 +428,26 @@ private final class ClassicToolbarView: NSView {
         rebuildSubviews(); needsLayout = true
     }
 
+    @objc private func changeIconSize(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String,
+              let size = ToolbarIconSize(rawValue: raw) else { return }
+        iconSize = size
+        UserDefaults.standard.set(size.rawValue, forKey: Self.iconSizeDefaultsKey)
+        rebuildSubviews(); needsLayout = true
+    }
+
+    @objc private func toggleSearchField() {
+        showsSearchField.toggle()
+        UserDefaults.standard.set(showsSearchField, forKey: Self.searchDefaultsKey)
+        needsLayout = true
+    }
+
+    @objc private func runToolbarSearch() {
+        let pattern = searchField.stringValue
+        guard !pattern.isEmpty else { return }
+        onSearch?(pattern)
+    }
+
     private func applyCustomization() {
         toolbarLayout = toolbarLayout.normalized(availableKeys: Set(catalog.keys))
         UserDefaults.standard.set(toolbarLayout.entries, forKey: Self.layoutDefaultsKey)
@@ -388,6 +483,8 @@ private final class ClassicToolbarView: NSView {
                 button.bezelStyle = .inline; button.isBordered = false
                 button.imageScaling = .scaleProportionallyDown
                 button.image = NSImage(systemSymbolName: item.symbol, accessibilityDescription: item.title)
+                button.symbolConfiguration = NSImage.SymbolConfiguration(
+                    pointSize: CGFloat(iconSize.pointSize), weight: .regular)
                 button.imagePosition = imagePosition(for: displayMode)
                 button.title = displayMode == .iconOnly ? "" : item.title
                 button.font = .systemFont(ofSize: 10)
@@ -426,6 +523,18 @@ private final class ClassicToolbarView: NSView {
         rebuildSubviews(); needsLayout = true
     }
 
+    func setSearchVisibleForTesting(_ visible: Bool) {
+        showsSearchField = visible; needsLayout = true
+    }
+
+    func setIconSizeForTesting(_ size: ToolbarIconSize) {
+        iconSize = size; rebuildSubviews(); needsLayout = true
+    }
+
+    func performSearchForTesting(_ text: String) {
+        searchField.stringValue = text; runToolbarSearch()
+    }
+
     func configureAvailableCommands(_ commands: [(CommandID, String)]) {
         var updated = Self.builtInCatalog
         for (command, title) in commands where updated[command.rawValue] == nil {
@@ -440,7 +549,7 @@ private final class ClassicToolbarView: NSView {
 
     private func buttonWidth(for button: NSButton) -> CGFloat {
         switch displayMode {
-        case .iconOnly: 27
+        case .iconOnly: CGFloat(iconSize.pointSize) + 10
         case .iconAndText: min(110, max(52, button.intrinsicContentSize.width + 8))
         case .textOnly: min(100, max(38, button.intrinsicContentSize.width + 8))
         }
@@ -575,10 +684,13 @@ private final class ClassicCommandStripView: NSView {
         .viewToggleWrap, .appSettings,
     ]
     private static let defaultsKey = "MaruClassicFunctionKeyCommands"
+    private static let mergeDefaultsKey = "MaruClassicFunctionKeysMergedWithStatus"
     private var functionKeyLayout = FunctionKeyLayout(assignments: defaultCommands)
     private var buttons: [NSButton] = []
     private var candidates: [(String, CommandID)] = ClassicCommandStripView.candidates
     var onCommand: ((CommandID) -> Void)?
+    var onMergeChange: (() -> Void)?
+    private(set) var isMergedWithStatusBar = false
     var commandIDs: [String?] { functionKeyLayout.assignments.map { $0?.rawValue } }
 
     override init(frame: NSRect) {
@@ -592,6 +704,7 @@ private final class ClassicCommandStripView: NSView {
         } else {
             functionKeyLayout = functionKeyLayout.normalized(available: available)
         }
+        isMergedWithStatusBar = UserDefaults.standard.bool(forKey: Self.mergeDefaultsKey)
         rebuildButtons()
         setAccessibilityRole(.group)
         setAccessibilityLabel("Favorite command strip")
@@ -644,11 +757,22 @@ private final class ClassicCommandStripView: NSView {
             menu.addItem(item)
         }
         menu.addItem(.separator())
+        let merge = NSMenuItem(
+            title: "Merge with Status Bar", action: #selector(toggleMergeWithStatusBar),
+            keyEquivalent: "")
+        merge.target = self; merge.state = isMergedWithStatusBar ? .on : .off
+        menu.addItem(merge)
         let clear = NSMenuItem(title: "Unassign F\(slot + 1)", action: #selector(clearCommand(_:)), keyEquivalent: "")
         clear.target = self; clear.tag = slot; menu.addItem(clear)
         let restore = NSMenuItem(title: "Restore Default Function Keys", action: #selector(restoreDefaults), keyEquivalent: "")
         restore.target = self; menu.addItem(restore)
         NSMenu.popUpContextMenu(menu, with: event, for: self)
+    }
+
+    @objc private func toggleMergeWithStatusBar() {
+        isMergedWithStatusBar.toggle()
+        UserDefaults.standard.set(isMergedWithStatusBar, forKey: Self.mergeDefaultsKey)
+        onMergeChange?()
     }
 
     @objc private func assignCommand(_ sender: NSMenuItem) {
@@ -681,6 +805,11 @@ private final class ClassicCommandStripView: NSView {
         functionKeyLayout = FunctionKeyLayout(assignments: commands)
             .normalized(available: Set(candidates.map(\.1)))
         rebuildButtons(); needsLayout = true
+    }
+
+    func setMergedForTesting(_ merged: Bool) {
+        isMergedWithStatusBar = merged
+        onMergeChange?()
     }
 
     func activateSlotForTesting(_ index: Int) {

@@ -6,6 +6,14 @@ public enum ToolbarDisplayMode: String, Codable, CaseIterable, Sendable {
     case textOnly
 }
 
+public enum ToolbarIconSize: String, Codable, CaseIterable, Sendable {
+    case small, medium, large
+
+    public var pointSize: Double {
+        switch self { case .small: 13; case .medium: 17; case .large: 21 }
+    }
+}
+
 /// Persistent ordered toolbar contents. Command/responder keys and separators
 /// share one sequence so customization round-trips without losing grouping.
 public struct ToolbarLayout: Codable, Equatable, Sendable {

@@ -27,6 +27,10 @@ final class DocumentController {
     var templateProfiles: [FileTypeProfile] {
         fileTypeResolver.profiles.map(\.profile).filter { $0.settings.templatePath != nil }
     }
+    var availableFileTypeProfiles: [SourcedFileTypeProfile] { fileTypeResolver.profiles }
+    func fileTypeProfile(id: String) -> FileTypeProfile? {
+        fileTypeResolver.profiles.first { $0.profile.id == id }?.profile
+    }
 
     @discardableResult
     func addDocument(_ document: Document) -> Document {

@@ -318,6 +318,11 @@ final class Document: @unchecked Sendable {
         try save()
     }
 
+    func applyFileTypeProfile(_ profile: FileTypeProfile) {
+        fileTypeProfile = profile
+        language = profile.settings.syntax
+    }
+
     static func normalizedText(contentsOf url: URL) throws -> String {
         LineEndingDetector.normalize(try TextFileLoader.load(contentsOf: url).content)
     }

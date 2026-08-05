@@ -13,9 +13,24 @@ final class StatusBarFormatMenuTests: XCTestCase {
         XCTAssertEqual(controller.buildByteOrderMarkMenu().items.map(\.title),
                        ["With BOM", "Without BOM"])
         XCTAssertEqual(controller.buildLineEndingMenu().items.map(\.title), ["LF", "CRLF", "CR"])
-        let languages = controller.buildLanguageProfileMenu().items.filter { !$0.isSeparatorItem }
+        let profileMenu = controller.buildLanguageProfileMenu()
+        let syntaxIndex = try! XCTUnwrap(profileMenu.items.firstIndex { $0.title == "Syntax Only" })
+        let languages = Array(profileMenu.items.suffix(from: syntaxIndex + 1)).filter { !$0.isSeparatorItem }
         XCTAssertEqual(languages.count, Language.allCases.count)
         XCTAssertTrue(languages.allSatisfy { $0.action != nil && $0.target === controller })
+        XCTAssertTrue(profileMenu.items.contains { $0.title == "Built-in Profiles" })
+        XCTAssertTrue(profileMenu.items.contains { $0.title == "Swift" && $0.action != nil })
+    }
+
+    func testProfileMenuAppliesTheCompleteProfileRatherThanOnlySyntax() throws {
+        let controller = MainWindowController()
+        let swift = try XCTUnwrap(controller.buildLanguageProfileMenu().items.first {
+            $0.representedObject as? String == "builtin.swift"
+        })
+        _ = swift.target?.perform(swift.action, with: swift)
+        XCTAssertEqual(controller.macroEditor.document?.fileTypeProfile?.id, "builtin.swift")
+        XCTAssertEqual(controller.macroEditor.document?.language, .swift)
+        XCTAssertEqual(controller.macroEditor.effectiveWrapColumn, 160)
     }
 
     func testFormatMenuActionsUpdateCheckedState() async throws {
