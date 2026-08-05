@@ -4,6 +4,27 @@ import XCTest
 
 @preconcurrency @MainActor
 final class SelectionSetTests: XCTestCase {
+    func testClassicWordLineParagraphSelectionsAndQuotedClipboard() async {
+        let editor = EditorViewController(); _ = editor.view
+        editor.document = Document(content: "alpha beta\nsecond line\n\nthird")
+        editor.setSelections([NSRange(location: 2, length: 0)], primaryRange: NSRange(location: 2, length: 0))
+        editor.selectCurrentWord()
+        XCTAssertEqual(editor.selectionSet.primaryRange, NSRange(location: 0, length: 5))
+        editor.selectCurrentLine()
+        XCTAssertEqual(editor.selectionSet.primaryRange, NSRange(location: 0, length: 11))
+        editor.setSelections([NSRange(location: 12, length: 0)], primaryRange: NSRange(location: 12, length: 0))
+        editor.selectCurrentParagraph()
+        XCTAssertEqual((editor.textView.string as NSString).substring(with: editor.selectionSet.primaryRange), "second line\n")
+
+        let pasteboard = NSPasteboard(name: .init("SelectionSetTests.quoted"))
+        editor.setSelections([NSRange(location: 0, length: 10)], primaryRange: NSRange(location: 0, length: 10))
+        XCTAssertTrue(editor.copyWithQuotePrefix(to: pasteboard))
+        XCTAssertEqual(pasteboard.string(forType: .string), "> alpha beta")
+        pasteboard.clearContents(); pasteboard.setString("> one\n> two\nplain", forType: .string)
+        editor.setSelections([NSRange(location: 0, length: 5)], primaryRange: NSRange(location: 0, length: 5))
+        XCTAssertTrue(editor.pasteRemovingQuotePrefix(from: pasteboard))
+        XCTAssertTrue(editor.textView.string.hasPrefix("one\ntwo\nplain"))
+    }
     func testNormalizesSortsDeduplicatesAndMergesOverlaps() async {
         let set = SelectionSet(ranges: [
             NSRange(location: 10, length: 3),

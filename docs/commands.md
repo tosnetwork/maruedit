@@ -125,6 +125,11 @@ significantly, replace this with a small script that generates it from
 | `edit.deleteWordForward` | Delete Word Forward | Edit | — | `AppCoordinator.deleteWordForward()` |
 | `edit.titlecase` | Convert to Title Case | Edit | — | `performLineCommand(.titlecase)` |
 | `edit.completeWord` | Complete Word | Edit | — | `AppCoordinator.showCompletions()` |
+| `edit.selectWord` | Select Word | Edit | — | Selects the word at the primary caret |
+| `edit.selectLine` | Select Line | Edit | — | Selects the complete logical line |
+| `edit.selectParagraph` | Select Paragraph | Edit | — | Selects the paragraph at the primary caret |
+| `edit.copyQuoted` | Copy with Quote Prefix | Edit | — | Copies selected lines with `> ` prefixes |
+| `edit.pasteQuoted` | Paste Removing Quote Prefix | Edit | — | Removes `>` quote prefixes while pasting |
 | `navigate.toggleBookmark` | Toggle Bookmark | Edit | — | `AppCoordinator.toggleBookmark()` |
 | `navigate.nextBookmark` | Next Bookmark | Edit | — | `AppCoordinator.nextBookmark()` |
 | `navigate.previousBookmark` | Previous Bookmark | Edit | — | `AppCoordinator.previousBookmark()` |

@@ -2,6 +2,49 @@ import AppKit
 import MaruEditCore
 
 extension EditorViewController {
+    func selectCurrentWord() {
+        textView.selectWord(nil)
+        let range = textView.selectedRange()
+        setSelections([range], primaryRange: range)
+    }
+
+    func selectCurrentLine() {
+        let text = textView.string as NSString
+        let location = min(selectionSet.primaryRange.location, text.length)
+        let range = text.lineRange(for: NSRange(location: location, length: 0))
+        setSelections([range], primaryRange: range)
+    }
+
+    func selectCurrentParagraph() {
+        let text = textView.string as NSString
+        let location = min(selectionSet.primaryRange.location, text.length)
+        let range = text.paragraphRange(for: NSRange(location: location, length: 0))
+        setSelections([range], primaryRange: range)
+    }
+
+    func copyWithQuotePrefix(to pasteboard: NSPasteboard = .general) -> Bool {
+        let text = textView.string as NSString
+        let values = selectionSet.ranges.compactMap { range -> String? in
+            guard range.length > 0, NSMaxRange(range) <= text.length else { return nil }
+            return text.substring(with: range).split(separator: "\n", omittingEmptySubsequences: false)
+                .map { "> \($0)" }.joined(separator: "\n")
+        }
+        guard !values.isEmpty else { return false }
+        pasteboard.clearContents()
+        return pasteboard.setString(values.joined(separator: "\n"), forType: .string)
+    }
+
+    func pasteRemovingQuotePrefix(from pasteboard: NSPasteboard = .general) -> Bool {
+        guard let value = pasteboard.string(forType: .string) else { return false }
+        let unquoted = value.split(separator: "\n", omittingEmptySubsequences: false).map { line -> String in
+            if line.hasPrefix("> ") { return String(line.dropFirst(2)) }
+            if line.hasPrefix(">") { return String(line.dropFirst()) }
+            return String(line)
+        }.joined(separator: "\n")
+        batchReplace(selectionSet.ranges, with: unquoted)
+        return true
+    }
+
     func addCursorAbove() { addCursorVertically(delta: -1) }
     func addCursorBelow() { addCursorVertically(delta: 1) }
 

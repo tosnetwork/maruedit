@@ -213,6 +213,11 @@ final class AppCoordinator {
     func selectAllOccurrences()        { ensureWindowControllerReady().selectAllOccurrences() }
     func undoLastAddedCursor()         { ensureWindowControllerReady().undoLastAddedCursor() }
     func beginColumnSelection()        { ensureWindowControllerReady().beginColumnSelection() }
+    func selectCurrentWord()            { ensureWindowControllerReady().macroEditor.selectCurrentWord() }
+    func selectCurrentLine()            { ensureWindowControllerReady().macroEditor.selectCurrentLine() }
+    func selectCurrentParagraph()       { ensureWindowControllerReady().macroEditor.selectCurrentParagraph() }
+    func copyWithQuotePrefix()          { _ = ensureWindowControllerReady().macroEditor.copyWithQuotePrefix() }
+    func pasteRemovingQuotePrefix()     { _ = ensureWindowControllerReady().macroEditor.pasteRemovingQuotePrefix() }
     func performLineCommand(_ command: LineEditCommand) { ensureWindowControllerReady().performLineCommand(command) }
     func toggleBookmark()               { ensureWindowControllerReady().toggleBookmark() }
     func nextBookmark()                 { ensureWindowControllerReady().nextBookmark() }
