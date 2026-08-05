@@ -154,6 +154,10 @@ final class AppCoordinator {
     func refineGrepResults()           { ensureWindowControllerReady().refineGrepResults() }
     func outputGrepResultsAsDocument() { ensureWindowControllerReady().outputGrepResultsAsDocument() }
     func clearSearchHistory()          { ensureWindowControllerReady().clearSearchHistory() }
+    func toggleFindOption(_ option: FindOption) { ensureWindowControllerReady().toggleFindOption(option) }
+    func isFindOptionEnabled(_ option: FindOption) -> Bool {
+        ensureWindowControllerReady().isFindOptionEnabled(option)
+    }
     func showStatusMessage(_ message: String, duration: TimeInterval = 1.5) {
         ensureWindowControllerReady().showStatusMessage(message, duration: duration)
     }

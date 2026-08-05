@@ -53,6 +53,9 @@ extension CommandID {
     static let searchRefineGrepResults = CommandID("search.refineGrepResults")
     static let searchOutputGrepDocument = CommandID("search.outputGrepDocument")
     static let searchClearHistory = CommandID("search.clearHistory")
+    static let searchToggleCaseSensitive = CommandID("search.toggleCaseSensitive")
+    static let searchToggleWholeWord = CommandID("search.toggleWholeWord")
+    static let searchToggleRegex = CommandID("search.toggleRegex")
     static let viewToggleSidebar = CommandID("view.toggleSidebar")
     static let viewToggleWrap = CommandID("view.toggleWrap")
     static let viewToggleSpaces = CommandID("view.toggleSpaces")
@@ -245,6 +248,9 @@ enum AppCommands {
         registry.register(CommandDefinition(id: .searchClearHistory, title: "Clear Search History") { ctx in
             ctx.coordinator.clearSearchHistory()
         })
+        registry.register(CommandDefinition(id: .searchToggleCaseSensitive, title: "Case Sensitive") { $0.coordinator.toggleFindOption(.caseSensitive) })
+        registry.register(CommandDefinition(id: .searchToggleWholeWord, title: "Whole Word") { $0.coordinator.toggleFindOption(.wholeWord) })
+        registry.register(CommandDefinition(id: .searchToggleRegex, title: "Regular Expression") { $0.coordinator.toggleFindOption(.regularExpression) })
         registry.register(CommandDefinition(id: .viewToggleSidebar, title: "Toggle Sidebar") { ctx in
             ctx.coordinator.toggleSidebar()
         })

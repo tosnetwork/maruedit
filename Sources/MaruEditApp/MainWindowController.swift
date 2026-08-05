@@ -1077,6 +1077,13 @@ final class MainWindowController: NSWindowController,
         findBar.activate()
     }
 
+    func toggleFindOption(_ option: FindOption) {
+        if findBar.isHidden { showFind() }
+        findBar.toggleOption(option)
+    }
+
+    func isFindOptionEnabled(_ option: FindOption) -> Bool { findBar.isOptionEnabled(option) }
+
     /// Replace All from the menu. Opens the Find Bar first when it isn't
     /// showing: bulk replacement must never run against a query the user
     /// can't currently see.

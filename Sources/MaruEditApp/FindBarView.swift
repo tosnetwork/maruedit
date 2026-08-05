@@ -10,6 +10,8 @@ enum FindBarAction {
     case replaceAll
 }
 
+enum FindOption { case caseSensitive, wholeWord, regularExpression }
+
 /// The Find Bar is input and presentation only (ROADMAP.md M3-02): it
 /// builds a `SearchQuery` and asks its delegate to carry it out, then
 /// displays whatever the delegate reports back. It never touches text,
@@ -270,6 +272,21 @@ final class FindBarView: NSView, NSTextFieldDelegate {
     }
 
     var isReplaceRowVisible: Bool { showReplace }
+    func isOptionEnabled(_ option: FindOption) -> Bool {
+        switch option {
+        case .caseSensitive: caseBtn.state == .on
+        case .wholeWord: wordBtn.state == .on
+        case .regularExpression: regexBtn.state == .on
+        }
+    }
+
+    func toggleOption(_ option: FindOption) {
+        switch option {
+        case .caseSensitive: toggleCase()
+        case .wholeWord: toggleWholeWord()
+        case .regularExpression: toggleRegex()
+        }
+    }
 
     // MARK: - Actions
 

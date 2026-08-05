@@ -74,6 +74,9 @@ significantly, replace this with a small script that generates it from
 | `search.refineGrepResults` | Refine Grep Results | Find | — | `AppCoordinator.refineGrepResults()` |
 | `search.outputGrepDocument` | Output Grep Results as Document | Find | — | `AppCoordinator.outputGrepResultsAsDocument()` |
 | `search.clearHistory` | Clear Search History | Find | — | `AppCoordinator.clearSearchHistory()` |
+| `search.toggleCaseSensitive` | Case Sensitive | Search › Search Options | ⌥⌘C | Toggles the shared Find/Replace query flag |
+| `search.toggleWholeWord` | Whole Word | Search › Search Options | ⌥⌘W | Toggles the shared Find/Replace query flag |
+| `search.toggleRegex` | Regular Expression | Search › Search Options | ⌥⌘R | Toggles the shared Find/Replace query mode |
 | `view.toggleSidebar` | Toggle Sidebar | View | ⌘B | `AppCoordinator.toggleSidebar()` |
 | `view.toggleWrap` | Wrap Lines | View | — | `AppCoordinator.toggleWrapLines()` |
 | `view.toggleSpaces` | Show Spaces | View > Show Invisibles | — | `AppCoordinator.toggleInvisible(\.spaces)` |

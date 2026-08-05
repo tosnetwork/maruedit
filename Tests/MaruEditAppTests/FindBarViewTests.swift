@@ -9,6 +9,16 @@ import MaruEditCore
 
 @preconcurrency @MainActor
 final class FindBarViewTests: XCTestCase {
+    func testMenuFacingOptionAPIUsesTheSameQueryState() async {
+        let bar = FindBarView()
+        XCTAssertFalse(bar.isOptionEnabled(.caseSensitive))
+        bar.toggleOption(.caseSensitive)
+        bar.toggleOption(.wholeWord)
+        bar.toggleOption(.regularExpression)
+        XCTAssertTrue(bar.currentQuery.isCaseSensitive)
+        XCTAssertTrue(bar.currentQuery.wholeWord)
+        XCTAssertEqual(bar.currentQuery.mode, .regularExpression)
+    }
 
     private final class StubDelegate: FindBarDelegate {
         var actions: [FindBarAction] = []

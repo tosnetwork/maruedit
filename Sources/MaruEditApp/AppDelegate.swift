@@ -224,6 +224,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         findMenu.addItem(commandItem(.searchReplaceAll))
         findMenu.addItem(commandItem(.searchFindNext))
         findMenu.addItem(commandItem(.searchFindPrevious))
+        let optionsItem = NSMenuItem(title: "Search Options", action: nil, keyEquivalent: "")
+        let optionsMenu = NSMenu(title: "Search Options")
+        optionsMenu.addItem(commandItem(.searchToggleCaseSensitive))
+        optionsMenu.addItem(commandItem(.searchToggleWholeWord))
+        optionsMenu.addItem(commandItem(.searchToggleRegex))
+        optionsItem.submenu = optionsMenu
+        findMenu.addItem(optionsItem)
         findMenu.addItem(.separator())
         // Go to Line moves off ⌘G, which macOS reserves for Find Next.
         findMenu.addItem(commandItem(.searchGoToLine))
@@ -494,6 +501,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         ]
         if statefulViewCommands.contains(id) {
             menuItem.state = coordinator.isViewCommandActive(id) ? .on : .off
+        }
+        let findOptions: [CommandID: FindOption] = [
+            .searchToggleCaseSensitive: .caseSensitive,
+            .searchToggleWholeWord: .wholeWord,
+            .searchToggleRegex: .regularExpression,
+        ]
+        if let option = findOptions[id] {
+            menuItem.state = coordinator.isFindOptionEnabled(option) ? .on : .off
         }
         return coordinator.commandRegistry.isEnabled(id, context: CommandContext(coordinator: coordinator))
     }
