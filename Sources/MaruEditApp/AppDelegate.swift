@@ -304,6 +304,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         findMenu.addItem(.separator())
         // Go to Line moves off ⌘G, which macOS reserves for Find Next.
         findMenu.addItem(commandItem(.searchGoToLine))
+        let cursorItem = NSMenuItem(title: "Cursor Navigation", action: nil, keyEquivalent: "")
+        let cursorMenu = NSMenu(title: "Cursor Navigation")
+        for id: CommandID in [
+            .navigateDocumentStart, .navigateDocumentEnd,
+            .navigateScreenStart, .navigateScreenEnd,
+            .editMoveWordRight, .navigateWordRightSalnen, .editMoveWordLeft,
+            .navigateWordStart, .navigateWordEnd,
+            .navigateLineStart, .navigateLineEnd, .navigateLineEndAfterCharacter,
+            .navigateLogicalLineStart, .navigateLogicalLineEnd,
+            .navigateNextPage, .navigatePreviousPage,
+            .navigateHalfNextPage, .navigateHalfPreviousPage,
+            .navigateScrollUp, .navigateScrollDown,
+            .navigateScrollUp2, .navigateScrollDown2,
+            .navigatePreviousTabStop, .navigateNextTabStop,
+            .navigateMatchingBracket, .navigateOpeningBrace, .navigateClosingBrace,
+            .navigateMatchingTag, .navigateLastEdit, .navigatePreviousCursor,
+        ] { cursorMenu.addItem(commandItem(id)) }
+        cursorItem.submenu = cursorMenu
+        findMenu.addItem(cursorItem)
         findMenu.addItem(.separator())
         findMenu.addItem(commandItem(.searchQuickOpen))
         findMenu.addItem(commandItem(.searchGrep))

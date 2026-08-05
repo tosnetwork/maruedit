@@ -70,6 +70,8 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     private var suppressScrollCallback = false
     var onScroll: ((NSPoint) -> Void)?
     private var isApplyingSelectionSet = false
+    var cursorHistory: [Int] = []
+    var isRestoringCursorHistory = false
     private var markedTextSnapshot: (text: String, ranges: [NSRange], primary: NSRange)?
     private var isCompositionCommitScheduled = false
     private var completionDictionaries: [String] = []
@@ -121,7 +123,9 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     }
 
     func setSelections(_ ranges: [NSRange], primaryRange: NSRange? = nil) {
+        let previous = selectionSet.primaryRange.location
         selectionSet.update(ranges: ranges, primaryRange: primaryRange)
+        recordCursorTransition(from: previous, to: selectionSet.primaryRange.location)
         guard isViewLoaded else { return }
         var ordered = selectionSet.ranges
         let primary = ordered.remove(at: selectionSet.primaryIndex)
@@ -261,6 +265,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
             guard document !== oldValue else { return }
             isMultiEditActive = false
             if isViewLoaded { loadDoc() }
+            cursorHistory.removeAll()
         }
     }
     /// Secondary panes must own their TextKit storage. A single
@@ -421,6 +426,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     /// different document being switched in, which `loadDoc()` alone
     /// wouldn't pick up since it prefers `document.cachedTextStorage`.
     func reloadCurrentDocument() {
+        cursorHistory.removeAll()
         document?.cachedTextStorage = nil
         loadDoc()
     }
@@ -1062,12 +1068,20 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
             return
         }
         guard !isApplyingSelectionSet else { return }
+        let previous = selectionSet.primaryRange.location
         selectionSet.update(
             ranges: textView.selectedRanges.map(\.rangeValue),
             primaryRange: textView.selectedRange()
         )
+        recordCursorTransition(from: previous, to: selectionSet.primaryRange.location)
         lineNumbers?.needsDisplay = true
         emitCursor()
+    }
+
+    private func recordCursorTransition(from previous: Int, to current: Int) {
+        guard !isRestoringCursorHistory, previous != current else { return }
+        if cursorHistory.last != previous { cursorHistory.append(previous) }
+        if cursorHistory.count > 100 { cursorHistory.removeFirst(cursorHistory.count - 100) }
     }
 
     var hasMarkedTextComposition: Bool { markedTextSnapshot != nil }

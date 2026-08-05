@@ -49,6 +49,34 @@ significantly, replace this with a small script that generates it from
 | `search.findUpward` | Find Upward... | Search | — | Opens Find with Return searching toward the beginning; Shift-Return reverses it |
 | `search.findWord` | Find Word at Cursor | Search | — | Captures the native word range and immediately searches whole words |
 | `search.captureString` | Capture Search String | Search | — | Copies the selection or native word at the cursor into unified search state without moving |
+| `navigate.documentStart` | Beginning of File | Search | — | Moves to UTF-16 offset zero |
+| `navigate.documentEnd` | End of File | Search | — | Moves to the document's terminal insertion point |
+| `navigate.screenStart` | Beginning of Screen | Search | — | Moves to the first currently visible character |
+| `navigate.screenEnd` | End of Screen | Search | — | Moves to the final currently visible character |
+| `navigate.wordStart` | Beginning of Word | Search | — | Uses AppKit word-boundary granularity without advancing when already there |
+| `navigate.wordEnd` | End of Word | Search | — | Uses AppKit word-boundary granularity without advancing when already there |
+| `navigate.wordRightSalnen` | Word Right (Salnen Style) | Search | — | Moves to the nearest alphanumeric/full-width word end |
+| `navigate.lineStart` | Beginning of Visual Line | Search | — | Uses the TextKit line fragment at the cursor |
+| `navigate.lineEnd` | End of Visual Line | Search | — | Moves onto the final character of the TextKit line fragment |
+| `navigate.lineEndAfterCharacter` | End of Visual Line (After Character) | Search | — | Moves to the insertion boundary after the fragment's final character |
+| `navigate.logicalLineStart` | Beginning of Logical Line | Search | — | Moves to the newline-delimited logical-line start |
+| `navigate.logicalLineEnd` | End of Logical Line | Search | — | Moves before the logical line ending |
+| `navigate.nextPage` | Next Page | Search | — | Executes native Page Down navigation |
+| `navigate.previousPage` | Previous Page | Search | — | Executes native Page Up navigation |
+| `navigate.halfNextPage` | Half Next Page | Search | — | Advances by half the visible character range |
+| `navigate.halfPreviousPage` | Half Previous Page | Search | — | Rewinds by half the visible character range |
+| `navigate.scrollUp` | Scroll Up | Search | — | Scrolls one line while moving the cursor with the view |
+| `navigate.scrollDown` | Scroll Down | Search | — | Scrolls one line while moving the cursor with the view |
+| `navigate.scrollUp2` | Scroll Up (Keep Visual Cursor) | Search | — | Scrolls one line without changing the cursor |
+| `navigate.scrollDown2` | Scroll Down (Keep Visual Cursor) | Search | — | Scrolls one line without changing the cursor |
+| `navigate.previousTabStop` | Previous Tab | Search | — | Moves to the preceding configured display-column tab stop |
+| `navigate.nextTabStop` | Next Tab | Search | — | Moves to the following configured display-column tab stop |
+| `navigate.matchingBracket` | Matching Bracket | Search | — | Matches nested parentheses, brackets, or braces in either direction |
+| `navigate.openingBrace` | Previous Opening Brace | Search | — | Moves toward the nearest containing opening brace |
+| `navigate.closingBrace` | Next Closing Brace | Search | — | Moves toward the nearest containing closing brace |
+| `navigate.matchingTag` | Matching Tag | Search | — | Matches nested HTML/XML tags by case-insensitive name |
+| `navigate.lastEdit` | Last Edited Location | Search | — | Moves to the most recently recorded edit-mark line |
+| `navigate.previousCursor` | Previous Cursor Position | Search | — | Pops the bounded cursor-position history without recursively recording the jump |
 | `file.closeTab` | Close Tab | File | ⌘W | `AppCoordinator.closeCurrentTab()` |
 | `window.nextTab` | Next Tab | Window | ⌃Tab | `AppCoordinator.selectNextTab()` |
 | `window.previousTab` | Previous Tab | Window | ⌃⇧Tab | `AppCoordinator.selectPreviousTab()` |

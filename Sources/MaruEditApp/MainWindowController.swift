@@ -1392,6 +1392,28 @@ final class MainWindowController: NSWindowController,
         return text.substring(with: word)
     }
 
+    func moveToDocumentStart() { editorVC.moveToDocumentStart() }
+    func moveToDocumentEnd() { editorVC.moveToDocumentEnd() }
+    func moveToScreenStart() { editorVC.moveToScreenStart() }
+    func moveToScreenEnd() { editorVC.moveToScreenEnd() }
+    func moveToWordStart() { editorVC.moveToWordStart() }
+    func moveToWordEnd() { editorVC.moveToWordEnd() }
+    func moveWordRightSalnen() { editorVC.moveWordRightSalnen() }
+    func moveToLineStart() { editorVC.moveToLineStart() }
+    func moveToLineEnd() { editorVC.moveToLineEnd() }
+    func moveToLineEndAfterCharacter() { editorVC.moveToLineEndAfterCharacter() }
+    func moveToLogicalLineStart() { editorVC.moveToLogicalLineStart() }
+    func moveToLogicalLineEnd() { editorVC.moveToLogicalLineEnd() }
+    func movePage(forward: Bool) { editorVC.movePage(forward: forward) }
+    func moveHalfPage(forward: Bool) { editorVC.moveHalfPage(forward: forward) }
+    func scrollEditor(forward: Bool, preserveCursor: Bool) { editorVC.scrollEditor(forward: forward, preserveCursor: preserveCursor) }
+    func moveToAdjacentTab(forward: Bool) { editorVC.moveToAdjacentTab(forward: forward) }
+    func moveToMatchingBracket() { editorVC.moveToMatchingBracket() }
+    func moveToBrace(opening: Bool) { editorVC.moveToBrace(opening: opening) }
+    func moveToMatchingTag() { editorVC.moveToMatchingTag() }
+    func moveToLastEditMark() { editorVC.moveToLastEditMark() }
+    func moveToPreviousCursorPosition() { editorVC.moveToPreviousCursorPosition() }
+
     func toggleFindOption(_ option: FindOption) {
         if findBar.isHidden { showFind() }
         findBar.toggleOption(option)

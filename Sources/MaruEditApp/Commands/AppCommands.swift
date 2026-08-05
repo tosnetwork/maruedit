@@ -111,6 +111,34 @@ extension CommandID {
     static let searchSetRange = CommandID("search.setRange")
     static let searchSelectRange = CommandID("search.selectRange")
     static let searchClearRange = CommandID("search.clearRange")
+    static let navigateDocumentStart = CommandID("navigate.documentStart")
+    static let navigateDocumentEnd = CommandID("navigate.documentEnd")
+    static let navigateScreenStart = CommandID("navigate.screenStart")
+    static let navigateScreenEnd = CommandID("navigate.screenEnd")
+    static let navigateWordStart = CommandID("navigate.wordStart")
+    static let navigateWordEnd = CommandID("navigate.wordEnd")
+    static let navigateWordRightSalnen = CommandID("navigate.wordRightSalnen")
+    static let navigateLineStart = CommandID("navigate.lineStart")
+    static let navigateLineEnd = CommandID("navigate.lineEnd")
+    static let navigateLineEndAfterCharacter = CommandID("navigate.lineEndAfterCharacter")
+    static let navigateLogicalLineStart = CommandID("navigate.logicalLineStart")
+    static let navigateLogicalLineEnd = CommandID("navigate.logicalLineEnd")
+    static let navigateNextPage = CommandID("navigate.nextPage")
+    static let navigatePreviousPage = CommandID("navigate.previousPage")
+    static let navigateHalfNextPage = CommandID("navigate.halfNextPage")
+    static let navigateHalfPreviousPage = CommandID("navigate.halfPreviousPage")
+    static let navigateScrollUp = CommandID("navigate.scrollUp")
+    static let navigateScrollDown = CommandID("navigate.scrollDown")
+    static let navigateScrollUp2 = CommandID("navigate.scrollUp2")
+    static let navigateScrollDown2 = CommandID("navigate.scrollDown2")
+    static let navigatePreviousTabStop = CommandID("navigate.previousTabStop")
+    static let navigateNextTabStop = CommandID("navigate.nextTabStop")
+    static let navigateMatchingBracket = CommandID("navigate.matchingBracket")
+    static let navigateOpeningBrace = CommandID("navigate.openingBrace")
+    static let navigateClosingBrace = CommandID("navigate.closingBrace")
+    static let navigateMatchingTag = CommandID("navigate.matchingTag")
+    static let navigateLastEdit = CommandID("navigate.lastEdit")
+    static let navigatePreviousCursor = CommandID("navigate.previousCursor")
     static let viewToggleSidebar = CommandID("view.toggleSidebar")
     static let viewToggleWrap = CommandID("view.toggleWrap")
     static let viewToggleSpaces = CommandID("view.toggleSpaces")
@@ -419,6 +447,39 @@ enum AppCommands {
         registry.register(CommandDefinition(id: .searchSetRange, title: "Set Selection as Search Range") { $0.coordinator.setSearchRangeFromSelection() })
         registry.register(CommandDefinition(id: .searchSelectRange, title: "Select Search Range") { $0.coordinator.selectSearchRange() })
         registry.register(CommandDefinition(id: .searchClearRange, title: "Clear Search Range") { $0.coordinator.clearSearchRange() })
+        let navigation: [(CommandID, String, (AppCoordinator) -> Void)] = [
+            (.navigateDocumentStart, "Beginning of File", { $0.moveToDocumentStart() }),
+            (.navigateDocumentEnd, "End of File", { $0.moveToDocumentEnd() }),
+            (.navigateScreenStart, "Beginning of Screen", { $0.moveToScreenStart() }),
+            (.navigateScreenEnd, "End of Screen", { $0.moveToScreenEnd() }),
+            (.navigateWordStart, "Beginning of Word", { $0.moveToWordStart() }),
+            (.navigateWordEnd, "End of Word", { $0.moveToWordEnd() }),
+            (.navigateWordRightSalnen, "Word Right (Salnen Style)", { $0.moveWordRightSalnen() }),
+            (.navigateLineStart, "Beginning of Visual Line", { $0.moveToLineStart() }),
+            (.navigateLineEnd, "End of Visual Line", { $0.moveToLineEnd() }),
+            (.navigateLineEndAfterCharacter, "End of Visual Line (After Character)", { $0.moveToLineEndAfterCharacter() }),
+            (.navigateLogicalLineStart, "Beginning of Logical Line", { $0.moveToLogicalLineStart() }),
+            (.navigateLogicalLineEnd, "End of Logical Line", { $0.moveToLogicalLineEnd() }),
+            (.navigateNextPage, "Next Page", { $0.movePage(forward: true) }),
+            (.navigatePreviousPage, "Previous Page", { $0.movePage(forward: false) }),
+            (.navigateHalfNextPage, "Half Next Page", { $0.moveHalfPage(forward: true) }),
+            (.navigateHalfPreviousPage, "Half Previous Page", { $0.moveHalfPage(forward: false) }),
+            (.navigateScrollUp, "Scroll Up", { $0.scrollEditor(forward: false, preserveCursor: false) }),
+            (.navigateScrollDown, "Scroll Down", { $0.scrollEditor(forward: true, preserveCursor: false) }),
+            (.navigateScrollUp2, "Scroll Up (Keep Visual Cursor)", { $0.scrollEditor(forward: false, preserveCursor: true) }),
+            (.navigateScrollDown2, "Scroll Down (Keep Visual Cursor)", { $0.scrollEditor(forward: true, preserveCursor: true) }),
+            (.navigatePreviousTabStop, "Previous Tab", { $0.moveToAdjacentTab(forward: false) }),
+            (.navigateNextTabStop, "Next Tab", { $0.moveToAdjacentTab(forward: true) }),
+            (.navigateMatchingBracket, "Matching Bracket", { $0.moveToMatchingBracket() }),
+            (.navigateOpeningBrace, "Previous Opening Brace", { $0.moveToBrace(opening: true) }),
+            (.navigateClosingBrace, "Next Closing Brace", { $0.moveToBrace(opening: false) }),
+            (.navigateMatchingTag, "Matching Tag", { $0.moveToMatchingTag() }),
+            (.navigateLastEdit, "Last Edited Location", { $0.moveToLastEditMark() }),
+            (.navigatePreviousCursor, "Previous Cursor Position", { $0.moveToPreviousCursorPosition() }),
+        ]
+        for (id, title, action) in navigation {
+            registry.register(CommandDefinition(id: id, title: title) { action($0.coordinator) })
+        }
         registry.register(CommandDefinition(id: .viewToggleSidebar, title: "Toggle Sidebar") { ctx in
             ctx.coordinator.toggleSidebar()
         })

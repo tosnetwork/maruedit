@@ -4,14 +4,17 @@ import Foundation
 /// marks. This is intentionally independent of the document dirty flag.
 final class EditMarkSet {
     private(set) var offsets: Set<Int> = []
+    private(set) var lastRecordedOffset: Int?
     var sortedOffsets: [Int] { offsets.sorted() }
 
-    func clear() { offsets.removeAll() }
+    func clear() { offsets.removeAll(); lastRecordedOffset = nil }
 
     func recordEdit(range: NSRange, replacement: String, in textBeforeEdit: NSString) {
         applyEdit(range: range, replacement: replacement)
         let safe = min(max(0, range.location), textBeforeEdit.length)
-        offsets.insert(textBeforeEdit.lineRange(for: NSRange(location: safe, length: 0)).location)
+        let anchor = textBeforeEdit.lineRange(for: NSRange(location: safe, length: 0)).location
+        offsets.insert(anchor)
+        lastRecordedOffset = anchor
     }
 
     func applyEdit(range: NSRange, replacement: String) {
@@ -23,6 +26,10 @@ final class EditMarkSet {
             if anchor >= removedEnd { return max(0, anchor + delta) }
             return range.location
         })
+        if let anchor = lastRecordedOffset {
+            lastRecordedOffset = anchor < range.location ? anchor
+                : anchor >= removedEnd ? max(0, anchor + delta) : range.location
+        }
     }
 
     func normalize(in text: NSString) {

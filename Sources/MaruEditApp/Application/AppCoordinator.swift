@@ -306,6 +306,27 @@ final class AppCoordinator {
     func showFindUpward()             { ensureWindowControllerReady().showFindUpward() }
     func findWordAtCursor()           { ensureWindowControllerReady().findWordAtCursor() }
     func captureSearchStringAtCursor() { ensureWindowControllerReady().captureSearchStringAtCursor() }
+    func moveToDocumentStart()        { ensureWindowControllerReady().moveToDocumentStart() }
+    func moveToDocumentEnd()          { ensureWindowControllerReady().moveToDocumentEnd() }
+    func moveToScreenStart()          { ensureWindowControllerReady().moveToScreenStart() }
+    func moveToScreenEnd()            { ensureWindowControllerReady().moveToScreenEnd() }
+    func moveToWordStart()            { ensureWindowControllerReady().moveToWordStart() }
+    func moveToWordEnd()              { ensureWindowControllerReady().moveToWordEnd() }
+    func moveWordRightSalnen()        { ensureWindowControllerReady().moveWordRightSalnen() }
+    func moveToLineStart()            { ensureWindowControllerReady().moveToLineStart() }
+    func moveToLineEnd()              { ensureWindowControllerReady().moveToLineEnd() }
+    func moveToLineEndAfterCharacter() { ensureWindowControllerReady().moveToLineEndAfterCharacter() }
+    func moveToLogicalLineStart()     { ensureWindowControllerReady().moveToLogicalLineStart() }
+    func moveToLogicalLineEnd()       { ensureWindowControllerReady().moveToLogicalLineEnd() }
+    func movePage(forward: Bool)      { ensureWindowControllerReady().movePage(forward: forward) }
+    func moveHalfPage(forward: Bool)  { ensureWindowControllerReady().moveHalfPage(forward: forward) }
+    func scrollEditor(forward: Bool, preserveCursor: Bool) { ensureWindowControllerReady().scrollEditor(forward: forward, preserveCursor: preserveCursor) }
+    func moveToAdjacentTab(forward: Bool) { ensureWindowControllerReady().moveToAdjacentTab(forward: forward) }
+    func moveToMatchingBracket()      { ensureWindowControllerReady().moveToMatchingBracket() }
+    func moveToBrace(opening: Bool)   { ensureWindowControllerReady().moveToBrace(opening: opening) }
+    func moveToMatchingTag()          { ensureWindowControllerReady().moveToMatchingTag() }
+    func moveToLastEditMark()         { ensureWindowControllerReady().moveToLastEditMark() }
+    func moveToPreviousCursorPosition() { ensureWindowControllerReady().moveToPreviousCursorPosition() }
     func showReplace()                { ensureWindowControllerReady().showFind(showingReplace: true) }
     func replaceAll()                 { ensureWindowControllerReady().replaceAllFromFindBar() }
     func findNext()                   { ensureWindowControllerReady().findAgain(direction: .next) }
