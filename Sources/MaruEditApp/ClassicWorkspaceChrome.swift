@@ -13,6 +13,7 @@ final class ClassicWorkspaceChrome: NSView {
     private let toolbar = ClassicToolbarView()
     private let ruler = CharacterRulerView()
     private let commandStrip = ClassicCommandStripView()
+    private var rulerStartX: CGFloat = 46
     var externalTopGap: CGFloat = 0 { didSet { needsLayout = true } }
 
     var headingText: String { heading.stringValue }
@@ -53,17 +54,19 @@ final class ClassicWorkspaceChrome: NSView {
             x: 8, y: top - Self.toolbarHeight - externalTopGap - Self.headingHeight + 3,
             width: max(0, bounds.width - 16), height: 16)
         ruler.frame = NSRect(
-            x: 0, y: top - Self.toolbarHeight
+            x: rulerStartX, y: top - Self.toolbarHeight
                 - externalTopGap - (heading.isHidden ? 0 : Self.headingHeight) - Self.rulerHeight,
-            width: bounds.width, height: Self.rulerHeight)
+            width: max(0, bounds.width - rulerStartX), height: Self.rulerHeight)
         commandStrip.frame = NSRect(
             x: 0, y: 0, width: bounds.width, height: Self.commandStripHeight)
     }
 
     func updateHeading(_ value: String) { heading.stringValue = value }
     func updateRuler(editorOrigin: CGFloat, currentColumn: Int) {
-        ruler.editorOrigin = editorOrigin
+        rulerStartX = max(0, editorOrigin)
+        ruler.editorOrigin = 0
         ruler.currentColumn = currentColumn
+        needsLayout = true
     }
 
     var onCommand: ((CommandID) -> Void)? {
@@ -89,7 +92,7 @@ final class ClassicWorkspaceChrome: NSView {
             showCommandStrip: !commandStrip.isHidden)
     }
     var rulerStateForTesting: (origin: CGFloat, column: Int) {
-        (ruler.editorOrigin, ruler.currentColumn)
+        (rulerStartX, ruler.currentColumn)
     }
 }
 
