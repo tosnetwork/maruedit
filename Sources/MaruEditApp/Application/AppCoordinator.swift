@@ -284,6 +284,15 @@ final class AppCoordinator {
     func nextEditMark()                  { ensureWindowControllerReady().nextEditMark() }
     func previousEditMark()              { ensureWindowControllerReady().previousEditMark() }
     func clearEditMarks()                { ensureWindowControllerReady().clearEditMarks() }
+    func toggleSearchHighlight()         { ensureWindowControllerReady().toggleSearchHighlight() }
+    func selectAllSearchMatches()        { ensureWindowControllerReady().selectAllSearchMatches() }
+    func colorAllSearchMatches()         { ensureWindowControllerReady().colorAllSearchMatches() }
+    func clearSearchColors()             { ensureWindowControllerReady().clearSearchColors() }
+    func listAllSearchMatches()           { ensureWindowControllerReady().listAllSearchMatches() }
+    func returnToSearchStart()            { ensureWindowControllerReady().returnToSearchStart() }
+    func setSearchRangeFromSelection()    { ensureWindowControllerReady().setSearchRangeFromSelection() }
+    func selectSearchRange()              { ensureWindowControllerReady().selectSearchRange() }
+    func clearSearchRange()               { ensureWindowControllerReady().clearSearchRange() }
     func showHighlightList()             { ensureWindowControllerReady().showHighlightList() }
     func showCompletions()               { ensureWindowControllerReady().showCompletions() }
     func toggleTableMode()               { ensureWindowControllerReady().toggleTableMode() }

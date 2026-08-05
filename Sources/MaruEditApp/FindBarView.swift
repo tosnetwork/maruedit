@@ -10,7 +10,7 @@ enum FindBarAction {
     case replaceAll
 }
 
-enum FindOption { case caseSensitive, wholeWord, regularExpression }
+enum FindOption { case caseSensitive, wholeWord, regularExpression, fuzzy }
 
 /// The Find Bar is input and presentation only (ROADMAP.md M3-02): it
 /// builds a `SearchQuery` and asks its delegate to carry it out, then
@@ -32,6 +32,7 @@ final class FindBarView: NSView, NSTextFieldDelegate {
     private let caseBtn     = NSButton()
     private let wordBtn     = NSButton()
     private let regexBtn    = NSButton()
+    private let fuzzyBtn    = NSButton()
     private let prevBtn     = NSButton()
     private let nextBtn     = NSButton()
     private let replBtn     = NSButton()
@@ -110,6 +111,7 @@ final class FindBarView: NSView, NSTextFieldDelegate {
         style(caseBtn, title: "Aa", tip: "Case Sensitive (⌥⌘C)", action: #selector(toggleCase), accessibility: "Case sensitive")
         style(wordBtn, title: "W", tip: "Whole Word (⌥⌘W)", action: #selector(toggleWholeWord), accessibility: "Whole word")
         style(regexBtn, title: ".*", tip: "Regular Expression (⌥⌘R)", action: #selector(toggleRegex), accessibility: "Regular expression")
+        style(fuzzyBtn, title: "≋", tip: "Fuzzy Width Search (⌥⌘Z)", action: #selector(toggleFuzzy), accessibility: "Fuzzy width search")
         style(prevBtn, title: "▲", tip: "Previous (⇧⌘G)", action: #selector(doPrev), accessibility: "Find previous")
         style(nextBtn, title: "▼", tip: "Next (⌘G)", action: #selector(doNext), accessibility: "Find next")
         style(closeBtn, title: "✕", tip: "Close (Esc)", action: #selector(doClose), accessibility: "Close find bar")
@@ -123,7 +125,7 @@ final class FindBarView: NSView, NSTextFieldDelegate {
 
         let searchRow = NSView()
         searchRow.translatesAutoresizingMaskIntoConstraints = false
-        for v: NSView in [expandBtn, searchField, matchLabel, caseBtn, wordBtn, regexBtn, prevBtn, nextBtn, resizeBtn, closeBtn] {
+        for v: NSView in [expandBtn, searchField, matchLabel, caseBtn, wordBtn, regexBtn, fuzzyBtn, prevBtn, nextBtn, resizeBtn, closeBtn] {
             searchRow.addSubview(v)
         }
 
@@ -165,7 +167,10 @@ final class FindBarView: NSView, NSTextFieldDelegate {
             regexBtn.leadingAnchor.constraint(equalTo: wordBtn.trailingAnchor, constant: 4),
             regexBtn.centerYAnchor.constraint(equalTo: searchRow.centerYAnchor),
 
-            prevBtn.leadingAnchor.constraint(equalTo: regexBtn.trailingAnchor, constant: 8),
+            fuzzyBtn.leadingAnchor.constraint(equalTo: regexBtn.trailingAnchor, constant: 4),
+            fuzzyBtn.centerYAnchor.constraint(equalTo: searchRow.centerYAnchor),
+
+            prevBtn.leadingAnchor.constraint(equalTo: fuzzyBtn.trailingAnchor, constant: 8),
             prevBtn.centerYAnchor.constraint(equalTo: searchRow.centerYAnchor),
 
             nextBtn.leadingAnchor.constraint(equalTo: prevBtn.trailingAnchor, constant: 4),
@@ -230,6 +235,7 @@ final class FindBarView: NSView, NSTextFieldDelegate {
         case "c": toggleCase(); return true
         case "w": toggleWholeWord(); return true
         case "r": toggleRegex(); return true
+        case "z": toggleFuzzy(); return true
         default: return super.performKeyEquivalent(with: event)
         }
     }
@@ -251,6 +257,7 @@ final class FindBarView: NSView, NSTextFieldDelegate {
             mode: regexBtn.state == .on ? .regularExpression : .literal,
             isCaseSensitive: caseBtn.state == .on,
             wholeWord: wordBtn.state == .on,
+            isFuzzy: fuzzyBtn.state == .on,
             wraps: true,
             scope: .document
         )
@@ -277,6 +284,7 @@ final class FindBarView: NSView, NSTextFieldDelegate {
         case .caseSensitive: caseBtn.state == .on
         case .wholeWord: wordBtn.state == .on
         case .regularExpression: regexBtn.state == .on
+        case .fuzzy: fuzzyBtn.state == .on
         }
     }
 
@@ -285,6 +293,7 @@ final class FindBarView: NSView, NSTextFieldDelegate {
         case .caseSensitive: toggleCase()
         case .wholeWord: toggleWholeWord()
         case .regularExpression: toggleRegex()
+        case .fuzzy: toggleFuzzy()
         }
     }
 
@@ -315,11 +324,16 @@ final class FindBarView: NSView, NSTextFieldDelegate {
         optionDidChange()
     }
 
+    @objc func toggleFuzzy() {
+        fuzzyBtn.state = fuzzyBtn.state == .on ? .off : .on
+        optionDidChange()
+    }
+
     /// Momentary buttons don't draw their `state`, so an enabled option
     /// has to announce itself some other way — otherwise a keyboard user
     /// who pressed ⌥⌘C has no way to tell whether it took effect.
     private func optionDidChange() {
-        for button in [caseBtn, wordBtn, regexBtn] {
+        for button in [caseBtn, wordBtn, regexBtn, fuzzyBtn] {
             button.contentTintColor = button.state == .on ? Theme.accent : Theme.tabText
             button.setAccessibilityValue(button.state == .on ? "on" : "off")
         }

@@ -36,6 +36,8 @@ final class MainWindowController: NSWindowController,
     /// The last query actually executed, so Find Next works after the bar
     /// is closed.
     private var lastQuery: SearchQuery?
+    private var searchStartOffset: Int?
+    private var searchColorIndex = 0
     private let searchHistoryStore = SearchHistoryStore()
     private var searchHistory = SearchHistoryState()
 
@@ -1158,8 +1160,11 @@ final class MainWindowController: NSWindowController,
         // Incremental search restarts from wherever the caret was when the
         // bar opened, not from the previous keystroke's match.
         let selection = editorVC.textView.selectedRange()
+        searchStartOffset = selection.location
         editorVC.incrementalSearchAnchor = selection.location
-        editorVC.searchScopeSelection = selection.length > 0 ? selection : nil
+        if !editorVC.hasExplicitSearchScope {
+            editorVC.searchScopeSelection = selection.length > 0 ? selection : nil
+        }
         syncSearchHistoryUI()
         findBar.activate()
     }
@@ -1192,8 +1197,87 @@ final class MainWindowController: NSWindowController,
             showFind()
             return
         }
+        if searchStartOffset == nil { searchStartOffset = editorVC.selectionSet.primaryRange.location }
         let outcome = editorVC.find(query, direction: direction)
         if !findBar.isHidden { findBar.showOutcome(outcome) }
+    }
+
+    private func currentSearchMatches() -> (SearchQuery, [NSRange])? {
+        guard var query = activeSearchQuery(), !query.pattern.isEmpty else {
+            showFind(); return nil
+        }
+        if let scope = editorVC.searchScopeSelection, scope.length > 0 {
+            query.scope = .selection(scope)
+        }
+        guard let matches = try? SearchEngine.matches(for: query, in: curDoc?.content ?? "") else {
+            showStatusMessage("Invalid search pattern"); return nil
+        }
+        return (query, matches.map(\.range))
+    }
+
+    func toggleSearchHighlight() {
+        if !editorVC.searchHighlightRangesForTesting.isEmpty {
+            editorVC.showSearchHighlights([]); editorVC.showSearchMarkers([]); return
+        }
+        guard let (_, ranges) = currentSearchMatches() else { return }
+        editorVC.showSearchHighlights(ranges)
+        editorVC.showSearchMarkers(ranges)
+        showStatusMessage("Highlighted \(ranges.count) matches")
+    }
+
+    func selectAllSearchMatches() {
+        guard let (query, _) = currentSearchMatches() else { return }
+        let outcome = editorVC.selectAllMatches(for: query)
+        showStatusMessage("Selected \(outcome.totalMatches) matches")
+    }
+
+    func colorAllSearchMatches() {
+        guard let (_, ranges) = currentSearchMatches() else { return }
+        let colors: [NSColor] = [.systemYellow, .systemGreen, .systemCyan, .systemPink]
+        editorVC.showSearchHighlights(ranges, color: colors[searchColorIndex % colors.count])
+        editorVC.showSearchMarkers(ranges)
+        searchColorIndex += 1
+        showStatusMessage("Colored \(ranges.count) matches")
+    }
+
+    func clearSearchColors() {
+        editorVC.showSearchHighlights([])
+        editorVC.showSearchMarkers([])
+    }
+
+    func listAllSearchMatches() {
+        guard let (_, ranges) = currentSearchMatches() else { return }
+        sidebarVC.updateSearchResults(ranges, text: curDoc?.content ?? "")
+        sidebarVC.showUtilityPane(.results)
+        if sidebarVC.view.isHidden || splitView.isSubviewCollapsed(sidebarVC.view) { toggleSidebar() }
+    }
+
+    func returnToSearchStart() {
+        guard let offset = searchStartOffset else { showStatusMessage("No search start position"); return }
+        let safe = min(offset, (editorVC.textView.string as NSString).length)
+        let range = NSRange(location: safe, length: 0)
+        editorVC.setSelections([range], primaryRange: range)
+        editorVC.textView.scrollRangeToVisible(range)
+    }
+
+    func setSearchRangeFromSelection() {
+        let selection = editorVC.selectionSet.primaryRange
+        guard selection.length > 0 else { showStatusMessage("Select a search range first"); return }
+        editorVC.searchScopeSelection = selection
+        editorVC.hasExplicitSearchScope = true
+        showStatusMessage("Search range set")
+    }
+
+    func selectSearchRange() {
+        guard let range = editorVC.searchScopeSelection else { showStatusMessage("No search range"); return }
+        editorVC.setSelections([range], primaryRange: range)
+        editorVC.textView.scrollRangeToVisible(range)
+    }
+
+    func clearSearchRange() {
+        editorVC.searchScopeSelection = nil
+        editorVC.hasExplicitSearchScope = false
+        showStatusMessage("Search range cleared")
     }
 
     func showGoToLine() {
@@ -2105,7 +2189,8 @@ final class MainWindowController: NSWindowController,
         findBar.isHidden = true
         layoutContentViews()
         editorVC.incrementalSearchAnchor = nil
-        editorVC.searchScopeSelection = nil
+        if !editorVC.hasExplicitSearchScope { editorVC.searchScopeSelection = nil }
+        editorVC.showSearchHighlights([])
         editorVC.showSearchMarkers([])
         sidebarVC.updateSearchResults([], text: curDoc?.content ?? "")
         window?.makeFirstResponder(editorVC.textView)

@@ -88,6 +88,19 @@ significantly, replace this with a small script that generates it from
 | `search.toggleCaseSensitive` | Case Sensitive | Search › Search Options | ⌥⌘C | Toggles the shared Find/Replace query flag |
 | `search.toggleWholeWord` | Whole Word | Search › Search Options | ⌥⌘W | Toggles the shared Find/Replace query flag |
 | `search.toggleRegex` | Regular Expression | Search › Search Options | ⌥⌘R | Toggles the shared Find/Replace query mode |
+| `search.toggleFuzzy` | Fuzzy Width Search | Search › Search Options | ⌥⌘Z | Compatibility-normalizes full/half-width forms while preserving original match and capture ranges |
+| `search.previousEditMark` | Previous Edit Mark | Search › Edit Marks | — | Navigates to the preceding changed-line gutter mark with wrapping |
+| `search.nextEditMark` | Next Edit Mark | Search › Edit Marks | — | Navigates to the following changed-line gutter mark with wrapping |
+| `search.clearEditMarks` | Clear Edit Marks | Search › Edit Marks | — | Clears changed-line marks without changing the document dirty state |
+| `search.toggleHighlight` | Highlight Search String | Search › All Matches | — | Toggles temporary highlighting for every active-query match |
+| `search.selectAllMatches` | Select All Matches | Search › All Matches | — | Creates one selection per match through the unified search engine |
+| `search.colorAllMatches` | Color All Matches | Search › All Matches | — | Applies a rotating temporary match color |
+| `search.clearMatchColors` | Clear Match Colors | Search › All Matches | — | Removes temporary match coloring and gutter markers |
+| `search.listAllMatches` | List All Matches | Search › All Matches | — | Lists matching lines in the Results utility pane |
+| `search.returnToStart` | Return to Search Start | Search | — | Restores the caret captured when search began |
+| `search.setRange` | Set Selection as Search Range | Search › Search Range | — | Persists the current selection as the explicit search scope |
+| `search.selectRange` | Select Search Range | Search › Search Range | — | Reselects the active explicit search scope |
+| `search.clearRange` | Clear Search Range | Search › Search Range | — | Restores document-wide searching |
 | `view.toggleSidebar` | Toggle Sidebar | View | ⌘B | `AppCoordinator.toggleSidebar()` |
 | `view.toggleWrap` | Wrap Lines | View | — | `AppCoordinator.toggleWrapLines()` |
 | `view.toggleSpaces` | Show Spaces | View > Show Invisibles | — | `AppCoordinator.toggleInvisible(\.spaces)` |
@@ -109,6 +122,7 @@ significantly, replace this with a small script that generates it from
 | `view.toggleLinkedScrolling` | Linked Editor Scrolling | View | — | `AppCoordinator.toggleLinkedEditorScrolling()` |
 | `view.toggleTableMode` | CSV/TSV Table Mode | View | — | `AppCoordinator.toggleTableMode()` |
 | `view.toggleVerticalLayout` | Vertical Writing Mode | View | — | Switches between AppKit horizontal and native vertical glyph layout |
+| `view.toggleColumnLayout` | Column Layout Mode | View | — | Flows one TextKit storage continuously through ordered editable columns |
 | `view.toggleLineNumbers` | Show Line Numbers | View | — | Shows or hides the editor gutter |
 | `view.toggleHeading` | Show Heading Bar | View | — | Shows or hides the classic outline/current-document heading |
 | `view.toggleFunctionKeys` | Show Function-Key Bar | View | — | Shows or hides the twelve-slot classic function-key strip |

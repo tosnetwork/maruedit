@@ -2,6 +2,30 @@ import XCTest
 @testable import MaruEditCore
 
 final class SearchEngineTests: XCTestCase {
+    func testFuzzySearchMatchesWidthAndCompatibilityFormsWithOriginalRanges() throws {
+        let text = "前 ﾊﾞｰｼﾞｮﾝ 後 バージョン ＡBC"
+        let kana = SearchQuery(pattern: "バージョン", isFuzzy: true)
+        let matches = try SearchEngine.matches(for: kana, in: text)
+        XCTAssertEqual(matches.count, 2)
+        XCTAssertEqual(matches.map { (text as NSString).substring(with: $0.range) },
+                       ["ﾊﾞｰｼﾞｮﾝ", "バージョン"])
+
+        let latin = SearchQuery(pattern: "ABC", isCaseSensitive: true, isFuzzy: true)
+        XCTAssertEqual(try SearchEngine.matches(for: latin, in: text).count, 1)
+    }
+
+    func testFuzzyRegexCapturesAndReplacementMapBackToOriginalText() throws {
+        let text = "x Ａ１２ y"
+        let query = SearchQuery(
+            pattern: "(A)([0-9]+)", replacement: "$2-$1",
+            mode: .regularExpression, isCaseSensitive: true, isFuzzy: true)
+        let matches = try SearchEngine.matches(for: query, in: text)
+        XCTAssertEqual(matches.count, 1)
+        XCTAssertEqual((text as NSString).substring(with: matches[0].range), "Ａ１２")
+        XCTAssertEqual(SearchEngine.replacement(for: matches[0], in: text, query: query), "１２-Ａ")
+        let replaced = try SearchEngine.replacingAllMatches(of: query, in: text)
+        XCTAssertEqual(replaced.text, "x １２-Ａ y")
+    }
 
     // MARK: - Literal mode
 

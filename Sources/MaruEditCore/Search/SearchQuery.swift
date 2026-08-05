@@ -23,6 +23,7 @@ public struct SearchQuery: Sendable, Equatable {
     public var mode: SearchMode
     public var isCaseSensitive: Bool
     public var wholeWord: Bool
+    public var isFuzzy: Bool
     public var wraps: Bool
     public var scope: SearchScope
 
@@ -32,6 +33,7 @@ public struct SearchQuery: Sendable, Equatable {
         mode: SearchMode = .literal,
         isCaseSensitive: Bool = false,
         wholeWord: Bool = false,
+        isFuzzy: Bool = false,
         wraps: Bool = true,
         scope: SearchScope = .document
     ) {
@@ -40,6 +42,7 @@ public struct SearchQuery: Sendable, Equatable {
         self.mode = mode
         self.isCaseSensitive = isCaseSensitive
         self.wholeWord = wholeWord
+        self.isFuzzy = isFuzzy
         self.wraps = wraps
         self.scope = scope
     }

@@ -36,11 +36,18 @@ enum SearchDirection {
 /// translates between "a match set" and "what the text view shows".
 extension EditorViewController {
 
+    private func scoped(_ query: SearchQuery) -> SearchQuery {
+        guard let scope = searchScopeSelection, scope.length > 0 else { return query }
+        var result = query
+        result.scope = .selection(scope)
+        return result
+    }
+
     /// Match count and current position without changing the selection.
     func matchStatus(for query: SearchQuery) -> FindOutcome {
         let text = textView.string
         do {
-            let matches = try SearchEngine.matches(for: query, in: text)
+            let matches = try SearchEngine.matches(for: scoped(query), in: text)
             return FindOutcome(
                 totalMatches: matches.count,
                 currentIndex: indexOfSelectedMatch(in: matches)
@@ -56,7 +63,8 @@ extension EditorViewController {
         let text = textView.string
         let selection = textView.selectedRange()
         do {
-            let matches = try SearchEngine.matches(for: query, in: text)
+            let query = scoped(query)
+            let matches = try SearchEngine.matches(for: scoped(query), in: text)
             guard !matches.isEmpty else { return .empty }
 
             let target: SearchMatch?
@@ -91,7 +99,7 @@ extension EditorViewController {
     @discardableResult
     func selectAllMatches(for query: SearchQuery) -> FindOutcome {
         do {
-            let matches = try SearchEngine.matches(for: query, in: textView.string)
+            let matches = try SearchEngine.matches(for: scoped(query), in: textView.string)
             guard !matches.isEmpty else { return .empty }
             let ranges = matches.map { NSValue(range: $0.range) }
             textView.setSelectedRanges(ranges, affinity: .downstream, stillSelecting: false)
@@ -114,7 +122,7 @@ extension EditorViewController {
         let text = textView.string
         let selection = textView.selectedRange()
         do {
-            let matches = try SearchEngine.matches(for: query, in: text)
+            let matches = try SearchEngine.matches(for: scoped(query), in: text)
             guard let current = matches.first(where: { $0.range == selection }) else {
                 return find(query, direction: .next)
             }

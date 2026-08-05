@@ -19,7 +19,7 @@ native menu before the Hidemaru-compatible business menus.
 | Convert | Dedicated Convert menu | Case, half/full-width, hiragana/katakana and Tab/space conversions are present | No known compatible gap |
 | View | View | Wrapping, invisibles, 8/10-column ruler marks, profile tab stops, editable vertical writing, continuous TextKit column flow, splits, chrome visibility and output-pane focus commands are present; vertical/column modes exclude ordinary splits as in Hidemaru | No known compatible gap |
 | Insert | Dedicated Insert menu | Date/time, page break, C0/DEL control-code selection and encoding-aware file-content insertion are present | No known compatible gap |
-| Search | Dedicated Search menu | Search/replace/grep, case/word/regex flags and line-gutter edit marks with previous/next/clear navigation are present; missing highlight/all-candidate and range-search variants |
+| Search | Dedicated Search menu | Search/replace/grep, case/word/regex/fuzzy flags, search-start return, edit-mark navigation, temporary highlight/color/select/list-all operations and persistent selectable range search are present | No known compatible gap |
 | Highlight | Dedicated Highlight menu | Color-marker operations plus sorted highlight list with preview, jump and remove are present | No known compatible gap |
 | Bookmark | Dedicated Bookmark menu | Toggle/navigation/clear plus document bookmark list with jump/remove organization are present | No known compatible gap |
 | Tools | Dedicated grouped Tools menu | Compare/difference, tag navigation, dynamic external commands and complete command-list access are grouped | No known compatible gap |
@@ -29,7 +29,7 @@ native menu before the Hidemaru-compatible business menus.
 | Help | Dedicated Help menu plus native About | User guide, macro help, shortcut reference, latest-release check and support/reporting entries are present | No known compatible gap |
 
 Official menu pages contain roughly 297 command references across these
-menus. MaruEdit currently registers 165 stable command IDs. Duplicate menu
+menus. MaruEdit currently registers 175 stable command IDs. Duplicate menu
 placements mean this is not a one-to-one command count, but it establishes
 that functional parity is not complete.
 

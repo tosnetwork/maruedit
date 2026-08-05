@@ -196,6 +196,25 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     /// moment the button is pressed can't serve that role, since by then
     /// it is usually just the current match.
     var searchScopeSelection: NSRange?
+    var hasExplicitSearchScope = false
+    private var temporarySearchHighlightRanges: [NSRange] = []
+
+    func showSearchHighlights(_ ranges: [NSRange], color: NSColor = .systemYellow) {
+        guard let layoutManager = textView.layoutManager else { return }
+        let length = layoutManager.textStorage?.length ?? 0
+        for range in temporarySearchHighlightRanges where range.location <= length {
+            let safe = NSRange(location: range.location, length: min(range.length, length - range.location))
+            layoutManager.removeTemporaryAttribute(.backgroundColor, forCharacterRange: safe)
+        }
+        temporarySearchHighlightRanges = ranges
+        for range in ranges where range.length > 0 {
+            layoutManager.addTemporaryAttribute(
+                .backgroundColor, value: color.withAlphaComponent(0.38), forCharacterRange: range)
+        }
+        textView.needsDisplay = true
+    }
+
+    var searchHighlightRangesForTesting: [NSRange] { temporarySearchHighlightRanges }
 
     /// Rehighlights the whole document (or just the viewport for large
     /// ones). Used after a bulk edit such as Replace All, where per-line

@@ -249,11 +249,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         findMenu.addItem(commandItem(.searchReplaceAll))
         findMenu.addItem(commandItem(.searchFindNext))
         findMenu.addItem(commandItem(.searchFindPrevious))
+        findMenu.addItem(commandItem(.searchReturnToStart))
+        let allMatchesItem = NSMenuItem(title: "All Matches", action: nil, keyEquivalent: "")
+        let allMatchesMenu = NSMenu(title: "All Matches")
+        for id: CommandID in [
+            .searchToggleHighlight, .searchSelectAllMatches, .searchColorAllMatches,
+            .searchClearMatchColors, .searchListAllMatches,
+        ] { allMatchesMenu.addItem(commandItem(id)) }
+        allMatchesItem.submenu = allMatchesMenu
+        findMenu.addItem(allMatchesItem)
         let optionsItem = NSMenuItem(title: "Search Options", action: nil, keyEquivalent: "")
         let optionsMenu = NSMenu(title: "Search Options")
         optionsMenu.addItem(commandItem(.searchToggleCaseSensitive))
         optionsMenu.addItem(commandItem(.searchToggleWholeWord))
         optionsMenu.addItem(commandItem(.searchToggleRegex))
+        optionsMenu.addItem(commandItem(.searchToggleFuzzy))
         optionsItem.submenu = optionsMenu
         findMenu.addItem(optionsItem)
         let editMarksItem = NSMenuItem(title: "Edit Marks", action: nil, keyEquivalent: "")
@@ -263,6 +273,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         editMarksMenu.addItem(commandItem(.searchClearEditMarks))
         editMarksItem.submenu = editMarksMenu
         findMenu.addItem(editMarksItem)
+        let rangeItem = NSMenuItem(title: "Search Range", action: nil, keyEquivalent: "")
+        let rangeMenu = NSMenu(title: "Search Range")
+        rangeMenu.addItem(commandItem(.searchSetRange))
+        rangeMenu.addItem(commandItem(.searchSelectRange))
+        rangeMenu.addItem(commandItem(.searchClearRange))
+        rangeItem.submenu = rangeMenu
+        findMenu.addItem(rangeItem)
         findMenu.addItem(.separator())
         // Go to Line moves off ⌘G, which macOS reserves for Find Next.
         findMenu.addItem(commandItem(.searchGoToLine))
@@ -579,6 +596,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .searchToggleCaseSensitive: .caseSensitive,
             .searchToggleWholeWord: .wholeWord,
             .searchToggleRegex: .regularExpression,
+            .searchToggleFuzzy: .fuzzy,
         ]
         if let option = findOptions[id] {
             menuItem.state = coordinator.isFindOptionEnabled(option) ? .on : .off

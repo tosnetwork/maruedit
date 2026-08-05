@@ -57,14 +57,17 @@ final class FindBarViewTests: XCTestCase {
         XCTAssertEqual(bar.currentQuery.mode, .literal)
         XCTAssertFalse(bar.currentQuery.isCaseSensitive)
         XCTAssertFalse(bar.currentQuery.wholeWord)
+        XCTAssertFalse(bar.currentQuery.isFuzzy)
 
         bar.toggleCase()
         bar.toggleWholeWord()
         bar.toggleRegex()
+        bar.toggleFuzzy()
 
         XCTAssertTrue(bar.currentQuery.isCaseSensitive)
         XCTAssertTrue(bar.currentQuery.wholeWord)
         XCTAssertEqual(bar.currentQuery.mode, .regularExpression)
+        XCTAssertTrue(bar.currentQuery.isFuzzy)
     }
 
     func testTogglingAnOptionReRunsTheSearchImmediately() async {
@@ -159,10 +162,12 @@ final class FindBarViewTests: XCTestCase {
         XCTAssertTrue(bar.currentQuery.wholeWord)
         try send("r")
         XCTAssertEqual(bar.currentQuery.mode, .regularExpression)
+        try send("z")
+        XCTAssertTrue(bar.currentQuery.isFuzzy)
         try send("c")
         XCTAssertFalse(bar.currentQuery.isCaseSensitive, "the same shortcut turns the option back off")
 
-        XCTAssertEqual(delegate.actions, Array(repeating: FindBarAction.incremental, count: 4),
+        XCTAssertEqual(delegate.actions, Array(repeating: FindBarAction.incremental, count: 5),
                        "each option change re-runs the search")
     }
 
@@ -225,7 +230,7 @@ final class FindBarViewTests: XCTestCase {
             view.subviews.forEach(collect)
         }
         collect(bar)
-        XCTAssertEqual(buttons.count, 10)
+        XCTAssertEqual(buttons.count, 11)
         for button in buttons {
             XCTAssertFalse(button.accessibilityLabel()?.isEmpty ?? true,
                            "button '\(button.title)' has no VoiceOver label")

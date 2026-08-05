@@ -27,9 +27,9 @@ public enum SearchEngine {
         let pattern: String
         switch query.mode {
         case .literal:
-            pattern = NSRegularExpression.escapedPattern(for: query.pattern)
+            pattern = NSRegularExpression.escapedPattern(for: normalizedPattern(query))
         case .regularExpression:
-            pattern = query.pattern
+            pattern = normalizedPattern(query)
         }
 
         var options: NSRegularExpression.Options = []
@@ -80,6 +80,7 @@ public enum SearchEngine {
         using regex: NSRegularExpression
     ) -> [SearchMatch] {
         guard !query.pattern.isEmpty else { return [] }
+        if query.isFuzzy { return fuzzyMatches(for: query, in: text, using: regex) }
         let ns = text as NSString
         let scope = resolvedScope(query.scope, in: ns)
 
@@ -186,6 +187,92 @@ public enum SearchEngine {
     }
 
     // MARK: - Helpers
+
+    private static func normalizedPattern(_ query: SearchQuery) -> String {
+        query.isFuzzy ? compatibilityNormalized(query.pattern) : query.pattern
+    }
+
+    private static func compatibilityNormalized(_ value: String) -> String {
+        value.precomposedStringWithCompatibilityMapping.precomposedStringWithCanonicalMapping
+    }
+
+    private struct CompatibilityText {
+        var text = ""
+        var originalStarts: [Int] = []
+        var originalEnds: [Int] = []
+    }
+
+    private static func compatibilityText(_ source: String) -> CompatibilityText {
+        var result = CompatibilityText()
+        var originalOffset = 0
+        let characters = Array(source)
+        var index = 0
+        while index < characters.count {
+            var original = String(characters[index])
+            if index + 1 < characters.count,
+               isHalfWidthKana(characters[index]), isHalfWidthVoicingMark(characters[index + 1]) {
+                original += String(characters[index + 1])
+                index += 1
+            }
+            let originalLength = (original as NSString).length
+            let normalized = compatibilityNormalized(original)
+            result.text += normalized
+            let normalizedLength = (normalized as NSString).length
+            result.originalStarts.append(contentsOf: repeatElement(originalOffset, count: normalizedLength))
+            result.originalEnds.append(contentsOf: repeatElement(originalOffset + originalLength, count: normalizedLength))
+            originalOffset += originalLength
+            index += 1
+        }
+        return result
+    }
+
+    private static func isHalfWidthKana(_ character: Character) -> Bool {
+        character.unicodeScalars.allSatisfy { (0xFF61...0xFF9D).contains($0.value) }
+    }
+
+    private static func isHalfWidthVoicingMark(_ character: Character) -> Bool {
+        character.unicodeScalars.count == 1
+            && character.unicodeScalars.contains { $0.value == 0xFF9E || $0.value == 0xFF9F }
+    }
+
+    private static func fuzzyMatches(
+        for query: SearchQuery, in text: String, using regex: NSRegularExpression
+    ) -> [SearchMatch] {
+        let mapped = compatibilityText(text)
+        let original = text as NSString
+        let originalScope = resolvedScope(query.scope, in: original)
+        let normalizedLength = (mapped.text as NSString).length
+        let normalizedStart = mapped.originalStarts.firstIndex { $0 >= originalScope.location }
+            ?? normalizedLength
+        let normalizedEnd = mapped.originalEnds.lastIndex { $0 <= NSMaxRange(originalScope) }
+            .map { $0 + 1 } ?? normalizedStart
+        let normalizedScope = NSRange(
+            location: normalizedStart, length: max(0, normalizedEnd - normalizedStart))
+        return regex.matches(in: mapped.text, range: normalizedScope).compactMap { result in
+            guard let whole = originalRange(result.range, mapped: mapped, originalLength: original.length),
+                  !query.wholeWord || isWholeWord(whole, in: original) else { return nil }
+            let groups = (0..<result.numberOfRanges).map {
+                originalRange(result.range(at: $0), mapped: mapped, originalLength: original.length)
+                    ?? NSRange(location: NSNotFound, length: 0)
+            }
+            return SearchMatch(range: whole, captureGroups: groups)
+        }
+    }
+
+    private static func originalRange(
+        _ range: NSRange, mapped: CompatibilityText, originalLength: Int
+    ) -> NSRange? {
+        guard range.location != NSNotFound else { return nil }
+        if range.length == 0 {
+            let location = range.location < mapped.originalStarts.count
+                ? mapped.originalStarts[range.location] : originalLength
+            return NSRange(location: location, length: 0)
+        }
+        guard range.location < mapped.originalStarts.count,
+              NSMaxRange(range) - 1 < mapped.originalEnds.count else { return nil }
+        let start = mapped.originalStarts[range.location]
+        return NSRange(location: start, length: mapped.originalEnds[NSMaxRange(range) - 1] - start)
+    }
 
     private static func resolvedScope(_ scope: SearchScope, in ns: NSString) -> NSRange {
         switch scope {
