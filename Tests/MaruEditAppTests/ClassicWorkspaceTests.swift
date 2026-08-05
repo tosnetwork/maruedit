@@ -84,6 +84,25 @@ final class ClassicWorkspaceTests: XCTestCase {
         XCTAssertEqual(labels, ["Grep", "Open"])
     }
 
+    func testClassicToolbarSupportsIconTextAndTextOnlyDisplayModes() async {
+        let controller = MainWindowController()
+        controller.setClassicToolbarLayoutForTesting(["file.open", "search.grep"])
+        let root = try! XCTUnwrap(controller.window?.contentView)
+        let toolbar = try! XCTUnwrap(descendants(of: root).first {
+            $0.accessibilityLabel() == "Maru Classic command toolbar"
+        })
+
+        controller.setClassicToolbarDisplayModeForTesting(.iconAndText)
+        var buttons = descendants(of: toolbar).compactMap { $0 as? NSButton }
+        XCTAssertEqual(buttons.map(\.title), ["Open", "Grep"])
+        XCTAssertTrue(buttons.allSatisfy { $0.imagePosition == .imageLeading && $0.image != nil })
+
+        controller.setClassicToolbarDisplayModeForTesting(.textOnly)
+        buttons = descendants(of: toolbar).compactMap { $0 as? NSButton }
+        XCTAssertEqual(controller.classicToolbarDisplayModeForTesting, .textOnly)
+        XCTAssertTrue(buttons.allSatisfy { $0.imagePosition == .noImage && !$0.title.isEmpty })
+    }
+
     func testClassicLightAndModernThemesSwitchWithoutChangingDocument() async {
         let controller = MainWindowController()
         controller.macroEditor.textView.string = "theme-safe content"

@@ -44,7 +44,7 @@ that functional parity is not complete.
 | Hide/remove buttons | Supported | Context-menu add/remove commands | Present |
 | Reset defaults | Supported | Supported | Present |
 | Icon size/DPI | Automatic plus size choices | Native scaling only | Partial/native equivalent |
-| Text-only/fallback labels | Supported through definition JSON | Tooltip/accessibility label only | Missing |
+| Text-only/fallback labels | Supported through definition JSON | Icons, icons plus text, or text-only; selection persists | Present |
 | Search box in toolbar | Supported/configurable | Find Bar is separate | Partial |
 | Floating toolbar | Supported on Windows | No native equivalent | Intentional platform difference |
 | Function-key strip | Configurable and can merge with status bar | Six fixed F-key entries | Partial |

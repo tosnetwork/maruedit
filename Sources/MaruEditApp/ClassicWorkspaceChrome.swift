@@ -83,9 +83,13 @@ final class ClassicWorkspaceChrome: NSView {
 
     var toolbarCommandIDs: [String] { toolbar.commandIDs.map(\.rawValue) }
     var toolbarLayoutEntries: [String] { toolbar.layoutEntries }
+    var toolbarDisplayMode: ToolbarDisplayMode { toolbar.displayMode }
 
     func activateToolbarCommand(_ command: CommandID) { toolbar.activate(command) }
     func setToolbarLayoutForTesting(_ entries: [String]) { toolbar.setLayoutForTesting(entries) }
+    func setToolbarDisplayModeForTesting(_ mode: ToolbarDisplayMode) {
+        toolbar.setDisplayModeForTesting(mode)
+    }
 
     func applyVisibility(_ options: ClassicChromeOptions) {
         configuredVisibility = options
@@ -164,9 +168,11 @@ private final class ClassicToolbarView: NSView {
     private var separators: [NSView] = []
     private var displayedItems: [Item] = []
     private var toolbarLayout = ToolbarLayout(entries: [])
+    private(set) var displayMode: ToolbarDisplayMode = .iconOnly
     private var contextKey: String?
     private var contextSeparatorIndex: Int?
     private static let layoutDefaultsKey = "MaruClassicToolbarLayout"
+    private static let displayModeDefaultsKey = "MaruClassicToolbarDisplayMode"
     private static let hiddenDefaultsKey = "MaruClassicToolbarHiddenItems"
     private static var catalog: [String: Item] {
         Dictionary(uniqueKeysWithValues: groups.flatMap { $0 }.map { (key(for: $0), $0) })
@@ -186,6 +192,8 @@ private final class ClassicToolbarView: NSView {
         setAccessibilityRole(.toolbar)
         setAccessibilityLabel("Maru Classic command toolbar")
         toolbarLayout = loadLayout()
+        displayMode = UserDefaults.standard.string(forKey: Self.displayModeDefaultsKey)
+            .flatMap(ToolbarDisplayMode.init(rawValue:)) ?? .iconOnly
         rebuildSubviews()
     }
 
@@ -204,8 +212,9 @@ private final class ClassicToolbarView: NSView {
                 x += 8
             } else {
                 let button = buttons[itemIndex]
-                button.frame = NSRect(x: x, y: 3, width: 27, height: 26)
-                x += 27
+                let width = buttonWidth(for: button)
+                button.frame = NSRect(x: x, y: 3, width: width, height: 26)
+                x += width
                 itemIndex += 1
             }
         }
@@ -258,6 +267,16 @@ private final class ClassicToolbarView: NSView {
         add.submenu = addMenu
         add.isEnabled = !addMenu.items.isEmpty
         menu.addItem(add)
+        let styleMenu = NSMenu(title: "Display Style")
+        for mode in ToolbarDisplayMode.allCases {
+            let item = NSMenuItem(
+                title: title(for: mode), action: #selector(changeDisplayMode(_:)), keyEquivalent: "")
+            item.target = self; item.representedObject = mode.rawValue
+            item.state = displayMode == mode ? .on : .off
+            styleMenu.addItem(item)
+        }
+        let style = NSMenuItem(title: "Display Style", action: nil, keyEquivalent: "")
+        style.submenu = styleMenu; menu.addItem(style)
         menu.addItem(.separator())
         let restore = NSMenuItem(
             title: "Restore Default Toolbar", action: #selector(restoreDefaultToolbar),
@@ -303,7 +322,17 @@ private final class ClassicToolbarView: NSView {
 
     @objc private func restoreDefaultToolbar() {
         toolbarLayout = ToolbarLayout(entries: Self.defaultEntries)
+        displayMode = .iconOnly
+        UserDefaults.standard.set(displayMode.rawValue, forKey: Self.displayModeDefaultsKey)
         applyCustomization()
+    }
+
+    @objc private func changeDisplayMode(_ sender: NSMenuItem) {
+        guard let rawValue = sender.representedObject as? String,
+              let mode = ToolbarDisplayMode(rawValue: rawValue) else { return }
+        displayMode = mode
+        UserDefaults.standard.set(mode.rawValue, forKey: Self.displayModeDefaultsKey)
+        rebuildSubviews(); needsLayout = true
     }
 
     private func applyCustomization() {
@@ -336,8 +365,11 @@ private final class ClassicToolbarView: NSView {
             } else if let item = Self.catalog[entry] {
                 let button = ClassicToolbarButton()
                 button.bezelStyle = .inline; button.isBordered = false
-                button.imagePosition = .imageOnly; button.imageScaling = .scaleProportionallyDown
+                button.imageScaling = .scaleProportionallyDown
                 button.image = NSImage(systemSymbolName: item.symbol, accessibilityDescription: item.title)
+                button.imagePosition = imagePosition(for: displayMode)
+                button.title = displayMode == .iconOnly ? "" : item.title
+                button.font = .systemFont(ofSize: 10)
                 button.contentTintColor = item.tint; button.toolTip = item.title
                 button.setAccessibilityLabel(item.title); button.target = self
                 button.action = #selector(activateButton(_:)); button.tag = displayedItems.count
@@ -366,6 +398,35 @@ private final class ClassicToolbarView: NSView {
             .normalized(availableKeys: Set(Self.catalog.keys))
         rebuildSubviews()
         needsLayout = true
+    }
+
+    func setDisplayModeForTesting(_ mode: ToolbarDisplayMode) {
+        displayMode = mode
+        rebuildSubviews(); needsLayout = true
+    }
+
+    private func buttonWidth(for button: NSButton) -> CGFloat {
+        switch displayMode {
+        case .iconOnly: 27
+        case .iconAndText: min(110, max(52, button.intrinsicContentSize.width + 8))
+        case .textOnly: min(100, max(38, button.intrinsicContentSize.width + 8))
+        }
+    }
+
+    private func imagePosition(for mode: ToolbarDisplayMode) -> NSControl.ImagePosition {
+        switch mode {
+        case .iconOnly: .imageOnly
+        case .iconAndText: .imageLeading
+        case .textOnly: .noImage
+        }
+    }
+
+    private func title(for mode: ToolbarDisplayMode) -> String {
+        switch mode {
+        case .iconOnly: "Icons Only"
+        case .iconAndText: "Icons and Text"
+        case .textOnly: "Text Only"
+        }
     }
 
     private static func key(for item: Item) -> String {

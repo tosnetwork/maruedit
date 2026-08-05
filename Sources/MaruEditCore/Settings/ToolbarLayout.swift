@@ -1,5 +1,11 @@
 import Foundation
 
+public enum ToolbarDisplayMode: String, Codable, CaseIterable, Sendable {
+    case iconOnly
+    case iconAndText
+    case textOnly
+}
+
 /// Persistent ordered toolbar contents. Command/responder keys and separators
 /// share one sequence so customization round-trips without losing grouping.
 public struct ToolbarLayout: Codable, Equatable, Sendable {

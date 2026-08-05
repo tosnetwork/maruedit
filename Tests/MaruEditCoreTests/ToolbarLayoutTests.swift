@@ -22,4 +22,10 @@ final class ToolbarLayoutTests: XCTestCase {
         let original = ToolbarLayout(entries: ["a", "-", "b"])
         XCTAssertEqual(try JSONDecoder().decode(ToolbarLayout.self, from: JSONEncoder().encode(original)), original)
     }
+
+    func testEveryDisplayModeRoundTripsByStableRawValue() throws {
+        for mode in ToolbarDisplayMode.allCases {
+            XCTAssertEqual(ToolbarDisplayMode(rawValue: mode.rawValue), mode)
+        }
+    }
 }
