@@ -25,6 +25,7 @@ final class MainWindowController: NSWindowController,
     private var currentDiffIndex = 0
     private var tagBackStack: [(url: URL, offset: Int)] = []
     private var statusBar: StatusBarView!
+    private var modifierFlagsMonitor: Any?
     private var classicChrome: ClassicWorkspaceChrome!
     private var workspaceStyle: WorkspaceStyle = .classic
     var macroEditor: EditorViewController { editorVC }
@@ -102,6 +103,7 @@ final class MainWindowController: NSWindowController,
 
     deinit {
         NotificationCenter.default.removeObserver(self)
+        if let modifierFlagsMonitor { NSEvent.removeMonitor(modifierFlagsMonitor) }
     }
 
     // MARK: - UI setup
@@ -125,6 +127,11 @@ final class MainWindowController: NSWindowController,
         statusBar.autoresizingMask = [.width, .maxYMargin]
         statusBar.frame = NSRect(x: 0, y: 0, width: cv.bounds.width, height: statusH)
         cv.addSubview(statusBar)
+        statusBar.updateCapsLock(NSEvent.modifierFlags.contains(.capsLock))
+        modifierFlagsMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            self?.statusBar.updateCapsLock(event.modifierFlags.contains(.capsLock))
+            return event
+        }
 
         classicChrome = ClassicWorkspaceChrome()
         classicChrome.onCommand = { [weak self] command in

@@ -133,6 +133,19 @@ final class StatusBarViewTests: XCTestCase {
             }
         }
     }
+
+    func testCapsLockAppearsOnlyWhileEnabledAndConfigured() async {
+        let status = StatusBarView(frame: NSRect(x: 0, y: 0, width: 1100, height: 24))
+        status.updateCapsLock(true)
+        status.layoutSubtreeIfNeeded()
+        XCTAssertEqual(status.displayedCapsLockText, "CAPS")
+        status.updateCapsLock(false)
+        XCTAssertNil(status.displayedCapsLockText)
+
+        status.setConfiguredFieldsForTesting([.cursorPosition])
+        status.updateCapsLock(true)
+        XCTAssertNil(status.displayedCapsLockText)
+    }
 }
 
 

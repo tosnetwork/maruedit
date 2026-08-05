@@ -55,15 +55,15 @@ that functional parity is not complete.
 |---|---|---|---|
 | Encoding, line ending, BOM | Display and click menus | Display and click menus | Present |
 | Read-only/view mode | Conditional state | Read-only state | Partial |
-| Cursor line/column | Display; click opens Go To | Display only | Partial |
+| Cursor line/column | Display; click opens Go To | Display; click opens Go To Line | Present |
 | Selection characters/ranges | Display | Display | Present |
-| Selection line count/BOX dimensions | Display | Missing | Missing |
-| Total line/character count | Optional fields | Missing | Missing |
-| Character code at cursor | Display; click details | Missing | Missing |
-| Insert/overwrite | Display; click toggles | Display only | Partial |
-| Font size | Display; click adjustment | Missing | Missing |
+| Selection line count/BOX dimensions | Display | Selection line count present; BOX dimensions missing | Partial |
+| Total line/character count | Optional fields | Displayed and configurable | Present |
+| Character code at cursor | Display; click details | Display and click details | Present |
+| Insert/overwrite | Display; click toggles | Display and click toggles | Present |
+| Font size | Display; click adjustment | Display; click opens font panel | Present/native equivalent |
 | File-type profile | Display; click list | Display; click language/profile menu | Partial |
-| CapsLock | Optional field | Missing | Missing |
+| CapsLock | Optional field | Conditional configurable CAPS indicator | Present |
 | Vertical/horizontal and column count | Display/click | Missing; vertical mode is not production-ready | Missing |
 | Macro recording | Conditional state/click | Missing | Missing |
 | Large-file mode | No direct equivalent | MaruEdit-specific safety field | Native addition |
