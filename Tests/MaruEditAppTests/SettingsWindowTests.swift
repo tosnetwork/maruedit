@@ -213,6 +213,7 @@ final class SettingsWindowTests: XCTestCase {
         let coordinator = AppCoordinator()
         var opened: URL?
         coordinator.openDocumentationURL = { opened = $0 }
+        coordinator.confirmOnlineHelpAccess = { _, _ in true }
         XCTAssertTrue(coordinator.commandRegistry.execute(
             .otherJapaneseUserDictionary, context: CommandContext(coordinator: coordinator)))
         XCTAssertEqual(opened?.host, "support.apple.com")

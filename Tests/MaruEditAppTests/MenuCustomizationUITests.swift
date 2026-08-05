@@ -8,6 +8,7 @@ import XCTest
 final class MenuCustomizationUITests: XCTestCase {
     private let settings = CommandDefinition(id: .appSettings, title: "Settings") { _ in }
     private let find = CommandDefinition(id: .searchFind, title: "Find") { _ in }
+    private let partialOpen = CommandDefinition(id: .fileOpenPartial, title: "Open Part") { _ in }
 
     func testWindowHidesOptionalCommandsButProtectsRequiredCommandsAndRestores() async throws {
         var changes: [MenuCustomization] = []
@@ -26,6 +27,57 @@ final class MenuCustomizationUITests: XCTestCase {
         controller.restoreForTesting()
         XCTAssertEqual(controller.currentCustomization, .defaults)
         XCTAssertEqual(controller.checkboxForTesting(.searchFind)?.state, .on)
+    }
+
+    func testDefaultSubmenusAreCompactAndHiddenCommandsCanBeAddedBack() async {
+        _ = NSApplication.shared
+        let delegate = AppDelegate()
+        delegate.buildMenu()
+        let main = try! XCTUnwrap(NSApp.mainMenu)
+
+        func visibleIDs(in title: String) -> Set<CommandID> {
+            let menu = main.items.compactMap(\.submenu).first { $0.title == title }
+            return Set(menu?.items.compactMap { item in
+                guard !item.isHidden else { return nil }
+                return item.representedObject as? CommandID
+            } ?? [])
+        }
+
+        XCTAssertEqual(visibleIDs(in: "File"), Set([
+            .fileNew, .fileOpen, .fileReload, .fileSave, .fileSaveAs,
+            .fileCloseTab, .filePageSetup, .filePrint,
+        ]))
+        XCTAssertEqual(visibleIDs(in: "Edit"), [.editRepeatLastOperation])
+        XCTAssertEqual(visibleIDs(in: "Search"), Set([
+            .searchFind, .searchFindUpward, .searchReplace, .searchFindNext,
+            .searchFindPrevious, .searchGoToLine, .searchGrep, .searchGrepReplace,
+        ]))
+        let fileMenu = try! XCTUnwrap(main.items.compactMap(\.submenu).first { $0.title == "File" })
+        let partialItem = try! XCTUnwrap(fileMenu.items.first {
+            ($0.representedObject as? CommandID) == .fileOpenPartial
+        })
+        XCTAssertTrue(partialItem.isHidden)
+
+        var expanded = MenuCustomization.defaults
+        expanded.setVisible(true, command: .fileOpenPartial)
+        AppDelegate.applyMenuCustomization(
+            expanded, protectedCommandIDs: AppDelegate.protectedCommandIDs,
+            defaultMenuPlacements: AppDelegate.classicDefaultMenuPlacements, to: main)
+        XCTAssertFalse(partialItem.isHidden)
+    }
+
+    func testMenuEditorShowsCompactDefaultsAndCanEnableAnExtendedCommand() async {
+        var changes: [MenuCustomization] = []
+        let controller = MenuCustomizationWindowController(
+            definitions: [settings, find, partialOpen],
+            protectedCommandIDs: [.appSettings], customization: .defaults,
+            onChange: { changes.append($0) })
+        XCTAssertEqual(controller.checkboxForTesting(.searchFind)?.state, .on)
+        XCTAssertEqual(controller.checkboxForTesting(.fileOpenPartial)?.state, .off)
+
+        controller.setVisibleForTesting(true, command: .fileOpenPartial)
+        XCTAssertEqual(changes.last?.visibleCommandIDs, [.fileOpenPartial])
+        XCTAssertTrue(changes.last!.isCommandVisible(.fileOpenPartial, defaultVisible: false))
     }
 
     func testApplyingCustomizationUsesIDsAndNeverHidesSystemOrProtectedItems() async {
@@ -48,7 +100,8 @@ final class MenuCustomizationUITests: XCTestCase {
 
         AppDelegate.applyMenuCustomization(
             MenuCustomization(hiddenCommandIDs: [.appSettings, .searchFind]),
-            protectedCommandIDs: [.appSettings], to: root)
+            protectedCommandIDs: [.appSettings],
+            defaultMenuPlacements: AppDelegate.classicDefaultMenuPlacements, to: root)
 
         XCTAssertFalse(menu.items[0].isHidden, "system item has no Command ID and is protected by construction")
         XCTAssertFalse(protected.isHidden)
@@ -68,7 +121,7 @@ final class MenuCustomizationUITests: XCTestCase {
         }
     }
 
-    func testBusinessMenuOrderMatchesOldMaru() async {
+    func testBusinessMenuOrderMatchesMaru() async {
         _ = NSApplication.shared
         let delegate = AppDelegate(); delegate.buildMenu()
         let titles = NSApp.mainMenu?.items.filter { !$0.isHidden }.compactMap { $0.submenu?.title } ?? []
@@ -78,7 +131,9 @@ final class MenuCustomizationUITests: XCTestCase {
 
         AppDelegate.applyMenuCustomization(
             MenuCustomization(hiddenTopLevelMenus: []),
-            protectedCommandIDs: AppDelegate.protectedCommandIDs, to: NSApp.mainMenu!)
+            protectedCommandIDs: AppDelegate.protectedCommandIDs,
+            defaultMenuPlacements: AppDelegate.classicDefaultMenuPlacements,
+            to: NSApp.mainMenu!)
         let expanded = NSApp.mainMenu?.items.filter { !$0.isHidden }.compactMap { $0.submenu?.title } ?? []
         XCTAssertEqual(Array(expanded.dropFirst()), [
             "File", "Edit", "Convert", "View", "Insert", "Search", "Highlight",

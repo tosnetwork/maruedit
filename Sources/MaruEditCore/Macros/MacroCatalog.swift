@@ -48,7 +48,7 @@ public struct MacroCatalog: Equatable, Sendable {
 
 public enum MacroCatalogLoader {
     public static func load(from directory: URL, disabledIDs: Set<CommandID> = [],
-                            enableOldMaruCompatibility: Bool = false) -> MacroCatalog {
+                            enableMaruCompatibility: Bool = false) -> MacroCatalog {
         let manager = FileManager.default
         do { try manager.createDirectory(at: directory, withIntermediateDirectories: true) }
         catch { return MacroCatalog(macros: [], issues: [.init(url: directory, message: error.localizedDescription)]) }
@@ -62,11 +62,11 @@ public enum MacroCatalogLoader {
         let baseComponents = directory.resolvingSymlinksInPath().standardizedFileURL.pathComponents
         for case let url as URL in enumerator {
             let extensionName = url.pathExtension.lowercased()
-            guard extensionName == "js" || (enableOldMaruCompatibility && extensionName == "mac") else { continue }
+            guard extensionName == "js" || (enableMaruCompatibility && extensionName == "mac") else { continue }
             do {
                 let originalSource = try String(contentsOf: url, encoding: .utf8)
                 let source = extensionName == "mac"
-                    ? try OldMaruCompatibility.translate(originalSource) : originalSource
+                    ? try MaruCompatibility.translate(originalSource) : originalSource
                 let components = url.resolvingSymlinksInPath().standardizedFileURL.pathComponents
                 let relative = components.dropFirst(baseComponents.count).joined(separator: "/")
                 let prefix = extensionName == "mac" ? "macro.compat." : "macro.user."
@@ -74,7 +74,7 @@ public enum MacroCatalogLoader {
                 var metadata = parseMetadata(originalSource, fallbackName: url.deletingPathExtension().lastPathComponent)
                 if extensionName == "mac" {
                     metadata.name += " (Experimental)"
-                    metadata.description = "Experimental OldMaru-compatible subset. " + metadata.description
+                    metadata.description = "Experimental Maru-compatible subset. " + metadata.description
                     metadata.requiredPermissions = [.currentDocument]
                 }
                 macros.append(.init(id: id, url: url, source: source, metadata: metadata,

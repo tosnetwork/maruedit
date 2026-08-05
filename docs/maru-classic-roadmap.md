@@ -1,7 +1,7 @@
 # Maru Classic Implementation Roadmap
 
 This roadmap turns the product-gap audit into testable work. “Complete” means
-portable, publicly documented OldMaru workflows on macOS; it excludes copied
+portable, publicly documented Maru workflows on macOS; it excludes copied
 assets/code, Windows registry/DLL/tray integration, and implicit capabilities
 that would weaken MaruEdit's security model.
 
@@ -84,7 +84,7 @@ that would weaken MaruEdit's security model.
 
 - [ ] Every portable public behavior in the gap matrix is supported or has a
   documented macOS-native equivalent.
-- [ ] Five experienced OldMaru users complete the scripted migration study.
+- [ ] Five experienced Maru users complete the scripted migration study.
 - [ ] English/Japanese/Simplified Chinese, IME and VoiceOver manual matrix.
 - [ ] Fresh screenshots and guides contain no stale LiteEdit branding.
 - [ ] Signed/notarized Universal build passes Gatekeeper on a clean Mac.

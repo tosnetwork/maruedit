@@ -189,7 +189,7 @@ final class ClassicWorkspaceChrome: NSView {
     }
 
     private func applyEffectiveVisibility() {
-        // With one document OldMaru does not repeat its filename in a
+        // With one document Maru does not repeat its filename in a
         // separate strip above the line-number gutter.
         heading.isHidden = !configuredVisibility.showHeading || isSingleDocument
         toolbar.isHidden = !configuredVisibility.showToolbar
@@ -664,7 +664,7 @@ private final class ClassicToolbarButton: NSButton {
 }
 
 private final class CharacterRulerView: NSView {
-    /// OldMaru's default fixed-width/wrapping reference is 160 columns.
+    /// Maru's default fixed-width/wrapping reference is 160 columns.
     let maximumColumn = 160
     var editorOrigin: CGFloat = 46 { didSet { needsDisplay = true } }
     var currentColumn: Int = 1 { didSet { needsDisplay = true } }

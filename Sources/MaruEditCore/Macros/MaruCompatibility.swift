@@ -1,6 +1,6 @@
 import Foundation
 
-public enum OldMaruCompatibilityError: LocalizedError, Equatable {
+public enum MaruCompatibilityError: LocalizedError, Equatable {
     case unexpectedToken(line: Int, text: String)
     case missingArgument(line: Int, command: String)
     case unsupportedCommand(line: Int, command: String)
@@ -19,11 +19,11 @@ public enum OldMaruCompatibilityError: LocalizedError, Equatable {
     }
 }
 
-public enum OldMaruCompatibility {
+public enum MaruCompatibility {
     public static let featureFlag = "MARUEDIT_ENABLE_OLDMARU_COMPATIBILITY"
     public static func isEnabled(environment: [String: String] = ProcessInfo.processInfo.environment,
                                  defaults: UserDefaults = .standard) -> Bool {
-        environment[featureFlag] == "1" || defaults.bool(forKey: "ExperimentalOldMaruMacroCompatibility")
+        environment[featureFlag] == "1" || defaults.bool(forKey: "ExperimentalMaruMacroCompatibility")
     }
 
     private enum Command: Equatable {
@@ -53,7 +53,7 @@ public enum OldMaruCompatibility {
                 : {location: r.location + value.length, length: 0};
             }
           };
-          maru.undo.group('Experimental OldMaru macro', () => {
+          maru.undo.group('Experimental Maru macro', () => {
         """# + encoded + #"""
             maru.document.setText(text); maru.editor.setSelections(selections);
           });
@@ -90,13 +90,13 @@ public enum OldMaruCompatibility {
             }
             if lower.hasPrefix("function ") {
                 let name = statement.dropFirst(9).trimmingCharacters(in: .whitespaces)
-                guard isIdentifier(name) else { throw OldMaruCompatibilityError.invalidExpression(line: token.line, text: statement) }
+                guard isIdentifier(name) else { throw MaruCompatibilityError.invalidExpression(line: token.line, text: statement) }
                 output.append("function compat_\(name)()")
                 continue
             }
             if lower.hasPrefix("call ") {
                 let name = statement.dropFirst(5).trimmingCharacters(in: .whitespaces)
-                guard isIdentifier(name) else { throw OldMaruCompatibilityError.invalidExpression(line: token.line, text: statement) }
+                guard isIdentifier(name) else { throw MaruCompatibilityError.invalidExpression(line: token.line, text: statement) }
                 output.append("compat_\(name)();")
                 continue
             }
@@ -104,12 +104,12 @@ public enum OldMaruCompatibility {
             if lower == "break" || lower == "continue" { output.append(lower + ";"); continue }
             if statement.first == "#" || statement.first == "$" {
                 guard let equals = statement.firstIndex(of: "=") else {
-                    throw OldMaruCompatibilityError.invalidExpression(line: token.line, text: statement)
+                    throw MaruCompatibilityError.invalidExpression(line: token.line, text: statement)
                 }
                 let name = statement[..<equals].trimmingCharacters(in: .whitespaces)
                 let value = statement[statement.index(after: equals)...].trimmingCharacters(in: .whitespaces)
                 guard name.count > 1, isIdentifier(name.dropFirst()) else {
-                    throw OldMaruCompatibilityError.invalidExpression(line: token.line, text: statement)
+                    throw MaruCompatibilityError.invalidExpression(line: token.line, text: statement)
                 }
                 output.append("\(variable(String(name))) = \(try expression(value, line: token.line));")
                 continue
@@ -157,7 +157,7 @@ public enum OldMaruCompatibility {
         guard !value.isEmpty, !forbidden.contains(where: { value.lowercased().contains($0) }),
               value.unicodeScalars.allSatisfy({ scalar in
                   CharacterSet.alphanumerics.union(.whitespaces).union(CharacterSet(charactersIn: "_#$\"'()+-*/%<>=!&|.,[]")).contains(scalar)
-              }) else { throw OldMaruCompatibilityError.invalidExpression(line: line, text: raw) }
+              }) else { throw MaruCompatibilityError.invalidExpression(line: line, text: raw) }
         value = value.replacingOccurrences(of: #"#([A-Za-z_][A-Za-z0-9_]*)"#, with: "compat_num_$1", options: .regularExpression)
         value = value.replacingOccurrences(of: #"\$([A-Za-z_][A-Za-z0-9_]*)"#, with: "compat_str_$1", options: .regularExpression)
         return value
@@ -185,15 +185,15 @@ public enum OldMaruCompatibility {
         case "toupper": return .upper
         case "tolower": return .lower
         case "insert", "message":
-            guard let value = parseString(rest) else { throw OldMaruCompatibilityError.missingArgument(line: line, command: name) }
+            guard let value = parseString(rest) else { throw MaruCompatibilityError.missingArgument(line: line, command: name) }
             return name == "insert" ? .insert(value) : .message(value)
         case "findnext": return .runCommand("search.findNext")
         case "findprevious": return .runCommand("search.findPrevious")
         case "showoutline": return .runCommand("view.toggleSidebar")
         case "nextwindow": return .runCommand("window.next")
-        case "run", "exec", "shell", "dll", "network": throw OldMaruCompatibilityError.unsafeCommand(line: line, command: name)
-        case "registry", "dde", "sendmessage", "trayicon": throw OldMaruCompatibilityError.windowsOnlyCommand(line: line, command: name)
-        default: throw OldMaruCompatibilityError.unsupportedCommand(line: line, command: name)
+        case "run", "exec", "shell", "dll", "network": throw MaruCompatibilityError.unsafeCommand(line: line, command: name)
+        case "registry", "dde", "sendmessage", "trayicon": throw MaruCompatibilityError.windowsOnlyCommand(line: line, command: name)
+        default: throw MaruCompatibilityError.unsupportedCommand(line: line, command: name)
         }
     }
 
@@ -218,10 +218,10 @@ public enum OldMaruCompatibility {
                 case "tolower": commands.append(.lower)
                 case "insert", "message":
                     guard let value = parseString(rest) else {
-                        throw OldMaruCompatibilityError.missingArgument(line: line, command: name)
+                        throw MaruCompatibilityError.missingArgument(line: line, command: name)
                     }
                     commands.append(name == "insert" ? .insert(value) : .message(value))
-                default: throw OldMaruCompatibilityError.unsupportedCommand(line: line, command: name)
+                default: throw MaruCompatibilityError.unsupportedCommand(line: line, command: name)
                 }
             }
         }

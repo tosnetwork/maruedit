@@ -23,6 +23,8 @@ final class ExternalHelpTests: XCTestCase {
             externalHelpStore: ExternalHelpStore(defaults: defaults))
         var opened: URL?
         coordinator.openDocumentationURL = { opened = $0 }
+        var confirmationCount = 0
+        coordinator.confirmOnlineHelpAccess = { _, _ in confirmationCount += 1; return true }
         let context = CommandContext(coordinator: coordinator)
         XCTAssertFalse(coordinator.commandRegistry.isEnabled(.helpExternal1, context: context))
         coordinator.setExternalHelpEntriesForTesting([
@@ -31,7 +33,49 @@ final class ExternalHelpTests: XCTestCase {
         XCTAssertTrue(coordinator.commandRegistry.isEnabled(.helpExternal1, context: context))
         XCTAssertTrue(coordinator.commandRegistry.execute(.helpExternal1, context: context))
         XCTAssertEqual(opened?.absoluteString, "https://example.com/reference")
+        XCTAssertEqual(confirmationCount, 1)
         XCTAssertFalse(coordinator.commandRegistry.isEnabled(.helpExternal2, context: context))
+    }
+
+    func testOnlineExternalHelpDoesNothingWhenApprovalIsDenied() {
+        let defaults = UserDefaults(suiteName: "ExternalHelp.\(UUID().uuidString)")!
+        let coordinator = AppCoordinator(
+            preferencesStore: PreferencesStore(defaults: defaults),
+            externalHelpStore: ExternalHelpStore(defaults: defaults))
+        coordinator.setExternalHelpEntriesForTesting([
+            ExternalHelpEntry(name: "API", target: "https://example.com/reference"),
+        ])
+        var opened: URL?
+        coordinator.openDocumentationURL = { opened = $0 }
+        coordinator.confirmOnlineHelpAccess = { _, _ in false }
+
+        coordinator.openExternalHelp(slot: 0)
+
+        XCTAssertNil(opened)
+    }
+
+    func testLocalExternalHelpOpensWithoutOnlineConfirmation() throws {
+        let defaults = UserDefaults(suiteName: "ExternalHelp.\(UUID().uuidString)")!
+        let coordinator = AppCoordinator(
+            preferencesStore: PreferencesStore(defaults: defaults),
+            externalHelpStore: ExternalHelpStore(defaults: defaults))
+        let file = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ExternalHelp-\(UUID().uuidString).html")
+        try Data().write(to: file)
+        defer { try? FileManager.default.removeItem(at: file) }
+        coordinator.setExternalHelpEntriesForTesting([
+            ExternalHelpEntry(name: "Local", target: file.path),
+        ])
+        var opened: URL?
+        coordinator.openDocumentationURL = { opened = $0 }
+        coordinator.confirmOnlineHelpAccess = { _, _ in
+            XCTFail("local help must not request online access")
+            return false
+        }
+
+        coordinator.openExternalHelp(slot: 0)
+
+        XCTAssertEqual(opened, file)
     }
 
     func testConfigurationControllerSavesEditedSlot() {

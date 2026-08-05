@@ -44,7 +44,7 @@ significantly, replace this with a small script that generates it from
 | `window.alwaysOnTop` | Always on Top | Window | — | Toggles the active document window between normal and floating levels |
 | `window.fullScreen` | Full Screen | Window | — | Toggles native macOS full-screen mode |
 | `window.detachTab` | Detach/Move This Tab | Window | — | Transfers the active Document object into a new fully managed window |
-| `window.minimizeTab` | Minimize This Tab Window | Window | — | Maps OldMaru tab minimization to native window minimization |
+| `window.minimizeTab` | Minimize This Tab Window | Window | — | Maps Maru tab minimization to native window minimization |
 | `window.showFilesPane` | File Manager Pane | Window | — | Reveals and focuses the Files utility pane |
 | `window.showOutlinePane` | Outline Analysis Pane | Window | — | Reveals the document Outline utility pane |
 | `window.showDocumentBrowserPane` | Document Browser Pane | Window | — | Opens an embedded WebKit pane at the active document URL |
@@ -121,10 +121,10 @@ significantly, replace this with a small script that generates it from
 | `highlight.selectLineArea` | Select Highlighted Line Area | Highlight | — | Selects the contiguous highlighted logical-line region at the cursor |
 | `insert.controlCode` | Control Code… | Insert | — | `AppCoordinator.insertControlCode()` |
 | `insert.template` | Template… | Insert | — | Inserts a selected file-type profile template at every active selection |
-| `app.help` | MaruEdit Help | Help | — | `AppCoordinator.showHelp()` |
+| `app.help` | MaruEdit Help | Help | — | Opens the bundled `maruedit.pdf` manual |
 | `macro.startRecording` | Start Recording | Macro | — | Starts a fresh CommandRegistry recording |
 | `macro.stopRecording` | Stop Recording | Macro | — | Stops recording while retaining captured commands |
-| `macro.toggleRecording` | Start/Stop Recording | Macro | — | Toggles the single OldMaru-compatible recording menu command |
+| `macro.toggleRecording` | Start/Stop Recording | Macro | — | Toggles the single Maru-compatible recording menu command |
 | `macro.playRecording` | Play Recorded Commands | Macro | — | Replays captured stable command IDs |
 | `macro.repeatPlayback` | Repeat Recorded Commands… | Macro | — | Replays the captured sequence a validated bounded number of times |
 | `macro.saveRecording` | Save Recording as Macro… | Macro | — | Writes a non-overwriting reloadable JavaScript macro |
@@ -132,12 +132,12 @@ significantly, replace this with a small script that generates it from
 | `macro.reload` | Reload Macros | Macro | — | Reloads macro files, metadata, enablement, menus, and shortcuts |
 | `macro.openFolder` | Open Macro Folder | Macro | — | Opens the sandboxed MaruEdit macro directory in Finder |
 | `macro.help` | Macro Help | Macro | — | Opens MaruEdit's macro/API guide |
-| `help.macros` | Macro Help | Help | — | `AppCoordinator.showMacroHelp()` |
-| `help.shortcuts` | Keyboard Shortcut Reference | Help | — | `AppCoordinator.showShortcutReference()` |
-| `help.checkUpdates` | Check for Updates… | Help | — | Opens the latest GitHub release |
-| `help.support` | Support and Report an Issue… | Help | — | Opens the GitHub issue tracker |
+| `help.macros` | Macro Help | Help | — | Opens the macro section in the bundled PDF manual |
+| `help.shortcuts` | Keyboard Shortcut Reference | Help | — | Opens the bundled PDF manual |
+| `help.checkUpdates` | Check for Updates Online… | Help | — | Asks before opening the online release destination |
+| `help.support` | Online Support and Report an Issue… | Help | — | Asks before opening the online support destination |
 | `help.configureExternal` | Configure External Help… | Help | — | Edits six persistent URL/local-file help slots |
-| `help.external1` | External Help 1 | Help | — | Opens configured external-help slot 1 |
+| `help.external1` | External Help 1 | Help | — | Opens local targets directly; asks before HTTP(S) targets |
 | `help.external2` | External Help 2 | Help | — | Opens configured external-help slot 2 |
 | `help.external3` | External Help 3 | Help | — | Opens configured external-help slot 3 |
 | `help.external4` | External Help 4 | Help | — | Opens configured external-help slot 4 |

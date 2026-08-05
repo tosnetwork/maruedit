@@ -50,6 +50,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }()
     private lazy var menuCustomization = menuCustomizationStore.load()
     static let protectedCommandIDs: Set<CommandID> = [.appSettings, .viewCustomizeMenus]
+    static let classicDefaultMenuPlacements: [String: Set<CommandID>] = [
+        // Dynamic Recent/Encoding menus remain visible alongside File commands.
+        "File": Set([
+            "file.new", "file.open", "file.reload", "file.save", "file.saveAs",
+            "file.closeTab", "file.pageSetup", "file.print",
+        ].map { CommandID($0) }),
+        // AppKit supplies Undo/Redo/Cut/Copy/Paste/Select All in Edit.
+        "Edit": [.editRepeatLastOperation],
+        "View": Set([
+            "view.toggleToolbar", "view.toggleLineNumbers", "view.toggleRuler",
+            "view.toggleFunctionKeys", "view.toggleStatusBar", "view.toggleWrap",
+            "view.showFonts", "view.toggleFullScreen",
+        ].map { CommandID($0) }),
+        "Search": Set([
+            "search.find", "search.findUpward", "search.replace",
+            "search.findNext", "search.findPrevious", "search.goToLine",
+            "search.grep", "search.grepReplace",
+        ].map { CommandID($0) }),
+        "Window": Set([
+            "window.tileVertical", "window.tileHorizontal", "window.cascade",
+            "window.nextTab", "window.previousTab", "window.tabList",
+            "window.nextManaged", "window.previousManaged", "window.previousActive",
+        ].map { CommandID($0) }),
+        "Macro": Set([
+            "macro.toggleRecording", "macro.playRecording", "macro.saveRecording",
+            "macro.run",
+        ].map { CommandID($0) }),
+        "Other": Set([
+            "app.settings", "other.fileTypeProfiles", "other.keyAssignments",
+            "other.commandList", "view.customizeMenus", "app.help",
+        ].map { CommandID($0) }),
+    ]
+    static let classicDefaultVisibleCommandIDs = Set(
+        classicDefaultMenuPlacements.values.flatMap { $0 })
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         coordinator.onShowMenuCustomization = { [weak self] in self?.showMenuCustomization() }
@@ -129,6 +163,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         appMenu.addItem(commandItem(.appSettings))
         appMenu.addItem(.separator())
         let servicesItem = NSMenuItem(title: "Services", action: nil, keyEquivalent: "")
+        servicesItem.identifier = NSUserInterfaceItemIdentifier("menu.dynamic.services")
         let servicesMenu = NSMenu(title: "Services")
         servicesItem.submenu = servicesMenu
         appMenu.addItem(servicesItem)
@@ -425,6 +460,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         macroMenu.addItem(.separator())
         macroMenu.addItem(commandItem(.macroRun))
         let registeredMacros = NSMenuItem(title: "Registered Macros", action: nil, keyEquivalent: "")
+        registeredMacros.identifier = NSUserInterfaceItemIdentifier("menu.dynamic.registeredMacros")
         registeredMacros.submenu = macroManager.menu
         macroMenu.addItem(registeredMacros)
         macroMenu.addItem(commandItem(.macroReload))
@@ -542,7 +578,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         winItem.submenu = winMenu
         main.addItem(winItem)
 
-        // OldMaru-compatible business-menu groups. macOS keeps its required
+        // Maru-compatible business-menu groups. macOS keeps its required
         // application menu before this sequence.
         let convertItem = NSMenuItem()
         let convertMenu = NSMenu(title: "Convert")
@@ -739,24 +775,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applyMenuCustomization(to root: NSMenu) {
         Self.applyMenuCustomization(
-            menuCustomization, protectedCommandIDs: Self.protectedCommandIDs, to: root)
+            menuCustomization, protectedCommandIDs: Self.protectedCommandIDs,
+            defaultMenuPlacements: Self.classicDefaultMenuPlacements, to: root)
     }
 
     static func applyMenuCustomization(
         _ customization: MenuCustomization,
         protectedCommandIDs: Set<CommandID>,
+        defaultMenuPlacements: [String: Set<CommandID>],
         to root: NSMenu
     ) {
-        func apply(_ menu: NSMenu) {
+        func apply(_ menu: NSMenu, topLevelMenu: String?) {
             for item in menu.items {
                 item.isHidden = false
                 if let id = item.representedObject as? CommandID {
-                    item.isHidden = customization.hiddenCommands.contains(id)
-                        && !protectedCommandIDs.contains(id)
+                    item.isHidden = !protectedCommandIDs.contains(id)
+                        && !customization.isCommandVisible(
+                            id,
+                            defaultVisible: topLevelMenu.flatMap {
+                                defaultMenuPlacements[$0]?.contains(id)
+                            } ?? false)
                 }
-                if let submenu = item.submenu { apply(submenu) }
-                if item.identifier?.rawValue.hasPrefix("menu.group.") == true,
-                   let submenu = item.submenu {
+                if let submenu = item.submenu {
+                    apply(submenu, topLevelMenu: topLevelMenu ?? submenu.title)
+                }
+                if topLevelMenu != nil,
+                   item.identifier?.rawValue.hasPrefix("menu.dynamic.") != true,
+                   let submenu = item.submenu, !submenu.items.isEmpty {
                     item.isHidden = !submenu.items.contains { !$0.isHidden && !$0.isSeparatorItem }
                 }
             }
@@ -773,7 +818,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 item.isHidden = !hasBefore || !hasAfter || previousVisibleIsSeparator
             }
         }
-        apply(root)
+        apply(root, topLevelMenu: nil)
         for item in root.items {
             guard let title = item.submenu?.title else { continue }
             if customization.hiddenMenus.contains(title) { item.isHidden = true }
@@ -816,8 +861,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         mi.keyEquivalentModifierMask = gesture?.menuModifierFlags ?? []
         mi.target = self
         mi.representedObject = id
-        mi.isHidden = menuCustomization.hiddenCommands.contains(id)
-            && !Self.protectedCommandIDs.contains(id)
+        mi.isHidden = !Self.protectedCommandIDs.contains(id)
+            && !menuCustomization.isCommandVisible(
+                id, defaultVisible: Self.classicDefaultVisibleCommandIDs.contains(id))
         return mi
     }
 

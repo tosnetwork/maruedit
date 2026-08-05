@@ -97,6 +97,7 @@ final class StatusBarView: NSView {
     private var isMacroRunning = false
     private var isMacroRecording = false
     private var largeFileMode: LargeFileMode = .normal
+    private var showsCursorPosition = true
     private static let fieldsDefaultsKey = "MaruClassicStatusBarFields"
     private static let clicksDefaultsKey = "MaruClassicStatusBarClicksEnabled"
     private static let countDefaultsKey = "MaruClassicCharacterCountConfiguration"
@@ -283,6 +284,12 @@ final class StatusBarView: NSView {
             selectionLabel.stringValue += " · BOX \(width)×\(height)"
         }
         selectionLabel.toolTip = "Selected UTF-16 units: \(state.selectedUTF16Length)"
+        needsLayout = true
+    }
+
+    func setCursorPositionVisible(_ visible: Bool) {
+        showsCursorPosition = visible
+        applyConfiguredVisibility()
         needsLayout = true
     }
 
@@ -601,7 +608,10 @@ final class StatusBarView: NSView {
     ]}
 
     private func applyConfiguredVisibility() {
-        for (field, label, _) in leftFields { label.isHidden = !configuredFields.contains(field) }
+        for (field, label, _) in leftFields {
+            label.isHidden = !configuredFields.contains(field)
+                || (field == .cursorPosition && !showsCursorPosition)
+        }
         for (field, label) in rightFields {
             let stateAllowsVisibility = field == .macroActivity ? (isMacroRunning || isMacroRecording)
                 : field == .capsLock ? isCapsLockEnabled

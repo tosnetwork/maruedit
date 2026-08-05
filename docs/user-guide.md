@@ -44,3 +44,12 @@ Settings cover appearance, editing, key bindings, file-type profiles, macros,
 and external commands. File-type profiles can select encoding, line ending,
 syntax, and display defaults by extension without changing unrelated files.
 See [Settings](settings.md) and [File-type profiles](file-type-profiles.md).
+
+## Help and network access
+
+MaruEdit Help, Macro Help, and the keyboard reference open the bundled
+`maruedit.pdf` manual locally. They do not require an internet connection.
+Commands whose names say **Online**, and external-help entries configured with
+an HTTP(S) URL, show the destination and ask before opening the default browser.
+Cancelling performs no network-facing action. Local external-help files open
+without that prompt.

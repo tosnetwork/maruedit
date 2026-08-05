@@ -1,4 +1,4 @@
-# Generated OldMaru Compatibility Report
+# Generated Maru Compatibility Report
 
 Corpus license: CC0-1.0
 

@@ -66,10 +66,22 @@ final class ClassicWorkspaceTests: XCTestCase {
         XCTAssertTrue(labels.contains("Favorite command strip"))
     }
 
+    func testCursorPositionIsAtTheUpperRightAndTracksLineAndColumn() {
+        let controller = MainWindowController()
+        controller.applyPreferences(.defaults)
+        controller.prepareUITestDocument(
+            content: "first\nsecond line", selections: [NSRange(location: 9, length: 0)])
+
+        let indicator = controller.classicCursorPositionForTesting
+        XCTAssertEqual(indicator.text, "2:4")
+        XCTAssertFalse(indicator.hidden)
+        XCTAssertEqual(indicator.placement, .right)
+    }
+
     func testWindowHasACompleteForwardAndReverseKeyboardFocusLoop() {
         let controller = MainWindowController()
         controller.applyPreferences(.defaults)
-        controller.newDocument() // make the tab bar visible under the OldMaru default
+        controller.newDocument() // make the tab bar visible under the Maru default
         controller.showFind(showingReplace: true)
         controller.showOutputPane()
 

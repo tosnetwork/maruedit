@@ -1,7 +1,7 @@
 # NOTICE
 
 MaruEdit is an independent, open-source project and is not affiliated with
-or endorsed by the developers of OldMaru Editor. See `ROADMAP.md` sections
+or endorsed by the developers of Maru Editor. See `ROADMAP.md` sections
 3 and 4 for the full intellectual-property and product-analysis boundaries
 this project operates under.
 
@@ -35,7 +35,7 @@ MaruEdit has so far:
 - removed marketing copy and links that were specific to the LiteEdit
   project's own distribution (landing page URL, analytics, Homebrew tap);
 - added `NOTICE.md`, `UPSTREAM.md`, and `ROADMAP.md` to define MaruEdit's
-  own product direction as a keyboard-first, OldMaru-workflow-inspired
+  own product direction as a keyboard-first, Maru-workflow-inspired
   macOS text editor, independent of LiteEdit's original scope.
 
 Further modifications are tracked through ordinary Git history and, for
@@ -50,6 +50,6 @@ ever intentionally ported in the future, the source, copyright, and license
 will be recorded here per ROADMAP.md section 3.3.
 
 MaruEdit does not include, link against, decompile, or derive from any
-OldMaru Editor source code, binaries, icons, or other protected resources.
+Maru Editor source code, binaries, icons, or other protected resources.
 See `ROADMAP.md` section 3.1 for what is and is not permitted when studying
-OldMaru's publicly observable behavior.
+Maru's publicly observable behavior.

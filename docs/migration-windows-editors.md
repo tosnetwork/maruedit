@@ -21,6 +21,6 @@ Common workflow mappings:
 | Launch a tool/filter | Controlled external-command profile |
 | Per-extension settings | File-type profiles |
 
-MaruEdit is independent and does not load OldMaru binary plugins, proprietary
+MaruEdit is independent and does not load Maru binary plugins, proprietary
 macro files, or configuration databases. Recreate automation through the
 documented [Macro API](macro-api-v1.md) and [external commands](external-commands.md).

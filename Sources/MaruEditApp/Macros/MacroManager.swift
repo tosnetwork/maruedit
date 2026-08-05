@@ -14,7 +14,7 @@ final class MacroManager: NSObject {
     private let keyBindings: KeyBindingManager
     private let enablementStore: MacroEnablementStore
     private let authorizer: MacroPermissionAuthorizer
-    private let enableOldMaruCompatibility: Bool
+    private let enableMaruCompatibility: Bool
     private let engine = MacroEngine()
     private(set) var catalog = MacroCatalog(macros: [], issues: [])
     private(set) var errors: [MacroErrorEntry] = []
@@ -28,13 +28,13 @@ final class MacroManager: NSObject {
          coordinator: AppCoordinator, keyBindings: KeyBindingManager,
          enablementStore: MacroEnablementStore = MacroEnablementStore(),
          authorizer: MacroPermissionAuthorizer? = nil,
-         enableOldMaruCompatibility: Bool = OldMaruCompatibility.isEnabled()) {
+         enableMaruCompatibility: Bool = MaruCompatibility.isEnabled()) {
         self.directory = directory
         self.coordinator = coordinator
         self.keyBindings = keyBindings
         self.enablementStore = enablementStore
         self.authorizer = authorizer ?? MacroPermissionAuthorizer()
-        self.enableOldMaruCompatibility = enableOldMaruCompatibility
+        self.enableMaruCompatibility = enableMaruCompatibility
     }
 
     nonisolated static var defaultDirectory: URL {
@@ -47,7 +47,7 @@ final class MacroManager: NSObject {
         registeredIDs.removeAll()
         catalog = MacroCatalogLoader.load(
             from: directory, disabledIDs: enablementStore.disabledIDs(),
-            enableOldMaruCompatibility: enableOldMaruCompatibility)
+            enableMaruCompatibility: enableMaruCompatibility)
         for macro in catalog.macros {
             let definition = CommandDefinition(
                 id: macro.id, title: macro.metadata.name,

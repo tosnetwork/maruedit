@@ -1272,7 +1272,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         setSelections(snapshot.ranges, primaryRange: snapshot.primary)
     }
 
-    private func emitCursor() {
+    func emitCursor() {
         let sel = textView.selectedRange()
         let ns = textView.string as NSString
         let offset = min(sel.location, ns.length)

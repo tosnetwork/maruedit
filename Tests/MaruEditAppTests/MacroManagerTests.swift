@@ -125,10 +125,10 @@ final class MacroManagerTests: XCTestCase {
         let coordinator = AppCoordinator(preferencesStore: isolatedPreferences())
         coordinator.prepareUITestDocument(content: "Mixed", selections: [NSRange(location: 0, length: 0)])
         let disabled = MacroManager(directory: directory, coordinator: coordinator,
-                                    keyBindings: KeyBindingManager(), enableOldMaruCompatibility: false)
+                                    keyBindings: KeyBindingManager(), enableMaruCompatibility: false)
         disabled.reload(); XCTAssertTrue(disabled.catalog.macros.isEmpty)
         let enabled = MacroManager(directory: directory, coordinator: coordinator,
-                                   keyBindings: KeyBindingManager(), enableOldMaruCompatibility: true)
+                                   keyBindings: KeyBindingManager(), enableMaruCompatibility: true)
         enabled.reload()
         let macro = try XCTUnwrap(enabled.catalog.macros.first)
         let finished = expectation(description: "compatibility macro")

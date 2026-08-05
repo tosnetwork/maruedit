@@ -18,5 +18,5 @@ obtain a professional clearance search in the intended jurisdictions.
 
 The product statement must remain prominent: MaruEdit is an independent
 open-source project and is not affiliated with or endorsed by the developers
-of OldMaru Editor. The OldMaru name is used only to describe compatibility
+of Maru Editor. The Maru name is used only to describe compatibility
 and migration context.

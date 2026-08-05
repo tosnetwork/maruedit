@@ -8,7 +8,7 @@ semantic version tags.
 
 ### Added
 
-- Expanded OldMaru-style tab behavior with top/bottom placement, optional
+- Expanded Maru-style tab behavior with top/bottom placement, optional
   single-tab hiding, adaptive widths, drag reordering, and middle-click close;
   upgraded the character ruler with per-column ticks and a live column marker.
 - Rebuilt Maru Classic around a compact in-window command bar above the tab row,
@@ -43,7 +43,7 @@ semantic version tags.
   templates, ordered encoding candidates, read-only load policy, save transforms,
   and bounded fail-closed backups; added New from Template to the File menu.
 - Added Basic/Advanced Settings filtering and guarded per-section import/export.
-- Expanded the opt-in clean-room OldMaru macro translator with typed variables,
+- Expanded the opt-in clean-room Maru macro translator with typed variables,
   guarded expressions, branches, cancellable loops, functions/subroutines, and
   portable Command Registry statements. Unsafe and Windows-only operations now
   receive distinct diagnostics, backed by a CC0 executable corpus and report.
@@ -67,7 +67,7 @@ semantic version tags.
 ### Changed
 
 - Existing pre-schema-5 settings now migrate to the Maru Classic workspace so
-  its OldMaru-style command toolbar is visible by default; Modern remains selectable.
+  its Maru-style command toolbar is visible by default; Modern remains selectable.
 - Maru Classic is now the new-user default, while existing settings migrate to the
   Maru Classic workspace without changing documents or overriding their saved theme.
 

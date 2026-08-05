@@ -19,6 +19,21 @@ mkdir -p "${BUNDLE}/Contents/Resources"
 # the process name, Activity Monitor, etc. stay user-facing as "MaruEdit".
 cp "${BUILD}/${PRODUCT}" "${BUNDLE}/Contents/MacOS/${APP}"
 
+# SwiftPM's generated Bundle.module accessor looks for this resource bundle
+# beside the main .app bundle URL. Keep the generated name intact so bundled
+# Help works after the application is moved away from the build directory.
+RESOURCE_BUNDLE="MaruEdit_MaruEditApp.bundle"
+RESOURCE_BUNDLE_PATH="$(find .build -path "*/release/${RESOURCE_BUNDLE}" -type d -print -quit)"
+if [ -z "${RESOURCE_BUNDLE_PATH}" ]; then
+  echo "Missing SwiftPM resource bundle: ${RESOURCE_BUNDLE}" >&2
+  exit 1
+fi
+cp -R "${RESOURCE_BUNDLE_PATH}" "${BUNDLE}/${RESOURCE_BUNDLE}"
+# Remove pre-PDF Help artifacts that may survive an incremental SwiftPM build.
+rm -f "${BUNDLE}/${RESOURCE_BUNDLE}/user-guide.html" \
+      "${BUNDLE}/${RESOURCE_BUNDLE}/macros.html" \
+      "${BUNDLE}/${RESOURCE_BUNDLE}/key-bindings.html"
+
 if [ -f "MaruEdit.icns" ]; then
   cp "MaruEdit.icns" "${BUNDLE}/Contents/Resources/AppIcon.icns"
 fi

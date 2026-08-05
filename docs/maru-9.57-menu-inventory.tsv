@@ -33,7 +33,7 @@ File	ウィンドウを閉じる	Close window	menu
 File	ファイルのプロパティ	Property of file	menu
 File	ファイル名変更(-)...	Rename current file(-)...	menu
 File	...を開く(J)	Open it(J)	menu
-File	...をOldMaruエディタで開く(M)	Open it by Maruo Editor	menu
+File	...をMaruエディタで開く(M)	Open it by Maru Editor	menu
 File	関連付けで開く(Y)	Open by shell	menu
 File	再読み込み(/)	Reload(/)	menu
 File	ヒストリの記録を中断(^)	Stop file history(^)	menu
@@ -256,8 +256,8 @@ Window	ウィンドウ分割上下(D)	Divide window	menu
 Window	ウィンドウ分割左右(M)	Divide window R-L(M)	menu
 Window	分割ウィンドウ切り替え(J)	Switch divided window(J)	menu
 Window	分割ウィンドウの同時スクロール	Scroll link of split	menu
-Window	他のOldMaruエディタと同時スクロール(L)...	Scroll link...	menu
-Window	他のOldMaruエディタと内容比較(F)...	Compare file...	menu
+Window	他のMaruエディタと同時スクロール(L)...	Scroll link...	menu
+Window	他のMaruエディタと内容比較(F)...	Compare file...	menu
 Window	次の内容比較(E)	Next Compare	menu
 Window	前の内容比較(P)	Previous Compare	menu
 Window	デスクトップ保存(S)	Save desktop	menu
@@ -284,10 +284,10 @@ Window	このタブを最小化(K)	Minimize current tab(K)	menu
 Window	このタブ以外を閉じる	Close other tab	menu
 Window	左のタブを全て閉じる	Close all left tab	menu
 Window	右のタブを全て閉じる	Close all right tab	menu
-Window	次のOldMaruエディタ	Next Maruo Editor	menu
-Window	前のOldMaruエディタ	Previous Maruo Editor	menu
-Window	次のOldMaruエディタ(最小化のも含む)	Next Maruo Editor(with minimize)	menu
-Window	前のOldMaruエディタ(最小化のも含む)	Prev Maruo Editor(with minimize)	menu
+Window	次のMaruエディタ	Next Maru Editor	menu
+Window	前のMaruエディタ	Previous Maru Editor	menu
+Window	次のMaruエディタ(最小化のも含む)	Next Maru Editor(with minimize)	menu
+Window	前のMaruエディタ(最小化のも含む)	Prev Maru Editor(with minimize)	menu
 Window	直前のアクティブ	Just before active	menu
 Window	ウィンドウ一覧(W)...	Window list...	menu
 Macro	キー操作の記録開始/終了(R)	Start/Stop record	menu
@@ -322,9 +322,9 @@ Other	縦書きモード(Q)	Tategaki mode(Q)	menu
 Other	段組モード(J)	Multi column mode(J)	menu
 Other	設定内容の保存/復元(U)...	Backup/Restore environment...	menu
 Other	最新バージョンの確認(V)...	Version check...	menu
-Other	OldMaruエディタヘルプ(P)	Help for Maruo Editor	menu
+Other	Maruエディタヘルプ(P)	Help for Maru Editor	menu
 Other	マクロヘルプ(H)	Macro help	menu
-Other	OldMaruエディタについて(A)...	About Maruo Editor	menu
+Other	Maruエディタについて(A)...	About Maru Editor	menu
 Help	外部ヘルプ(1)	External Help(1)	menu
 Help	外部ヘルプ２(2)	External Help 2(2)	menu
 Help	外部ヘルプ３(3)	External Help 3(3)	menu
@@ -332,6 +332,6 @@ Help	外部ヘルプ４(4)	External Help 4(4)	menu
 Help	外部ヘルプ５(5)	External Help 5(5)	menu
 Help	外部ヘルプ６(6)	External Help 6(6)	menu
 Help	最新バージョンの確認(V)...	Version check...	menu
-Help	OldMaruエディタヘルプ(P)	Help for Maruo Editor	menu
+Help	Maruエディタヘルプ(P)	Help for Maru Editor	menu
 Help	マクロヘルプ(H)	Macro help	menu
-Help	OldMaruエディタについて(A)...	About Maruo Editor	menu
+Help	Maruエディタについて(A)...	About Maru Editor	menu

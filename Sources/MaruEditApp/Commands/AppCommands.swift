@@ -366,10 +366,10 @@ enum AppCommands {
         registry.register(CommandDefinition(id: .helpShortcuts, title: "Keyboard Shortcut Reference") {
             $0.coordinator.showShortcutReference()
         })
-        registry.register(CommandDefinition(id: .helpCheckUpdates, title: "Check for Updates…") {
+        registry.register(CommandDefinition(id: .helpCheckUpdates, title: "Check for Updates Online…") {
             $0.coordinator.checkForUpdates()
         })
-        registry.register(CommandDefinition(id: .helpSupport, title: "Support and Report an Issue…") {
+        registry.register(CommandDefinition(id: .helpSupport, title: "Online Support and Report an Issue…") {
             $0.coordinator.showSupport()
         })
         registry.register(CommandDefinition(id: .helpConfigureExternal, title: "Configure External Help…") {

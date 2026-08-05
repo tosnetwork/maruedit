@@ -4,7 +4,7 @@ Maru Classic is a clean-room macOS workspace for users whose muscle memory
 comes from dense, keyboard-oriented Japanese editors. It recreates layout,
 information density, and command placement, while using original code, SF
 Symbols, native AppKit controls, and MaruEdit branding. It does not copy
-OldMaru artwork, binaries, icons, or trademarks.
+Maru artwork, binaries, icons, or trademarks.
 
 ## Reference structure
 

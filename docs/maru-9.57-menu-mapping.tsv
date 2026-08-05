@@ -33,7 +33,7 @@ File	Close window	native	NSWindow.performClose	Native macOS window close
 File	Property of file	stable	file.properties	Current file metadata
 File	Rename current file(-)...	stable	file.rename	Filesystem rename with document update
 File	Open it(J)	stable	file.openCursorTargetAssociated	Open cursor target with associated application
-File	Open it by Maruo Editor	stable	file.openCursorTargetInEditor	Open cursor target in MaruEdit
+File	Open it by Maru Editor	stable	file.openCursorTargetInEditor	Open cursor target in MaruEdit
 File	Open by shell	stable	file.openCursorTargetAssociated	Open cursor target through NSWorkspace association
 File	Reload(/)	stable	file.reload	Reload current file from disk
 File	Stop file history(^)	stable	file.toggleHistoryRecording	Suspend/resume recent history recording
@@ -54,9 +54,9 @@ Help	External Help 4(4)	stable	help.external4	Persistent external-help slot 4
 Help	External Help 5(5)	stable	help.external5	Persistent external-help slot 5
 Help	External Help 6(6)	stable	help.external6	Persistent external-help slot 6
 Help	Version check...	stable	help.checkUpdates	Open the release-check destination
-Help	Help for Maruo Editor	stable	app.help	Open the MaruEdit user guide
+Help	Help for Maru Editor	stable	app.help	Open the MaruEdit user guide
 Help	Macro help	stable	help.macros	Open the macro guide
-Help	About Maruo Editor	native	NSApplication.orderFrontStandardAboutPanel	Native macOS About panel in the application menu
+Help	About Maru Editor	native	NSApplication.orderFrontStandardAboutPanel	Native macOS About panel in the application menu
 Conv	to Upper case	stable	edit.uppercase	Unicode-aware uppercase conversion
 Conv	to Lower case	stable	edit.lowercase	Unicode-aware lowercase conversion
 Conv	Convert to hankaku	stable	convert.halfWidth	Generic full-width to half-width conversion
@@ -83,7 +83,7 @@ Macro	Macro help	stable	macro.help	Open macro documentation
 Insert	Date and Time	stable	insert.dateTime	Insert locale-formatted current date and time
 Insert	Return	stable	insert.newline	Insert a logical newline at every active selection
 Insert	Form feed	stable	insert.pageBreak	Insert the form-feed control character
-Insert	Insert tab	stable	insert.tab	Insert a literal tab according to OldMaru tab behavior
+Insert	Insert tab	stable	insert.tab	Insert a literal tab according to Maru tab behavior
 Insert	Duplicate line	stable	edit.duplicateLine	Duplicate current lines or selections in one Undo transaction
 Insert	Insert line	stable	insert.blankLine	Insert an indentation-preserving blank line
 Insert	Insert control code...	stable	insert.controlCode	Insert a validated C0 or DEL control code
@@ -114,9 +114,9 @@ Other	Tategaki mode(Q)	stable	view.toggleVerticalLayout	Native AppKit vertical g
 Other	Multi column mode(J)	stable	view.toggleColumnLayout	Continuous editable TextKit column flow
 Other	Backup/Restore environment...	group	other.settingsTransfer	Export import and restore-default settings commands
 Other	Version check...	stable	help.checkUpdates	Duplicate official placement of release check
-Other	Help for Maruo Editor	stable	app.help	Duplicate official placement of user guide
+Other	Help for Maru Editor	stable	app.help	Duplicate official placement of user guide
 Other	Macro help	stable	help.macros	Duplicate official placement of macro guide
-Other	About Maruo Editor	native	NSApplication.orderFrontStandardAboutPanel	macOS requires About in the application menu
+Other	About Maru Editor	native	NSApplication.orderFrontStandardAboutPanel	macOS requires About in the application menu
 Tool	User Menu 1	dynamic	userMenus.slot1	Persistent ordered CommandID menu slot 1
 Tool	User Menu 2	dynamic	userMenus.slot2	Persistent ordered CommandID menu slot 2
 Tool	User Menu 3	dynamic	userMenus.slot3	Persistent ordered CommandID menu slot 3
@@ -182,10 +182,10 @@ Window	Minimize current tab(K)	stable	window.minimizeTab	Map tab minimization to
 Window	Close other tab	stable	window.closeOtherTabs	Close all tabs except the active tab with confirmation
 Window	Close all left tab	stable	window.closeTabsLeft	Close tabs left of the active tab with confirmation
 Window	Close all right tab	stable	window.closeTabsRight	Close tabs right of the active tab with confirmation
-Window	Next Maruo Editor	stable	window.nextManaged	Activate the next non-minimized managed window
-Window	Previous Maruo Editor	stable	window.previousManaged	Activate the previous non-minimized managed window
-Window	Next Maruo Editor(with minimize)	stable	window.nextManagedIncludingMinimized	Cycle forward and restore minimized managed windows
-Window	Prev Maruo Editor(with minimize)	stable	window.previousManagedIncludingMinimized	Cycle backward and restore minimized managed windows
+Window	Next Maru Editor	stable	window.nextManaged	Activate the next non-minimized managed window
+Window	Previous Maru Editor	stable	window.previousManaged	Activate the previous non-minimized managed window
+Window	Next Maru Editor(with minimize)	stable	window.nextManagedIncludingMinimized	Cycle forward and restore minimized managed windows
+Window	Prev Maru Editor(with minimize)	stable	window.previousManagedIncludingMinimized	Cycle backward and restore minimized managed windows
 Window	Just before active	stable	window.previousActive	Activate the previously active managed window
 Window	Window list...	stable	window.tabList	Select an open document from the complete tab list
 Disp	Tool bar	stable	view.toggleToolbar	Persistently show or hide the Maru Classic toolbar

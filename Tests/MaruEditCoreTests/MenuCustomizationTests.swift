@@ -12,11 +12,28 @@ final class MenuCustomizationTests: XCTestCase {
 
         let json = String(data: try JSONEncoder().encode(value), encoding: .utf8)!
         XCTAssertTrue(json.contains("hiddenCommandIDs"))
+        XCTAssertTrue(json.contains("visibleCommandIDs"))
         XCTAssertTrue(json.contains("hiddenTopLevelMenus"))
         XCTAssertFalse(json.contains("Find"), "localized titles must never enter the schema")
     }
 
-    func testOldMaruDefaultMenusAndExtendedMenuVisibility() {
+    func testExplicitVisibilityOverridesClassicDefaultsAndIsMutuallyExclusive() {
+        let command = CommandID("file.openPartial")
+        var value = MenuCustomization.defaults
+        XCTAssertFalse(value.isCommandVisible(command, defaultVisible: false))
+
+        value.setVisible(true, command: command)
+        XCTAssertTrue(value.isCommandVisible(command, defaultVisible: false))
+        XCTAssertEqual(value.visibleCommandIDs, [command])
+        XCTAssertFalse(value.hiddenCommands.contains(command))
+
+        value.setVisible(false, command: command)
+        XCTAssertFalse(value.isCommandVisible(command, defaultVisible: true))
+        XCTAssertEqual(value.hiddenCommandIDs, [command])
+        XCTAssertFalse(value.visibleCommands.contains(command))
+    }
+
+    func testMaruDefaultMenusAndExtendedMenuVisibility() {
         var value = MenuCustomization.defaults
         XCTAssertEqual(value.hiddenTopLevelMenus, [
             "Bookmark", "Convert", "Help", "Highlight", "Insert", "Tools",

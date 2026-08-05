@@ -1,6 +1,47 @@
 import AppKit
 import MaruEditCore
 
+private final class TitlebarCursorPositionLabel: NSTextField {
+    var onActivate: (() -> Void)?
+
+    init() {
+        super.init(frame: .zero)
+        stringValue = "1:1"
+        font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        alignment = .right
+        isBordered = false
+        isEditable = false
+        drawsBackground = false
+        textColor = .secondaryLabelColor
+        setAccessibilityRole(.button)
+        setAccessibilityLabel("Cursor line and display column")
+        toolTip = "Line 1, column 1"
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError() }
+
+    func update(line: Int, column: Int) {
+        let line = max(1, line), column = max(1, column)
+        stringValue = "\(line):\(column)"
+        toolTip = "Line \(line), column \(column)"
+    }
+
+    override var acceptsFirstResponder: Bool { true }
+    override func mouseDown(with event: NSEvent) { onActivate?() }
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 36 || event.keyCode == 76 || event.charactersIgnoringModifiers == " " {
+            onActivate?()
+        } else {
+            super.keyDown(with: event)
+        }
+    }
+    override func accessibilityPerformPress() -> Bool {
+        onActivate?()
+        return true
+    }
+}
+
 @MainActor
 final class MainWindowController: NSWindowController,
     EditorViewControllerDelegate,
@@ -26,6 +67,8 @@ final class MainWindowController: NSWindowController,
     private var tagBackStack: [(url: URL, offset: Int)] = []
     var openAssociatedURL: (URL) -> Void = { NSWorkspace.shared.open($0) }
     private var statusBar: StatusBarView!
+    private var cursorPositionAccessory: NSTitlebarAccessoryViewController!
+    private var cursorPositionLabel: TitlebarCursorPositionLabel!
     private var modifierFlagsMonitor: Any?
     private var classicChrome: ClassicWorkspaceChrome!
     private var workspaceStyle: WorkspaceStyle = .classic
@@ -128,6 +171,17 @@ final class MainWindowController: NSWindowController,
     private func buildUI() {
         guard let cv = window?.contentView else { return }
 
+        cursorPositionLabel = TitlebarCursorPositionLabel()
+        cursorPositionLabel.onActivate = { [weak self] in self?.showGoToLine() }
+        let cursorHost = NSView(frame: NSRect(x: 0, y: 0, width: 72, height: 22))
+        cursorPositionLabel.frame = NSRect(x: 4, y: 3, width: 62, height: 16)
+        cursorPositionLabel.autoresizingMask = [.minXMargin]
+        cursorHost.addSubview(cursorPositionLabel)
+        cursorPositionAccessory = NSTitlebarAccessoryViewController()
+        cursorPositionAccessory.view = cursorHost
+        cursorPositionAccessory.layoutAttribute = .right
+        window?.addTitlebarAccessoryViewController(cursorPositionAccessory)
+
         let tabH: CGFloat = 32
         let statusH: CGFloat = isStatusBarVisible ? 24 : 0
 
@@ -217,12 +271,14 @@ final class MainWindowController: NSWindowController,
         Theme.activeName = preferences.theme
         workspaceStyle = preferences.workspaceStyle
         classicChrome.isHidden = workspaceStyle != .classic
+        cursorPositionAccessory.view.isHidden = workspaceStyle != .classic
         classicChrome.applyVisibility(preferences.classicChrome)
         tabBar.compactStyle = workspaceStyle == .classic
         configureWorkspaceToolbar()
         window?.backgroundColor = Theme.background
         tabBar.applyTheme()
         statusBar.applyTheme()
+        statusBar.setCursorPositionVisible(workspaceStyle != .classic)
         sidebarVC.applyTheme()
         editorVC.applyPreferences(preferences)
         secondaryEditorVC?.applyPreferences(preferences)
@@ -236,6 +292,10 @@ final class MainWindowController: NSWindowController,
     var classicHeadingForTesting: String { classicChrome.headingText }
     var classicChromeVisibilityForTesting: ClassicChromeOptions { classicChrome.visibilityForTesting }
     var classicRulerStateForTesting: (origin: CGFloat, column: Int) { classicChrome.rulerStateForTesting }
+    var classicCursorPositionForTesting: (text: String, placement: NSLayoutConstraint.Attribute, hidden: Bool) {
+        (cursorPositionLabel.stringValue, cursorPositionAccessory.layoutAttribute,
+         cursorPositionAccessory.view.isHidden)
+    }
     var classicRulerMaximumColumnForTesting: Int { classicChrome.rulerMaximumColumnForTesting }
     var classicRulerConfigurationForTesting: (interval: Int, showsTabStops: Bool, tabWidth: Int) {
         classicChrome.rulerConfigurationForTesting
@@ -421,6 +481,7 @@ final class MainWindowController: NSWindowController,
         var views: [NSView] = []
         if workspaceStyle == .classic && !classicChrome.isHidden {
             views += classicChrome.keyboardFocusableViews
+            if !cursorPositionAccessory.view.isHidden { views.append(cursorPositionLabel) }
         }
         if !findBar.isHidden { views += findBar.keyboardFocusableViews }
         if !tabBar.isHidden { views += tabBar.keyboardFocusableViews }
@@ -478,7 +539,7 @@ final class MainWindowController: NSWindowController,
     private var lastCursorColumn = 1
 
     private func rulerOrigin() -> CGFloat {
-        // OldMaru's character ruler begins immediately after the fixed line
+        // Maru's character ruler begins immediately after the fixed line
         // number gutter and is not indented by auxiliary panes.
         48
     }
@@ -624,7 +685,7 @@ final class MainWindowController: NSWindowController,
         }
     }
 
-    /// OldMaru's “Close and Open” keeps the editor window in place while
+    /// Maru's “Close and Open” keeps the editor window in place while
     /// applying the normal unsaved-changes protection to the current tab.
     func closeAndOpen() {
         guard closeCurrentTab() else { return }
@@ -1330,7 +1391,7 @@ final class MainWindowController: NSWindowController,
         return base.appendingPathComponent(expanded).standardizedFileURL
     }
 
-    /// OldMaru-style tab-order traversal. Both directions wrap at the ends.
+    /// Maru-style tab-order traversal. Both directions wrap at the ends.
     func selectRelativeTab(_ offset: Int) {
         let count = documentController.documents.count
         guard count > 1 else { return }
@@ -2661,6 +2722,7 @@ final class MainWindowController: NSWindowController,
     func editorCursorMoved(_ vc: EditorViewController, state: EditorCursorState) {
         lastCursorColumn = state.displayColumn
         updateClassicRuler(currentColumn: state.displayColumn)
+        cursorPositionLabel.update(line: state.lineNumber, column: state.displayColumn)
         statusBar.updateCursor(state)
         statusBar.updateInputMode(curDoc?.inputMode ?? .insert)
         if let title = sidebarVC.selectOutlineSymbol(containingLine: state.lineNumber - 1) {
@@ -3175,6 +3237,7 @@ final class MainWindowController: NSWindowController,
             editorVC.setSelections(selections, primaryRange: selections.first)
             editorVC.isMultiEditActive = selections.count > 1
         }
+        editorVC.emitCursor()
     }
 
     // MARK: - Session persistence

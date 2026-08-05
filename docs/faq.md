@@ -1,9 +1,9 @@
 # Frequently Asked Questions
 
-## Is MaruEdit an official OldMaru product?
+## Is MaruEdit an official Maru product?
 
 No. It is an independent MIT-licensed macOS project and is neither affiliated
-with nor endorsed by OldMaru's developers.
+with nor endorsed by Maru's developers.
 
 ## Does it send telemetry?
 
@@ -22,7 +22,7 @@ Yes. Encoding, BOM, and LF/CRLF/CR policy are modeled separately. Always check
 the status bar when automatic detection is ambiguous, especially for short
 legacy-encoded files.
 
-## Can I use OldMaru macros?
+## Can I use Maru macros?
 
 Not directly. MaruEdit provides a controlled JavaScript API and a documented
 partial compatibility layer. See [Macros](macros.md).

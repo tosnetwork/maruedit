@@ -63,7 +63,7 @@ final class ChromeSnapshotTests: XCTestCase {
             selections: [NSRange(location: 16, length: 0)])
         controller.newDocument()
         controller.prepareUITestDocument(
-            content: "Search, edit marks, bookmarks, and Japanese text: OldMaruエディタ\n",
+            content: "Search, edit marks, bookmarks, and Japanese text: Maruエディタ\n",
             selections: [NSRange(location: 8, length: 4)])
         if customized {
             controller.setClassicToolbarDisplayModeForTesting(.iconAndText)

@@ -35,6 +35,14 @@ final class AppCoordinator {
     var onShowUserMenuConfiguration: (() -> Void)?
     var onSaveRecordedMacro: ((String, [CommandID]) -> Void)?
     var openDocumentationURL: (URL) -> Void = { NSWorkspace.shared.open($0) }
+    var confirmOnlineHelpAccess: (String, URL) -> Bool = { purpose, url in
+        let alert = NSAlert()
+        alert.messageText = "Open an Online Resource?"
+        alert.informativeText = "\(purpose) will open \(url.host ?? url.absoluteString) in your default browser. MaruEdit will not open it unless you continue."
+        alert.addButton(withTitle: "Open Website")
+        alert.addButton(withTitle: "Cancel")
+        return alert.runModal() == .alertFirstButtonReturn
+    }
 
     init(preferencesStore: PreferencesStore? = nil, externalHelpStore: ExternalHelpStore? = nil) {
         if let preferencesStore {
@@ -247,7 +255,11 @@ final class AppCoordinator {
                 ? URL(fileURLWithPath: expanded) : nil
         }
         guard let url else { showStatusMessage("External Help target is invalid", duration: 5); return }
-        openDocumentationURL(url)
+        if url.scheme?.lowercased() == "http" || url.scheme?.lowercased() == "https" {
+            openOnlineHelpURL(url, purpose: externalHelpEntries[slot].name)
+        } else {
+            openDocumentationURL(url)
+        }
     }
 
     func showExternalHelpConfiguration() {
@@ -343,19 +355,33 @@ final class AppCoordinator {
     }
     func recordExecutedCommandForTesting(_ id: CommandID) { recordExecutedCommand(id) }
     func showHelp() {
-        openHelpPath("docs/user-guide.md")
+        openBundledManual()
     }
-    func showMacroHelp() { openHelpPath("docs/macros.md") }
-    func showShortcutReference() { openHelpPath("docs/key-bindings.md") }
-    func checkForUpdates() { openHelpURL("https://github.com/tosnetwork/maruedit/releases/latest") }
-    func showSupport() { openHelpURL("https://github.com/tosnetwork/maruedit/issues") }
-
-    private func openHelpPath(_ path: String) {
-        openHelpURL("https://github.com/tosnetwork/maruedit/blob/main/\(path)")
+    func showMacroHelp() { openBundledManual() }
+    func showShortcutReference() { openBundledManual() }
+    func checkForUpdates() {
+        openOnlineHelpURL(
+            URL(string: "https://github.com/tosnetwork/maruedit/releases/latest")!,
+            purpose: "Checking for MaruEdit updates")
+    }
+    func showSupport() {
+        openOnlineHelpURL(
+            URL(string: "https://github.com/tosnetwork/maruedit/issues")!,
+            purpose: "Opening MaruEdit support")
     }
 
-    private func openHelpURL(_ value: String) {
-        guard let url = URL(string: value) else { return }
+    private func openBundledManual() {
+        guard let url = Bundle.module.url(
+            forResource: "maruedit", withExtension: "pdf", subdirectory: "Help")
+            ?? Bundle.module.url(forResource: "maruedit", withExtension: "pdf") else {
+            showStatusMessage("Bundled help is unavailable", duration: 5)
+            return
+        }
+        openDocumentationURL(url)
+    }
+
+    private func openOnlineHelpURL(_ url: URL, purpose: String) {
+        guard confirmOnlineHelpAccess(purpose, url) else { return }
         openDocumentationURL(url)
     }
 
@@ -602,7 +628,9 @@ final class AppCoordinator {
         restoreDefaultSettings(); showStatusMessage("Default settings restored")
     }
     func showJapaneseUserDictionaryHelp() {
-        openDocumentationURL(URL(string: "https://support.apple.com/guide/japanese-input-method/edit-and-use-your-user-dictionaries-jpim10228/mac")!)
+        openOnlineHelpURL(
+            URL(string: "https://support.apple.com/guide/japanese-input-method/edit-and-use-your-user-dictionaries-jpim10228/mac")!,
+            purpose: "Opening the macOS Japanese dictionary guide")
     }
     func showSpellingCorrections() { ensureWindowControllerReady().showSpellingCorrections() }
     func performLineCommand(_ command: LineEditCommand) { ensureWindowControllerReady().performLineCommand(command) }

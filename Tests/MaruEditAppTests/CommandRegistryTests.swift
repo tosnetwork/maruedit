@@ -222,19 +222,33 @@ final class CommandRegistryTests: XCTestCase {
         XCTAssertEqual(executions, 4)
     }
 
-    func testHelpCommandsRouteToSpecificDocumentationAndSupportDestinations() async {
+    func testBundledHelpIsLocalAndOnlineDestinationsRequireApproval() async {
         let coordinator = AppCoordinator()
         var urls: [URL] = []
         coordinator.openDocumentationURL = { urls.append($0) }
         coordinator.showHelp()
         coordinator.showMacroHelp()
         coordinator.showShortcutReference()
+
+        XCTAssertEqual(urls.map(\.lastPathComponent), [
+            "maruedit.pdf", "maruedit.pdf", "maruedit.pdf",
+        ])
+        XCTAssertTrue(urls.allSatisfy(\.isFileURL))
+
+        var requestedPurposes: [String] = []
+        coordinator.confirmOnlineHelpAccess = { purpose, _ in
+            requestedPurposes.append(purpose)
+            return false
+        }
         coordinator.checkForUpdates()
         coordinator.showSupport()
-        XCTAssertEqual(urls.map(\.absoluteString), [
-            "https://github.com/tosnetwork/maruedit/blob/main/docs/user-guide.md",
-            "https://github.com/tosnetwork/maruedit/blob/main/docs/macros.md",
-            "https://github.com/tosnetwork/maruedit/blob/main/docs/key-bindings.md",
+        XCTAssertEqual(urls.count, 3, "denial must not open either online destination")
+        XCTAssertEqual(requestedPurposes.count, 2)
+
+        coordinator.confirmOnlineHelpAccess = { _, _ in true }
+        coordinator.checkForUpdates()
+        coordinator.showSupport()
+        XCTAssertEqual(urls.suffix(2).map(\.absoluteString), [
             "https://github.com/tosnetwork/maruedit/releases/latest",
             "https://github.com/tosnetwork/maruedit/issues",
         ])

@@ -1,32 +1,53 @@
 import Foundation
 
 public struct MenuCustomization: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 2
+    public static let currentSchemaVersion = 3
     public static let optionalTopLevelMenus = [
         "Convert", "Insert", "Highlight", "Bookmark", "Tools", "Help",
     ]
     public var schemaVersion: Int
     public var hiddenCommandIDs: [CommandID]
+    public var visibleCommandIDs: [CommandID]
     public var hiddenTopLevelMenus: [String]
 
     public init(
         schemaVersion: Int = currentSchemaVersion,
         hiddenCommandIDs: [CommandID] = [],
+        visibleCommandIDs: [CommandID] = [],
         hiddenTopLevelMenus: [String] = optionalTopLevelMenus
     ) {
+        let normalizedHidden = Self.normalized(hiddenCommandIDs)
         self.schemaVersion = schemaVersion
-        self.hiddenCommandIDs = Self.normalized(hiddenCommandIDs)
+        self.hiddenCommandIDs = normalizedHidden
+        self.visibleCommandIDs = Self.normalized(visibleCommandIDs).filter {
+            !normalizedHidden.contains($0)
+        }
         self.hiddenTopLevelMenus = Self.normalizedMenus(hiddenTopLevelMenus)
     }
 
     public static let defaults = MenuCustomization()
     public var hiddenCommands: Set<CommandID> { Set(hiddenCommandIDs) }
+    public var visibleCommands: Set<CommandID> { Set(visibleCommandIDs) }
     public var hiddenMenus: Set<String> { Set(hiddenTopLevelMenus) }
 
     public mutating func setVisible(_ visible: Bool, command: CommandID) {
         var hidden = hiddenCommands
-        if visible { hidden.remove(command) } else { hidden.insert(command) }
+        var shown = visibleCommands
+        if visible {
+            hidden.remove(command)
+            shown.insert(command)
+        } else {
+            hidden.insert(command)
+            shown.remove(command)
+        }
         hiddenCommandIDs = Self.normalized(Array(hidden))
+        visibleCommandIDs = Self.normalized(Array(shown))
+    }
+
+    public func isCommandVisible(_ command: CommandID, defaultVisible: Bool) -> Bool {
+        if hiddenCommands.contains(command) { return false }
+        if visibleCommands.contains(command) { return true }
+        return defaultVisible
     }
 
     public mutating func setMenuVisible(_ visible: Bool, menu: String) {
@@ -37,7 +58,7 @@ public struct MenuCustomization: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case schemaVersion, hiddenCommandIDs, hiddenTopLevelMenus
+        case schemaVersion, hiddenCommandIDs, visibleCommandIDs, hiddenTopLevelMenus
     }
 
     public init(from decoder: Decoder) throws {
@@ -45,6 +66,7 @@ public struct MenuCustomization: Codable, Equatable, Sendable {
         self.init(
             schemaVersion: try values.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 0,
             hiddenCommandIDs: try values.decodeIfPresent([CommandID].self, forKey: .hiddenCommandIDs) ?? [],
+            visibleCommandIDs: try values.decodeIfPresent([CommandID].self, forKey: .visibleCommandIDs) ?? [],
             hiddenTopLevelMenus: try values.decodeIfPresent([String].self, forKey: .hiddenTopLevelMenus)
                 ?? Self.optionalTopLevelMenus)
     }
@@ -90,6 +112,7 @@ public final class MenuCustomizationStore {
         MenuCustomization(
             schemaVersion: MenuCustomization.currentSchemaVersion,
             hiddenCommandIDs: customization.hiddenCommandIDs,
+            visibleCommandIDs: customization.visibleCommandIDs,
             hiddenTopLevelMenus: customization.hiddenTopLevelMenus)
     }
 }

@@ -36,7 +36,7 @@ final class MenuCustomizationWindowController: NSWindowController {
     private func buildUI() {
         guard let root = window?.contentView else { return }
         let explanation = NSTextField(wrappingLabelWithString:
-            "OldMaru's seven-menu default is shown first. Enable extended top-level menus or choose individual commands below. Required macOS items are always shown.")
+            "Maru's seven-menu default is shown first. Enable extended top-level menus or choose individual commands below. Required macOS items are always shown.")
         explanation.translatesAutoresizingMaskIntoConstraints = false
         root.addSubview(explanation)
 
@@ -72,7 +72,10 @@ final class MenuCustomizationWindowController: NSWindowController {
                 checkboxWithTitle: "\(definition.title)  [\(definition.id.rawValue)]\(suffix)",
                 target: self, action: #selector(visibilityChanged(_:)))
             checkbox.identifier = NSUserInterfaceItemIdentifier(definition.id.rawValue)
-            checkbox.state = customization.hiddenCommands.contains(definition.id) ? .off : .on
+            checkbox.state = customization.isCommandVisible(
+                definition.id,
+                defaultVisible: AppDelegate.classicDefaultVisibleCommandIDs.contains(definition.id)
+            ) ? .on : .off
             checkbox.isEnabled = !protected
             checkbox.setAccessibilityLabel("Show \(definition.title) in menus")
             stack.addArrangedSubview(checkbox)
@@ -124,7 +127,9 @@ final class MenuCustomizationWindowController: NSWindowController {
 
     @objc private func restoreDefaults() {
         customization = .defaults
-        for checkbox in checkboxes.values { checkbox.state = .on }
+        for (id, checkbox) in checkboxes {
+            checkbox.state = AppDelegate.classicDefaultVisibleCommandIDs.contains(id) ? .on : .off
+        }
         for (menu, checkbox) in menuCheckboxes {
             checkbox.state = customization.hiddenMenus.contains(menu) ? .off : .on
         }

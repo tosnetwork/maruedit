@@ -14,6 +14,7 @@ let package = Package(
             name: "MaruEditApp",
             dependencies: ["MaruEditCore"],
             path: "Sources/MaruEditApp",
+            resources: [.process("Resources")],
             linkerSettings: [.linkedFramework("WebKit")]
         ),
         .target(
