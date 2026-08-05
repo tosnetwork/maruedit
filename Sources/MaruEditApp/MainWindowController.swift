@@ -306,11 +306,9 @@ final class MainWindowController: NSWindowController,
     private var lastCursorColumn = 1
 
     private func rulerOrigin() -> CGFloat {
-        if sidebarManuallyCollapsed || sidebarVC.view.isHidden {
-            return 48
-        }
-        guard editorVC.isViewLoaded else { return 48 }
-        return max(0, editorVC.scrollView.convert(.zero, to: classicChrome).x)
+        // Hidemaru's character ruler begins immediately after the fixed line
+        // number gutter and is not indented by auxiliary panes.
+        48
     }
 
     // MARK: - Cursor persistence across tab switches
