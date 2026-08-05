@@ -24,7 +24,8 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
     private let fontSizeField = NSTextField()
     private let tabWidthField = NSTextField()
     private let lineNumbersButton = NSButton(checkboxWithTitle: "", target: nil, action: nil)
-    private let wrapLinesButton = NSButton(checkboxWithTitle: "", target: nil, action: nil)
+    private let wrapModePopup = NSPopUpButton()
+    private let wrapColumnField = NSTextField()
     private let workspacePopup = NSPopUpButton()
     private let headingButton = NSButton(checkboxWithTitle: "Show document heading", target: nil, action: nil)
     private let rulerButton = NSButton(checkboxWithTitle: "Show character ruler", target: nil, action: nil)
@@ -142,12 +143,17 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
             lineNumbersButton.state = preferences.showLineNumbers ? .on : .off
             lineNumbersButton.target = self; lineNumbersButton.action = #selector(controlChanged)
             lineNumbersButton.identifier = NSUserInterfaceItemIdentifier("settings.showLineNumbers")
-            wrapLinesButton.title = SettingsLocalization.text("wrapLines")
-            wrapLinesButton.state = preferences.wrapLines ? .on : .off
-            wrapLinesButton.target = self; wrapLinesButton.action = #selector(controlChanged)
-            wrapLinesButton.identifier = NSUserInterfaceItemIdentifier("settings.wrapLines")
+            wrapModePopup.removeAllItems()
+            wrapModePopup.addItems(withTitles: ["wrapNone", "wrapWindow", "wrapFixed", "wrapMaximum"].map {
+                SettingsLocalization.text($0)
+            })
+            wrapModePopup.selectItem(at: WrapMode.allCases.firstIndex(of: preferences.wrapMode) ?? 0)
+            wrapModePopup.target = self; wrapModePopup.action = #selector(controlChanged)
+            wrapModePopup.identifier = NSUserInterfaceItemIdentifier("settings.wrapMode")
+            configureNumeric(wrapColumnField, value: preferences.wrapColumn, id: "settings.wrapColumn")
             stack.addArrangedSubview(lineNumbersButton)
-            stack.addArrangedSubview(wrapLinesButton)
+            stack.addArrangedSubview(row(SettingsLocalization.text("wrapMode"), wrapModePopup))
+            stack.addArrangedSubview(row(SettingsLocalization.text("wrapColumn"), wrapColumnField))
         case .appearance:
             fontNameField.stringValue = preferences.fontName
             fontNameField.target = self; fontNameField.action = #selector(controlChanged)
@@ -227,7 +233,9 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
         case .editor:
             preferences.tabWidth = max(1, min(16, tabWidthField.integerValue))
             preferences.showLineNumbers = lineNumbersButton.state == .on
-            preferences.wrapLines = wrapLinesButton.state == .on
+            preferences.wrapMode = WrapMode.allCases[wrapModePopup.indexOfSelectedItem]
+            preferences.wrapLines = preferences.wrapMode != .none
+            preferences.wrapColumn = max(20, min(8_000, wrapColumnField.integerValue))
         case .appearance:
             preferences.fontName = fontNameField.stringValue.isEmpty
                 ? Preferences.defaults.fontName : fontNameField.stringValue
@@ -255,6 +263,8 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
             preferences.tabWidth = defaults.tabWidth
             preferences.showLineNumbers = defaults.showLineNumbers
             preferences.wrapLines = defaults.wrapLines
+            preferences.wrapMode = defaults.wrapMode
+            preferences.wrapColumn = defaults.wrapColumn
         case .appearance:
             preferences.fontName = defaults.fontName
             preferences.fontSize = defaults.fontSize
@@ -358,6 +368,8 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
             preferences.tabWidth = imported.tabWidth
             preferences.showLineNumbers = imported.showLineNumbers
             preferences.wrapLines = imported.wrapLines
+            preferences.wrapMode = imported.wrapMode
+            preferences.wrapColumn = imported.wrapColumn
             preferences.invisibleCharacters = imported.invisibleCharacters
         case .appearance:
             preferences.fontName = imported.fontName
@@ -408,6 +420,12 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
         headingButton.state = options.showHeading ? .on : .off
         rulerButton.state = options.showRuler ? .on : .off
         commandStripButton.state = options.showCommandStrip ? .on : .off
+        controlChanged()
+    }
+    func setWrappingForTesting(_ mode: WrapMode, column: Int) {
+        select(.editor)
+        wrapModePopup.selectItem(at: WrapMode.allCases.firstIndex(of: mode) ?? 0)
+        wrapColumnField.integerValue = column
         controlChanged()
     }
 }

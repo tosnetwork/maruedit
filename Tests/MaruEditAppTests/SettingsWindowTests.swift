@@ -60,6 +60,31 @@ final class SettingsWindowTests: XCTestCase {
         XCTAssertEqual(received?.classicChrome, options)
     }
 
+    func testWrapModeAndColumnApplyImmediatelyAndClamp() async {
+        var received: Preferences?
+        let controller = SettingsWindowController(preferences: .defaults) { received = $0 }
+        controller.setWrappingForTesting(.fixed, column: 120)
+        XCTAssertEqual(received?.wrapMode, .fixed)
+        XCTAssertEqual(received?.wrapColumn, 120)
+        XCTAssertEqual(received?.wrapLines, true)
+        controller.setWrappingForTesting(.none, column: 9)
+        XCTAssertEqual(received?.wrapMode, WrapMode.none)
+        XCTAssertEqual(received?.wrapColumn, 20)
+        XCTAssertEqual(received?.wrapLines, false)
+    }
+
+    func testFileTypeProfileCanSetFixedWrapWidth() async {
+        let editor = EditorViewController(); _ = editor.view
+        let document = Document(content: String(repeating: "x", count: 200))
+        document.fileTypeProfile = FileTypeProfile(
+            id: "fixed", name: "Fixed", settings: FileTypeSettings(
+                wrapLines: true, wrapMode: .fixed, wrapColumn: 72))
+        editor.document = document
+        editor.applyPreferences(.defaults)
+        XCTAssertEqual(editor.effectiveWrapMode, .fixed)
+        XCTAssertEqual(editor.effectiveWrapColumn, 72)
+    }
+
     func testEditorPreferencesApplyImmediatelyWithoutChangingText() async {
         let editor = EditorViewController()
         _ = editor.view
@@ -73,7 +98,12 @@ final class SettingsWindowTests: XCTestCase {
 
         XCTAssertEqual(editor.textView.string, "let value = 1")
         XCTAssertEqual(editor.textView.font?.pointSize, 18)
-        XCTAssertTrue(editor.textView.textContainer?.widthTracksTextView == true)
+        XCTAssertEqual(editor.effectiveWrapMode, .fixed)
+        XCTAssertTrue(editor.textView.textContainer?.widthTracksTextView == false)
+        let cell = "0".size(withAttributes: [.font: try! XCTUnwrap(editor.textView.font)]).width
+        XCTAssertEqual(editor.textView.textContainer?.containerSize.width ?? 0,
+                       cell * 160 + (editor.textView.textContainer?.lineFragmentPadding ?? 0) * 2,
+                       accuracy: 0.1)
         XCTAssertTrue(editor.areLineNumbersHidden)
         XCTAssertEqual(editor.appliedPreferences, preferences)
     }
@@ -92,6 +122,7 @@ final class SettingsWindowTests: XCTestCase {
         editor.applyPreferences(preferences)
 
         XCTAssertTrue(editor.textView.textContainer?.widthTracksTextView == true)
+        XCTAssertEqual(editor.effectiveWrapMode, .window)
         let paragraph = try XCTUnwrap(editor.textView.defaultParagraphStyle)
         let spaceWidth = " ".size(withAttributes: [.font: try XCTUnwrap(editor.textView.font)]).width
         XCTAssertEqual(paragraph.defaultTabInterval, spaceWidth * 7, accuracy: 0.01)

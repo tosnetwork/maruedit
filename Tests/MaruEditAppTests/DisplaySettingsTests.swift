@@ -49,9 +49,10 @@ final class DisplaySettingsTests: XCTestCase {
         editor.setTabWidth(2)
 
         XCTAssertTrue(editor.effectiveWrapLines)
+        XCTAssertEqual(editor.effectiveWrapMode, .fixed)
         XCTAssertEqual(editor.effectiveTabWidth, 2)
         XCTAssertEqual(editor.textView.string, "a\tb")
-        XCTAssertTrue(editor.textView.textContainer?.widthTracksTextView == true)
+        XCTAssertTrue(editor.textView.textContainer?.widthTracksTextView == false)
         let paragraph = try XCTUnwrap(editor.textView.defaultParagraphStyle)
         let space = " ".size(withAttributes: [.font: try XCTUnwrap(editor.textView.font)]).width
         XCTAssertEqual(paragraph.defaultTabInterval, space * 2, accuracy: 0.01)

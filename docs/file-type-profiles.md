@@ -1,12 +1,12 @@
 # FileType Profiles
 
-MaruEdit file-type profiles use JSON schema version 4. A profile matches exact
+MaruEdit file-type profiles use JSON schema version 5. A profile matches exact
 filenames and/or filename extensions, then supplies the editor behavior for a
 newly opened document.
 
 ```json
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "user.example-script",
   "name": "Example Script",
   "filenamePatterns": ["Examplefile"],
@@ -16,7 +16,9 @@ newly opened document.
     "tabWidth": 4,
     "indentWidth": 2,
     "indentStyle": "spaces",
-    "wrapLines": false,
+    "wrapLines": true,
+    "wrapMode": "fixed",
+    "wrapColumn": 160,
     "encoding": "UTF-8",
     "syntax": "shell",
     "lineComment": "#",

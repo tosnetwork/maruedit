@@ -8,7 +8,7 @@ import Foundation
 /// Defaults preserve the original editor appearance, and decoding supplies
 /// defaults for fields introduced by later schema versions.
 public struct Preferences: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 5
+    public static let currentSchemaVersion = 6
 
     public var schemaVersion: Int
     public var fontName: String
@@ -16,6 +16,8 @@ public struct Preferences: Codable, Equatable, Sendable {
     public var theme: ThemeName
     public var showLineNumbers: Bool
     public var wrapLines: Bool
+    public var wrapMode: WrapMode
+    public var wrapColumn: Int
     public var tabWidth: Int
     public var invisibleCharacters: InvisibleCharacterOptions
     public var workspaceStyle: WorkspaceStyle
@@ -27,7 +29,7 @@ public struct Preferences: Codable, Equatable, Sendable {
         fontSize: Double,
         theme: ThemeName,
         showLineNumbers: Bool,
-        wrapLines: Bool,
+        wrapLines: Bool, wrapMode: WrapMode = .window, wrapColumn: Int = 160,
         tabWidth: Int,
         invisibleCharacters: InvisibleCharacterOptions = .none,
         workspaceStyle: WorkspaceStyle = .classic,
@@ -39,6 +41,8 @@ public struct Preferences: Codable, Equatable, Sendable {
         self.theme = theme
         self.showLineNumbers = showLineNumbers
         self.wrapLines = wrapLines
+        self.wrapMode = wrapMode
+        self.wrapColumn = max(20, min(8_000, wrapColumn))
         self.tabWidth = tabWidth
         self.invisibleCharacters = invisibleCharacters
         self.workspaceStyle = workspaceStyle
@@ -53,13 +57,15 @@ public struct Preferences: Codable, Equatable, Sendable {
         fontSize: 13,
         theme: .classicLight,
         showLineNumbers: true,
-        wrapLines: false,
+        wrapLines: true,
+        wrapMode: .fixed,
+        wrapColumn: 160,
         tabWidth: 4,
         workspaceStyle: .classic
     )
 
     private enum CodingKeys: String, CodingKey {
-        case schemaVersion, fontName, fontSize, theme, showLineNumbers, wrapLines, tabWidth
+        case schemaVersion, fontName, fontSize, theme, showLineNumbers, wrapLines, wrapMode, wrapColumn, tabWidth
         case invisibleCharacters, workspaceStyle, classicChrome
     }
 
@@ -72,6 +78,10 @@ public struct Preferences: Codable, Equatable, Sendable {
         showLineNumbers = try values.decodeIfPresent(Bool.self, forKey: .showLineNumbers)
             ?? Self.defaults.showLineNumbers
         wrapLines = try values.decodeIfPresent(Bool.self, forKey: .wrapLines) ?? Self.defaults.wrapLines
+        wrapMode = try values.decodeIfPresent(WrapMode.self, forKey: .wrapMode)
+            ?? (wrapLines ? .window : .none)
+        wrapColumn = max(20, min(8_000,
+            try values.decodeIfPresent(Int.self, forKey: .wrapColumn) ?? 160))
         tabWidth = try values.decodeIfPresent(Int.self, forKey: .tabWidth) ?? Self.defaults.tabWidth
         invisibleCharacters = try values.decodeIfPresent(
             InvisibleCharacterOptions.self, forKey: .invisibleCharacters) ?? .none
@@ -80,6 +90,13 @@ public struct Preferences: Codable, Equatable, Sendable {
         classicChrome = try values.decodeIfPresent(
             ClassicChromeOptions.self, forKey: .classicChrome) ?? .allVisible
     }
+}
+
+public enum WrapMode: String, Codable, Sendable, CaseIterable {
+    case none
+    case window
+    case fixed
+    case maximum
 }
 
 public struct ClassicChromeOptions: Codable, Equatable, Sendable {

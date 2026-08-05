@@ -95,6 +95,8 @@ public struct FileTypeSettings: Codable, Equatable, Sendable {
     public var indentWidth: Int
     public var indentStyle: IndentStyle
     public var wrapLines: Bool
+    public var wrapMode: WrapMode?
+    public var wrapColumn: Int?
     public var encoding: TextEncoding?
     public var syntax: Language
     public var lineComment: String?
@@ -113,7 +115,8 @@ public struct FileTypeSettings: Codable, Equatable, Sendable {
 
     public init(
         tabWidth: Int = 4, indentWidth: Int = 4, indentStyle: IndentStyle = .spaces,
-        wrapLines: Bool = false, encoding: TextEncoding? = nil, syntax: Language = .plainText,
+        wrapLines: Bool = false, wrapMode: WrapMode? = nil, wrapColumn: Int? = nil,
+        encoding: TextEncoding? = nil, syntax: Language = .plainText,
         lineComment: String? = nil, blockCommentStart: String? = nil, blockCommentEnd: String? = nil,
         outlineRules: [OutlineRule]? = nil, completion: CompletionSettings? = nil,
         spelling: SpellingSettings? = nil, appearance: ProfileAppearanceSettings? = nil,
@@ -121,7 +124,9 @@ public struct FileTypeSettings: Codable, Equatable, Sendable {
         loadPolicy: ProfileLoadPolicy? = nil, savePolicy: ProfileSavePolicy? = nil
     ) {
         self.tabWidth = tabWidth; self.indentWidth = indentWidth; self.indentStyle = indentStyle
-        self.wrapLines = wrapLines; self.encoding = encoding; self.syntax = syntax
+        self.wrapLines = wrapLines; self.wrapMode = wrapMode
+        self.wrapColumn = wrapColumn.map { max(20, min(8_000, $0)) }
+        self.encoding = encoding; self.syntax = syntax
         self.lineComment = lineComment; self.blockCommentStart = blockCommentStart
         self.blockCommentEnd = blockCommentEnd
         self.outlineRules = outlineRules
@@ -136,7 +141,7 @@ public struct FileTypeSettings: Codable, Equatable, Sendable {
 }
 
 public struct FileTypeProfile: Codable, Equatable, Identifiable, Sendable {
-    public static let currentSchemaVersion = 4
+    public static let currentSchemaVersion = 5
     public var schemaVersion: Int
     public var id: String
     public var name: String

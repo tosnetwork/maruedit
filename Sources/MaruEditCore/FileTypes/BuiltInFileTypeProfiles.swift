@@ -13,18 +13,20 @@ public enum BuiltInFileTypeProfiles {
         FileTypeProfile(
             id: "builtin.shell", name: "Shell", filenamePatterns: ["Makefile"],
             extensions: ["sh", "bash", "zsh", "fish"], settings: FileTypeSettings(
+                wrapLines: true, wrapMode: .fixed, wrapColumn: 160,
                 syntax: .shell, lineComment: "#")),
     ]
 
     private static func profile(
         _ id: String, _ name: String, _ extensions: [String], _ syntax: Language,
         _ lineComment: String?, block: (String, String)? = nil,
-        tabs: Bool = false, wrap: Bool = false
+        tabs: Bool = false, wrap: Bool = true
     ) -> FileTypeProfile {
         FileTypeProfile(
             id: "builtin.\(id)", name: name, extensions: extensions,
             settings: FileTypeSettings(
                 indentStyle: tabs ? .tabs : .spaces, wrapLines: wrap,
+                wrapMode: wrap ? WrapMode.fixed : WrapMode.none, wrapColumn: 160,
                 syntax: syntax, lineComment: lineComment,
                 blockCommentStart: block?.0, blockCommentEnd: block?.1))
     }

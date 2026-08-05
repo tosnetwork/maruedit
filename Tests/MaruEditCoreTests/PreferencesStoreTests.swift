@@ -97,7 +97,9 @@ final class PreferencesStoreTests: XCTestCase {
         """
         let decoded = try JSONDecoder().decode(Preferences.self, from: Data(json.utf8))
         let migrated = PreferencesStore.migrate(decoded)
-        XCTAssertEqual(migrated.schemaVersion, 5)
+        XCTAssertEqual(migrated.schemaVersion, Preferences.currentSchemaVersion)
+        XCTAssertEqual(migrated.wrapMode, .none)
+        XCTAssertEqual(migrated.wrapColumn, 160)
         XCTAssertEqual(migrated.invisibleCharacters, .none)
         XCTAssertEqual(migrated.workspaceStyle, .classic)
         XCTAssertEqual(migrated.classicChrome, .allVisible)

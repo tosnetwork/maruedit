@@ -447,6 +447,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
             ?? document?.fileTypeProfile?.settings.tabWidth ?? preferences.tabWidth
         effectivePreferences.wrapLines = document?.largeFileMode.usesReducedFeatures == true ? false : document?.wrapLinesOverride
             ?? document?.fileTypeProfile?.settings.wrapLines ?? preferences.wrapLines
+        let wrapMode = resolvedWrapMode()
         let font = preferredEditorFont
         let paragraph = NSMutableParagraphStyle()
         paragraph.tabStops = []
@@ -468,15 +469,21 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
                                   range: NSRange(location: 0, length: storage.length))
         }
         lineNumbers?.setVisible(effectivePreferences.showLineNumbers)
-        textView.textContainer?.widthTracksTextView = effectivePreferences.wrapLines
-        textView.isHorizontallyResizable = !effectivePreferences.wrapLines
-        scrollView.hasHorizontalScroller = !effectivePreferences.wrapLines
+        textView.textContainer?.widthTracksTextView = wrapMode == .window
+        textView.isHorizontallyResizable = wrapMode != .window
+        scrollView.hasHorizontalScroller = wrapMode != .window
         let spelling = document?.fileTypeProfile?.settings.spelling ?? SpellingSettings()
         textView.isContinuousSpellCheckingEnabled = spelling.enabled
         textView.isAutomaticSpellingCorrectionEnabled = spelling.enabled && spelling.automaticCorrection
-        if effectivePreferences.wrapLines {
+        switch wrapMode {
+        case .window:
             textView.textContainer?.containerSize.width = scrollView.contentSize.width
-        } else {
+        case .fixed, .maximum:
+            let columns = wrapMode == .maximum ? 8_000 : effectiveWrapColumn
+            let cell = ("0" as NSString).size(withAttributes: [.font: font]).width
+            let padding = textView.textContainer?.lineFragmentPadding ?? 0
+            textView.textContainer?.containerSize.width = cell * CGFloat(columns) + padding * 2
+        case .none:
             textView.textContainer?.containerSize.width = CGFloat.greatestFiniteMagnitude
         }
         applyHighContrast(isHighContrast)
@@ -523,9 +530,22 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     }
 
     var effectiveWrapLines: Bool {
-        if document?.largeFileMode.usesReducedFeatures == true { return false }
-        return document?.wrapLinesOverride ?? document?.fileTypeProfile?.settings.wrapLines
-            ?? preferences.wrapLines
+        resolvedWrapMode() != .none
+    }
+
+    var effectiveWrapMode: WrapMode { resolvedWrapMode() }
+    var effectiveWrapColumn: Int {
+        max(20, min(8_000, document?.fileTypeProfile?.settings.wrapColumn ?? preferences.wrapColumn))
+    }
+
+    private func resolvedWrapMode() -> WrapMode {
+        if document?.largeFileMode.usesReducedFeatures == true { return .none }
+        if let override = document?.wrapLinesOverride {
+            return override ? (preferences.wrapMode == .none ? .window : preferences.wrapMode) : .none
+        }
+        if let profileMode = document?.fileTypeProfile?.settings.wrapMode { return profileMode }
+        if let profile = document?.fileTypeProfile { return profile.settings.wrapLines ? .window : .none }
+        return preferences.wrapLines ? preferences.wrapMode : .none
     }
 
     func enableAllLargeFileFeatures() {
