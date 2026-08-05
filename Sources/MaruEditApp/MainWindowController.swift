@@ -272,7 +272,7 @@ final class MainWindowController: NSWindowController,
             height: cv.bounds.height - topTabH - findH - statusH - bottomTabH - paneH - classicTop - classicBottom
         )
         updateTabBarFrame()
-        classicChrome.updateRuler(editorOrigin: editorXForTabBar() + 46, currentColumn: lastCursorColumn)
+        classicChrome.updateRuler(editorOrigin: rulerOrigin(), currentColumn: lastCursorColumn)
     }
 
     private static let outputPaneHeight: CGFloat = 200
@@ -304,6 +304,11 @@ final class MainWindowController: NSWindowController,
     }
 
     private var lastCursorColumn = 1
+
+    private func rulerOrigin() -> CGFloat {
+        guard editorVC.isViewLoaded else { return 48 }
+        return max(0, editorVC.scrollView.convert(.zero, to: classicChrome).x)
+    }
 
     // MARK: - Cursor persistence across tab switches
 
@@ -1556,7 +1561,7 @@ final class MainWindowController: NSWindowController,
     }
     func editorCursorMoved(_ vc: EditorViewController, state: EditorCursorState) {
         lastCursorColumn = state.displayColumn
-        classicChrome.updateRuler(editorOrigin: editorXForTabBar() + 46, currentColumn: state.displayColumn)
+        classicChrome.updateRuler(editorOrigin: rulerOrigin(), currentColumn: state.displayColumn)
         statusBar.updateCursor(state)
         statusBar.updateInputMode(curDoc?.inputMode ?? .insert)
         if let title = sidebarVC.selectOutlineSymbol(containingLine: state.lineNumber - 1) {
