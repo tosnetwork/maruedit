@@ -4,7 +4,11 @@ import AppKit
 protocol TabBarViewDelegate: AnyObject {
     func tabBarDidSelectTab(at index: Int)
     func tabBarDidCloseTab(at index: Int)
+    func tabBarDidMoveTab(from source: Int, to destination: Int)
+    func tabBarLayoutOptionsDidChange()
 }
+
+enum TabBarPosition: String { case top, bottom }
 
 struct TabItem: Equatable {
     let title: String
@@ -18,8 +22,18 @@ final class TabBarView: NSView {
     private(set) var selectedIndex: Int = 0
 
     private let tabHeight: CGFloat = 32
-    private let tabWidth: CGFloat = 180
+    private var tabWidth: CGFloat = 180
     var compactStyle = false { didSet { needsLayout = true; updateAppearance() } }
+    var position: TabBarPosition {
+        get { TabBarPosition(rawValue: UserDefaults.standard.string(forKey: "MaruTabBarPosition") ?? "top") ?? .top }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: "MaruTabBarPosition"); delegate?.tabBarLayoutOptionsDidChange() }
+    }
+    var hidesForSingleTab: Bool {
+        get { UserDefaults.standard.bool(forKey: "MaruTabBarHideSingle") }
+        set { UserDefaults.standard.set(newValue, forKey: "MaruTabBarHideSingle"); delegate?.tabBarLayoutOptionsDidChange() }
+    }
+    var effectiveHeight: CGFloat { hidesForSingleTab && tabs.count <= 1 ? 0 : tabHeight }
+    private var pressedIndex: Int?
 
     private var bgLayers: [NSView] = []
     private var accentLayers: [NSView] = []
@@ -80,6 +94,7 @@ final class TabBarView: NSView {
     override func layout() {
         super.layout()
         let b = bounds
+        tabWidth = tabs.isEmpty ? 180 : min(220, max(92, floor(b.width / CGFloat(tabs.count))))
         bottomBorder.frame = NSRect(x: 0, y: tabHeight - 1, width: b.width, height: 1)
 
         for (i, bg) in bgLayers.enumerated() {
@@ -172,6 +187,7 @@ final class TabBarView: NSView {
         let pt = convert(event.locationInWindow, from: nil)
         let idx = Int(pt.x / tabWidth)
         guard idx >= 0, idx < tabs.count else { return }
+        pressedIndex = idx
 
         let tabRight = CGFloat(idx + 1) * tabWidth
         if pt.x > tabRight - 30 {
@@ -180,4 +196,37 @@ final class TabBarView: NSView {
             delegate?.tabBarDidSelectTab(at: idx)
         }
     }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard let source = pressedIndex else { return }
+        let point = convert(event.locationInWindow, from: nil)
+        let destination = min(tabs.count - 1, max(0, Int(point.x / tabWidth)))
+        guard source != destination else { return }
+        pressedIndex = destination
+        delegate?.tabBarDidMoveTab(from: source, to: destination)
+    }
+
+    override func mouseUp(with event: NSEvent) { pressedIndex = nil }
+
+    override func otherMouseDown(with event: NSEvent) {
+        guard event.buttonNumber == 2 else { return }
+        let point = convert(event.locationInWindow, from: nil)
+        let index = Int(point.x / tabWidth)
+        if tabs.indices.contains(index) { delegate?.tabBarDidCloseTab(at: index) }
+    }
+
+    override func rightMouseDown(with event: NSEvent) {
+        let menu = NSMenu(title: "Tab Bar")
+        let top = NSMenuItem(title: "Tab Bar at Top", action: #selector(placeAtTop), keyEquivalent: "")
+        top.target = self; top.state = position == .top ? .on : .off; menu.addItem(top)
+        let bottom = NSMenuItem(title: "Tab Bar at Bottom", action: #selector(placeAtBottom), keyEquivalent: "")
+        bottom.target = self; bottom.state = position == .bottom ? .on : .off; menu.addItem(bottom)
+        let single = NSMenuItem(title: "Hide When One Tab", action: #selector(toggleHideSingle), keyEquivalent: "")
+        single.target = self; single.state = hidesForSingleTab ? .on : .off; menu.addItem(single)
+        NSMenu.popUpContextMenu(menu, with: event, for: self)
+    }
+
+    @objc private func placeAtTop() { position = .top }
+    @objc private func placeAtBottom() { position = .bottom }
+    @objc private func toggleHideSingle() { hidesForSingleTab.toggle() }
 }

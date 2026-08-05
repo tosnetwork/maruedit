@@ -8,6 +8,9 @@ semantic version tags.
 
 ### Added
 
+- Expanded Hidemaru-style tab behavior with top/bottom placement, optional
+  single-tab hiding, adaptive widths, drag reordering, and middle-click close;
+  upgraded the character ruler with per-column ticks and a live column marker.
 - Rebuilt Maru Classic around a compact in-window command bar above the tab row,
   with twenty-one grouped file/edit/search/navigation controls, persistent right-click
   customization, semantic color-coded icons, hover feedback, and no oversized

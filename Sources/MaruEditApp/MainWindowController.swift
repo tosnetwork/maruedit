@@ -201,6 +201,7 @@ final class MainWindowController: NSWindowController,
     var isClassicChromeVisibleForTesting: Bool { !classicChrome.isHidden }
     var classicHeadingForTesting: String { classicChrome.headingText }
     var classicChromeVisibilityForTesting: ClassicChromeOptions { classicChrome.visibilityForTesting }
+    var classicRulerStateForTesting: (origin: CGFloat, column: Int) { classicChrome.rulerStateForTesting }
     var classicToolbarIdentifiersForTesting: [String] {
         classicChrome.toolbarCommandIDs
     }
@@ -244,31 +245,34 @@ final class MainWindowController: NSWindowController,
     /// disappear above and below the editor.
     private func layoutContentViews() {
         guard let cv = window?.contentView else { return }
-        let tabH: CGFloat = 32
+        let tabH = tabBar.effectiveHeight
         let statusH: CGFloat = 24
         let findH: CGFloat = findBar.isHidden ? 0 : (findBar.isReplaceRowVisible ? 66 : 34)
         let paneH: CGFloat = (outputPane?.isHidden == false) ? Self.outputPaneHeight : 0
         let classicTop = workspaceStyle == .classic ? classicChrome.topChromeHeight : 0
         let classicBottom = workspaceStyle == .classic ? classicChrome.bottomChromeHeight : 0
 
-        classicChrome.externalTopGap = tabH + findH
+        let topTabH = tabBar.position == .top ? tabH : 0
+        let bottomTabH = tabBar.position == .bottom ? tabH : 0
+        classicChrome.externalTopGap = topTabH + findH
         findBar.frame = NSRect(
             x: 0, y: cv.bounds.height
                 - (workspaceStyle == .classic ? ClassicWorkspaceChrome.toolbarHeight : 0)
-                - tabH - findH,
+                - topTabH - findH,
             width: cv.bounds.width, height: findH
         )
-        outputPane?.frame = NSRect(x: 0, y: statusH, width: cv.bounds.width, height: paneH)
+        outputPane?.frame = NSRect(x: 0, y: statusH + bottomTabH, width: cv.bounds.width, height: paneH)
         classicChrome.frame = NSRect(
-            x: 0, y: statusH + paneH,
+            x: 0, y: statusH + bottomTabH + paneH,
             width: cv.bounds.width,
-            height: cv.bounds.height - statusH - paneH)
+            height: cv.bounds.height - statusH - bottomTabH - paneH)
         splitView.frame = NSRect(
-            x: 0, y: statusH + paneH + classicBottom,
+            x: 0, y: statusH + bottomTabH + paneH + classicBottom,
             width: cv.bounds.width,
-            height: cv.bounds.height - tabH - findH - statusH - paneH - classicTop - classicBottom
+            height: cv.bounds.height - topTabH - findH - statusH - bottomTabH - paneH - classicTop - classicBottom
         )
         updateTabBarFrame()
+        classicChrome.updateRuler(editorOrigin: editorXForTabBar() + 46, currentColumn: lastCursorColumn)
     }
 
     private static let outputPaneHeight: CGFloat = 200
@@ -279,21 +283,24 @@ final class MainWindowController: NSWindowController,
 
     private func updateTabBarFrame() {
         guard let cv = window?.contentView else { return }
-        let tabH: CGFloat = 32
-        let editorX: CGFloat
-        if sidebarVC.view.isHidden {
-            editorX = 0
-        } else {
-            editorX = sidebarVC.view.frame.width + splitView.dividerThickness
-        }
+        let tabH = tabBar.effectiveHeight
+        let editorX = editorXForTabBar()
         tabBar.frame = NSRect(
             x: editorX,
-            y: cv.bounds.height - tabH
-                - (workspaceStyle == .classic ? ClassicWorkspaceChrome.toolbarHeight : 0),
+            y: tabBar.position == .top
+                ? cv.bounds.height - tabH - (workspaceStyle == .classic ? ClassicWorkspaceChrome.toolbarHeight : 0)
+                : 24,
             width: cv.bounds.width - editorX,
             height: tabH
         )
+        tabBar.isHidden = tabH == 0
     }
+
+    private func editorXForTabBar() -> CGFloat {
+        sidebarVC.view.isHidden ? 0 : sidebarVC.view.frame.width + splitView.dividerThickness
+    }
+
+    private var lastCursorColumn = 1
 
     // MARK: - Cursor persistence across tab switches
 
@@ -1545,6 +1552,8 @@ final class MainWindowController: NSWindowController,
         if diffTargetDocument != nil, vc === editorVC { refreshDiffHunks() }
     }
     func editorCursorMoved(_ vc: EditorViewController, state: EditorCursorState) {
+        lastCursorColumn = state.displayColumn
+        classicChrome.updateRuler(editorOrigin: editorXForTabBar() + 46, currentColumn: state.displayColumn)
         statusBar.updateCursor(state)
         statusBar.updateInputMode(curDoc?.inputMode ?? .insert)
         if let title = sidebarVC.selectOutlineSymbol(containingLine: state.lineNumber - 1) {
@@ -1581,6 +1590,14 @@ final class MainWindowController: NSWindowController,
         closeCurrentTab()
         if curIdx != prev { refreshTabs() }
     }
+
+    func tabBarDidMoveTab(from source: Int, to destination: Int) {
+        documentController.moveDocument(from: source, to: destination)
+        refreshTabs()
+        scheduleSessionSave()
+    }
+
+    func tabBarLayoutOptionsDidChange() { layoutContentViews() }
 
     // MARK: - SidebarDelegate
 

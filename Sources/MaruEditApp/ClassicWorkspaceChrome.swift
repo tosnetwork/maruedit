@@ -61,6 +61,10 @@ final class ClassicWorkspaceChrome: NSView {
     }
 
     func updateHeading(_ value: String) { heading.stringValue = value }
+    func updateRuler(editorOrigin: CGFloat, currentColumn: Int) {
+        ruler.editorOrigin = editorOrigin
+        ruler.currentColumn = currentColumn
+    }
 
     var onCommand: ((CommandID) -> Void)? {
         get { toolbar.onCommand }
@@ -83,6 +87,9 @@ final class ClassicWorkspaceChrome: NSView {
             showHeading: !heading.isHidden,
             showRuler: !ruler.isHidden,
             showCommandStrip: !commandStrip.isHidden)
+    }
+    var rulerStateForTesting: (origin: CGFloat, column: Int) {
+        (ruler.editorOrigin, ruler.currentColumn)
     }
 }
 
@@ -288,6 +295,8 @@ private final class ClassicToolbarButton: NSButton {
 }
 
 private final class CharacterRulerView: NSView {
+    var editorOrigin: CGFloat = 46 { didSet { needsDisplay = true } }
+    var currentColumn: Int = 1 { didSet { needsDisplay = true } }
     override var isFlipped: Bool { true }
 
     override init(frame: NSRect) {
@@ -314,19 +323,27 @@ private final class CharacterRulerView: NSView {
             .font: NSFont.monospacedSystemFont(ofSize: 8, weight: .regular),
             .foregroundColor: NSColor.secondaryLabelColor,
         ]
-        var column = 0
-        var x: CGFloat = 46
+        var column = 1
+        var x: CGFloat = editorOrigin
         while x < bounds.maxX {
-            if column.isMultiple(of: 10) {
-                String(column).draw(at: NSPoint(x: x + 1, y: 1), withAttributes: attributes)
-            } else if column.isMultiple(of: 5) {
-                let tick = NSBezierPath()
-                tick.move(to: NSPoint(x: x, y: bounds.maxY - 5))
-                tick.line(to: NSPoint(x: x, y: bounds.maxY))
-                tick.stroke()
-            }
+            let major = column.isMultiple(of: 10)
+            let middle = column.isMultiple(of: 5)
+            let tick = NSBezierPath()
+            tick.move(to: NSPoint(x: x + 0.5, y: bounds.maxY - (major ? 8 : middle ? 6 : 3)))
+            tick.line(to: NSPoint(x: x + 0.5, y: bounds.maxY))
+            tick.stroke()
+            if major { String(column).draw(at: NSPoint(x: x + 2, y: 0), withAttributes: attributes) }
             column += 1
             x += cell
+        }
+        let cursorX = editorOrigin + CGFloat(max(0, currentColumn - 1)) * cell
+        if cursorX >= editorOrigin && cursorX <= bounds.maxX {
+            NSColor.controlAccentColor.setFill()
+            let marker = NSBezierPath()
+            marker.move(to: NSPoint(x: cursorX - 3, y: 0))
+            marker.line(to: NSPoint(x: cursorX + 3, y: 0))
+            marker.line(to: NSPoint(x: cursorX, y: 5))
+            marker.close(); marker.fill()
         }
     }
 }

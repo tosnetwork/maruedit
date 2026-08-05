@@ -20,6 +20,19 @@ final class DocumentControllerTests: XCTestCase {
         XCTAssertTrue(c.currentDocument === doc)
     }
 
+    func testMovingTabsPreservesTheActiveDocumentIdentity() async {
+        let controller = DocumentController()
+        let first = controller.newDocument()
+        let second = controller.newDocument()
+        let third = controller.newDocument()
+        controller.selectDocument(at: 1)
+        controller.moveDocument(from: 0, to: 2)
+        XCTAssertEqual(controller.documents.map(ObjectIdentifier.init),
+                       [ObjectIdentifier(second), ObjectIdentifier(third), ObjectIdentifier(first)])
+        XCTAssertTrue(controller.currentDocument === second)
+        XCTAssertEqual(controller.currentIndex, 0)
+    }
+
     func testOpenAppendsNewTabForUnseenFile() async throws {
         let c = DocumentController()
         _ = c.newDocument()

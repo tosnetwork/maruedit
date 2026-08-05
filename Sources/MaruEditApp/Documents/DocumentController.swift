@@ -155,6 +155,15 @@ final class DocumentController {
         currentIndex = index
     }
 
+    func moveDocument(from source: Int, to destination: Int) {
+        guard documents.indices.contains(source), documents.indices.contains(destination),
+              source != destination else { return }
+        let current = currentDocument
+        let document = documents.remove(at: source)
+        documents.insert(document, at: destination)
+        if let current { currentIndex = documents.firstIndex { $0 === current } ?? destination }
+    }
+
     /// Sets the current index to `savedIndex`, clamped into range. Used
     /// only by session restore, which must always land on some valid
     /// document rather than silently no-op on an out-of-range value.

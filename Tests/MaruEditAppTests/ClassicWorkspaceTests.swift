@@ -114,6 +114,18 @@ final class ClassicWorkspaceTests: XCTestCase {
         XCTAssertEqual(controller.classicChromeVisibilityForTesting, preferences.classicChrome)
     }
 
+    func testRulerTracksEditorOriginAndCurrentDisplayColumn() async {
+        let controller = MainWindowController()
+        controller.applyPreferences(.defaults)
+        controller.editorCursorMoved(
+            controller.macroEditor,
+            state: EditorCursorState(lineNumber: 1, displayColumn: 37, utf16Offset: 36,
+                                     selectedCharacterCount: 0, selectedUTF16Length: 0,
+                                     selectionRangeCount: 1))
+        XCTAssertEqual(controller.classicRulerStateForTesting.column, 37)
+        XCTAssertGreaterThanOrEqual(controller.classicRulerStateForTesting.origin, 46)
+    }
+
     private func descendants(of view: NSView) -> [NSView] {
         view.subviews.flatMap { [$0] + descendants(of: $0) }
     }
