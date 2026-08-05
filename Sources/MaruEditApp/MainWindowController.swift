@@ -51,6 +51,7 @@ final class MainWindowController: NSWindowController,
     private let recoverySaveDebouncer = Debouncer(delay: 1.5)
     private var sidebarManuallyCollapsed = false
     var onEditorFontChange: ((NSFont) -> Void)?
+    var onClassicToolbarCommand: ((CommandID) -> Void)?
 
     /// Convenience shims onto `documentController` so the UI-orchestration
     /// code below (largely unchanged from before the M1-02 extraction)
@@ -163,9 +164,15 @@ final class MainWindowController: NSWindowController,
     }
 
     func applyPreferences(_ preferences: Preferences) {
+        Theme.activeName = preferences.theme
         workspaceStyle = preferences.workspaceStyle
         classicChrome.isHidden = workspaceStyle != .classic
         tabBar.compactStyle = workspaceStyle == .classic
+        configureWorkspaceToolbar()
+        window?.backgroundColor = Theme.background
+        tabBar.applyTheme()
+        statusBar.applyTheme()
+        sidebarVC.applyTheme()
         editorVC.applyPreferences(preferences)
         layoutContentViews()
         refreshStatus()
@@ -174,6 +181,35 @@ final class MainWindowController: NSWindowController,
     var isClassicWorkspace: Bool { workspaceStyle == .classic }
     var isClassicChromeVisibleForTesting: Bool { !classicChrome.isHidden }
     var classicHeadingForTesting: String { classicChrome.headingText }
+    var classicToolbarIdentifiersForTesting: [String] {
+        window?.toolbar?.items.map(\.itemIdentifier.rawValue) ?? []
+    }
+
+    func activateClassicToolbarCommandForTesting(_ command: CommandID) {
+        onClassicToolbarCommand?(command)
+    }
+
+    private func configureWorkspaceToolbar() {
+        guard let window else { return }
+        if workspaceStyle == .classic {
+            if window.toolbar == nil {
+                let toolbar = NSToolbar(identifier: "MaruClassicToolbar")
+                toolbar.delegate = self
+                toolbar.displayMode = .iconAndLabel
+                toolbar.sizeMode = .small
+                toolbar.allowsUserCustomization = true
+                toolbar.autosavesConfiguration = true
+                window.toolbar = toolbar
+            }
+            window.toolbar?.isVisible = true
+        } else {
+            window.toolbar?.isVisible = false
+        }
+    }
+
+    @objc private func runClassicToolbarCommand(_ sender: NSToolbarItem) {
+        onClassicToolbarCommand?(CommandID(sender.itemIdentifier.rawValue))
+    }
 
     var effectiveWrapLines: Bool { editorVC.effectiveWrapLines }
     var effectiveTabWidth: Int { editorVC.effectiveTabWidth }
@@ -1620,3 +1656,53 @@ final class MainWindowController: NSWindowController,
 }
 
 extension MainWindowController: NSSplitViewDelegate {}
+
+extension MainWindowController: NSToolbarDelegate {
+    private static let classicToolbarCommands: [CommandID] = [
+        .fileNew, .fileOpen, .fileSave, .searchFind, .searchFindNext,
+        .searchGrep, .navigateToggleBookmark,
+    ]
+
+    nonisolated func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        MainActor.assumeIsolated {
+            Self.classicToolbarCommands.map { NSToolbarItem.Identifier($0.rawValue) }
+                + [.flexibleSpace, .space]
+        }
+    }
+
+    nonisolated func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        MainActor.assumeIsolated {
+            Self.classicToolbarCommands.map { NSToolbarItem.Identifier($0.rawValue) }
+        }
+    }
+
+    nonisolated func toolbar(
+        _ toolbar: NSToolbar,
+        itemForItemIdentifier identifier: NSToolbarItem.Identifier,
+        willBeInsertedIntoToolbar flag: Bool
+    ) -> NSToolbarItem? {
+        MainActor.assumeIsolated { () -> NSToolbarItem? in
+            guard let command = Self.classicToolbarCommands.first(where: {
+                $0.rawValue == identifier.rawValue
+            }) else { return nil }
+            let metadata: (String, String) = switch command {
+            case .fileNew: ("New", "doc.badge.plus")
+            case .fileOpen: ("Open", "folder")
+            case .fileSave: ("Save", "square.and.arrow.down")
+            case .searchFind: ("Find", "magnifyingglass")
+            case .searchFindNext: ("Next", "arrow.down")
+            case .searchGrep: ("Grep", "text.magnifyingglass")
+            case .navigateToggleBookmark: ("Bookmark", "bookmark")
+            default: (command.rawValue, "gearshape")
+            }
+            let item = NSToolbarItem(itemIdentifier: identifier)
+            item.label = metadata.0
+            item.paletteLabel = metadata.0
+            item.toolTip = metadata.0
+            item.image = NSImage(systemSymbolName: metadata.1, accessibilityDescription: metadata.0)
+            item.target = self
+            item.action = #selector(runClassicToolbarCommand(_:))
+            return item
+        }
+    }
+}

@@ -195,6 +195,7 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
             preferences.fontSize = Double(max(8, min(72, fontSizeField.integerValue)))
         case .general:
             preferences.workspaceStyle = workspacePopup.indexOfSelectedItem == 0 ? .classic : .modern
+            preferences.theme = preferences.workspaceStyle == .classic ? .classicLight : .monokai
         default: break
         }
         onChange(preferences)
@@ -205,6 +206,7 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
         switch selectedGroup {
         case .general:
             preferences.workspaceStyle = defaults.workspaceStyle
+            preferences.theme = defaults.theme
         case .editor:
             preferences.tabWidth = defaults.tabWidth
             preferences.showLineNumbers = defaults.showLineNumbers

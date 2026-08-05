@@ -322,6 +322,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
 
     func applyPreferences(_ preferences: Preferences) {
         self.preferences = preferences
+        Theme.activeName = preferences.theme
         guard isViewLoaded else { return }
         var effectivePreferences = preferences
         effectivePreferences.tabWidth = document?.tabWidthOverride
@@ -352,6 +353,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         } else {
             textView.textContainer?.containerSize.width = CGFloat.greatestFiniteMagnitude
         }
+        applyHighContrast(isHighContrast)
         lineNumbers?.needsDisplay = true
     }
 

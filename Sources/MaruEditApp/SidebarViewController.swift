@@ -77,10 +77,15 @@ private final class SidebarOutlineView: NSOutlineView {
 // MARK: - Sidebar
 
 final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NSOutlineViewDelegate {
+    enum UtilityPane: Int, CaseIterable { case files, outline, results }
     weak var sidebarDelegate: SidebarDelegate?
 
     private var outlineView: SidebarOutlineView!
     private var headerLabel: NSTextField!
+    private var paneSelector: NSSegmentedControl!
+    private var fileScrollView: NSScrollView!
+    private var placeholderLabel: NSTextField!
+    private(set) var selectedUtilityPane: UtilityPane = .files
     private var rootItems: [FileItem] = []
     private(set) var rootFolderURL: URL?
     private var suppressSelectionCallback = false
@@ -89,7 +94,6 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
         let wrapper = NSView()
         wrapper.wantsLayer = true
         wrapper.layer?.backgroundColor = Theme.sidebarBg.cgColor
-        wrapper.appearance = NSAppearance(named: .darkAqua)
 
         headerLabel = NSTextField(labelWithString: "EXPLORER")
         headerLabel.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
@@ -97,7 +101,17 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
         headerLabel.translatesAutoresizingMaskIntoConstraints = false
         wrapper.addSubview(headerLabel)
 
+        paneSelector = NSSegmentedControl(labels: ["Files", "Outline", "Results"],
+                                          trackingMode: .selectOne,
+                                          target: self, action: #selector(selectUtilityPane(_:)))
+        paneSelector.selectedSegment = UtilityPane.files.rawValue
+        paneSelector.segmentStyle = .texturedRounded
+        paneSelector.translatesAutoresizingMaskIntoConstraints = false
+        paneSelector.setAccessibilityLabel("Utility pane")
+        wrapper.addSubview(paneSelector)
+
         let sv = NSScrollView()
+        fileScrollView = sv
         sv.translatesAutoresizingMaskIntoConstraints = false
         sv.hasVerticalScroller = true
         sv.autohidesScrollers = true
@@ -132,17 +146,65 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
         sv.documentView = outlineView
         wrapper.addSubview(sv)
 
+        placeholderLabel = NSTextField(wrappingLabelWithString: "")
+        placeholderLabel.alignment = .center
+        placeholderLabel.textColor = .secondaryLabelColor
+        placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
+        placeholderLabel.isHidden = true
+        wrapper.addSubview(placeholderLabel)
+
         NSLayoutConstraint.activate([
-            headerLabel.topAnchor.constraint(equalTo: wrapper.topAnchor, constant: 12),
+            paneSelector.topAnchor.constraint(equalTo: wrapper.topAnchor, constant: 8),
+            paneSelector.leadingAnchor.constraint(equalTo: wrapper.leadingAnchor, constant: 8),
+            paneSelector.trailingAnchor.constraint(equalTo: wrapper.trailingAnchor, constant: -8),
+            headerLabel.topAnchor.constraint(equalTo: paneSelector.bottomAnchor, constant: 8),
             headerLabel.leadingAnchor.constraint(equalTo: wrapper.leadingAnchor, constant: 14),
 
             sv.topAnchor.constraint(equalTo: headerLabel.bottomAnchor, constant: 8),
             sv.leadingAnchor.constraint(equalTo: wrapper.leadingAnchor),
             sv.trailingAnchor.constraint(equalTo: wrapper.trailingAnchor),
             sv.bottomAnchor.constraint(equalTo: wrapper.bottomAnchor),
+            placeholderLabel.centerXAnchor.constraint(equalTo: wrapper.centerXAnchor),
+            placeholderLabel.centerYAnchor.constraint(equalTo: wrapper.centerYAnchor),
+            placeholderLabel.leadingAnchor.constraint(greaterThanOrEqualTo: wrapper.leadingAnchor, constant: 16),
+            placeholderLabel.trailingAnchor.constraint(lessThanOrEqualTo: wrapper.trailingAnchor, constant: -16),
         ])
 
         view = wrapper
+    }
+
+    @objc private func selectUtilityPane(_ sender: NSSegmentedControl) {
+        guard let pane = UtilityPane(rawValue: sender.selectedSegment) else { return }
+        showUtilityPane(pane)
+    }
+
+    func showUtilityPane(_ pane: UtilityPane) {
+        selectedUtilityPane = pane
+        paneSelector.selectedSegment = pane.rawValue
+        let showsFiles = pane == .files
+        fileScrollView.isHidden = !showsFiles
+        placeholderLabel.isHidden = showsFiles
+        switch pane {
+        case .files:
+            headerLabel.stringValue = rootFolderURL?.lastPathComponent.uppercased() ?? "FILES"
+        case .outline:
+            headerLabel.stringValue = "OUTLINE"
+            placeholderLabel.stringValue = "Document symbols and folds will appear here."
+        case .results:
+            headerLabel.stringValue = "RESULTS"
+            placeholderLabel.stringValue = "Search, Grep, and marker results will appear here."
+        }
+    }
+
+    func applyTheme() {
+        view.layer?.backgroundColor = Theme.sidebarBg.cgColor
+        headerLabel.textColor = Theme.sidebarText.withAlphaComponent(0.65)
+        outlineView.backgroundColor = Theme.sidebarBg
+        outlineView.reloadData()
+    }
+
+    var utilityPaneLabelsForTesting: [String] {
+        (0..<paneSelector.segmentCount).map { paneSelector.label(forSegment: $0) ?? "" }
     }
 
     func openFolder(_ url: URL) {
@@ -150,7 +212,9 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
         let root = FileItem(url: url, isDir: true)
         root.loadChildrenIfNeeded()
         rootItems = root.children ?? []
-        headerLabel.stringValue = url.lastPathComponent.uppercased()
+        if selectedUtilityPane == .files {
+            headerLabel.stringValue = url.lastPathComponent.uppercased()
+        }
         outlineView.reloadData()
     }
 

@@ -31,6 +31,45 @@ final class ClassicWorkspaceTests: XCTestCase {
         XCTAssertTrue(labels.contains("Favorite command strip"))
     }
 
+    func testClassicToolbarUsesStableCommandIdentifiers() async {
+        let controller = MainWindowController()
+        controller.applyPreferences(.defaults)
+        XCTAssertEqual(controller.classicToolbarIdentifiersForTesting, [
+            "file.new", "file.open", "file.save", "search.find",
+            "search.findNext", "search.grep", "navigate.toggleBookmark",
+        ])
+
+        var received: CommandID?
+        controller.onClassicToolbarCommand = { received = $0 }
+        controller.activateClassicToolbarCommandForTesting(.searchGrep)
+        XCTAssertEqual(received, .searchGrep)
+    }
+
+    func testClassicLightAndModernThemesSwitchWithoutChangingDocument() async {
+        let controller = MainWindowController()
+        controller.macroEditor.textView.string = "theme-safe content"
+        controller.applyPreferences(.defaults)
+        let classicBackground = Theme.background
+
+        var modern = Preferences.defaults
+        modern.workspaceStyle = .modern
+        modern.theme = .monokai
+        controller.applyPreferences(modern)
+
+        XCTAssertNotEqual(Theme.background, classicBackground)
+        XCTAssertEqual(controller.macroEditor.textView.string, "theme-safe content")
+    }
+
+    func testUtilityPaneSwitchesBetweenFilesOutlineAndResults() async {
+        let sidebar = SidebarViewController()
+        _ = sidebar.view
+        XCTAssertEqual(sidebar.utilityPaneLabelsForTesting, ["Files", "Outline", "Results"])
+        sidebar.showUtilityPane(.outline)
+        XCTAssertEqual(sidebar.selectedUtilityPane, .outline)
+        sidebar.showUtilityPane(.results)
+        XCTAssertEqual(sidebar.selectedUtilityPane, .results)
+    }
+
     private func descendants(of view: NSView) -> [NSView] {
         view.subviews.flatMap { [$0] + descendants(of: $0) }
     }

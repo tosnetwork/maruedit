@@ -6,6 +6,18 @@ semantic version tags.
 
 ## [Unreleased]
 
+### Added
+
+- Added the Maru Classic workspace foundation: a Classic Light palette, compact tabs,
+  current-document heading and character ruler, favorite-command strip, explicit
+  insert-mode status, a customizable command-registry toolbar, and Files / Outline /
+  Results utility-pane switching.
+
+### Changed
+
+- Maru Classic is now the new-user default, while existing settings migrate to the
+  Maru Modern workspace without changing documents or overriding their saved theme.
+
 ### Documentation
 
 - Added the 1.0 user, Search/Grep, migration, compatibility, FAQ, and troubleshooting guides; linked the existing key-binding, macro, and external-command references from the README.

@@ -15,9 +15,9 @@ that would weaken MaruEdit's security model.
 - [x] Compact Classic tab presentation.
 - [x] Favorite/function command strip foundation.
 - [x] Explicit insert-mode status segment.
-- [ ] Original Classic Light palette with live switching.
-- [ ] Native customizable toolbar backed by Command Registry IDs.
-- [ ] Files / Outline / Results pane switcher and single-file closed default.
+- [x] Original Classic Light palette with live switching.
+- [x] Native customizable toolbar backed by Command Registry IDs.
+- [x] Files / Outline / Results pane switcher and single-file closed default.
 - [ ] User-configurable visibility for heading, ruler and command strip.
 - [ ] Real VoiceOver and visible screenshot verification.
 

@@ -45,6 +45,10 @@ final class AppCoordinator {
             self.preferencesStore.save(self.preferences)
             self.windowController?.applyPreferences(self.preferences)
         }
+        wc.onClassicToolbarCommand = { [weak self] id in
+            guard let self else { return }
+            _ = self.commandRegistry.execute(id, context: CommandContext(coordinator: self))
+        }
         windowController = wc
         wc.showWindow(nil)
         wc.applyPreferences(preferences)

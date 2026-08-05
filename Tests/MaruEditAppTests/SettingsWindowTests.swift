@@ -30,8 +30,10 @@ final class SettingsWindowTests: XCTestCase {
         XCTAssertEqual(controller.currentPreferences.workspaceStyle, .classic)
         controller.setWorkspaceForTesting(.modern)
         XCTAssertEqual(received?.workspaceStyle, .modern)
+        XCTAssertEqual(received?.theme, .monokai)
         controller.restoreForTesting()
         XCTAssertEqual(received?.workspaceStyle, .classic)
+        XCTAssertEqual(received?.theme, .classicLight)
     }
 
     func testRestoreDefaultsAffectsOnlySelectedGroupAndNotifies() async {

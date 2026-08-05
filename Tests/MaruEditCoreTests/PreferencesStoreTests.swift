@@ -77,7 +77,10 @@ final class PreferencesStoreTests: XCTestCase {
         """
         defaults.set(Data(json.utf8), forKey: "MaruEditPreferences")
 
-        XCTAssertEqual(store.load(), .defaults)
+        let loaded = store.load()
+        XCTAssertEqual(loaded.fontName, "SF Mono")
+        XCTAssertEqual(loaded.theme, .monokai)
+        XCTAssertEqual(loaded.workspaceStyle, .modern)
     }
 
     func testMigrateStampsCurrentSchemaVersion() {
@@ -96,7 +99,7 @@ final class PreferencesStoreTests: XCTestCase {
         let migrated = PreferencesStore.migrate(decoded)
         XCTAssertEqual(migrated.schemaVersion, 3)
         XCTAssertEqual(migrated.invisibleCharacters, .none)
-        XCTAssertEqual(migrated.workspaceStyle, .classic)
+        XCTAssertEqual(migrated.workspaceStyle, .modern)
     }
 
     func testExportImportRestoreAndRejectFutureSchema() throws {

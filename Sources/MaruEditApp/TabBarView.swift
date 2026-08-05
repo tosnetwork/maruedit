@@ -40,6 +40,13 @@ final class TabBarView: NSView {
         addSubview(bottomBorder)
     }
 
+    func applyTheme() {
+        layer?.backgroundColor = Theme.tabBarBg.cgColor
+        bottomBorder.layer?.backgroundColor = Theme.border.cgColor
+        separators.forEach { $0.layer?.backgroundColor = Theme.tabBarBg.cgColor }
+        updateAppearance()
+    }
+
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError() }
 

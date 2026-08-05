@@ -48,7 +48,7 @@ public struct Preferences: Codable, Equatable, Sendable {
     public static let defaults = Preferences(
         fontName: "SF Mono", // resolved specially as NSFont.monospacedSystemFont, the current hardcoded font
         fontSize: 13,
-        theme: .monokai,
+        theme: .classicLight,
         showLineNumbers: true,
         wrapLines: false,
         tabWidth: 4,
@@ -73,7 +73,7 @@ public struct Preferences: Codable, Equatable, Sendable {
         invisibleCharacters = try values.decodeIfPresent(
             InvisibleCharacterOptions.self, forKey: .invisibleCharacters) ?? .none
         workspaceStyle = try values.decodeIfPresent(
-            WorkspaceStyle.self, forKey: .workspaceStyle) ?? .classic
+            WorkspaceStyle.self, forKey: .workspaceStyle) ?? .modern
     }
 }
 
@@ -109,5 +109,6 @@ public struct InvisibleCharacterOptions: Codable, Equatable, Sendable {
 /// Monokai-inspired palette in `Theme.swift`); this exists now so the
 /// schema doesn't need a breaking change when a second theme arrives.
 public enum ThemeName: String, Codable, Sendable, CaseIterable {
+    case classicLight
     case monokai
 }

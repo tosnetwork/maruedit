@@ -107,6 +107,17 @@ final class StatusBarView: NSView {
         largeFileModeLabel.isHidden = true
     }
 
+    func applyTheme() {
+        layer?.backgroundColor = Theme.statusBg.cgColor
+        for label in [lineColLabel, selectionLabel, indentLabel, inputModeLabel,
+                      langLabel, encLabel, bomLabel, lineEndingLabel] {
+            label.textColor = Theme.statusText
+        }
+        for label in [encLabel, bomLabel, lineEndingLabel, langLabel] {
+            label.textColor = Theme.accent
+        }
+    }
+
     func updateCursor(_ state: EditorCursorState) {
         cursorText = "Ln \(state.lineNumber), Col \(state.displayColumn)"
         if messageWorkItem == nil { lineColLabel.stringValue = cursorText }
