@@ -44,6 +44,7 @@ extension CommandID {
     static let otherImportSettings = CommandID("other.importSettings")
     static let otherRestoreSettings = CommandID("other.restoreSettings")
     static let otherJapaneseUserDictionary = CommandID("other.japaneseUserDictionary")
+    static let otherCorrectSpelling = CommandID("other.correctSpelling")
     static let fileNew          = CommandID("file.new")
     static let fileNewFromTemplate = CommandID("file.newFromTemplate")
     static let fileOpen         = CommandID("file.open")
@@ -368,6 +369,7 @@ enum AppCommands {
         registry.register(CommandDefinition(id: .otherImportSettings, title: "Import Settings…") { $0.coordinator.showSettingsImportPanel() })
         registry.register(CommandDefinition(id: .otherRestoreSettings, title: "Restore Default Settings…") { $0.coordinator.confirmRestoreDefaultSettings() })
         registry.register(CommandDefinition(id: .otherJapaneseUserDictionary, title: "Japanese User Dictionary…") { $0.coordinator.showJapaneseUserDictionaryHelp() })
+        registry.register(CommandDefinition(id: .otherCorrectSpelling, title: "Correct Spelling…") { $0.coordinator.showSpellingCorrections() })
         registry.register(CommandDefinition(id: .fileNew, title: "New File") { ctx in
             ctx.coordinator.newDocument()
         })

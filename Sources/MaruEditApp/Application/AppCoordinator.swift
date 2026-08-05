@@ -498,6 +498,7 @@ final class AppCoordinator {
     func showJapaneseUserDictionaryHelp() {
         openDocumentationURL(URL(string: "https://support.apple.com/guide/japanese-input-method/edit-and-use-your-user-dictionaries-jpim10228/mac")!)
     }
+    func showSpellingCorrections() { ensureWindowControllerReady().showSpellingCorrections() }
     func performLineCommand(_ command: LineEditCommand) { ensureWindowControllerReady().performLineCommand(command) }
     func toggleBookmark()               { ensureWindowControllerReady().toggleBookmark() }
     func nextBookmark()                 { ensureWindowControllerReady().nextBookmark() }

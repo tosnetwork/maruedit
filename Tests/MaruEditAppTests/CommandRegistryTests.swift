@@ -71,6 +71,7 @@ final class CommandRegistryTests: XCTestCase {
             .helpExternal1, .helpExternal2, .helpExternal3,
             .helpExternal4, .helpExternal5, .helpExternal6,
             .otherFileTypeProfiles, .otherKeyAssignments, .otherCommandList,
+            .otherCorrectSpelling,
             .fileNew, .fileNewFromTemplate, .fileOpen, .fileOpenFolder, .fileOpenPartial,
             .fileOpenBinary,
             .fileProjectHistory, .fileSaveWorkspace, .fileOpenWorkspace,

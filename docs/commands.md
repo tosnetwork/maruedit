@@ -136,6 +136,7 @@ significantly, replace this with a small script that generates it from
 | `other.importSettings` | Import Settings… | Other › Settings Transfer | — | Validates, migrates, persists, and applies a settings JSON file |
 | `other.restoreSettings` | Restore Default Settings… | Other › Settings Transfer | — | Confirms and restores every settings group to defaults |
 | `other.japaneseUserDictionary` | Japanese User Dictionary… | Other | — | Opens Apple's official Japanese input-method user-dictionary workflow (native substitute) |
+| `other.correctSpelling` | Correct Spelling… | Other | — | Opens the native AppKit spelling suggestions panel at the cursor |
 | `convert.halfWidth` | Convert to Half-Width | Convert | — | `LineEditCommand.halfWidth` |
 | `convert.fullWidth` | Convert to Full-Width | Convert | — | `LineEditCommand.fullWidth` |
 | `convert.hiragana` | Convert to Hiragana | Convert | — | `LineEditCommand.hiragana` |

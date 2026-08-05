@@ -1941,6 +1941,10 @@ final class MainWindowController: NSWindowController,
         editorVC.textView.isContinuousSpellCheckingEnabled = enabled
         showStatusMessage(enabled ? "Automatic spell checking on" : "Automatic spell checking off")
     }
+    func showSpellingCorrections() {
+        window?.makeFirstResponder(editorVC.textView)
+        editorVC.textView.showGuessPanel(nil)
+    }
 
     func showCharacterCode() {
         let alert = NSAlert()
