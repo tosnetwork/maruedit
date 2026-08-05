@@ -70,6 +70,18 @@ final class ClassicWorkspaceTests: XCTestCase {
         XCTAssertEqual(sidebar.selectedUtilityPane, .results)
     }
 
+    func testOutlinePaneListsSymbolsAndTracksCurrentHeading() async {
+        let sidebar = SidebarViewController()
+        _ = sidebar.view
+        sidebar.updateOutline(
+            text: "preamble\n# First\nbody\n## Second\n", language: .markdown)
+        sidebar.showUtilityPane(.outline)
+        XCTAssertEqual(sidebar.outlineTitlesForTesting, ["First", "Second"])
+        XCTAssertNil(sidebar.selectOutlineSymbol(containingLine: 0))
+        XCTAssertEqual(sidebar.selectOutlineSymbol(containingLine: 3), "Second")
+        XCTAssertEqual(sidebar.selectOutlineSymbol(containingLine: 2), "First")
+    }
+
     func testClassicChromeComponentsCanBeHiddenIndependently() async {
         let controller = MainWindowController()
         var preferences = Preferences.defaults

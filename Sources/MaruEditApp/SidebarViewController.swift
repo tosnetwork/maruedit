@@ -1,8 +1,10 @@
 import AppKit
+import MaruEditCore
 
 @MainActor
 protocol SidebarDelegate: AnyObject {
     func sidebarDidSelectFile(_ url: URL, inNewTab: Bool)
+    func sidebarDidSelectOutlineSymbol(_ symbol: OutlineSymbol)
 }
 
 final class FileItem: NSObject {
@@ -89,6 +91,7 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
     private var rootItems: [FileItem] = []
     private(set) var rootFolderURL: URL?
     private var suppressSelectionCallback = false
+    private var outlineSymbols: [OutlineSymbol] = []
 
     override func loadView() {
         let wrapper = NSView()
@@ -181,20 +184,40 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
     func showUtilityPane(_ pane: UtilityPane) {
         selectedUtilityPane = pane
         paneSelector.selectedSegment = pane.rawValue
-        let showsFiles = pane == .files
-        fileScrollView.isHidden = !showsFiles
-        placeholderLabel.isHidden = showsFiles
+        let showsList = pane != .results
+        fileScrollView.isHidden = !showsList
+        placeholderLabel.isHidden = showsList
         switch pane {
         case .files:
             headerLabel.stringValue = rootFolderURL?.lastPathComponent.uppercased() ?? "FILES"
         case .outline:
             headerLabel.stringValue = "OUTLINE"
-            placeholderLabel.stringValue = "Document symbols and folds will appear here."
         case .results:
             headerLabel.stringValue = "RESULTS"
             placeholderLabel.stringValue = "Search, Grep, and marker results will appear here."
         }
+        outlineView.reloadData()
     }
+
+    func updateOutline(text: String, language: Language, customRules: [OutlineRule] = []) {
+        outlineSymbols = OutlineModel(
+            text: text, language: language, customRules: customRules).symbols
+        if selectedUtilityPane == .outline { outlineView.reloadData() }
+    }
+
+    @discardableResult
+    func selectOutlineSymbol(containingLine line: Int) -> String? {
+        guard let index = outlineSymbols.lastIndex(where: { $0.line <= line }) else { return nil }
+        if selectedUtilityPane == .outline {
+            suppressSelectionCallback = true
+            outlineView.selectRowIndexes(IndexSet(integer: index), byExtendingSelection: false)
+            outlineView.scrollRowToVisible(index)
+            suppressSelectionCallback = false
+        }
+        return outlineSymbols[index].title
+    }
+
+    var outlineTitlesForTesting: [String] { outlineSymbols.map(\.title) }
 
     func applyTheme() {
         view.layer?.backgroundColor = Theme.sidebarBg.cgColor
@@ -252,6 +275,7 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
     // MARK: - New tab handling
 
     private func handleNewTab(row: Int) {
+        guard selectedUtilityPane == .files else { return }
         guard let fi = outlineView.item(atRow: row) as? FileItem, !fi.isDirectory else { return }
         sidebarDelegate?.sidebarDidSelectFile(fi.url, inNewTab: true)
     }
@@ -265,6 +289,7 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
     // MARK: - Data source
 
     func outlineView(_ ov: NSOutlineView, numberOfChildrenOfItem item: Any?) -> Int {
+        if selectedUtilityPane == .outline { return item == nil ? outlineSymbols.count : 0 }
         if item == nil { return rootItems.count }
         guard let fi = item as? FileItem else { return 0 }
         fi.loadChildrenIfNeeded()
@@ -272,17 +297,36 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
     }
 
     func outlineView(_ ov: NSOutlineView, child index: Int, ofItem item: Any?) -> Any {
+        if selectedUtilityPane == .outline { return outlineSymbols[index] }
         if item == nil { return rootItems[index] }
         return (item as! FileItem).children![index]
     }
 
     func outlineView(_ ov: NSOutlineView, isItemExpandable item: Any) -> Bool {
-        (item as? FileItem)?.isDirectory ?? false
+        if item is OutlineSymbol { return false }
+        return (item as? FileItem)?.isDirectory ?? false
     }
 
     // MARK: - Delegate
 
     func outlineView(_ ov: NSOutlineView, viewFor col: NSTableColumn?, item: Any) -> NSView? {
+        if let symbol = item as? OutlineSymbol {
+            let cell = NSTableCellView()
+            let label = NSTextField(labelWithString: symbol.title)
+            label.font = Theme.uiFontSmall
+            label.textColor = Theme.sidebarText
+            label.lineBreakMode = .byTruncatingTail
+            label.translatesAutoresizingMaskIntoConstraints = false
+            label.setAccessibilityLabel("\(symbol.kind.rawValue): \(symbol.title), line \(symbol.line + 1)")
+            cell.addSubview(label)
+            cell.textField = label
+            NSLayoutConstraint.activate([
+                label.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: CGFloat(6 + symbol.level * 12)),
+                label.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -4),
+                label.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
+            ])
+            return cell
+        }
         guard let fi = item as? FileItem else { return nil }
 
         let cell = NSTableCellView()
@@ -321,6 +365,11 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
     func outlineViewSelectionDidChange(_ n: Notification) {
         guard !suppressSelectionCallback else { return }
         let row = outlineView.selectedRow
+        if selectedUtilityPane == .outline {
+            guard outlineSymbols.indices.contains(row) else { return }
+            sidebarDelegate?.sidebarDidSelectOutlineSymbol(outlineSymbols[row])
+            return
+        }
         guard row >= 0, let fi = outlineView.item(atRow: row) as? FileItem, !fi.isDirectory else { return }
         sidebarDelegate?.sidebarDidSelectFile(fi.url, inNewTab: false)
     }
@@ -351,6 +400,7 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
 extension SidebarViewController: NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
+        guard selectedUtilityPane == .files else { return }
         let row = outlineView.clickedRow
         guard row >= 0, let fi = outlineView.item(atRow: row) as? FileItem else { return }
 

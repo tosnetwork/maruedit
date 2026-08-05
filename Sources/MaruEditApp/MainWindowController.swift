@@ -1145,6 +1145,7 @@ final class MainWindowController: NSWindowController,
 
     private func refreshStatus() {
         if let doc = curDoc {
+            refreshOutline(for: doc)
             statusBar.updateLanguage(doc.language, profileName: doc.fileTypeProfile?.name)
             statusBar.updateEncoding(doc.encoding)
             statusBar.updateByteOrderMark(doc.hasByteOrderMark)
@@ -1389,11 +1390,17 @@ final class MainWindowController: NSWindowController,
         if let doc = curDoc {
             tabBar.updateTab(at: curIdx, item: TabItem(title: doc.displayName, isModified: doc.isModified))
             scheduleRecoverySaveIfUnnamed(doc)
+            refreshOutline(for: doc)
         }
         scheduleSessionSave()
     }
     func editorCursorMoved(_ vc: EditorViewController, state: EditorCursorState) {
         statusBar.updateCursor(state)
+        if let title = sidebarVC.selectOutlineSymbol(containingLine: state.lineNumber - 1) {
+            classicChrome.updateHeading(title)
+        } else {
+            classicChrome.updateHeading(curDoc?.displayName ?? "Untitled")
+        }
     }
     func editorDidChooseFont(_ vc: EditorViewController, font: NSFont) {
         onEditorFontChange?(font)
@@ -1429,6 +1436,19 @@ final class MainWindowController: NSWindowController,
         } else {
             openFileInCurrentTab(url)
         }
+    }
+
+    func sidebarDidSelectOutlineSymbol(_ symbol: OutlineSymbol) {
+        let range = NSRange(location: symbol.utf16Range.location, length: 0)
+        editorVC.textView.setSelectedRange(range)
+        editorVC.textView.scrollRangeToVisible(range)
+        window?.makeFirstResponder(editorVC.textView)
+    }
+
+    private func refreshOutline(for document: Document) {
+        sidebarVC.updateOutline(
+            text: document.content, language: document.language,
+            customRules: document.fileTypeProfile?.settings.outlineRules ?? [])
     }
 
     // MARK: - FindBarDelegate
