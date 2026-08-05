@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import tempfile
 
-from PIL import Image, ImageDraw
+from PIL import Image
 
 
 ROOT = Path(__file__).resolve().parent
@@ -28,19 +28,8 @@ def load_master():
 
 
 def render_size(master, size):
-    """Downsample the master, with an optical correction for tiny slots."""
-    image = master.resize((size, size), Image.Resampling.LANCZOS)
-    if size <= 32:
-        draw = ImageDraw.Draw(image)
-        scale = size / 16
-        points = [
-            (5.4 * scale, 11.1 * scale), (5.4 * scale, 5.8 * scale),
-            (8 * scale, 8.8 * scale),
-            (10.6 * scale, 5.8 * scale), (10.6 * scale, 11.1 * scale),
-        ]
-        width = max(1, round(0.9 * scale))
-        draw.line(points, fill=(25, 26, 31, 255), width=width, joint="curve")
-    return image
+    """Downsample the high-contrast architectural mark for one icon slot."""
+    return master.resize((size, size), Image.Resampling.LANCZOS)
 
 
 def create_icns(image, output_path):
