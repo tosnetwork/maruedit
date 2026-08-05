@@ -66,6 +66,38 @@ final class ClassicWorkspaceTests: XCTestCase {
         XCTAssertTrue(labels.contains("Favorite command strip"))
     }
 
+    func testWindowHasACompleteForwardAndReverseKeyboardFocusLoop() {
+        let controller = MainWindowController()
+        controller.applyPreferences(.defaults)
+        controller.newDocument() // make the tab bar visible under the Hidemaru default
+        controller.showFind(showingReplace: true)
+        controller.showOutputPane()
+
+        let loop = controller.keyboardFocusLoopForTesting
+        let labels = loop.compactMap { $0.accessibilityLabel() }
+        XCTAssertTrue(labels.contains("New"), "toolbar is absent from the focus loop")
+        XCTAssertTrue(labels.contains("Find"), "find bar is absent from the focus loop")
+        XCTAssertTrue(labels.contains(where: { $0.hasPrefix("Tab 1:") }))
+        XCTAssertTrue(labels.contains("Editor"))
+        XCTAssertTrue(labels.contains("Utility pane"))
+        XCTAssertTrue(labels.contains("Search results list"))
+        XCTAssertTrue(labels.contains("Cursor line and display column"))
+        XCTAssertTrue(labels.contains(where: { $0.hasPrefix("F1 ") }))
+
+        let window = try! XCTUnwrap(controller.window)
+        for index in loop.indices {
+            let current = loop[index]
+            let next = loop[(index + 1) % loop.count]
+            XCTAssertTrue(current.nextKeyView === next, "broken forward focus link at \(index)")
+            XCTAssertTrue(next.previousKeyView === current, "broken reverse focus link at \(index)")
+            XCTAssertTrue(window.makeFirstResponder(current),
+                          "focus loop contains a non-focusable view: \(current)")
+            let expectedResponder: NSResponder? = (current as? NSTextField)?.isEditable == true
+                ? window.fieldEditor(false, for: current) : current
+            XCTAssertTrue(window.firstResponder === expectedResponder)
+        }
+    }
+
     func testClassicToolbarUsesStableCommandIdentifiers() async {
         let controller = MainWindowController()
         controller.applyPreferences(.defaults)

@@ -347,6 +347,9 @@ final class TabBarView: NSView {
     var accessibilityTabControlsForTesting: [(tab: NSView, close: NSView)] {
         zip(titleLabels, closeLabels).map { ($0.0, $0.1) }
     }
+    var keyboardFocusableViews: [NSView] {
+        titleLabels + closeLabels.filter { !$0.isHidden }
+    }
 
     @objc private func placeAtTop() { position = .top }
     @objc private func placeAtBottom() { position = .bottom }

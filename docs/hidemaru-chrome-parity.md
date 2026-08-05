@@ -21,7 +21,7 @@ passing MaruEdit regression tests from exhaustive Hidemaru feature parity.
 | Menu rows | 13 | 0 | 0 |
 | Toolbar/function-key rows | 9 | 3 | 0 |
 | Status-bar rows | 16 | 0 | 0 |
-| Acceptance gates | 2 | 2 | 1 |
+| Acceptance gates | 3 | 1 | 1 |
 
 ## Menu bar
 
@@ -106,7 +106,7 @@ MaruEdit disposition and executable target check.
 4. ✅ **Complete** — Status fields are individually configurable, interactive where Hidemaru is
    interactive, and remain correct across tabs, IME, BOX/multi-selection,
    encodings, large files, and profile changes.
-5. 🟡 **Partial** — Default and customized chrome have screenshot baselines in light/dark and
+5. ✅ **Complete** — Default and customized chrome have screenshot baselines in light/dark and
    narrow/wide windows, plus keyboard-only and accessibility verification.
 
 Gate notes:
@@ -121,8 +121,10 @@ Gate notes:
   transitions, BOX/multi-selection, Unicode and legacy encodings, line endings,
   profile changes and large-file modes, the existing marked-text IME suite, and
   executable VoiceOver Press actions for all twelve interactive fields.
-- Gate 5 has all eight screenshot baselines and basic keyboard/accessibility tests;
-  full keyboard traversal, focus-order, and VoiceOver verification remain open.
+- Gate 5 has all eight screenshot baselines, an explicit wrapping forward/reverse
+  focus loop across toolbar, F-key strip, Find/Replace, tabs, editor, sidebar,
+  output and status fields, first-responder verification for every member, and
+  executable VoiceOver Press tests for tabs, tab closing and status actions.
 
 ## Acceptance evidence
 

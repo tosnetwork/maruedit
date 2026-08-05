@@ -374,6 +374,38 @@ final class MainWindowController: NSWindowController,
         )
         updateTabBarFrame()
         updateClassicRuler(currentColumn: lastCursorColumn)
+        configureKeyboardFocusLoop()
+    }
+
+    private func keyboardFocusLoop() -> [NSView] {
+        statusBar.layoutSubtreeIfNeeded()
+        var views: [NSView] = []
+        if workspaceStyle == .classic && !classicChrome.isHidden {
+            views += classicChrome.keyboardFocusableViews
+        }
+        if !findBar.isHidden { views += findBar.keyboardFocusableViews }
+        if !tabBar.isHidden { views += tabBar.keyboardFocusableViews }
+        views.append(editorVC.textView)
+        if !sidebarVC.view.isHidden && !splitView.isSubviewCollapsed(sidebarVC.view) {
+            views += sidebarVC.keyboardFocusableViews
+        }
+        if let outputPane, !outputPane.isHidden { views += outputPane.keyboardFocusableViews }
+        if isStatusBarVisible { views += statusBar.keyboardFocusableViews }
+        var seen = Set<ObjectIdentifier>()
+        return views.filter { seen.insert(ObjectIdentifier($0)).inserted && !$0.isHidden }
+    }
+
+    private func configureKeyboardFocusLoop() {
+        let views = keyboardFocusLoop()
+        guard views.count > 1 else { return }
+        for index in views.indices {
+            views[index].nextKeyView = views[(index + 1) % views.count]
+        }
+    }
+
+    var keyboardFocusLoopForTesting: [NSView] {
+        configureKeyboardFocusLoop()
+        return keyboardFocusLoop()
     }
 
     private static let outputPaneHeight: CGFloat = 200

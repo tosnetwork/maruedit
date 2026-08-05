@@ -52,6 +52,16 @@ protocol StatusBarViewDelegate: AnyObject {
 private final class ActionableStatusLabel: NSTextField {
     var onAccessibilityPress: (() -> Bool)?
 
+    override var acceptsFirstResponder: Bool { true }
+
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 36 || event.keyCode == 76 || event.charactersIgnoringModifiers == " " {
+            _ = accessibilityPerformPress()
+        } else {
+            super.keyDown(with: event)
+        }
+    }
+
     override func accessibilityPerformPress() -> Bool {
         onAccessibilityPress?() ?? false
     }
@@ -517,6 +527,14 @@ final class StatusBarView: NSView {
         case .byteOrderMark: bomLabel
         case .lineEnding: lineEndingLabel
         case .languageProfile: langLabel
+        }
+    }
+
+    var keyboardFocusableViews: [NSView] {
+        StatusBarControl.allCases.compactMap { control in
+            guard let view = accessibilityElement(for: control), !view.isHidden,
+                  frame(for: control) != nil else { return nil }
+            return view
         }
     }
 

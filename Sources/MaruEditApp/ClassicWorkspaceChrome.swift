@@ -115,6 +115,9 @@ final class ClassicWorkspaceChrome: NSView {
     var visibleToolbarHeight: CGFloat { toolbar.isHidden ? 0 : Self.toolbarHeight }
     var functionKeyCommandIDs: [String?] { commandStrip.commandIDs }
     var functionKeyCount: Int { commandStrip.visibleSlotCount }
+    var keyboardFocusableViews: [NSView] {
+        toolbar.keyboardFocusableViews + commandStrip.keyboardFocusableViews
+    }
     func toolbarPresentation(for command: CommandID) -> (enabled: Bool, selected: Bool)? {
         toolbar.presentation(for: command)
     }
@@ -272,6 +275,10 @@ private final class ClassicToolbarView: NSView {
     }
     var commandIDs: [CommandID] { displayedItems.compactMap(\.command) }
     var layoutEntries: [String] { toolbarLayout.entries }
+    var keyboardFocusableViews: [NSView] {
+        buttons.filter { !$0.isHidden && $0.isEnabled }
+            + (searchField.isHidden || !searchField.isEnabled ? [] : [searchField])
+    }
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -738,6 +745,9 @@ private final class ClassicCommandStripView: NSView {
     private(set) var isMergedWithStatusBar = false
     private(set) var visibleSlotCount = 12
     var commandIDs: [String?] { functionKeyLayout.assignments.map { $0?.rawValue } }
+    var keyboardFocusableViews: [NSView] {
+        buttons.filter { !$0.isHidden && $0.isEnabled }
+    }
 
     override init(frame: NSRect) {
         super.init(frame: frame)

@@ -100,6 +100,11 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
         window?.makeFirstResponder(outlineView)
     }
 
+    var keyboardFocusableViews: [NSView] {
+        _ = view
+        return [paneSelector, outlineView]
+    }
+
     override func loadView() {
         let wrapper = NSView()
         wrapper.wantsLayer = true

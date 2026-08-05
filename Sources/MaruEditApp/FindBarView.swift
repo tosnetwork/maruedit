@@ -55,6 +55,16 @@ final class FindBarView: NSView, NSTextFieldDelegate {
     private var searchHistoryIndex: Int?
     private var replacementHistoryIndex: Int?
 
+    var keyboardFocusableViews: [NSView] {
+        var views: [NSView] = [searchField, expandBtn, resizeBtn, caseBtn, wordBtn,
+                               regexBtn, fuzzyBtn, prevBtn, nextBtn, closeBtn]
+        if showReplace {
+            views.insert(replaceField, at: 1)
+            views.append(contentsOf: [replBtn, replAllBtn])
+        }
+        return views.filter { !$0.isHidden && (($0 as? NSControl)?.isEnabled ?? true) }
+    }
+
     override var intrinsicContentSize: NSSize {
         let rowHeight: CGFloat = inputsExpanded ? 72 : 34
         return NSSize(width: NSView.noIntrinsicMetric, height: showReplace ? rowHeight * 2 : rowHeight)

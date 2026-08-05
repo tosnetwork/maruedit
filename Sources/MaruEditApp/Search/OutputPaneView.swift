@@ -40,6 +40,11 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     private var searchPattern = ""
     private(set) var isRunning = false
 
+    var keyboardFocusableViews: [NSView] {
+        [tableView, rerunButton, copyButton, clearButton, saveButton, cancelButton, closeButton]
+            .filter { !$0.isHidden && $0.isEnabled }
+    }
+
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
