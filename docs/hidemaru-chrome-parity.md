@@ -39,9 +39,9 @@ that functional parity is not complete.
 |---|---|---|---|
 | Default editing buttons | File, clipboard, search/navigation groups | 21 colored SF Symbol buttons in similar groups | Partial |
 | Add any command | Almost every command is eligible | Fixed candidate list | Missing |
-| Reorder buttons | Supported | Not supported | Missing |
-| Add/remove separators | Supported | Fixed separators | Missing |
-| Hide/remove buttons | Supported | Supported through context menu | Present |
+| Reorder buttons | Supported | Context-menu left/right movement with persistence | Present |
+| Add/remove separators | Supported | Separators are part of the ordered persistent layout | Present |
+| Hide/remove buttons | Supported | Context-menu add/remove commands | Present |
 | Reset defaults | Supported | Supported | Present |
 | Icon size/DPI | Automatic plus size choices | Native scaling only | Partial/native equivalent |
 | Text-only/fallback labels | Supported through definition JSON | Tooltip/accessibility label only | Missing |

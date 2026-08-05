@@ -82,8 +82,10 @@ final class ClassicWorkspaceChrome: NSView {
     }
 
     var toolbarCommandIDs: [String] { toolbar.commandIDs.map(\.rawValue) }
+    var toolbarLayoutEntries: [String] { toolbar.layoutEntries }
 
     func activateToolbarCommand(_ command: CommandID) { toolbar.activate(command) }
+    func setToolbarLayoutForTesting(_ entries: [String]) { toolbar.setLayoutForTesting(entries) }
 
     func applyVisibility(_ options: ClassicChromeOptions) {
         configuredVisibility = options
@@ -159,47 +161,32 @@ private final class ClassicToolbarView: NSView {
 
     var onCommand: ((CommandID) -> Void)?
     private var buttons: [NSButton] = []
-    private var items: [Item] = []
     private var separators: [NSView] = []
-    private var hiddenKeys: Set<String> = []
+    private var displayedItems: [Item] = []
+    private var toolbarLayout = ToolbarLayout(entries: [])
+    private var contextKey: String?
+    private var contextSeparatorIndex: Int?
+    private static let layoutDefaultsKey = "MaruClassicToolbarLayout"
     private static let hiddenDefaultsKey = "MaruClassicToolbarHiddenItems"
-    var commandIDs: [CommandID] { items.compactMap(\.command) }
+    private static var catalog: [String: Item] {
+        Dictionary(uniqueKeysWithValues: groups.flatMap { $0 }.map { (key(for: $0), $0) })
+    }
+    private static var defaultEntries: [String] {
+        groups.enumerated().flatMap { index, group in
+            (index == 0 ? [] : [ToolbarLayout.separator]) + group.map { key(for: $0) }
+        }
+    }
+    var commandIDs: [CommandID] { displayedItems.compactMap(\.command) }
+    var layoutEntries: [String] { toolbarLayout.entries }
 
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
         layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
-        hiddenKeys = Set(UserDefaults.standard.stringArray(forKey: Self.hiddenDefaultsKey) ?? [])
         setAccessibilityRole(.toolbar)
         setAccessibilityLabel("Maru Classic command toolbar")
-        for (groupIndex, group) in Self.groups.enumerated() {
-            if groupIndex > 0 {
-                let separator = NSView()
-                separator.wantsLayer = true
-                separator.layer?.backgroundColor = NSColor.separatorColor.cgColor
-                separators.append(separator)
-                addSubview(separator)
-            }
-            for item in group {
-                let button = ClassicToolbarButton()
-                button.bezelStyle = .inline
-                button.isBordered = false
-                button.imagePosition = .imageOnly
-                button.imageScaling = .scaleProportionallyDown
-                button.image = NSImage(
-                    systemSymbolName: item.symbol, accessibilityDescription: item.title)
-                button.contentTintColor = item.tint
-                button.toolTip = item.title
-                button.setAccessibilityLabel(item.title)
-                button.target = self
-                button.action = #selector(activateButton(_:))
-                button.tag = items.count
-                items.append(item)
-                buttons.append(button)
-                addSubview(button)
-                button.isHidden = hiddenKeys.contains(key(for: item))
-            }
-        }
+        toolbarLayout = loadLayout()
+        rebuildSubviews()
     }
 
     @available(*, unavailable)
@@ -210,16 +197,15 @@ private final class ClassicToolbarView: NSView {
         var x: CGFloat = 5
         var separatorIndex = 0
         var itemIndex = 0
-        for (groupIndex, group) in Self.groups.enumerated() {
-            if groupIndex > 0 {
+        for entry in toolbarLayout.entries {
+            if entry == ToolbarLayout.separator {
                 separators[separatorIndex].frame = NSRect(x: x + 2, y: 6, width: 1, height: 20)
                 separatorIndex += 1
                 x += 8
-            }
-            for _ in group {
+            } else {
                 let button = buttons[itemIndex]
                 button.frame = NSRect(x: x, y: 3, width: 27, height: 26)
-                if !button.isHidden { x += 27 }
+                x += 27
                 itemIndex += 1
             }
         }
@@ -231,28 +217,47 @@ private final class ClassicToolbarView: NSView {
     }
 
     @objc private func activateButton(_ sender: NSButton) {
-        guard items.indices.contains(sender.tag) else { return }
-        let item = items[sender.tag]
+        guard displayedItems.indices.contains(sender.tag) else { return }
+        let item = displayedItems[sender.tag]
         if let command = item.command { onCommand?(command) }
         else if let action = item.responderAction { NSApp.sendAction(action, to: nil, from: sender) }
     }
 
     func activate(_ command: CommandID) {
-        guard items.contains(where: { $0.command == command }) else { return }
+        guard displayedItems.contains(where: { $0.command == command }) else { return }
         onCommand?(command)
     }
 
     override func rightMouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        contextKey = buttons.first(where: { $0.frame.contains(point) }).flatMap {
+            displayedItems.indices.contains($0.tag) ? Self.key(for: displayedItems[$0.tag]) : nil
+        }
+        contextSeparatorIndex = separatorEntryIndex(at: point)
         let menu = NSMenu(title: "Customize Maru Classic Toolbar")
-        for item in items {
-            let key = key(for: item)
+        if contextKey != nil {
+            addContextItem("Move Left", action: #selector(moveToolbarItemLeft), to: menu)
+            addContextItem("Move Right", action: #selector(moveToolbarItemRight), to: menu)
+            addContextItem("Insert Separator After", action: #selector(insertToolbarSeparator), to: menu)
+            addContextItem("Remove from Toolbar", action: #selector(removeToolbarItem), to: menu)
+            menu.addItem(.separator())
+        } else if contextSeparatorIndex != nil {
+            addContextItem("Remove Separator", action: #selector(removeToolbarSeparator), to: menu)
+            menu.addItem(.separator())
+        }
+        let addMenu = NSMenu(title: "Add Command")
+        for (key, item) in Self.catalog.sorted(by: { $0.value.title < $1.value.title })
+            where !toolbarLayout.entries.contains(key) {
             let menuItem = NSMenuItem(
-                title: item.title, action: #selector(toggleToolbarItem(_:)), keyEquivalent: "")
+                title: item.title, action: #selector(addToolbarItem(_:)), keyEquivalent: "")
             menuItem.target = self
             menuItem.representedObject = key
-            menuItem.state = hiddenKeys.contains(key) ? .off : .on
-            menu.addItem(menuItem)
+            addMenu.addItem(menuItem)
         }
+        let add = NSMenuItem(title: "Add Command", action: nil, keyEquivalent: "")
+        add.submenu = addMenu
+        add.isEnabled = !addMenu.items.isEmpty
+        menu.addItem(add)
         menu.addItem(.separator())
         let restore = NSMenuItem(
             title: "Restore Default Toolbar", action: #selector(restoreDefaultToolbar),
@@ -262,26 +267,108 @@ private final class ClassicToolbarView: NSView {
         NSMenu.popUpContextMenu(menu, with: event, for: self)
     }
 
-    @objc private func toggleToolbarItem(_ sender: NSMenuItem) {
+    @objc private func addToolbarItem(_ sender: NSMenuItem) {
         guard let key = sender.representedObject as? String else { return }
-        if hiddenKeys.contains(key) { hiddenKeys.remove(key) } else { hiddenKeys.insert(key) }
+        toolbarLayout.append(key, availableKeys: Set(Self.catalog.keys))
+        applyCustomization()
+    }
+
+    @objc private func removeToolbarItem() {
+        guard let contextKey else { return }
+        toolbarLayout.remove(contextKey)
+        applyCustomization()
+    }
+
+    @objc private func moveToolbarItemLeft() { moveContextItem(by: -1) }
+    @objc private func moveToolbarItemRight() { moveContextItem(by: 1) }
+
+    private func moveContextItem(by offset: Int) {
+        guard let contextKey else { return }
+        toolbarLayout.move(contextKey, offset: offset, availableKeys: Set(Self.catalog.keys))
+        applyCustomization()
+    }
+
+    @objc private func insertToolbarSeparator() {
+        guard let contextKey else { return }
+        toolbarLayout.insertSeparator(after: contextKey)
+        applyCustomization()
+    }
+
+    @objc private func removeToolbarSeparator() {
+        guard let index = contextSeparatorIndex, toolbarLayout.entries.indices.contains(index),
+              toolbarLayout.entries[index] == ToolbarLayout.separator else { return }
+        toolbarLayout.entries.remove(at: index)
         applyCustomization()
     }
 
     @objc private func restoreDefaultToolbar() {
-        hiddenKeys.removeAll()
+        toolbarLayout = ToolbarLayout(entries: Self.defaultEntries)
         applyCustomization()
     }
 
     private func applyCustomization() {
-        for (index, item) in items.enumerated() {
-            buttons[index].isHidden = hiddenKeys.contains(key(for: item))
-        }
-        UserDefaults.standard.set(Array(hiddenKeys).sorted(), forKey: Self.hiddenDefaultsKey)
+        toolbarLayout = toolbarLayout.normalized(availableKeys: Set(Self.catalog.keys))
+        UserDefaults.standard.set(toolbarLayout.entries, forKey: Self.layoutDefaultsKey)
+        rebuildSubviews()
         needsLayout = true
     }
 
-    private func key(for item: Item) -> String {
+    private func loadLayout() -> ToolbarLayout {
+        let defaults = UserDefaults.standard
+        if let entries = defaults.stringArray(forKey: Self.layoutDefaultsKey) {
+            return ToolbarLayout(entries: entries).normalized(availableKeys: Set(Self.catalog.keys))
+        }
+        let hidden = Set(defaults.stringArray(forKey: Self.hiddenDefaultsKey) ?? [])
+        return ToolbarLayout(entries: Self.defaultEntries.filter { $0 == ToolbarLayout.separator || !hidden.contains($0) })
+            .normalized(availableKeys: Set(Self.catalog.keys))
+    }
+
+    private func rebuildSubviews() {
+        buttons.forEach { $0.removeFromSuperview() }
+        separators.forEach { $0.removeFromSuperview() }
+        buttons.removeAll(); separators.removeAll(); displayedItems.removeAll()
+        for entry in toolbarLayout.entries {
+            if entry == ToolbarLayout.separator {
+                let separator = NSView()
+                separator.wantsLayer = true
+                separator.layer?.backgroundColor = NSColor.separatorColor.cgColor
+                separators.append(separator); addSubview(separator)
+            } else if let item = Self.catalog[entry] {
+                let button = ClassicToolbarButton()
+                button.bezelStyle = .inline; button.isBordered = false
+                button.imagePosition = .imageOnly; button.imageScaling = .scaleProportionallyDown
+                button.image = NSImage(systemSymbolName: item.symbol, accessibilityDescription: item.title)
+                button.contentTintColor = item.tint; button.toolTip = item.title
+                button.setAccessibilityLabel(item.title); button.target = self
+                button.action = #selector(activateButton(_:)); button.tag = displayedItems.count
+                displayedItems.append(item); buttons.append(button); addSubview(button)
+            }
+        }
+    }
+
+    private func addContextItem(_ title: String, action: Selector, to menu: NSMenu) {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+        item.target = self; menu.addItem(item)
+    }
+
+    private func separatorEntryIndex(at point: NSPoint) -> Int? {
+        var separatorIndex = 0
+        for (entryIndex, entry) in toolbarLayout.entries.enumerated() where entry == ToolbarLayout.separator {
+            defer { separatorIndex += 1 }
+            guard separators.indices.contains(separatorIndex) else { continue }
+            if separators[separatorIndex].frame.insetBy(dx: -3, dy: 0).contains(point) { return entryIndex }
+        }
+        return nil
+    }
+
+    func setLayoutForTesting(_ entries: [String]) {
+        toolbarLayout = ToolbarLayout(entries: entries)
+            .normalized(availableKeys: Set(Self.catalog.keys))
+        rebuildSubviews()
+        needsLayout = true
+    }
+
+    private static func key(for item: Item) -> String {
         item.command?.rawValue ?? "responder.\(item.title.lowercased())"
     }
 }
