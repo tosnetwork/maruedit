@@ -48,7 +48,7 @@ final class ChromeSnapshotTests: XCTestCase {
             "file.new", "file.open", "file.save", "file.print", "-",
             "responder.undo", "responder.redo", "-", "responder.cut", "responder.copy", "responder.paste", "-",
             "search.find", "search.replace", "search.findNext", "search.findPrevious", "-",
-            "bookmark.toggle", "macro.run", "view.toggleSidebar", "app.settings",
+            "bookmark.toggle", "macro.run", "view.toggleSidebar", "app.settings", "app.help",
         ])
         controller.setClassicFunctionKeyCommandsForTesting([
             .appHelp, .editCompleteWord, .searchNextResult, .editCopyWord,

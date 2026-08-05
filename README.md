@@ -1,199 +1,200 @@
 # MaruEdit
 
-A fast native editor for opening, browsing, and editing text on macOS, built entirely with Swift and AppKit.
+MaruEdit is a fast, native text and code editor for macOS. It combines AppKit performance with a keyboard-focused **Maru Classic** workspace: a configurable command toolbar, tabs, horizontal ruler, utility pane, function-key strip, and a compact status area designed for long editing sessions.
 
-![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue)
-![Swift 5.9](https://img.shields.io/badge/Swift-5.9-orange)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
-[![Download DMG](https://img.shields.io/github/v/release/tosnetwork/maruedit?label=Download&color=blue)](https://github.com/tosnetwork/maruedit/releases/latest)
+![macOS 13+](https://img.shields.io/badge/macOS-13%2B-147EFB)
+![Swift 5.9](https://img.shields.io/badge/Swift-5.9-F05138)
+[![License: MIT](https://img.shields.io/badge/License-MIT-2EA44F)](LICENSE)
+[![Latest release](https://img.shields.io/github/v/release/tosnetwork/maruedit?label=release)](https://github.com/tosnetwork/maruedit/releases/latest)
 
-**[Download](https://github.com/tosnetwork/maruedit/releases/latest)** · **[Source](https://github.com/tosnetwork/maruedit)**
+**[Releases](https://github.com/tosnetwork/maruedit/releases)** · **[User guide](docs/user-guide.md)** · **[Command catalog](docs/commands.md)** · **[Roadmap](ROADMAP.md)**
 
-> MaruEdit is an independent open-source project and is not affiliated with or endorsed by the developers of Maru Editor. It began as a fork of [LiteEdit](https://github.com/arietan/lite-edit) (MIT licensed) — see [`NOTICE.md`](NOTICE.md) and [`UPSTREAM.md`](UPSTREAM.md) for attribution details, and [`ROADMAP.md`](ROADMAP.md) for where the project is headed.
+> MaruEdit is an independent open-source project. It began as a fork of [LiteEdit](https://github.com/arietan/lite-edit), which is MIT licensed. See [NOTICE.md](NOTICE.md) and [UPSTREAM.md](UPSTREAM.md) for attribution.
 
----
+## The editor today
 
-## Screenshots
+![MaruEdit Classic workspace](screenshots/main-editor.png)
 
-![MaruEdit — Main Editor](screenshots/main-editor.png)
+The default workspace keeps frequently used operations visible without turning the editor into an IDE. Toolbar items, menus, key bindings, function keys, status fields, fonts, colors, wrapping, and file-type behavior can all be adjusted.
 
-*Syntax highlighting, sidebar file tree, tabbed editing, line numbers, and status bar — all in under 1 MB.*
+<table>
+  <tr>
+    <td width="50%"><img src="screenshots/find-replace.png" alt="Find and Replace in MaruEdit"></td>
+    <td width="50%"><img src="screenshots/quick-open.png" alt="Quick Open in MaruEdit"></td>
+  </tr>
+  <tr>
+    <td align="center">Find and Replace</td>
+    <td align="center">Quick Open</td>
+  </tr>
+</table>
 
-<details>
-<summary>Quick Open (Cmd+P)</summary>
+Additional Classic workspace states—including light/dark appearance, standard/custom toolbar layouts, and narrow windows—are maintained in [`docs/screenshots/chrome/`](docs/screenshots/chrome/).
 
-![Quick Open](screenshots/quick-open.png)
+## Highlights
 
-</details>
+### Editing built for text-heavy work
 
-<details>
-<summary>Find & Replace (Cmd+F)</summary>
+- Multiple selections and multiple cursors, including select-next and select-all-occurrences workflows
+- Rectangular **BOX selection**, BOX copy/paste, and column-oriented editing
+- CJK IME-aware composition, Unicode text, indentation, line operations, case conversion, sorting, and duplicate removal
+- Syntax highlighting and file-type detection for common programming, markup, configuration, and data formats
+- Bookmarks, edit marks, tags, outline navigation, folding, differences, completion, and spelling commands
+- Tabs, split-window commands, line numbers, horizontal ruler, wrap guides, invisibles, and configurable status fields
 
-![Find & Replace](screenshots/find-replace.png)
+### Search across a file or a project
 
-</details>
+- Literal and regular-expression Find and Replace with case, word, fuzzy, scope, history, and marked-result options
+- Next/previous navigation and replace-in-selection workflows
+- Folder Grep with include/exclude filters, encoding handling, cancellable progress, and navigable results
+- Grep Replace with preview, validation, conflict detection, backup policy, and a result report
+- Quick Open for fuzzy file switching inside the current folder
 
----
+See [Search and Grep](docs/search-and-grep.md) and [Grep Replace](docs/grep-replace.md).
 
-## Who This Is For
+### File fidelity and recovery
 
-MaruEdit is for macOS developers who want a **fast, zero-overhead editor** alongside their main IDE. Use it when you want to:
+- Encoding detection and explicit selection for UTF-8, UTF-16, Shift-JIS, EUC-JP, ISO-2022-JP, and related variants
+- BOM and line-ending control for LF, CRLF, and CR
+- Atomic saves, overwrite protection, external-change detection, conflict handling, and autosave recovery
+- File-type profiles for per-language encoding, syntax, wrapping, indentation, and display behavior
+- Streaming and reduced-feature large-file modes with documented limits and fallbacks
+- Session restoration for folders, documents, selections, and window state
 
-- **Open a repo instantly** — browse code and read through files without waiting for VS Code to load
-- **Make quick edits** — fix a typo, tweak a config, update a script, and close
-- **Review files** — read through Markdown, JSON, YAML, or logs with syntax highlighting and zero lag
-- **Stay in flow** — keep a snappy editor open for side tasks while your IDE handles the heavy project
+See the [User Guide](docs/user-guide.md), [File-type Profiles](docs/file-type-profiles.md), and [Large-file Mode](docs/large-file-mode.md).
 
-### Who This Is Not For
+### A workspace you can reshape
 
-MaruEdit is not trying to replace VS Code, Xcode, or Sublime Text. If you need extensions, LSP, integrated terminals, or Git UI, use those. MaruEdit is the tool you reach for when you want to **open, read, edit, and move on — in seconds**.
+- Maru Classic toolbar with configurable commands, icon size, labels, search field, and Help button
+- Compact default menus plus a menu editor that can restore or expose the complete command catalog
+- Configurable function-key strip and status bar; both adapt to narrow windows
+- Built-in macOS-style and Windows-style key-binding profiles, custom bindings, and multi-stroke chords
+- Settings for fonts, themes, syntax colors, rulers, wrapping, tabs, indentation, invisibles, and file profiles
+- Runtime English and Japanese UI switching through semantic localization resources
 
----
+See [Settings](docs/settings.md), [Key Bindings](docs/key-bindings.md), [Menu Customization](docs/menu-customization.md), and [Display Settings](docs/display-settings.md).
 
-## Why MaruEdit?
+### Automation without a bundled web runtime
 
-Most code editors ship bundled web runtimes and large framework stacks. MaruEdit takes the opposite approach: a small native AppKit application with no third-party runtime dependencies.
+- JavaScriptCore macro engine with recording/playback and a documented v1 API
+- External commands with argument templates, environment control, timeouts, output capture, and permission boundaries
+- Output pane integration for command, macro, and search results
+- Bundled PDF manual available from the Help menu and toolbar; opening online resources requires confirmation
 
-### Size Comparison
+See [Macros](docs/macros.md), [Macro API v1](docs/macro-api-v1.md), [External Commands](docs/external-commands.md), and the [Security Threat Model](docs/security-threat-model.md).
 
-| Editor | App Size | RAM at Idle | Runtime |
-|---|---|---|---|
-| **MaruEdit 1.0 beta** | **2.82 MiB** | **115 MB measured** | Native (AppKit) |
-| Sublime Text | ~40 MB | ~90–140 MB | Native (C++) |
-| VS Code | ~400 MB | ~226+ MB | Electron (Chromium + Node.js) |
+## Keyboard shortcuts
 
-The editor, search engine, file explorer, session persistence, macros, and settings compile without third-party package dependencies. Current measurements and their reproducible method are in [docs/performance.md](docs/performance.md).
-
-### What Makes It Different
-
-- **Instant launch** — no runtime to bootstrap, opens in milliseconds
-- **Native macOS citizen** — built on AppKit and TextKit, uses system text rendering, respects macOS conventions
-- **Single binary** — no `node_modules`, no embedded Chromium, no support files
-- **Session persistence** — remembers your folder, open tabs, cursor positions, and window state across restarts
-- **Multi-cursor editing** — VS Code-style Cmd+Shift+L to rename across a file in one shot
-
----
-
-## Features
-
-- **Syntax highlighting** for 20+ languages (Swift, Python, JS/TS, Rust, Go, C/C++, Java, HTML, CSS, JSON, YAML, SQL, and more)
-- **Tabbed editing** with Cmd+W to close, Cmd+click for new tab
-- **Sidebar file explorer** with folder tree navigation
-- **Find & Replace** with regex support and match count
-- **Quick Open** (Cmd+P) for fast file switching
-- **Session persistence** — reopens your folder, files, cursor positions, and window state on relaunch
-- **Line numbers** with current-line highlighting
-- **Status bar** showing cursor position and detected language
-
-### Keyboard Shortcuts
+These are the defaults for the macOS key-binding profile. Every binding can be changed in Settings.
 
 | Shortcut | Action |
 |---|---|
-| Cmd+N | New file |
-| Cmd+O | Open file |
-| Cmd+Shift+O | Open folder |
-| Cmd+S | Save |
-| Cmd+Shift+S | Save as |
-| Cmd+W | Close tab |
-| Cmd+F | Find & Replace |
-| Cmd+G | Go to line |
-| Cmd+P | Quick Open |
-| Cmd+B | Toggle sidebar |
-| Option+Up/Down | Move line up/down |
-| Cmd+Shift+K | Delete current line |
-| Cmd+Shift+L | Select all occurrences (multi-cursor edit) |
+| `⌘N` | New document |
+| `⌘O` | Open file |
+| `⇧⌘O` | Open folder |
+| `⌘S` | Save |
+| `⇧⌘S` | Save As |
+| `⌘W` | Close document |
+| `⌘P` | Quick Open |
+| `⌘F` | Find |
+| `⌥⌘F` | Replace |
+| `⌘G` / `⇧⌘G` | Find next / previous |
+| `⇧⌘F` | Folder Grep |
+| `⌘L` | Go to line |
+| `⌘B` | Toggle utility pane |
+| `⌥↑` / `⌥↓` | Move line up / down |
+| `⇧⌘K` | Delete line |
+| `⇧⌘L` | Select all occurrences |
 
----
+The complete list of command IDs and available operations is in [docs/commands.md](docs/commands.md).
 
 ## Install
 
-When a signed and notarized build is published, download its DMG from the [Releases page](https://github.com/tosnetwork/maruedit/releases/latest), open it, and drag MaruEdit to Applications. Until then, build from source; do not bypass Gatekeeper for an artifact you cannot verify.
+Published artifacts are listed on the [Releases page](https://github.com/tosnetwork/maruedit/releases). Verify the release notes and checksums before installing a binary. Signing, notarization, stapling, and clean-machine Gatekeeper verification remain explicit release gates in [ROADMAP.md](ROADMAP.md); build from source when a release does not document those checks.
 
-## Build from Source
+MaruEdit requires **macOS 13 Ventura or later**.
 
-Requires **Xcode Command Line Tools** and **macOS 13+**.
+## Build from source
+
+Install Xcode Command Line Tools, clone the repository, and run:
 
 ```bash
-# Build and package the .app bundle
+git clone https://github.com/tosnetwork/maruedit.git
+cd maruedit
 bash build.sh
-
-# Run directly
 open MaruEdit.app
-
-# Or install to /Applications
-cp -r MaruEdit.app /Applications/
-
-# Or create a DMG installer
-bash create-dmg.sh
 ```
 
-### Debug vs. Release builds
+`build.sh` compiles a host-architecture Release build and packages the executable, localization resources, bundled PDF manual, and icon into `MaruEdit.app`.
 
-- `swift build` — Debug configuration, binary at `.build/debug/MaruEdit`. Fastest to compile; use this while developing.
-- `swift build -c release` — Release configuration, binary at `.build/release/MaruEdit`. Optimized; this is what `build.sh` and `create-dmg.sh` package.
+For day-to-day development:
 
-`bash build.sh` always builds Release for the host architecture only (fast, single-arch — this is what you want for local testing).
+```bash
+# Debug executable: .build/debug/MaruEditApp
+swift build
 
-### Universal Binary (Apple Silicon + Intel)
+# Release executable: .build/release/MaruEditApp
+swift build -c release
 
-MaruEdit targets both `arm64` and `x86_64` as a Universal Binary for distribution. `build.sh` does **not** build a Universal Binary by default (it's slower — SwiftPM compiles twice, once per architecture). To build one:
+# Run all unit, integration, and UI-structure tests
+swift test
+```
+
+For an Apple Silicon + Intel executable:
 
 ```bash
 bash scripts/build-release.sh
-```
-
-This runs `swift build -c release --arch arm64 --arch x86_64` (SwiftPM automatically merges the two architecture slices with `lipo` into `.build/apple/Products/Release/MaruEdit`) and packages it the same way `build.sh` does. Verify the result with:
-
-```bash
 lipo -info MaruEdit.app/Contents/MacOS/MaruEdit
-# Architectures in the fat file: ... are: x86_64 arm64
 ```
 
-## Project Structure
+Release engineering scripts and procedures are documented in [docs/reproducible-releases.md](docs/reproducible-releases.md) and [docs/release-policy.md](docs/release-policy.md).
 
-MaruEdit is split into two SwiftPM targets per `ROADMAP.md` ADR-004:
-`MaruEditCore` (Foundation-only, unit-testable without launching AppKit)
-and `MaruEditApp` (the AppKit UI and executable). See `ROADMAP.md` section 7
-for where this is headed as more milestones land.
+## Architecture
 
-```
+MaruEdit is a Swift Package with a Foundation-oriented core and a native AppKit application. There are no third-party Swift package dependencies; it links Apple system frameworks including AppKit, JavaScriptCore, and WebKit.
+
+```text
 maruedit/
 ├── Package.swift
-├── build.sh
 ├── Sources/
-│   ├── MaruEditCore/
-│   │   └── Language.swift                  # File-language detection (pure model)
-│   └── MaruEditApp/
-│       ├── main.swift                          # App entry point
-│       ├── AppDelegate.swift                   # Menu bar, app lifecycle
-│       ├── MainWindowController.swift          # Window, tabs, session persistence
-│       ├── EditorViewController.swift          # Text view, find/replace, cursor
-│       ├── EditorViewController+Shortcuts.swift # Line move, delete, multi-edit
-│       ├── SidebarViewController.swift         # File tree explorer
-│       ├── SyntaxHighlighter.swift             # Regex-based highlighting
-│       ├── Document.swift                      # File model
-│       ├── TabBarView.swift                    # Tab strip
-│       ├── FindBarView.swift                   # Find/replace bar
-│       ├── StatusBarView.swift                 # Bottom status bar
-│       ├── LineNumberView.swift                # Gutter with line numbers
-│       ├── QuickOpenPanel.swift                # Cmd+P fuzzy file picker
-│       ├── RecentItems.swift                   # Recent files/folders
-│       └── Theme.swift                         # Colors and fonts
+│   ├── MaruEditCore/       Documents, text I/O, search, commands, settings,
+│   │                       key bindings, macros, navigation, diff, and sessions
+│   └── MaruEditApp/        App lifecycle, AppKit editor UI, Classic workspace,
+│                           menus, settings panels, resources, Help, and output
 ├── Tests/
 │   ├── MaruEditCoreTests/
-│   └── MaruEditAppTests/
-└── .gitignore
+│   ├── MaruEditAppTests/
+│   └── MaruEditTextKit2SpikeTests/
+├── docs/                   User, architecture, security, and release documents
+├── screenshots/            README and visual-regression images
+└── scripts/                Build, audit, stress, and release utilities
 ```
+
+The test suite covers core models, file round trips, search and replacement, commands, key bindings, macros, settings, localization, UI composition, accessibility, and screenshot baselines. See [ROADMAP.md](ROADMAP.md) for milestone gates and [docs/beta-test-matrix.md](docs/beta-test-matrix.md) for manual coverage.
+
+## Privacy and security
+
+- MaruEdit does not require an account or include analytics or advertising.
+- Files are edited locally. Network navigation from Help is confirmation-gated.
+- Macro and external-command capabilities are documented and permission-scoped.
+- Atomic writes, recovery snapshots, and external modification checks protect file contents.
+- Security assumptions and known boundaries are recorded in [docs/security-threat-model.md](docs/security-threat-model.md).
 
 ## Documentation
 
-- [User Guide](docs/user-guide.md): files, encodings, BOMs, and line endings
-- [Search and Grep](docs/search-and-grep.md): Find, Replace, folder Grep, and Grep Replace
-- [Key bindings](docs/key-bindings.md) and the complete [command catalog](docs/commands.md)
-- [Macros](docs/macros.md), [Macro API v1](docs/macro-api-v1.md), and [external-command security](docs/external-commands.md)
-- [Windows-editor migration](docs/migration-windows-editors.md) and [Maru workflow compatibility](docs/maru-compatibility.md)
-- [FAQ](docs/faq.md) and [Troubleshooting](docs/troubleshooting.md)
+| Topic | Documents |
+|---|---|
+| Getting started | [User Guide](docs/user-guide.md), [FAQ](docs/faq.md), [Troubleshooting](docs/troubleshooting.md) |
+| Editing | [Multiple Selections](docs/multiple-selections.md), [Completion and Spelling](docs/completion-and-spelling.md), [Syntax Highlighting](docs/syntax-highlighting.md) |
+| Search | [Search and Grep](docs/search-and-grep.md), [Grep Replace](docs/grep-replace.md) |
+| Customization | [Settings](docs/settings.md), [Display Settings](docs/display-settings.md), [File-type Profiles](docs/file-type-profiles.md), [Key Bindings](docs/key-bindings.md), [Menu Customization](docs/menu-customization.md) |
+| Automation | [Macros](docs/macros.md), [Macro API](docs/macro-api-v1.md), [External Commands](docs/external-commands.md), [Output Pane](docs/output-pane.md) |
+| Reliability | [Large-file Mode](docs/large-file-mode.md), [Performance](docs/performance.md), [Crash Recovery](docs/crash-recovery-tests.md), [Security](docs/security-threat-model.md) |
+| Project | [Roadmap](ROADMAP.md), [Release Policy](docs/release-policy.md), [Reproducible Releases](docs/reproducible-releases.md), [Attribution](NOTICE.md) |
+
+## Contributing
+
+Issues and pull requests are welcome. Run `swift test`, keep AppKit-specific behavior in `MaruEditApp`, and add focused coverage for changes in `MaruEditCore`. Changes to visible workspace behavior should update the relevant screenshot baseline and documentation.
 
 ## License
 
-[MIT](LICENSE)
+MaruEdit is available under the [MIT License](LICENSE).
