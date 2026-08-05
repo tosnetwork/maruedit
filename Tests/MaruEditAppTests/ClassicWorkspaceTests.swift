@@ -117,13 +117,15 @@ final class ClassicWorkspaceTests: XCTestCase {
     func testRulerTracksEditorOriginAndCurrentDisplayColumn() async {
         let controller = MainWindowController()
         controller.applyPreferences(.defaults)
+        controller.toggleSidebar()
         controller.editorCursorMoved(
             controller.macroEditor,
             state: EditorCursorState(lineNumber: 1, displayColumn: 37, utf16Offset: 36,
                                      selectedCharacterCount: 0, selectedUTF16Length: 0,
                                      selectionRangeCount: 1))
         XCTAssertEqual(controller.classicRulerStateForTesting.column, 37)
-        XCTAssertGreaterThanOrEqual(controller.classicRulerStateForTesting.origin, 46)
+        XCTAssertEqual(controller.classicRulerStateForTesting.origin, 46,
+                       "a collapsed sidebar must not leave stale horizontal space before the ruler")
     }
 
     private func descendants(of view: NSView) -> [NSView] {

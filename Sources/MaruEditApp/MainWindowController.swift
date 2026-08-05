@@ -297,7 +297,10 @@ final class MainWindowController: NSWindowController,
     }
 
     private func editorXForTabBar() -> CGFloat {
-        sidebarVC.view.isHidden ? 0 : sidebarVC.view.frame.width + splitView.dividerThickness
+        guard !sidebarManuallyCollapsed,
+              !sidebarVC.view.isHidden,
+              !splitView.isSubviewCollapsed(sidebarVC.view) else { return 0 }
+        return sidebarVC.view.frame.width + splitView.dividerThickness
     }
 
     private var lastCursorColumn = 1
@@ -806,7 +809,7 @@ final class MainWindowController: NSWindowController,
             splitView.setPosition(0, ofDividerAt: 0)
             sidebarVC.view.isHidden = true
         }
-        updateTabBarFrame()
+        layoutContentViews()
         scheduleSessionSave()
     }
 
