@@ -2,8 +2,19 @@ import AppKit
 import MaruEditCore
 
 enum StatusBarControl: CaseIterable {
-    case cursorPosition, characterCode, inputMode, layoutMode, fontSize
+    case cursorPosition, totals, characterCode, inputMode, layoutMode, fontSize
     case macroActivity, largeFileMode, encoding, byteOrderMark, lineEnding, languageProfile
+}
+
+struct CharacterCountConfiguration: Codable, Equatable {
+    var fullWidth = 1.0
+    var halfWidth = 1.0
+    var fullWidthSpace = 1.0
+    var halfWidthSpace = 1.0
+    var tab = 1.0
+    var lineBreak = 1.0
+
+    static let standard = CharacterCountConfiguration()
 }
 
 enum StatusBarField: String, CaseIterable {
@@ -70,7 +81,9 @@ final class StatusBarView: NSView {
     private var largeFileMode: LargeFileMode = .normal
     private static let fieldsDefaultsKey = "MaruClassicStatusBarFields"
     private static let clicksDefaultsKey = "MaruClassicStatusBarClicksEnabled"
+    private static let countDefaultsKey = "MaruClassicCharacterCountConfiguration"
     private(set) var areClicksEnabled = true
+    private(set) var characterCountConfiguration = CharacterCountConfiguration.standard
 
     var displayedLeadingText: String { lineColLabel.stringValue }
     var displayedSelectionText: String { selectionLabel.stringValue }
@@ -103,6 +116,10 @@ final class StatusBarView: NSView {
         }
         if UserDefaults.standard.object(forKey: Self.clicksDefaultsKey) != nil {
             areClicksEnabled = UserDefaults.standard.bool(forKey: Self.clicksDefaultsKey)
+        }
+        if let data = UserDefaults.standard.data(forKey: Self.countDefaultsKey),
+           let decoded = try? JSONDecoder().decode(CharacterCountConfiguration.self, from: data) {
+            characterCountConfiguration = decoded
         }
         setup()
     }
@@ -161,12 +178,14 @@ final class StatusBarView: NSView {
             label.toolTip = toolTip
         }
         lineColLabel.setAccessibilityLabel("Cursor line and display column")
+        totalsLabel.setAccessibilityLabel("Total lines and configured character count")
+        totalsLabel.toolTip = "Click to configure how characters are counted"
         selectionLabel.setAccessibilityLabel("Selection count")
         inputModeLabel.setAccessibilityLabel("Input mode: insert")
         inputModeLabel.toolTip = "Insert mode; overwrite mode is not enabled"
         layoutModeLabel.setAccessibilityLabel("Writing layout: horizontal")
         layoutModeLabel.toolTip = "Horizontal writing; click to choose writing or column layout"
-        for label in [lineColLabel, inputModeLabel, layoutModeLabel, characterCodeLabel, fontSizeLabel] {
+        for label in [lineColLabel, totalsLabel, inputModeLabel, layoutModeLabel, characterCodeLabel, fontSizeLabel] {
             label.textColor = Theme.accent
             label.setAccessibilityRole(.button)
         }
@@ -199,7 +218,7 @@ final class StatusBarView: NSView {
         for label in [encLabel, bomLabel, lineEndingLabel, langLabel] {
             label.textColor = Theme.accent
         }
-        for label in [lineColLabel, inputModeLabel, layoutModeLabel, characterCodeLabel, fontSizeLabel] {
+        for label in [lineColLabel, totalsLabel, inputModeLabel, layoutModeLabel, characterCodeLabel, fontSizeLabel] {
             label.textColor = Theme.accent
         }
     }
@@ -231,9 +250,34 @@ final class StatusBarView: NSView {
     func updateDocumentMetrics(text: String, fontSize: CGFloat) {
         documentText = text
         let lines = text.isEmpty ? 1 : text.reduce(1) { $1 == "\n" ? $0 + 1 : $0 }
-        totalsLabel.stringValue = "\(lines) lines · \(text.count) chars"
+        totalsLabel.stringValue = "\(lines) lines · \(configuredCharacterCount(text)) chars"
         fontSizeLabel.stringValue = "\(Int(fontSize.rounded())) pt"
         needsLayout = true
+    }
+
+    func setCharacterCountConfiguration(_ configuration: CharacterCountConfiguration) {
+        characterCountConfiguration = configuration
+        if let data = try? JSONEncoder().encode(configuration) {
+            UserDefaults.standard.set(data, forKey: Self.countDefaultsKey)
+        }
+        updateDocumentMetrics(text: documentText, fontSize: CGFloat(
+            Int(fontSizeLabel.stringValue.split(separator: " ").first ?? "13") ?? 13))
+    }
+
+    private func configuredCharacterCount(_ text: String) -> Int {
+        var total = 0.0
+        for character in text {
+            if character == "\n" || character == "\r" { total += characterCountConfiguration.lineBreak }
+            else if character == "\t" { total += characterCountConfiguration.tab }
+            else if character == " " { total += characterCountConfiguration.halfWidthSpace }
+            else if character == "　" { total += characterCountConfiguration.fullWidthSpace }
+            else if character.unicodeScalars.allSatisfy({ $0.value < 0x80 }) {
+                total += characterCountConfiguration.halfWidth
+            } else {
+                total += characterCountConfiguration.fullWidth
+            }
+        }
+        return Int(ceil(total))
     }
 
     private func updateCharacterCode(at utf16Offset: Int) {
@@ -450,6 +494,7 @@ final class StatusBarView: NSView {
     func frame(for control: StatusBarControl) -> NSRect? {
         switch control {
         case .cursorPosition: return visibleFrame(lineColLabel)
+        case .totals: return visibleFrame(totalsLabel)
         case .characterCode:
             return characterCodeLabel.stringValue.isEmpty ? nil : visibleFrame(characterCodeLabel)
         case .inputMode: return visibleFrame(inputModeLabel)

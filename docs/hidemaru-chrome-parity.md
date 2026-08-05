@@ -20,7 +20,7 @@ passing MaruEdit regression tests from exhaustive Hidemaru feature parity.
 |---|---:|---:|---:|
 | Menu rows | 1 | 7 | 5 |
 | Toolbar/function-key rows | 9 | 3 | 0 |
-| Status-bar rows | 13 | 3 | 0 |
+| Status-bar rows | 16 | 0 | 0 |
 | Acceptance gates | 1 | 2 | 2 |
 
 ## Menu bar
@@ -79,13 +79,13 @@ consistency check, not proof that the external Hidemaru inventory is complete.
 | Cursor line/column | Display; click opens Go To | Display; click opens Go To Line | ✅ Complete |
 | Selection characters/ranges | Display | Display | ✅ Complete |
 | Selection line count/BOX dimensions | Display | Selection line count and live BOX width×height are displayed | ✅ Complete |
-| Total line/character count | Optional fields and configurable calculation | Displayed and field-configurable | 🟡 Partial: calculation-method selection is absent |
+| Total line/character count | Optional fields and configurable calculation | Displayed and field-configurable; clicking opens persisted weights for full/half-width characters, both spaces, tabs, and line breaks with fractional rounding | ✅ Complete |
 | Character code at cursor | Encoding-aware display; click details | Unicode display for Unicode files, Shift-JIS-preferred display for Japanese legacy files, and a details alert containing Unicode, UTF-8, Windows-31J, and current-encoding bytes | ✅ Complete |
 | Insert/overwrite | Display; click toggles | Display and click toggles | ✅ Complete |
-| Font size | Display; click slider/reset | Display; click opens native font panel | 🟡 Native substitute; interaction differs |
+| Font size | Display; click slider/reset | Display; click opens an 8–72 pt live slider with reset to the pre-adjustment size | ✅ Complete |
 | File-type profile | Display; click list | Displays and applies complete user/built-in profiles, with syntax-only overrides | ✅ Complete |
 | CapsLock | Optional field | Conditional configurable CAPS indicator | ✅ Complete |
-| Vertical/horizontal and column count | Display/click | HORZ/VERT/COL×n and a checked layout-mode menu | 🟡 Partial: status menu does not choose a specific column count |
+| Vertical/horizontal and column count | Display/click | HORZ/VERT/COL×n and a checked menu that toggles horizontal, vertical, or continuous column layout; the live count follows TextKit flow | ✅ Complete |
 | Macro recording | Conditional state/click | Distinct REC and MACRO states are shown; clicking REC stops the active recording through the coordinator | ✅ Complete |
 | Large-file mode | No direct equivalent | MaruEdit-specific safety field | ✅ Native addition (not a parity claim) |
 | Configurable fields/clickability | Fields and global click enablement are configurable | Right-click field selection plus a persistent global click-action switch | ✅ Complete |

@@ -88,10 +88,21 @@ final class StatusBarViewTests: XCTestCase {
         XCTAssertEqual(status.displayedCharacterCodeText, "U+65E5")
         XCTAssertEqual(status.displayedFontSizeText, "15 pt")
         XCTAssertTrue(status.displayedSelectionText.contains("2 lines"))
-        for control: StatusBarControl in [.cursorPosition, .characterCode, .inputMode, .fontSize] {
+        for control: StatusBarControl in [.cursorPosition, .totals, .characterCode, .inputMode, .fontSize] {
             XCTAssertNotNil(status.frame(for: control)); status.activate(control)
         }
-        XCTAssertEqual(delegate.controls, [.cursorPosition, .characterCode, .inputMode, .fontSize])
+        XCTAssertEqual(delegate.controls, [.cursorPosition, .totals, .characterCode, .inputMode, .fontSize])
+    }
+
+    func testCharacterCountUsesConfigurableHidemaruCategoryWeightsAndRoundsUp() async {
+        let status = StatusBarView(frame: NSRect(x: 0, y: 0, width: 1100, height: 24))
+        defer { status.setCharacterCountConfiguration(.standard) }
+        status.setCharacterCountConfiguration(CharacterCountConfiguration(
+            fullWidth: 1, halfWidth: 0.5, fullWidthSpace: 2,
+            halfWidthSpace: 0.25, tab: 4, lineBreak: 0))
+        status.updateDocumentMetrics(text: "日A　 \t\n", fontSize: 13)
+        XCTAssertEqual(status.displayedTotalsText, "2 lines · 8 chars")
+        XCTAssertEqual(status.characterCountConfiguration.halfWidth, 0.5)
     }
 
     func testCharacterCodeDetailsIncludeUnicodeUTF8AndShiftJIS() async {
@@ -228,6 +239,16 @@ final class StatusBarViewTests: XCTestCase {
         status.setClickActionsEnabled(true)
         status.activate(.cursorPosition)
         XCTAssertEqual(delegate.controls, [.cursorPosition])
+    }
+
+    func testStatusFontSizeAdjustmentClampsAndUpdatesEditorImmediately() async {
+        let controller = MainWindowController()
+        controller.adjustStatusFontSizeForTesting(21)
+        XCTAssertEqual(controller.currentStatusFontSizeForTesting, 21)
+        controller.adjustStatusFontSizeForTesting(100)
+        XCTAssertEqual(controller.currentStatusFontSizeForTesting, 72)
+        controller.adjustStatusFontSizeForTesting(2)
+        XCTAssertEqual(controller.currentStatusFontSizeForTesting, 8)
     }
 }
 

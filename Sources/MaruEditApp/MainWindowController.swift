@@ -29,6 +29,8 @@ final class MainWindowController: NSWindowController,
     private var classicChrome: ClassicWorkspaceChrome!
     private var workspaceStyle: WorkspaceStyle = .classic
     private var isStatusBarVisible = true
+    private var fontSizePopover: NSPopover?
+    private var statusFontResetSize: CGFloat?
     var macroEditor: EditorViewController { editorVC }
 
     private var quickOpen: QuickOpenPanel?
@@ -1896,6 +1898,8 @@ final class MainWindowController: NSWindowController,
         switch control {
         case .cursorPosition:
             showGoToLine(); return
+        case .totals:
+            showCharacterCountConfiguration(); return
         case .characterCode:
             let alert = NSAlert()
             alert.messageText = "Character Code"
@@ -1907,7 +1911,7 @@ final class MainWindowController: NSWindowController,
         case .layoutMode:
             menu = buildLayoutModeMenu()
         case .fontSize:
-            showFontPanel(); return
+            showStatusFontSizeControl(); return
         case .macroActivity:
             onStatusMacroControl?(); return
         case .largeFileMode:
@@ -1921,6 +1925,73 @@ final class MainWindowController: NSWindowController,
         }
         menu.popUp(positioning: nil, at: point, in: statusBar)
     }
+
+    private func showCharacterCountConfiguration() {
+        let alert = NSAlert()
+        alert.messageText = "Character Count Calculation"
+        alert.informativeText = "Set the contribution of each character category. Fractional totals are rounded up."
+        let configuration = statusBar.characterCountConfiguration
+        let entries: [(String, Double)] = [
+            ("Full-width characters", configuration.fullWidth),
+            ("Half-width characters", configuration.halfWidth),
+            ("Full-width spaces", configuration.fullWidthSpace),
+            ("Half-width spaces", configuration.halfWidthSpace),
+            ("Tabs", configuration.tab), ("Line breaks", configuration.lineBreak),
+        ]
+        let grid = NSGridView()
+        var fields: [NSTextField] = []
+        for (title, value) in entries {
+            let field = NSTextField(string: String(value))
+            field.alignment = .right; field.setAccessibilityLabel(title)
+            fields.append(field)
+            grid.addRow(with: [NSTextField(labelWithString: title), field])
+        }
+        grid.column(at: 0).xPlacement = .trailing
+        grid.column(at: 1).width = 72
+        alert.accessoryView = grid
+        alert.addButton(withTitle: "Apply")
+        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: "Reset")
+        alert.beginSheetModal(for: window!) { [weak self] response in
+            guard let self else { return }
+            if response == .alertThirdButtonReturn {
+                self.statusBar.setCharacterCountConfiguration(.standard)
+                return
+            }
+            guard response == .alertFirstButtonReturn else { return }
+            let values = fields.map { max(0, Double($0.stringValue) ?? 0) }
+            self.statusBar.setCharacterCountConfiguration(CharacterCountConfiguration(
+                fullWidth: values[0], halfWidth: values[1], fullWidthSpace: values[2],
+                halfWidthSpace: values[3], tab: values[4], lineBreak: values[5]))
+        }
+    }
+
+    private func showStatusFontSizeControl() {
+        let baseline = editorVC.currentEditorFont.pointSize
+        statusFontResetSize = baseline
+        let controller = StatusFontSizePopoverController(size: baseline)
+        controller.onChange = { [weak self] size in self?.applyStatusFontSize(size) }
+        controller.onReset = { [weak self] in
+            guard let self, let size = self.statusFontResetSize else { return }
+            self.applyStatusFontSize(size)
+        }
+        let popover = NSPopover()
+        popover.behavior = .transient
+        popover.contentViewController = controller
+        fontSizePopover = popover
+        let frame = statusBar.frame(for: .fontSize) ?? .zero
+        popover.show(relativeTo: frame, of: statusBar, preferredEdge: .maxY)
+    }
+
+    private func applyStatusFontSize(_ size: CGFloat) {
+        let clamped = min(72, max(8, size))
+        guard let font = NSFont(descriptor: editorVC.currentEditorFont.fontDescriptor, size: clamped) else { return }
+        editorVC.applyEditorFont(font)
+        refreshStatus()
+    }
+
+    func adjustStatusFontSizeForTesting(_ size: CGFloat) { applyStatusFontSize(size) }
+    var currentStatusFontSizeForTesting: CGFloat { editorVC.currentEditorFont.pointSize }
 
     func buildLayoutModeMenu() -> NSMenu {
         let menu = NSMenu()
@@ -2847,6 +2918,54 @@ final class MainWindowController: NSWindowController,
         a.addButton(withTitle: "Cancel")
         guard a.runModal() == .alertFirstButtonReturn else { return }
         recoveryStore.clearAll()
+    }
+}
+
+@MainActor
+private final class StatusFontSizePopoverController: NSViewController {
+    var onChange: ((CGFloat) -> Void)?
+    var onReset: (() -> Void)?
+    private let initialSize: CGFloat
+    private let valueLabel = NSTextField(labelWithString: "")
+
+    init(size: CGFloat) {
+        initialSize = size
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func loadView() {
+        let root = NSView(frame: NSRect(x: 0, y: 0, width: 270, height: 82))
+        let slider = NSSlider(value: Double(initialSize), minValue: 8, maxValue: 72,
+                              target: self, action: #selector(changed(_:)))
+        slider.frame = NSRect(x: 16, y: 42, width: 190, height: 24)
+        slider.numberOfTickMarks = 17
+        slider.allowsTickMarkValuesOnly = false
+        slider.setAccessibilityLabel("Editor font size")
+        valueLabel.frame = NSRect(x: 212, y: 44, width: 46, height: 20)
+        valueLabel.alignment = .right
+        updateLabel(initialSize)
+        let reset = NSButton(title: "Reset", target: self, action: #selector(resetSize))
+        reset.bezelStyle = .rounded
+        reset.frame = NSRect(x: 16, y: 10, width: 76, height: 26)
+        reset.setAccessibilityLabel("Reset font size")
+        root.addSubview(slider); root.addSubview(valueLabel); root.addSubview(reset)
+        view = root
+    }
+
+    @objc private func changed(_ sender: NSSlider) {
+        let value = CGFloat(sender.doubleValue.rounded())
+        updateLabel(value); onChange?(value)
+    }
+
+    @objc private func resetSize() {
+        updateLabel(initialSize); onReset?()
+    }
+
+    private func updateLabel(_ size: CGFloat) {
+        valueLabel.stringValue = "\(Int(size.rounded())) pt"
     }
 }
 
