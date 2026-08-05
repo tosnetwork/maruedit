@@ -63,6 +63,7 @@ final class MainWindowController: NSWindowController,
     private var sidebarManuallyCollapsed = false
     var onEditorFontChange: ((NSFont) -> Void)?
     var onClassicToolbarCommand: ((CommandID) -> Void)?
+    var onStatusMacroControl: (() -> Void)?
 
     /// Convenience shims onto `documentController` so the UI-orchestration
     /// code below (largely unchanged from before the M1-02 extraction)
@@ -237,12 +238,31 @@ final class MainWindowController: NSWindowController,
     var isClassicToolbarSearchVisibleForTesting: Bool { classicChrome.isToolbarSearchVisible }
     var isFunctionKeyStripMergedForTesting: Bool { classicChrome.isFunctionKeyStripMerged }
     var classicFunctionKeyCommandsForTesting: [String?] { classicChrome.functionKeyCommandIDs }
+    var classicFunctionKeyCountForTesting: Int { classicChrome.functionKeyCount }
+    func classicToolbarPresentationForTesting(
+        _ command: CommandID
+    ) -> (enabled: Bool, selected: Bool)? {
+        classicChrome.toolbarPresentation(for: command)
+    }
+    func classicFunctionKeyPresentationForTesting(
+        _ index: Int
+    ) -> (enabled: Bool, selected: Bool)? {
+        classicChrome.functionKeyPresentation(at: index)
+    }
 
     func setClassicToolbarLayoutForTesting(_ entries: [String]) {
         classicChrome.setToolbarLayoutForTesting(entries)
     }
     func configureClassicCommands(_ commands: [(CommandID, String)]) {
         classicChrome.configureAvailableCommands(commands)
+    }
+    func configureClassicCommandPresentation(
+        _ provider: @escaping (CommandID) -> (enabled: Bool, selected: Bool)
+    ) {
+        classicChrome.configureCommandPresentation(provider)
+    }
+    func refreshClassicCommandPresentation() {
+        classicChrome.refreshCommandPresentation()
     }
     func setClassicToolbarDisplayModeForTesting(_ mode: ToolbarDisplayMode) {
         classicChrome.setToolbarDisplayModeForTesting(mode)
@@ -264,6 +284,9 @@ final class MainWindowController: NSWindowController,
     }
     func setClassicFunctionKeyCommandsForTesting(_ ids: [CommandID?]) {
         classicChrome.setFunctionKeyCommandsForTesting(ids)
+    }
+    func setClassicFunctionKeyCountForTesting(_ count: Int) {
+        classicChrome.setFunctionKeyCountForTesting(count)
     }
     func activateClassicFunctionKeyForTesting(_ index: Int) {
         classicChrome.activateFunctionKeyForTesting(index)
@@ -1824,6 +1847,7 @@ final class MainWindowController: NSWindowController,
             statusBar.updateDocumentMetrics(
                 text: doc.content, fontSize: editorVC.currentEditorFont.pointSize)
         }
+        classicChrome.refreshCommandPresentation()
     }
 
     // MARK: - Encoding selection and reopen (M2-02)
@@ -1884,6 +1908,8 @@ final class MainWindowController: NSWindowController,
             menu = buildLayoutModeMenu()
         case .fontSize:
             showFontPanel(); return
+        case .macroActivity:
+            onStatusMacroControl?(); return
         case .largeFileMode:
             menu = buildLargeFileModeMenu()
         case .encoding:

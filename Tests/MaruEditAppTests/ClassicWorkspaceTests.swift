@@ -170,6 +170,55 @@ final class ClassicWorkspaceTests: XCTestCase {
         XCTAssertEqual(received, .searchGrep, "an unassigned slot must be a no-op")
     }
 
+    func testFunctionKeyStripSupportsOneThroughTwelveVisibleSlots() async {
+        let controller = MainWindowController()
+        controller.setClassicFunctionKeyCommandsForTesting(Array(repeating: .fileSave, count: 12))
+        for count in 1...12 {
+            controller.setClassicFunctionKeyCountForTesting(count)
+            XCTAssertEqual(controller.classicFunctionKeyCountForTesting, count)
+            XCTAssertNotNil(controller.classicFunctionKeyPresentationForTesting(count - 1))
+            if count < 12 {
+                XCTAssertNil(controller.classicFunctionKeyPresentationForTesting(count))
+            }
+        }
+    }
+
+    func testToolbarAndFunctionKeysReflectLiveEnabledAndToggleState() async {
+        let controller = MainWindowController()
+        controller.configureClassicCommands([
+            (.fileSave, "Save"), (.viewToggleWrap, "Wrap"),
+        ])
+        controller.setClassicToolbarLayoutForTesting(["file.save", "view.toggleWrap"])
+        controller.setClassicFunctionKeyCommandsForTesting([.fileSave, .viewToggleWrap])
+        var saveEnabled = false
+        var wrapSelected = true
+        controller.configureClassicCommandPresentation { command in
+            if command == .fileSave { return (saveEnabled, false) }
+            if command == .viewToggleWrap { return (true, wrapSelected) }
+            return (true, false)
+        }
+
+        XCTAssertEqual(controller.classicToolbarPresentationForTesting(.fileSave)?.enabled, false)
+        XCTAssertEqual(controller.classicToolbarPresentationForTesting(.viewToggleWrap)?.selected, true)
+        XCTAssertEqual(controller.classicFunctionKeyPresentationForTesting(0)?.enabled, false)
+        XCTAssertEqual(controller.classicFunctionKeyPresentationForTesting(1)?.selected, true)
+
+        saveEnabled = true; wrapSelected = false
+        controller.refreshClassicCommandPresentation()
+        XCTAssertEqual(controller.classicToolbarPresentationForTesting(.fileSave)?.enabled, true)
+        XCTAssertEqual(controller.classicToolbarPresentationForTesting(.viewToggleWrap)?.selected, false)
+        XCTAssertEqual(controller.classicFunctionKeyPresentationForTesting(0)?.enabled, true)
+        XCTAssertEqual(controller.classicFunctionKeyPresentationForTesting(1)?.selected, false)
+    }
+
+    func testCoordinatorCanWireLiveCommandPresentationWithoutRecursiveWindowCreation() async {
+        let coordinator = AppCoordinator(preferencesStore: PreferencesStore(
+            defaults: UserDefaults(suiteName: "ClassicPresentation.\(UUID().uuidString)")!))
+        let controller = coordinator.ensureWindowControllerReady(restoreSession: false)
+        XCTAssertTrue(controller === coordinator.ensureWindowControllerReady(restoreSession: false))
+        XCTAssertNotNil(controller.classicToolbarPresentationForTesting(.fileSave))
+    }
+
     func testClassicLightAndModernThemesSwitchWithoutChangingDocument() async {
         let controller = MainWindowController()
         controller.macroEditor.textView.string = "theme-safe content"

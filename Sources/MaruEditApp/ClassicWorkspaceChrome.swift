@@ -111,11 +111,29 @@ final class ClassicWorkspaceChrome: NSView {
     var toolbarIconSize: ToolbarIconSize { toolbar.iconSize }
     var isToolbarSearchVisible: Bool { toolbar.showsSearchField }
     var functionKeyCommandIDs: [String?] { commandStrip.commandIDs }
+    var functionKeyCount: Int { commandStrip.visibleSlotCount }
+    func toolbarPresentation(for command: CommandID) -> (enabled: Bool, selected: Bool)? {
+        toolbar.presentation(for: command)
+    }
+    func functionKeyPresentation(at index: Int) -> (enabled: Bool, selected: Bool)? {
+        commandStrip.presentation(at: index)
+    }
 
     func activateToolbarCommand(_ command: CommandID) { toolbar.activate(command) }
     func configureAvailableCommands(_ commands: [(CommandID, String)]) {
         toolbar.configureAvailableCommands(commands)
         commandStrip.configureAvailableCommands(commands)
+    }
+    func configureCommandPresentation(
+        _ provider: @escaping (CommandID) -> (enabled: Bool, selected: Bool)
+    ) {
+        toolbar.presentationProvider = provider
+        commandStrip.presentationProvider = provider
+        refreshCommandPresentation()
+    }
+    func refreshCommandPresentation() {
+        toolbar.refreshCommandPresentation()
+        commandStrip.refreshCommandPresentation()
     }
     func setToolbarLayoutForTesting(_ entries: [String]) { toolbar.setLayoutForTesting(entries) }
     func setToolbarDisplayModeForTesting(_ mode: ToolbarDisplayMode) {
@@ -130,6 +148,9 @@ final class ClassicWorkspaceChrome: NSView {
     func performToolbarSearchForTesting(_ text: String) { toolbar.performSearchForTesting(text) }
     func setFunctionKeyCommandsForTesting(_ ids: [CommandID?]) {
         commandStrip.setCommandsForTesting(ids)
+    }
+    func setFunctionKeyCountForTesting(_ count: Int) {
+        commandStrip.setVisibleSlotCountForTesting(count)
     }
     func activateFunctionKeyForTesting(_ index: Int) { commandStrip.activateSlotForTesting(index) }
 
@@ -220,6 +241,7 @@ private final class ClassicToolbarView: NSView {
 
     var onCommand: ((CommandID) -> Void)?
     var onSearch: ((String) -> Void)?
+    var presentationProvider: ((CommandID) -> (enabled: Bool, selected: Bool))?
     private var buttons: [NSButton] = []
     private var separators: [NSView] = []
     private var displayedItems: [Item] = []
@@ -312,7 +334,14 @@ private final class ClassicToolbarView: NSView {
 
     func activate(_ command: CommandID) {
         guard displayedItems.contains(where: { $0.command == command }) else { return }
+        guard presentationProvider?(command).enabled != false else { return }
         onCommand?(command)
+    }
+
+    func presentation(for command: CommandID) -> (enabled: Bool, selected: Bool)? {
+        guard let index = displayedItems.firstIndex(where: { $0.command == command }),
+              buttons.indices.contains(index) else { return nil }
+        return (buttons[index].isEnabled, buttons[index].state == .on)
     }
 
     override func rightMouseDown(with event: NSEvent) {
@@ -493,6 +522,16 @@ private final class ClassicToolbarView: NSView {
                 button.action = #selector(activateButton(_:)); button.tag = displayedItems.count
                 displayedItems.append(item); buttons.append(button); addSubview(button)
             }
+        }
+        refreshCommandPresentation()
+    }
+
+    func refreshCommandPresentation() {
+        for (index, item) in displayedItems.enumerated() where buttons.indices.contains(index) {
+            guard let command = item.command, let state = presentationProvider?(command) else { continue }
+            buttons[index].isEnabled = state.enabled
+            buttons[index].state = state.selected ? .on : .off
+            buttons[index].alphaValue = state.enabled ? 1 : 0.42
         }
     }
 
@@ -685,12 +724,15 @@ private final class ClassicCommandStripView: NSView {
     ]
     private static let defaultsKey = "MaruClassicFunctionKeyCommands"
     private static let mergeDefaultsKey = "MaruClassicFunctionKeysMergedWithStatus"
+    private static let countDefaultsKey = "MaruClassicFunctionKeyCount"
     private var functionKeyLayout = FunctionKeyLayout(assignments: defaultCommands)
     private var buttons: [NSButton] = []
     private var candidates: [(String, CommandID)] = ClassicCommandStripView.candidates
     var onCommand: ((CommandID) -> Void)?
     var onMergeChange: (() -> Void)?
+    var presentationProvider: ((CommandID) -> (enabled: Bool, selected: Bool))?
     private(set) var isMergedWithStatusBar = false
+    private(set) var visibleSlotCount = 12
     var commandIDs: [String?] { functionKeyLayout.assignments.map { $0?.rawValue } }
 
     override init(frame: NSRect) {
@@ -705,6 +747,9 @@ private final class ClassicCommandStripView: NSView {
             functionKeyLayout = functionKeyLayout.normalized(available: available)
         }
         isMergedWithStatusBar = UserDefaults.standard.bool(forKey: Self.mergeDefaultsKey)
+        if UserDefaults.standard.object(forKey: Self.countDefaultsKey) != nil {
+            visibleSlotCount = min(12, max(1, UserDefaults.standard.integer(forKey: Self.countDefaultsKey)))
+        }
         rebuildButtons()
         setAccessibilityRole(.group)
         setAccessibilityLabel("Favorite command strip")
@@ -712,7 +757,7 @@ private final class ClassicCommandStripView: NSView {
 
     private func rebuildButtons() {
         buttons.forEach { $0.removeFromSuperview() }; buttons.removeAll()
-        for (index, command) in functionKeyLayout.assignments.enumerated() {
+        for (index, command) in functionKeyLayout.assignments.prefix(visibleSlotCount).enumerated() {
             let title = command.flatMap(title(for:)) ?? "Unassigned"
             let button = NSButton(title: "F\(index + 1) \(title)", target: self, action: #selector(activate(_:)))
             button.font = .systemFont(ofSize: 10)
@@ -725,6 +770,7 @@ private final class ClassicCommandStripView: NSView {
             buttons.append(button)
             addSubview(button)
         }
+        refreshCommandPresentation()
     }
 
     @available(*, unavailable)
@@ -741,6 +787,7 @@ private final class ClassicCommandStripView: NSView {
     @objc private func activate(_ sender: NSButton) {
         guard functionKeyLayout.assignments.indices.contains(sender.tag),
               let command = functionKeyLayout.assignments[sender.tag] else { return }
+        guard presentationProvider?(command).enabled != false else { return }
         onCommand?(command)
     }
 
@@ -762,6 +809,17 @@ private final class ClassicCommandStripView: NSView {
             keyEquivalent: "")
         merge.target = self; merge.state = isMergedWithStatusBar ? .on : .off
         menu.addItem(merge)
+        let countMenu = NSMenu(title: "Visible Function Keys")
+        for count in 1...12 {
+            let item = NSMenuItem(
+                title: "F1–F\(count)", action: #selector(changeVisibleSlotCount(_:)),
+                keyEquivalent: "")
+            item.target = self; item.tag = count
+            item.state = visibleSlotCount == count ? .on : .off
+            countMenu.addItem(item)
+        }
+        let countItem = NSMenuItem(title: "Visible Function Keys", action: nil, keyEquivalent: "")
+        countItem.submenu = countMenu; menu.addItem(countItem)
         let clear = NSMenuItem(title: "Unassign F\(slot + 1)", action: #selector(clearCommand(_:)), keyEquivalent: "")
         clear.target = self; clear.tag = slot; menu.addItem(clear)
         let restore = NSMenuItem(title: "Restore Default Function Keys", action: #selector(restoreDefaults), keyEquivalent: "")
@@ -772,6 +830,13 @@ private final class ClassicCommandStripView: NSView {
     @objc private func toggleMergeWithStatusBar() {
         isMergedWithStatusBar.toggle()
         UserDefaults.standard.set(isMergedWithStatusBar, forKey: Self.mergeDefaultsKey)
+        onMergeChange?()
+    }
+
+    @objc private func changeVisibleSlotCount(_ sender: NSMenuItem) {
+        visibleSlotCount = min(12, max(1, sender.tag))
+        UserDefaults.standard.set(visibleSlotCount, forKey: Self.countDefaultsKey)
+        rebuildButtons(); needsLayout = true
         onMergeChange?()
     }
 
@@ -813,9 +878,33 @@ private final class ClassicCommandStripView: NSView {
     }
 
     func activateSlotForTesting(_ index: Int) {
-        guard functionKeyLayout.assignments.indices.contains(index),
+        guard index < visibleSlotCount, functionKeyLayout.assignments.indices.contains(index),
               let command = functionKeyLayout.assignments[index] else { return }
+        guard presentationProvider?(command).enabled != false else { return }
         onCommand?(command)
+    }
+
+    func setVisibleSlotCountForTesting(_ count: Int) {
+        visibleSlotCount = min(12, max(1, count))
+        rebuildButtons(); needsLayout = true
+        onMergeChange?()
+    }
+
+    func refreshCommandPresentation() {
+        for button in buttons where functionKeyLayout.assignments.indices.contains(button.tag) {
+            guard let command = functionKeyLayout.assignments[button.tag] else {
+                button.isEnabled = false; button.state = .off; continue
+            }
+            let state = presentationProvider?(command) ?? (enabled: true, selected: false)
+            button.isEnabled = state.enabled
+            button.state = state.selected ? .on : .off
+            button.alphaValue = state.enabled ? 1 : 0.42
+        }
+    }
+
+    func presentation(at index: Int) -> (enabled: Bool, selected: Bool)? {
+        guard buttons.indices.contains(index) else { return nil }
+        return (buttons[index].isEnabled, buttons[index].state == .on)
     }
 
     func configureAvailableCommands(_ commands: [(CommandID, String)]) {

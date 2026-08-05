@@ -47,6 +47,10 @@ final class AppCoordinator {
     func ensureWindowControllerReady(restoreSession: Bool = true) -> MainWindowController {
         if let wc = windowController { return wc }
         let wc = MainWindowController(fileTypeResolver: fileTypeProfileStore.resolver())
+        // Publish the controller before wiring presentation callbacks: their initial
+        // refresh queries view state through this coordinator and must not recursively
+        // create another window.
+        windowController = wc
         wc.onEditorFontChange = { [weak self] font in
             guard let self else { return }
             self.preferences.fontName = font.fontName
@@ -57,9 +61,19 @@ final class AppCoordinator {
         wc.onClassicToolbarCommand = { [weak self] id in
             guard let self else { return }
             _ = self.commandRegistry.execute(id, context: CommandContext(coordinator: self))
+            self.windowController?.refreshClassicCommandPresentation()
+        }
+        wc.onStatusMacroControl = { [weak self] in
+            guard let self, self.isRecordingCommands else { return }
+            self.stopMacroRecording()
         }
         wc.configureClassicCommands(commandRegistry.allDefinitions.map { ($0.id, $0.title) })
-        windowController = wc
+        wc.configureClassicCommandPresentation { [weak self] id in
+            guard let self else { return (false, false) }
+            return (
+                self.commandRegistry.isEnabled(id, context: CommandContext(coordinator: self)),
+                self.isCommandSelected(id))
+        }
         wc.showWindow(nil)
         wc.applyPreferences(preferences)
         if restoreSession { wc.restoreSession() }
@@ -379,6 +393,17 @@ final class AppCoordinator {
         case .viewToggleOutputPane: ensureWindowControllerReady().isOutputPaneVisibleForTesting
         default: false
         }
+    }
+
+    private func isCommandSelected(_ id: CommandID) -> Bool {
+        let findOptions: [CommandID: FindOption] = [
+            .searchToggleCaseSensitive: .caseSensitive,
+            .searchToggleWholeWord: .wholeWord,
+            .searchToggleRegex: .regularExpression,
+            .searchToggleFuzzy: .fuzzy,
+        ]
+        if let option = findOptions[id] { return isFindOptionEnabled(option) }
+        return isViewCommandActive(id)
     }
     func clearRecoveryData()           { ensureWindowControllerReady().clearRecoveryData() }
     func makeMacroHost(

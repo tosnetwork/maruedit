@@ -94,6 +94,19 @@ final class StatusBarViewTests: XCTestCase {
         XCTAssertEqual(delegate.controls, [.cursorPosition, .characterCode, .inputMode, .fontSize])
     }
 
+    func testCharacterCodeDetailsIncludeUnicodeUTF8AndShiftJIS() async {
+        let status = StatusBarView(frame: NSRect(x: 0, y: 0, width: 1100, height: 24))
+        status.updateDocumentMetrics(text: "日", fontSize: 13)
+        status.updateEncoding(.windows31J)
+        status.updateCursor(EditorCursorState(
+            lineNumber: 1, displayColumn: 1, utf16Offset: 0,
+            selectedCharacterCount: 0, selectedUTF16Length: 0, selectionRangeCount: 1))
+        XCTAssertEqual(status.displayedCharacterCodeText, "93 FA")
+        XCTAssertTrue(status.characterCodeDetail.contains("Unicode: U+65E5"))
+        XCTAssertTrue(status.characterCodeDetail.contains("UTF-8: E6 97 A5"))
+        XCTAssertTrue(status.characterCodeDetail.contains("Shift-JIS): 93 FA"))
+    }
+
     func testBoxSelectionDimensionsAreDisplayed() async {
         let status = StatusBarView(frame: NSRect(x: 0, y: 0, width: 1100, height: 24))
         status.updateCursor(EditorCursorState(
@@ -190,11 +203,31 @@ final class StatusBarViewTests: XCTestCase {
     }
 
     func testMacroRecordingUsesDistinctStatus() async {
-        let status = StatusBarView()
+        let status = StatusBarView(frame: NSRect(x: 0, y: 0, width: 1100, height: 24))
+        let delegate = Delegate(); status.delegate = delegate
         status.updateMacroRecording(isRecording: true)
+        status.layoutSubtreeIfNeeded()
         XCTAssertEqual(status.displayedMacroActivityText, "REC")
+        XCTAssertNotNil(status.frame(for: .macroActivity))
+        status.activate(.macroActivity)
+        XCTAssertEqual(delegate.controls, [.macroActivity])
         status.updateMacroRecording(isRecording: false)
         XCTAssertNil(status.displayedMacroActivityText)
+    }
+
+    func testStatusBarClickActionsCanBeDisabledGlobally() async {
+        let status = StatusBarView(frame: NSRect(x: 0, y: 0, width: 1100, height: 24))
+        let delegate = Delegate(); status.delegate = delegate
+        status.layoutSubtreeIfNeeded()
+        status.setClickActionsEnabled(false)
+        status.activate(.cursorPosition)
+        status.activate(.encoding)
+        XCTAssertTrue(delegate.controls.isEmpty)
+        XCTAssertFalse(status.areClicksEnabled)
+
+        status.setClickActionsEnabled(true)
+        status.activate(.cursorPosition)
+        XCTAssertEqual(delegate.controls, [.cursorPosition])
     }
 }
 

@@ -3,7 +3,7 @@ import MaruEditCore
 
 enum StatusBarControl: CaseIterable {
     case cursorPosition, characterCode, inputMode, layoutMode, fontSize
-    case largeFileMode, encoding, byteOrderMark, lineEnding, languageProfile
+    case macroActivity, largeFileMode, encoding, byteOrderMark, lineEnding, languageProfile
 }
 
 enum StatusBarField: String, CaseIterable {
@@ -59,6 +59,8 @@ final class StatusBarView: NSView {
     private let largeFileModeLabel = NSTextField(labelWithString: "Reduced Features")
     private var cursorText = "Ln 1, Col 1"
     private var documentText = ""
+    private var cursorUTF16Offset = 0
+    private var documentEncoding: TextEncoding = .utf8
     private var messageWorkItem: DispatchWorkItem?
     private var configuredFields = Set(StatusBarField.allCases)
     private var isReadOnly = false
@@ -67,6 +69,8 @@ final class StatusBarView: NSView {
     private var isMacroRecording = false
     private var largeFileMode: LargeFileMode = .normal
     private static let fieldsDefaultsKey = "MaruClassicStatusBarFields"
+    private static let clicksDefaultsKey = "MaruClassicStatusBarClicksEnabled"
+    private(set) var areClicksEnabled = true
 
     var displayedLeadingText: String { lineColLabel.stringValue }
     var displayedSelectionText: String { selectionLabel.stringValue }
@@ -96,6 +100,9 @@ final class StatusBarView: NSView {
         if let values = UserDefaults.standard.stringArray(forKey: Self.fieldsDefaultsKey) {
             configuredFields = Set(values.compactMap(StatusBarField.init(rawValue:)))
             configuredFields.insert(.cursorPosition)
+        }
+        if UserDefaults.standard.object(forKey: Self.clicksDefaultsKey) != nil {
+            areClicksEnabled = UserDefaults.standard.bool(forKey: Self.clicksDefaultsKey)
         }
         setup()
     }
@@ -171,6 +178,7 @@ final class StatusBarView: NSView {
         capsLockLabel.toolTip = "Caps Lock is enabled"
         capsLockLabel.isHidden = true
         macroActivityLabel.textColor = .systemRed
+        macroActivityLabel.setAccessibilityRole(.button)
         macroActivityLabel.setAccessibilityLabel("Macro running")
         macroActivityLabel.toolTip = "A macro is currently running"
         macroActivityLabel.isHidden = true
@@ -197,6 +205,7 @@ final class StatusBarView: NSView {
     }
 
     func updateCursor(_ state: EditorCursorState) {
+        cursorUTF16Offset = state.utf16Offset
         cursorText = "Ln \(state.lineNumber), Col \(state.displayColumn)"
         if messageWorkItem == nil { lineColLabel.stringValue = cursorText }
         if state.selectedCharacterCount == 0 {
@@ -234,8 +243,33 @@ final class StatusBarView: NSView {
         }
         let value = ns.substring(with: ns.rangeOfComposedCharacterSequence(at: utf16Offset))
         let scalars = value.unicodeScalars.map { String(format: "U+%04X", $0.value) }
-        characterCodeLabel.stringValue = scalars.count == 1 ? scalars[0] : "\(scalars.count) codes"
-        characterCodeLabel.toolTip = scalars.joined(separator: " ")
+        let unicode = scalars.joined(separator: " ")
+        let currentBytes = encodedBytes(value, as: documentEncoding)
+        if documentEncoding == .utf8 || documentEncoding == .utf16LittleEndian
+            || documentEncoding == .utf16BigEndian {
+            characterCodeLabel.stringValue = scalars.count == 1 ? scalars[0] : "\(scalars.count) codes"
+        } else if let currentBytes {
+            characterCodeLabel.stringValue = currentBytes
+        } else {
+            characterCodeLabel.stringValue = scalars.count == 1 ? scalars[0] : "\(scalars.count) codes"
+        }
+        var details = ["Unicode: \(unicode)"]
+        if let utf8 = encodedBytes(value, as: .utf8) { details.append("UTF-8: \(utf8)") }
+        if let shiftJIS = encodedBytes(value, as: .windows31J) {
+            details.append("Windows-31J (Shift-JIS): \(shiftJIS)")
+        }
+        if documentEncoding != .utf8, documentEncoding != .windows31J,
+           let currentBytes {
+            details.append("\(documentEncoding.displayName): \(currentBytes)")
+        }
+        if scalars.count > 1 { details.append("Composed character: \(scalars.count) code points") }
+        characterCodeLabel.toolTip = details.joined(separator: "\n")
+    }
+
+    private func encodedBytes(_ value: String, as encoding: TextEncoding) -> String? {
+        guard let foundation = encoding.foundationEncoding,
+              let data = value.data(using: foundation, allowLossyConversion: false) else { return nil }
+        return data.map { String(format: "%02X", $0) }.joined(separator: " ")
     }
 
     func showTransientMessage(_ message: String, duration: TimeInterval = 1.5) {
@@ -264,7 +298,9 @@ final class StatusBarView: NSView {
     }
 
     func updateEncoding(_ encoding: TextEncoding) {
+        documentEncoding = encoding
         encLabel.stringValue = encoding.displayName
+        updateCharacterCode(at: cursorUTF16Offset)
         needsLayout = true
     }
 
@@ -357,6 +393,11 @@ final class StatusBarView: NSView {
             menu.addItem(item)
         }
         menu.addItem(.separator())
+        let clicks = NSMenuItem(
+            title: "Enable Status Bar Click Actions", action: #selector(toggleClickActions),
+            keyEquivalent: "")
+        clicks.target = self; clicks.state = areClicksEnabled ? .on : .off
+        menu.addItem(clicks)
         let restore = NSMenuItem(title: "Restore Default Status Bar", action: #selector(restoreStatusFields), keyEquivalent: "")
         restore.target = self; menu.addItem(restore)
         NSMenu.popUpContextMenu(menu, with: event, for: self)
@@ -372,6 +413,16 @@ final class StatusBarView: NSView {
     @objc private func restoreStatusFields() {
         configuredFields = Set(StatusBarField.allCases)
         persistConfiguredFields(); applyConfiguredVisibility(); needsLayout = true
+    }
+
+    @objc private func toggleClickActions() {
+        setClickActionsEnabled(!areClicksEnabled)
+        UserDefaults.standard.set(areClicksEnabled, forKey: Self.clicksDefaultsKey)
+    }
+
+    func setClickActionsEnabled(_ enabled: Bool) {
+        areClicksEnabled = enabled
+        window?.invalidateCursorRects(for: self)
     }
 
     func setConfiguredFieldsForTesting(_ fields: Set<StatusBarField>) {
@@ -390,6 +441,7 @@ final class StatusBarView: NSView {
 
     override func resetCursorRects() {
         super.resetCursorRects()
+        guard areClicksEnabled else { return }
         for control in StatusBarControl.allCases {
             if let frame = frame(for: control) { addCursorRect(frame, cursor: .pointingHand) }
         }
@@ -403,6 +455,7 @@ final class StatusBarView: NSView {
         case .inputMode: return visibleFrame(inputModeLabel)
         case .layoutMode: return visibleFrame(layoutModeLabel)
         case .fontSize: return visibleFrame(fontSizeLabel)
+        case .macroActivity: return visibleFrame(macroActivityLabel)
         case .largeFileMode: return visibleFrame(largeFileModeLabel)
         case .encoding: return visibleFrame(encLabel)
         case .byteOrderMark: return visibleFrame(bomLabel)
@@ -412,7 +465,7 @@ final class StatusBarView: NSView {
     }
 
     func activate(_ control: StatusBarControl, at point: NSPoint? = nil) {
-        guard let frame = frame(for: control) else { return }
+        guard areClicksEnabled, let frame = frame(for: control) else { return }
         delegate?.statusBar(
             self, didClick: control,
             at: point ?? NSPoint(x: frame.minX, y: frame.maxY))
