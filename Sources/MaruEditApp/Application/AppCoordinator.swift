@@ -17,9 +17,13 @@ final class AppCoordinator {
     private let fileTypeProfileStore = FileTypeProfileStore()
     private(set) var preferences: Preferences
     private var activeMacroCount = 0
+    private(set) var isRecordingCommands = false
+    private(set) var recordedCommands: [CommandID] = []
+    private var isPlayingRecording = false
     let commandRegistry = CommandRegistry()
     var onShowMenuCustomization: (() -> Void)?
     var onShowMacroMenu: (() -> Void)?
+    var onSaveRecordedMacro: ((String, [CommandID]) -> Void)?
     var openDocumentationURL: (URL) -> Void = { NSWorkspace.shared.open($0) }
 
     init(preferencesStore: PreferencesStore? = nil) {
@@ -35,6 +39,7 @@ final class AppCoordinator {
         }
         preferences = self.preferencesStore.load()
         AppCommands.registerAll(in: commandRegistry)
+        commandRegistry.didExecute = { [weak self] id in self?.recordExecutedCommand(id) }
     }
 
     @discardableResult
@@ -85,6 +90,38 @@ final class AppCoordinator {
     func showKeyAssignments() { showSettings(group: .keyBindings) }
 
     func showMacroMenu() { onShowMacroMenu?() }
+    func startMacroRecording() {
+        recordedCommands.removeAll(); isRecordingCommands = true
+        ensureWindowControllerReady().updateMacroRecording(isRecording: true)
+    }
+    func stopMacroRecording() {
+        isRecordingCommands = false
+        ensureWindowControllerReady().updateMacroRecording(isRecording: false)
+    }
+    func playMacroRecording() {
+        guard !recordedCommands.isEmpty else { showStatusMessage("No recorded commands"); return }
+        let commands = recordedCommands
+        isPlayingRecording = true
+        for id in commands { _ = commandRegistry.execute(id, context: CommandContext(coordinator: self)) }
+        isPlayingRecording = false
+    }
+    func saveMacroRecording() {
+        guard !recordedCommands.isEmpty else { showStatusMessage("No recorded commands"); return }
+        let alert = NSAlert(); alert.messageText = "Save Recording as Macro"
+        alert.addButton(withTitle: "Save"); alert.addButton(withTitle: "Cancel")
+        let field = NSTextField(string: "Recorded Macro")
+        field.frame.size = NSSize(width: 320, height: 24); alert.accessoryView = field
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        let name = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        onSaveRecordedMacro?(name, recordedCommands)
+    }
+    private func recordExecutedCommand(_ id: CommandID) {
+        let controls: Set<CommandID> = [.macroStartRecording, .macroStopRecording, .macroPlayRecording, .macroSaveRecording]
+        guard isRecordingCommands, !isPlayingRecording, !controls.contains(id) else { return }
+        recordedCommands.append(id)
+    }
+    func recordExecutedCommandForTesting(_ id: CommandID) { recordExecutedCommand(id) }
     func showHelp() {
         openHelpPath("docs/user-guide.md")
     }

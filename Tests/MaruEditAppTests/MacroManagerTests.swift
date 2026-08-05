@@ -6,6 +6,23 @@ import MaruEditCore
 
 @preconcurrency @MainActor
 final class MacroManagerTests: XCTestCase {
+    func testRecordedCommandsSaveAsReloadableMacroWithoutOverwriting() async throws {
+        let directory = try makeDirectory()
+        let coordinator = AppCoordinator(preferencesStore: isolatedPreferences())
+        let manager = MacroManager(
+            directory: directory, coordinator: coordinator,
+            keyBindings: KeyBindingManager(),
+            enablementStore: MacroEnablementStore(defaults: isolatedDefaults()))
+        manager.saveRecording(name: "My Recording", commands: [.fileSave, .searchFindNext])
+        manager.saveRecording(name: "My Recording", commands: [.fileOpen])
+        let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+            .filter { $0.pathExtension == "js" }.sorted { $0.lastPathComponent < $1.lastPathComponent }
+        XCTAssertEqual(files.map(\.lastPathComponent), ["My-Recording-2.js", "My-Recording.js"])
+        let first = try String(contentsOf: files[1], encoding: .utf8)
+        XCTAssertTrue(first.contains(#"await maru.commands.run("file.save");"#))
+        XCTAssertTrue(first.contains(#"await maru.commands.run("search.findNext");"#))
+        XCTAssertEqual(manager.catalog.macros.count, 2)
+    }
     func testReloadRegistersMenusShortcutsEnablementAndExecutes() async throws {
         let directory = try makeDirectory()
         let upper = directory.appendingPathComponent("upper.js")

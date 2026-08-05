@@ -168,6 +168,38 @@ final class MacroManager: NSObject {
         coordinator.showMacroError(name: name, message: message, timestamp: date)
     }
 
+    func saveRecording(name: String, commands: [CommandID]) {
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let base = name.replacingOccurrences(
+                of: #"[^A-Za-z0-9._-]+"#, with: "-", options: .regularExpression)
+                .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+            let filename = base.isEmpty ? "Recorded-Macro" : base
+            var url = directory.appendingPathComponent(filename).appendingPathExtension("js")
+            var suffix = 2
+            while FileManager.default.fileExists(atPath: url.path) {
+                url = directory.appendingPathComponent("\(filename)-\(suffix)").appendingPathExtension("js")
+                suffix += 1
+            }
+            let body = commands.map { "await maru.commands.run(\(Self.javascriptString($0.rawValue)));" }
+                .joined(separator: "\n")
+            let safeName = name.replacingOccurrences(of: "\n", with: " ")
+                .replacingOccurrences(of: "\r", with: " ")
+            let source = "// @maru-name: \(safeName)\n// @maru-description: Recorded MaruEdit commands.\n\n\(body)\n"
+            try source.write(to: url, atomically: true, encoding: .utf8)
+            reload()
+            coordinator.showStatusMessage("Saved macro: \(name)")
+        } catch {
+            appendError(name: name, message: error.localizedDescription)
+        }
+    }
+
+    private static func javascriptString(_ value: String) -> String {
+        let data = try! JSONSerialization.data(withJSONObject: [value])
+        let array = String(decoding: data, as: UTF8.self)
+        return String(array.dropFirst().dropLast())
+    }
+
     func runForTesting(_ id: CommandID) { runMacro(itemForTesting(id)) }
     func toggleForTesting(_ id: CommandID) { toggleMacro(itemForTesting(id)) }
     func showErrorConsoleForTesting() { showErrorConsole() }

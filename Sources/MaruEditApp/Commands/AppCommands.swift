@@ -6,6 +6,10 @@ import MaruEditCore
 extension CommandID {
     static let appSettings      = CommandID("app.settings")
     static let appMacroMenu     = CommandID("app.macroMenu")
+    static let macroStartRecording = CommandID("macro.startRecording")
+    static let macroStopRecording = CommandID("macro.stopRecording")
+    static let macroPlayRecording = CommandID("macro.playRecording")
+    static let macroSaveRecording = CommandID("macro.saveRecording")
     static let appHelp          = CommandID("app.help")
     static let helpMacros       = CommandID("help.macros")
     static let helpShortcuts    = CommandID("help.shortcuts")
@@ -149,6 +153,10 @@ enum AppCommands {
         registry.register(CommandDefinition(id: .appMacroMenu, title: "Macro Menu") { ctx in
             ctx.coordinator.showMacroMenu()
         })
+        registry.register(CommandDefinition(id: .macroStartRecording, title: "Start Recording") { $0.coordinator.startMacroRecording() })
+        registry.register(CommandDefinition(id: .macroStopRecording, title: "Stop Recording") { $0.coordinator.stopMacroRecording() })
+        registry.register(CommandDefinition(id: .macroPlayRecording, title: "Play Recorded Commands") { $0.coordinator.playMacroRecording() })
+        registry.register(CommandDefinition(id: .macroSaveRecording, title: "Save Recording as Macro…") { $0.coordinator.saveMacroRecording() })
         registry.register(CommandDefinition(id: .appHelp, title: "MaruEdit Help") {
             $0.coordinator.showHelp()
         })

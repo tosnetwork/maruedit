@@ -53,6 +53,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             guard let self else { return }
             self.macroManager.menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
         }
+        coordinator.onSaveRecordedMacro = { [weak self] name, commands in
+            self?.macroManager.saveRecording(name: name, commands: commands)
+        }
         EditorShortcuts.install(
             keyBindings: keyBindings,
             execute: { [coordinator] id in
@@ -265,7 +268,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         main.addItem(toolsItem)
 
         let macroItem = NSMenuItem(title: "Macro", action: nil, keyEquivalent: "")
-        macroItem.submenu = macroManager.menu
+        let macroMenu = NSMenu(title: "Macro")
+        macroMenu.addItem(commandItem(.macroStartRecording))
+        macroMenu.addItem(commandItem(.macroStopRecording))
+        macroMenu.addItem(commandItem(.macroPlayRecording))
+        macroMenu.addItem(commandItem(.macroSaveRecording))
+        macroMenu.addItem(.separator())
+        let registeredMacros = NSMenuItem(title: "Registered Macros", action: nil, keyEquivalent: "")
+        registeredMacros.submenu = macroManager.menu
+        macroMenu.addItem(registeredMacros)
+        macroItem.submenu = macroMenu
         main.addItem(macroItem)
 
         // View menu

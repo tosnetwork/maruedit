@@ -177,6 +177,14 @@ final class StatusBarViewTests: XCTestCase {
         status.updateMacroActivity(isRunning: true)
         XCTAssertNil(status.displayedMacroActivityText)
     }
+
+    func testMacroRecordingUsesDistinctStatus() async {
+        let status = StatusBarView()
+        status.updateMacroRecording(isRecording: true)
+        XCTAssertEqual(status.displayedMacroActivityText, "REC")
+        status.updateMacroRecording(isRecording: false)
+        XCTAssertNil(status.displayedMacroActivityText)
+    }
 }
 
 

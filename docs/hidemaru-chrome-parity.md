@@ -24,12 +24,12 @@ native menu before the Hidemaru-compatible business menus.
 | Bookmark | Dedicated Bookmark menu | Toggle/navigation/clear plus document bookmark list with jump/remove organization are present | No known compatible gap |
 | Tools | Dedicated grouped Tools menu | Compare/difference, tag navigation, dynamic external commands and complete command-list access are grouped | No known compatible gap |
 | Window | Native window controls plus tab management | Tab list, close-other/left/right, pane focus and tab cycling are present; Minimize/Zoom and macOS window management replace Windows arrangement, while session restore replaces desktop restore | Native equivalent |
-| Macro | Dynamic Macro menu | Recording/playback and registration management remain incomplete |
+| Macro | Recording controls plus registered Macro menu | Command recording, stop, playback, save-to-JavaScript, reload, enablement and permission management are present | No known compatible gap |
 | Other | Dedicated Other menu | Settings, file-type profiles, key assignments, complete command list/menu editing and font panel have direct entries | No known compatible gap |
 | Help | Dedicated Help menu plus native About | User guide, macro help, shortcut reference, latest-release check and support/reporting entries are present | No known compatible gap |
 
 Official menu pages contain roughly 297 command references across these
-menus. MaruEdit currently registers 130 stable command IDs. Duplicate menu
+menus. MaruEdit currently registers 134 stable command IDs. Duplicate menu
 placements mean this is not a one-to-one command count, but it establishes
 that functional parity is not complete.
 
@@ -65,7 +65,7 @@ that functional parity is not complete.
 | File-type profile | Display; click list | Display; click language/profile menu | Partial |
 | CapsLock | Optional field | Conditional configurable CAPS indicator | Present |
 | Vertical/horizontal and column count | Display/click | Missing; vertical mode is not production-ready | Missing |
-| Macro recording | Conditional state/click | Macro execution activity is shown; command recording is not implemented | Partial |
+| Macro recording | Conditional state/click | Distinct REC recording state and MACRO execution state are shown | Present |
 | Large-file mode | No direct equivalent | MaruEdit-specific safety field | Native addition |
 | Configurable fields/clickability | Supported | Right-click field selection; interactive fields remain clickable | Present |
 | Merge with function-key strip | Supported | Separate rows | Missing |

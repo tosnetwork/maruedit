@@ -62,6 +62,7 @@ final class StatusBarView: NSView {
     private var isReadOnly = false
     private var isCapsLockEnabled = false
     private var isMacroRunning = false
+    private var isMacroRecording = false
     private var largeFileMode: LargeFileMode = .normal
     private static let fieldsDefaultsKey = "MaruClassicStatusBarFields"
 
@@ -305,6 +306,15 @@ final class StatusBarView: NSView {
 
     func updateMacroActivity(isRunning: Bool) {
         self.isMacroRunning = isRunning
+        macroActivityLabel.stringValue = isMacroRecording ? "REC" : "MACRO"
+        applyConfiguredVisibility(); needsLayout = true
+    }
+
+    func updateMacroRecording(isRecording: Bool) {
+        isMacroRecording = isRecording
+        macroActivityLabel.stringValue = isRecording ? "REC" : "MACRO"
+        macroActivityLabel.setAccessibilityLabel(isRecording ? "Macro recording" : "Macro running")
+        macroActivityLabel.toolTip = isRecording ? "Commands are being recorded" : "A macro is currently running"
         applyConfiguredVisibility(); needsLayout = true
     }
 
@@ -408,7 +418,7 @@ final class StatusBarView: NSView {
     private func applyConfiguredVisibility() {
         for (field, label, _) in leftFields { label.isHidden = !configuredFields.contains(field) }
         for (field, label) in rightFields {
-            let stateAllowsVisibility = field == .macroActivity ? isMacroRunning
+            let stateAllowsVisibility = field == .macroActivity ? (isMacroRunning || isMacroRecording)
                 : field == .capsLock ? isCapsLockEnabled
                 : field == .readOnly ? isReadOnly
                 : field == .largeFileMode ? largeFileMode != .normal : true

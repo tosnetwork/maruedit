@@ -8,6 +8,7 @@ import MaruEditCore
 @MainActor
 final class CommandRegistry {
     private var definitionsByID: [CommandID: CommandDefinition] = [:]
+    var didExecute: ((CommandID) -> Void)?
 
     /// Registers `definition`. Traps on a duplicate ID — that's a
     /// programmer error (two commands claiming the same stable ID), not a
@@ -43,6 +44,7 @@ final class CommandRegistry {
             return false
         }
         definition.execute(context)
+        didExecute?(id)
         return true
     }
 

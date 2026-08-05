@@ -190,6 +190,9 @@ final class MainWindowController: NSWindowController,
     func updateMacroActivity(isRunning: Bool) {
         statusBar.updateMacroActivity(isRunning: isRunning)
     }
+    func updateMacroRecording(isRecording: Bool) {
+        statusBar.updateMacroRecording(isRecording: isRecording)
+    }
 
     func applyPreferences(_ preferences: Preferences) {
         Theme.activeName = preferences.theme

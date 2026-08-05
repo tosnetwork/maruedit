@@ -63,7 +63,8 @@ final class CommandRegistryTests: XCTestCase {
         AppCommands.registerAll(in: registry)
 
         let ids: [CommandID] = [
-            .appSettings, .appMacroMenu, .appHelp, .helpMacros, .helpShortcuts,
+            .appSettings, .appMacroMenu, .macroStartRecording, .macroStopRecording,
+            .macroPlayRecording, .macroSaveRecording, .appHelp, .helpMacros, .helpShortcuts,
             .helpCheckUpdates, .helpSupport,
             .otherFileTypeProfiles, .otherKeyAssignments, .otherCommandList,
             .fileNew, .fileNewFromTemplate, .fileOpen, .fileOpenFolder, .fileOpenPartial,
@@ -131,6 +132,18 @@ final class CommandRegistryTests: XCTestCase {
             "https://github.com/tosnetwork/maruedit/releases/latest",
             "https://github.com/tosnetwork/maruedit/issues",
         ])
+    }
+
+    func testRegistryReportsOnlySuccessfullyExecutedCommands() async {
+        let registry = CommandRegistry()
+        let allowed = CommandID("test.allowed"), denied = CommandID("test.denied")
+        registry.register(CommandDefinition(id: allowed, title: "Allowed") { _ in })
+        registry.register(CommandDefinition(id: denied, title: "Denied", isEnabled: { _ in false }) { _ in })
+        var observed: [CommandID] = []; registry.didExecute = { observed.append($0) }
+        let context = makeContext()
+        XCTAssertTrue(registry.execute(allowed, context: context))
+        XCTAssertFalse(registry.execute(denied, context: context))
+        XCTAssertEqual(observed, [allowed])
     }
 
     func testAppCommandsAreEnabledByDefault() async {
