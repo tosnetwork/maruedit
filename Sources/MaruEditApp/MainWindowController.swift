@@ -193,6 +193,7 @@ final class MainWindowController: NSWindowController,
 
         statusBar = StatusBarView()
         statusBar.delegate = self
+        statusBar.setClassicAppearance(workspaceStyle == .classic)
         statusBar.autoresizingMask = [.width, .maxYMargin]
         statusBar.frame = NSRect(x: 0, y: 0, width: cv.bounds.width, height: statusH)
         cv.addSubview(statusBar)
@@ -447,6 +448,8 @@ final class MainWindowController: NSWindowController,
         let mergedFunctionWidth = classicChrome.mergedFunctionKeyWidth(totalWidth: cv.bounds.width)
         let merged = workspaceStyle == .classic && classicChrome.isFunctionKeyStripMerged
             && isStatusBarVisible && mergedFunctionWidth > 0
+        statusBar.setMergedMode(merged)
+        statusBar.setClassicAppearance(workspaceStyle == .classic)
 
         classicChrome.externalTopGap = topTabH + findH
         findBar.frame = NSRect(
@@ -2180,6 +2183,9 @@ final class MainWindowController: NSWindowController,
     func toggleFullScreen() { window?.toggleFullScreen(nil) }
 
     var isStatusBarVisibleForTesting: Bool { isStatusBarVisible }
+    func setStatusBarFieldsForTesting(_ fields: Set<StatusBarField>) {
+        statusBar.setConfiguredFieldsForTesting(fields)
+    }
     var isOutputPaneVisibleForTesting: Bool { outputPane?.isHidden == false }
 
     func beginExternalCommandOutput(name: String, workingDirectory: URL? = nil,

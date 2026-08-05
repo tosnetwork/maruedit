@@ -315,6 +315,9 @@ significantly, replace this with a small script that generates it from
 | `edit.deleteWordAll` | Delete Whole Word | Edit | — | Selects and deletes the complete word at the primary cursor |
 | `edit.copyWord` | Copy Word | Edit | — | Selects and copies the complete word at the primary cursor |
 | `edit.cutWord` | Cut Word | Edit | — | Selects and cuts the complete word at the primary cursor |
+| `edit.cut` | Cut | Edit | ⌘X | Cuts the active editor selection; exposed as a stable command for the configurable function-key strip |
+| `edit.copy` | Copy | Edit | ⌘C | Copies the active editor selection; exposed as a stable command for the configurable function-key strip |
+| `edit.paste` | Paste | Edit | ⌘V | Pastes into the active editor; exposed as a stable command for the configurable function-key strip |
 | `edit.copyLine` | Copy Line | Edit | — | Selects and copies the complete logical line including its ending |
 | `edit.cutLine` | Cut Line | Edit | — | Selects and cuts the complete logical line as one undoable edit |
 | `edit.cutToLineEnd` | Cut after Cursor | Edit | — | Cuts from the cursor to the logical line end without consuming its newline |

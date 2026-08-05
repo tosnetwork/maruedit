@@ -2,7 +2,7 @@
 
 This feature is experimental, incomplete, and disabled by default. It is a clean-room implementation of the public behavior documented below; it does not contain or depend on Maru source code, binaries, private APIs, or copied help text. MaruEdit does not claim general Maru macro compatibility.
 
-Enable it for one launch with `MARUEDIT_ENABLE_OLDMARU_COMPATIBILITY=1`, or set the `ExperimentalMaruMacroCompatibility` user default to `true`, then reload macros. UTF-8 `.mac` files in the normal MaruEdit Macros directory appear with “(Experimental)” in their menu title and a separate `macro.compat.*` command ID. When disabled, `.mac` files are ignored.
+Enable it for one launch with `MARUEDIT_ENABLE_MARU_COMPATIBILITY=1`, or set the `ExperimentalMaruMacroCompatibility` user default to `true`, then reload macros. UTF-8 `.mac` files in the normal MaruEdit Macros directory appear with “(Experimental)” in their menu title and a separate `macro.compat.*` command ID. When disabled, `.mac` files are ignored.
 
 The parser accepts case-insensitive commands, semicolon-separated statements,
 comments, quoted strings, numeric `#variables`, string `$variables`, guarded

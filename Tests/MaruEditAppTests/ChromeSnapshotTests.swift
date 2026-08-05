@@ -40,6 +40,7 @@ final class ChromeSnapshotTests: XCTestCase {
 
     private func render(customized: Bool, dark: Bool, wide: Bool) throws -> Data {
         let controller = MainWindowController()
+        controller.applyPreferences(.defaults)
         controller.window?.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
         controller.window?.setContentSize(wide
             ? NSSize(width: 1_200, height: 760) : NSSize(width: 760, height: 520))
@@ -50,14 +51,15 @@ final class ChromeSnapshotTests: XCTestCase {
             "bookmark.toggle", "macro.run", "view.toggleSidebar", "app.settings",
         ])
         controller.setClassicFunctionKeyCommandsForTesting([
-            .appHelp, .fileSave, .searchFind, .searchFindNext, .searchGrep, .appMacroMenu,
-            .navigateToggleBookmark, .searchGoToLine, .searchReplace, .viewToggleSidebar,
-            .viewToggleWrap, .appSettings,
+            .appHelp, .editCompleteWord, .searchNextResult, .editCopyWord,
+            .viewSplitHorizontal, .editCut, .editCopy, .editPaste,
+            .navigateTagJump, .highlightOutlineAnalysis, .viewToggleLineNumbers,
         ])
         controller.setClassicToolbarDisplayModeForTesting(.iconOnly)
         controller.setClassicToolbarIconSizeForTesting(.medium)
         controller.setClassicToolbarSearchVisibleForTesting(true)
-        controller.setFunctionKeyStripMergedForTesting(false)
+        controller.setFunctionKeyStripMergedForTesting(true)
+        controller.setStatusBarFieldsForTesting([.encoding, .inputMode])
         controller.prepareUITestDocument(
             content: "// Maru Classic\nfunc greet(name: String) {\n    print(\"Hello, \\(name)\")\n}\n",
             selections: [NSRange(location: 16, length: 0)])

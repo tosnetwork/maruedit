@@ -19,7 +19,7 @@ struct CharacterCountConfiguration: Codable, Equatable {
 
 enum StatusBarField: String, CaseIterable {
     case cursorPosition, selection, indentation, inputMode, layoutMode, totals, characterCode, fontSize
-    case macroActivity, capsLock, readOnly, largeFileMode, lineEnding, byteOrderMark, encoding, languageProfile
+    case macroActivity, capsLock, readOnly, viewMode, largeFileMode, lineEnding, byteOrderMark, encoding, languageProfile
 
     var title: String {
         switch self {
@@ -34,6 +34,7 @@ enum StatusBarField: String, CaseIterable {
         case .macroActivity: "Macro Activity"
         case .capsLock: "Caps Lock"
         case .readOnly: "Read-Only State"
+        case .viewMode: "View Mode State"
         case .largeFileMode: "Large File Mode"
         case .lineEnding: "Line Ending"
         case .byteOrderMark: "Byte Order Mark"
@@ -71,6 +72,7 @@ final class StatusBarView: NSView {
     weak var delegate: StatusBarViewDelegate?
 
     private let lineColLabel = ActionableStatusLabel(labelWithString: "Ln 1, Col 1")
+    private let messageLabel = NSTextField(labelWithString: "")
     private let selectionLabel = NSTextField(labelWithString: "")
     private let indentLabel = NSTextField(labelWithString: "Spaces: 4")
     private let inputModeLabel = ActionableStatusLabel(labelWithString: "INS")
@@ -85,6 +87,7 @@ final class StatusBarView: NSView {
     private let bomLabel = ActionableStatusLabel(labelWithString: "No BOM")
     private let lineEndingLabel = ActionableStatusLabel(labelWithString: "LF")
     private let readOnlyLabel = NSTextField(labelWithString: "Read-Only")
+    private let viewModeLabel = NSTextField(labelWithString: "View Mode")
     private let largeFileModeLabel = ActionableStatusLabel(labelWithString: "Reduced Features")
     private var cursorText = "Ln 1, Col 1"
     private var documentText = ""
@@ -93,18 +96,33 @@ final class StatusBarView: NSView {
     private var messageWorkItem: DispatchWorkItem?
     private var configuredFields = Set(StatusBarField.allCases)
     private var isReadOnly = false
+    private var isViewMode = false
     private var isCapsLockEnabled = false
     private var isMacroRunning = false
     private var isMacroRecording = false
     private var largeFileMode: LargeFileMode = .normal
     private var showsCursorPosition = true
     private static let fieldsDefaultsKey = "MaruClassicStatusBarFields"
+    private static let normalFieldsDefaultsKey = "MaruClassicStatusBarNormalFields"
+    private static let mergedFieldsDefaultsKey = "MaruClassicStatusBarMergedFields"
+    private static let mergedFieldsVersionKey = "MaruClassicStatusBarMergedFieldsVersion"
+    private static let currentMergedFieldsVersion = 1
     private static let clicksDefaultsKey = "MaruClassicStatusBarClicksEnabled"
     private static let countDefaultsKey = "MaruClassicCharacterCountConfiguration"
+    private static let defaultMergedFields: Set<StatusBarField> = [
+        .encoding, .inputMode,
+    ]
+    private static let formerDefaultMergedFields: Set<StatusBarField> = [
+        .inputMode, .totals, .lineEnding, .byteOrderMark, .encoding,
+    ]
     private(set) var areClicksEnabled = true
+    private(set) var isMergedMode = false
+    private var usesClassicAppearance = true
     private(set) var characterCountConfiguration = CharacterCountConfiguration.standard
 
-    var displayedLeadingText: String { lineColLabel.stringValue }
+    var displayedLeadingText: String {
+        messageLabel.stringValue.isEmpty ? lineColLabel.stringValue : messageLabel.stringValue
+    }
     var displayedSelectionText: String { selectionLabel.stringValue }
     var displayedEncodingText: String { encLabel.stringValue }
     var displayedBOMText: String { bomLabel.stringValue }
@@ -120,6 +138,7 @@ final class StatusBarView: NSView {
         largeFileModeLabel.isHidden ? nil : largeFileModeLabel.stringValue
     }
     var configuredFieldIDs: Set<String> { Set(configuredFields.map(\.rawValue)) }
+    var isMessageAreaVisible: Bool { !messageLabel.isHidden }
     var displayedCapsLockText: String? { capsLockLabel.isHidden ? nil : capsLockLabel.stringValue }
     var displayedMacroActivityText: String? {
         macroActivityLabel.isHidden ? nil : macroActivityLabel.stringValue
@@ -129,7 +148,8 @@ final class StatusBarView: NSView {
         super.init(frame: frame)
         wantsLayer = true
         layer?.backgroundColor = Theme.statusBg.cgColor
-        if let values = UserDefaults.standard.stringArray(forKey: Self.fieldsDefaultsKey) {
+        if let values = UserDefaults.standard.stringArray(forKey: Self.normalFieldsDefaultsKey)
+            ?? UserDefaults.standard.stringArray(forKey: Self.fieldsDefaultsKey) {
             configuredFields = Set(values.compactMap(StatusBarField.init(rawValue:)))
             configuredFields.insert(.cursorPosition)
         }
@@ -153,15 +173,26 @@ final class StatusBarView: NSView {
         var right = bounds.width - 14
         for (field, label) in rightFields.reversed() where !label.isHidden {
             guard configuredFields.contains(field) else { continue }
-            label.sizeToFit(); right -= label.frame.width
-            label.frame.origin = NSPoint(x: right, y: midY); right -= 14
+            label.sizeToFit()
+            if right - label.frame.width < 4 {
+                label.isHidden = true
+            } else {
+                right -= label.frame.width
+                label.frame.origin = NSPoint(x: right, y: midY); right -= 14
+            }
         }
 
-        var x: CGFloat = 14
-        for (field, label, width) in leftFields {
+        if isMergedMode {
+            messageLabel.isHidden = true
+        } else {
+            messageLabel.isHidden = false
+            messageLabel.frame = NSRect(x: 6, y: midY, width: min(110, max(0, right - 14)), height: 16)
+        }
+        var x: CGFloat = isMergedMode ? 6 : 120
+        for (_, label, width) in leftFields {
             guard !label.isHidden else { continue }
-            let actualWidth = field == .cursorPosition && messageWorkItem != nil ? 280 : width
-            if field != .cursorPosition && x + actualWidth > right - 8 {
+            let actualWidth = width
+            if x + actualWidth > right - 8 {
                 label.isHidden = true
             } else {
                 label.frame = NSRect(x: x, y: midY, width: actualWidth, height: 16)
@@ -172,10 +203,10 @@ final class StatusBarView: NSView {
     }
 
     private func setup() {
-        let labels = [lineColLabel, selectionLabel, indentLabel, inputModeLabel, layoutModeLabel,
+        let labels = [messageLabel, lineColLabel, selectionLabel, indentLabel, inputModeLabel, layoutModeLabel,
                       totalsLabel, characterCodeLabel, fontSizeLabel, langLabel, encLabel,
                       bomLabel, lineEndingLabel, macroActivityLabel, capsLockLabel,
-                      readOnlyLabel, largeFileModeLabel]
+                      readOnlyLabel, viewModeLabel, largeFileModeLabel]
         for label in labels {
             label.font = Theme.uiFontSmall
             label.textColor = Theme.statusText
@@ -215,6 +246,9 @@ final class StatusBarView: NSView {
         readOnlyLabel.textColor = .systemOrange
         readOnlyLabel.toolTip = "This file is read-only on disk; use Save As to save changes"
         readOnlyLabel.isHidden = true
+        viewModeLabel.textColor = .systemOrange
+        viewModeLabel.toolTip = "View Mode prevents editing without changing file permissions"
+        viewModeLabel.isHidden = true
         capsLockLabel.textColor = .systemOrange
         capsLockLabel.setAccessibilityLabel("Caps Lock enabled")
         capsLockLabel.toolTip = "Caps Lock is enabled"
@@ -250,7 +284,7 @@ final class StatusBarView: NSView {
 
     func applyTheme() {
         layer?.backgroundColor = Theme.statusBg.cgColor
-        for label in [lineColLabel, selectionLabel, indentLabel, inputModeLabel, layoutModeLabel,
+        for label in [messageLabel, lineColLabel, selectionLabel, indentLabel, inputModeLabel, layoutModeLabel,
                       totalsLabel, characterCodeLabel, fontSizeLabel,
                       langLabel, encLabel, bomLabel, lineEndingLabel] {
             label.textColor = Theme.statusText
@@ -261,12 +295,50 @@ final class StatusBarView: NSView {
         for label in [lineColLabel, totalsLabel, inputModeLabel, layoutModeLabel, characterCodeLabel, fontSizeLabel] {
             label.textColor = Theme.accent
         }
+        applyAppearance()
+    }
+
+    func setClassicAppearance(_ enabled: Bool) {
+        usesClassicAppearance = enabled
+        refreshClassicFieldText()
+        applyAppearance()
+    }
+
+    private func refreshClassicFieldText() {
+        encLabel.stringValue = usesClassicAppearance && isMergedMode && documentEncoding == .utf8
+            ? "Unicode (UTF-8)" : documentEncoding.displayName
+        let isOverwrite = inputModeLabel.toolTip?.contains("overwrite") == true
+        if usesClassicAppearance && isMergedMode {
+            inputModeLabel.stringValue = isOverwrite ? "上書きモード" : "挿入モード"
+        } else {
+            inputModeLabel.stringValue = isOverwrite ? "OVR" : "INS"
+        }
+    }
+
+    private func applyAppearance() {
+        let labels = [messageLabel, lineColLabel, selectionLabel, indentLabel, inputModeLabel,
+                      layoutModeLabel, totalsLabel, characterCodeLabel, fontSizeLabel,
+                      macroActivityLabel, capsLockLabel, readOnlyLabel, viewModeLabel,
+                      largeFileModeLabel, lineEndingLabel, bomLabel, encLabel, langLabel]
+        layer?.backgroundColor = (usesClassicAppearance
+            ? NSColor(calibratedWhite: 0.91, alpha: 1) : Theme.statusBg).cgColor
+        for label in labels {
+            label.wantsLayer = true
+            label.layer?.borderWidth = usesClassicAppearance ? 0.5 : 0
+            label.layer?.borderColor = NSColor(calibratedWhite: 0.68, alpha: 1).cgColor
+            label.layer?.backgroundColor = usesClassicAppearance
+                ? NSColor(calibratedWhite: 0.94, alpha: 1).cgColor : NSColor.clear.cgColor
+            if usesClassicAppearance && ![macroActivityLabel, capsLockLabel, readOnlyLabel,
+                                          viewModeLabel, largeFileModeLabel].contains(where: { $0 === label }) {
+                label.textColor = NSColor(calibratedWhite: 0.12, alpha: 1)
+            }
+        }
     }
 
     func updateCursor(_ state: EditorCursorState) {
         cursorUTF16Offset = state.utf16Offset
         cursorText = "Ln \(state.lineNumber), Col \(state.displayColumn)"
-        if messageWorkItem == nil { lineColLabel.stringValue = cursorText }
+        lineColLabel.stringValue = cursorText
         if state.selectedCharacterCount == 0 {
             selectionLabel.stringValue = state.selectionRangeCount > 1
                 ? "\(state.selectionRangeCount) carets" : ""
@@ -281,7 +353,8 @@ final class StatusBarView: NSView {
             selectionLabel.stringValue += " · \(state.selectedLineCount) lines"
         }
         if let width = state.boxWidth, let height = state.boxHeight {
-            selectionLabel.stringValue += " · BOX \(width)×\(height)"
+            let displayWidth = state.boxWidthIsPixels ? "\(width)px" : "\(width)"
+            selectionLabel.stringValue += " · BOX \(displayWidth)×\(height)"
         }
         selectionLabel.toolTip = "Selected UTF-16 units: \(state.selectedUTF16Length)"
         needsLayout = true
@@ -366,14 +439,14 @@ final class StatusBarView: NSView {
         messageWorkItem?.cancel()
         if message.isEmpty {
             messageWorkItem = nil
-            lineColLabel.stringValue = cursorText
+            messageLabel.stringValue = ""
             needsLayout = true
             return
         }
-        lineColLabel.stringValue = message
+        messageLabel.stringValue = message
         let item = DispatchWorkItem { [weak self] in
             self?.messageWorkItem = nil
-            self?.lineColLabel.stringValue = self?.cursorText ?? ""
+            self?.messageLabel.stringValue = ""
             self?.needsLayout = true
         }
         messageWorkItem = item
@@ -389,7 +462,8 @@ final class StatusBarView: NSView {
 
     func updateEncoding(_ encoding: TextEncoding) {
         documentEncoding = encoding
-        encLabel.stringValue = encoding.displayName
+        encLabel.stringValue = usesClassicAppearance && isMergedMode && encoding == .utf8
+            ? "Unicode (UTF-8)" : encoding.displayName
         updateCharacterCode(at: cursorUTF16Offset)
         needsLayout = true
     }
@@ -410,7 +484,9 @@ final class StatusBarView: NSView {
     }
 
     func updateInputMode(_ mode: EditorInputMode) {
-        inputModeLabel.stringValue = mode == .insert ? "INS" : "OVR"
+        inputModeLabel.stringValue = usesClassicAppearance && isMergedMode
+            ? (mode == .insert ? "挿入モード" : "上書きモード")
+            : (mode == .insert ? "INS" : "OVR")
         let name = mode == .insert ? "insert" : "overwrite"
         inputModeLabel.setAccessibilityLabel("Input mode: \(name)")
         inputModeLabel.toolTip = "Current input mode: \(name)"
@@ -437,11 +513,8 @@ final class StatusBarView: NSView {
     }
 
     func updateAccessMode(isReadOnly: Bool, isViewMode: Bool) {
-        self.isReadOnly = isReadOnly || isViewMode
-        readOnlyLabel.stringValue = isViewMode ? "View Mode" : "Read-Only"
-        readOnlyLabel.toolTip = isViewMode
-            ? "View Mode prevents editing without changing the file"
-            : "This file is read-only on disk; use Save As to save changes"
+        self.isReadOnly = isReadOnly
+        self.isViewMode = isViewMode
         applyConfiguredVisibility()
         needsLayout = true
     }
@@ -520,6 +593,27 @@ final class StatusBarView: NSView {
         applyConfiguredVisibility(); needsLayout = true
     }
 
+    func setMergedMode(_ merged: Bool) {
+        guard isMergedMode != merged else { return }
+        persistConfiguredFields()
+        isMergedMode = merged
+        refreshClassicFieldText()
+        let key = merged ? Self.mergedFieldsDefaultsKey : Self.normalFieldsDefaultsKey
+        let savedFields = UserDefaults.standard.stringArray(forKey: key)
+            .map { Set($0.compactMap(StatusBarField.init(rawValue:))) }
+        if merged, UserDefaults.standard.integer(forKey: Self.mergedFieldsVersionKey)
+            < Self.currentMergedFieldsVersion {
+            configuredFields = savedFields == nil || savedFields == Self.formerDefaultMergedFields
+                ? Self.defaultMergedFields : savedFields!
+            UserDefaults.standard.set(configuredFields.map(\.rawValue), forKey: key)
+            UserDefaults.standard.set(Self.currentMergedFieldsVersion, forKey: Self.mergedFieldsVersionKey)
+        } else {
+            configuredFields = savedFields ?? (merged ? Self.defaultMergedFields : Set(StatusBarField.allCases))
+        }
+        configuredFields.insert(.cursorPosition)
+        applyConfiguredVisibility(); needsLayout = true
+    }
+
     func accessibilityElement(for control: StatusBarControl) -> NSView? {
         switch control {
         case .cursorPosition: lineColLabel
@@ -593,7 +687,7 @@ final class StatusBarView: NSView {
 
     private var leftFields: [(StatusBarField, NSTextField, CGFloat)] {[
         (.cursorPosition, lineColLabel, 105), (.selection, selectionLabel, 130),
-        (.indentation, indentLabel, 85), (.inputMode, inputModeLabel, 34),
+        (.indentation, indentLabel, 85),
         (.layoutMode, layoutModeLabel, 58),
         (.totals, totalsLabel, 125), (.characterCode, characterCodeLabel, 70),
         (.fontSize, fontSizeLabel, 45),
@@ -601,10 +695,10 @@ final class StatusBarView: NSView {
 
     private var rightFields: [(StatusBarField, NSTextField)] {[
         (.macroActivity, macroActivityLabel), (.capsLock, capsLockLabel),
-        (.readOnly, readOnlyLabel),
+        (.readOnly, readOnlyLabel), (.viewMode, viewModeLabel),
         (.largeFileMode, largeFileModeLabel),
         (.lineEnding, lineEndingLabel), (.byteOrderMark, bomLabel),
-        (.encoding, encLabel), (.languageProfile, langLabel),
+        (.encoding, encLabel), (.inputMode, inputModeLabel), (.languageProfile, langLabel),
     ]}
 
     private func applyConfiguredVisibility() {
@@ -616,13 +710,15 @@ final class StatusBarView: NSView {
             let stateAllowsVisibility = field == .macroActivity ? (isMacroRunning || isMacroRecording)
                 : field == .capsLock ? isCapsLockEnabled
                 : field == .readOnly ? isReadOnly
+                : field == .viewMode ? isViewMode
                 : field == .largeFileMode ? largeFileMode != .normal : true
             label.isHidden = !configuredFields.contains(field) || !stateAllowsVisibility
         }
     }
 
     private func persistConfiguredFields() {
-        UserDefaults.standard.set(configuredFields.map(\.rawValue).sorted(), forKey: Self.fieldsDefaultsKey)
+        let key = isMergedMode ? Self.mergedFieldsDefaultsKey : Self.normalFieldsDefaultsKey
+        UserDefaults.standard.set(configuredFields.map(\.rawValue).sorted(), forKey: key)
     }
 
     private func visibleFrame(_ label: NSTextField) -> NSRect? {

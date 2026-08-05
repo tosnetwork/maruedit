@@ -4,6 +4,53 @@ import MaruEditCore
 
 @preconcurrency @MainActor
 final class ClassicWorkspaceTests: XCTestCase {
+    func testFreshClassicWorkspaceDefaultsToMergedBottomRowWithF1Help() {
+        let defaults = UserDefaults.standard
+        let key = "MaruClassicFunctionKeysMergedWithStatus"
+        let versionKey = "MaruClassicFunctionKeyMergeDefaultVersion"
+        let oldValue = defaults.object(forKey: key)
+        let oldVersion = defaults.object(forKey: versionKey)
+        defaults.removeObject(forKey: key)
+        defaults.removeObject(forKey: versionKey)
+        defer {
+            if let oldValue { defaults.set(oldValue, forKey: key) }
+            else { defaults.removeObject(forKey: key) }
+            if let oldVersion { defaults.set(oldVersion, forKey: versionKey) }
+            else { defaults.removeObject(forKey: versionKey) }
+        }
+
+        let controller = MainWindowController()
+        XCTAssertTrue(controller.isFunctionKeyStripMergedForTesting)
+        XCTAssertEqual(controller.classicFunctionKeyCommandsForTesting.first!, "app.help")
+        XCTAssertEqual(Array(controller.classicFunctionKeyCommandsForTesting.prefix(11)).compactMap { $0 }, [
+            "app.help", "edit.completeWord", "search.nextResult", "edit.copyWord",
+            "view.splitHorizontal", "edit.cut", "edit.copy", "edit.paste",
+            "navigate.tagJump", "highlight.outlineAnalysis", "view.toggleLineNumbers",
+        ])
+        XCTAssertGreaterThan(controller.statusBarFrameForTesting.minX, 0)
+    }
+
+    func testFormerSeparateRowDefaultMigratesToMergedOnlyOnce() {
+        let defaults = UserDefaults.standard
+        let mergeKey = "MaruClassicFunctionKeysMergedWithStatus"
+        let versionKey = "MaruClassicFunctionKeyMergeDefaultVersion"
+        let oldMerge = defaults.object(forKey: mergeKey)
+        let oldVersion = defaults.object(forKey: versionKey)
+        defer {
+            if let oldMerge { defaults.set(oldMerge, forKey: mergeKey) }
+            else { defaults.removeObject(forKey: mergeKey) }
+            if let oldVersion { defaults.set(oldVersion, forKey: versionKey) }
+            else { defaults.removeObject(forKey: versionKey) }
+        }
+
+        defaults.set(false, forKey: mergeKey)
+        defaults.removeObject(forKey: versionKey)
+        XCTAssertTrue(MainWindowController().isFunctionKeyStripMergedForTesting)
+
+        defaults.set(false, forKey: mergeKey)
+        XCTAssertFalse(MainWindowController().isFunctionKeyStripMergedForTesting,
+                       "an explicit choice after migration must be preserved")
+    }
     func testClassicToolbarHasConfigurableExecutableSearchBox() {
         let controller = MainWindowController()
         controller.prepareUITestDocument(content: "zero needle one needle", selections: [])
@@ -94,7 +141,7 @@ final class ClassicWorkspaceTests: XCTestCase {
         XCTAssertTrue(labels.contains("Utility pane"))
         XCTAssertTrue(labels.contains("Search results list"))
         XCTAssertTrue(labels.contains("Cursor line and display column"))
-        XCTAssertTrue(labels.contains(where: { $0.hasPrefix("F1 ") }))
+        XCTAssertTrue(labels.contains(where: { $0.hasPrefix("F1:") }))
 
         let window = try! XCTUnwrap(controller.window)
         for index in loop.indices {
@@ -203,9 +250,9 @@ final class ClassicWorkspaceTests: XCTestCase {
                        ["search.grep", nil, "file.save"])
         let labels = descendants(of: try! XCTUnwrap(controller.window?.contentView))
             .compactMap { ($0 as? NSButton)?.accessibilityLabel() }
-        XCTAssertTrue(labels.contains("F1 Grep"))
-        XCTAssertTrue(labels.contains("F2 Unassigned"))
-        XCTAssertTrue(labels.contains("F3 Save"))
+        XCTAssertTrue(labels.contains("F1: Grep"))
+        XCTAssertTrue(labels.contains("F2: Unassigned"))
+        XCTAssertTrue(labels.contains("F3: Save"))
         var received: CommandID?
         controller.onClassicToolbarCommand = { received = $0 }
         controller.activateClassicFunctionKeyForTesting(0)

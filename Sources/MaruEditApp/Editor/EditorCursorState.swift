@@ -13,12 +13,13 @@ struct EditorCursorState: Equatable {
     let selectedLineCount: Int
     let boxWidth: Int?
     let boxHeight: Int?
+    let boxWidthIsPixels: Bool
 
     init(
         lineNumber: Int, displayColumn: Int, utf16Offset: Int,
         selectedCharacterCount: Int, selectedUTF16Length: Int,
         selectionRangeCount: Int, selectedLineCount: Int = 0,
-        boxWidth: Int? = nil, boxHeight: Int? = nil
+        boxWidth: Int? = nil, boxHeight: Int? = nil, boxWidthIsPixels: Bool = false
     ) {
         self.lineNumber = lineNumber; self.displayColumn = displayColumn
         self.utf16Offset = utf16Offset
@@ -27,5 +28,6 @@ struct EditorCursorState: Equatable {
         self.selectionRangeCount = selectionRangeCount
         self.selectedLineCount = selectedLineCount
         self.boxWidth = boxWidth; self.boxHeight = boxHeight
+        self.boxWidthIsPixels = boxWidthIsPixels
     }
 }

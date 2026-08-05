@@ -733,21 +733,29 @@ private final class CharacterRulerView: NSView {
 
 private final class ClassicCommandStripView: NSView {
     private static let candidates: [(String, CommandID)] = [
-        ("Help", .appHelp), ("Save", .fileSave), ("Find", .searchFind),
-        ("Next", .searchFindNext), ("Previous", .searchFindPrevious),
-        ("Replace", .searchReplace), ("Grep", .searchGrep), ("Macro", .appMacroMenu),
+        ("MaruEdit ヘルプ", .appHelp), ("下候補", .editCompleteWord),
+        ("次の結果", .searchNextResult), ("単語をコピー", .editCopyWord),
+        ("分割ウィンドウ", .viewSplitHorizontal), ("切り抜き", .editCut),
+        ("コピー", .editCopy), ("貼り付け", .editPaste),
+        ("タグジャンプ", .navigateTagJump), ("アウトライン解析…", .highlightOutlineAnalysis),
+        ("行番号表示", .viewToggleLineNumbers),
+        ("Save", .fileSave), ("Find", .searchFind), ("Next", .searchFindNext),
+        ("Previous", .searchFindPrevious), ("Replace", .searchReplace),
+        ("Grep", .searchGrep), ("Macro", .appMacroMenu),
         ("Bookmark", .navigateToggleBookmark), ("Next Mark", .navigateNextBookmark),
         ("Go to Line", .searchGoToLine), ("Fold", .navigateToggleFold),
         ("Utility Pane", .viewToggleSidebar), ("Wrap", .viewToggleWrap),
         ("Settings", .appSettings),
     ]
     private static let defaultCommands: [CommandID?] = [
-        .appHelp, .fileSave, .searchFind, .searchFindNext, .searchGrep, .appMacroMenu,
-        .navigateToggleBookmark, .searchGoToLine, .searchReplace, .viewToggleSidebar,
-        .viewToggleWrap, .appSettings,
+        .appHelp, .editCompleteWord, .searchNextResult, .editCopyWord,
+        .viewSplitHorizontal, .editCut, .editCopy, .editPaste,
+        .navigateTagJump, .highlightOutlineAnalysis, .viewToggleLineNumbers,
     ]
     private static let defaultsKey = "MaruClassicFunctionKeyCommands"
     private static let mergeDefaultsKey = "MaruClassicFunctionKeysMergedWithStatus"
+    private static let mergeDefaultVersionKey = "MaruClassicFunctionKeyMergeDefaultVersion"
+    private static let currentMergeDefaultVersion = 1
     private static let countDefaultsKey = "MaruClassicFunctionKeyCount"
     private var functionKeyLayout = FunctionKeyLayout(assignments: defaultCommands)
     private var buttons: [NSButton] = []
@@ -755,8 +763,8 @@ private final class ClassicCommandStripView: NSView {
     var onCommand: ((CommandID) -> Void)?
     var onMergeChange: (() -> Void)?
     var presentationProvider: ((CommandID) -> (enabled: Bool, selected: Bool))?
-    private(set) var isMergedWithStatusBar = false
-    private(set) var visibleSlotCount = 12
+    private(set) var isMergedWithStatusBar = true
+    private(set) var visibleSlotCount = 11
     var commandIDs: [String?] { functionKeyLayout.assignments.map { $0?.rawValue } }
     var keyboardFocusableViews: [NSView] {
         buttons.filter { !$0.isHidden && $0.isEnabled }
@@ -773,7 +781,17 @@ private final class ClassicCommandStripView: NSView {
         } else {
             functionKeyLayout = functionKeyLayout.normalized(available: available)
         }
-        isMergedWithStatusBar = UserDefaults.standard.bool(forKey: Self.mergeDefaultsKey)
+        // Version 1 changes the Classic default from two modern-looking rows to
+        // the compact, shared function-key/status row. Migrate the former
+        // implicit `false` once; subsequent user choices remain authoritative.
+        if UserDefaults.standard.integer(forKey: Self.mergeDefaultVersionKey)
+            < Self.currentMergeDefaultVersion {
+            isMergedWithStatusBar = true
+            UserDefaults.standard.set(true, forKey: Self.mergeDefaultsKey)
+            UserDefaults.standard.set(Self.currentMergeDefaultVersion, forKey: Self.mergeDefaultVersionKey)
+        } else if UserDefaults.standard.object(forKey: Self.mergeDefaultsKey) != nil {
+            isMergedWithStatusBar = UserDefaults.standard.bool(forKey: Self.mergeDefaultsKey)
+        }
         if UserDefaults.standard.object(forKey: Self.countDefaultsKey) != nil {
             visibleSlotCount = min(12, max(1, UserDefaults.standard.integer(forKey: Self.countDefaultsKey)))
         }
@@ -786,13 +804,17 @@ private final class ClassicCommandStripView: NSView {
         buttons.forEach { $0.removeFromSuperview() }; buttons.removeAll()
         for (index, command) in functionKeyLayout.assignments.prefix(visibleSlotCount).enumerated() {
             let title = command.flatMap(title(for:)) ?? "Unassigned"
-            let button = NSButton(title: "F\(index + 1) \(title)", target: self, action: #selector(activate(_:)))
+            let button = NSButton(title: title, target: self, action: #selector(activate(_:)))
             button.font = .systemFont(ofSize: 10)
             button.alignment = .center
             button.bezelStyle = .inline
             button.isBordered = false
+            button.wantsLayer = true
+            button.layer?.backgroundColor = NSColor(calibratedWhite: 0.94, alpha: 1).cgColor
+            button.layer?.borderColor = NSColor(calibratedWhite: 0.68, alpha: 1).cgColor
+            button.layer?.borderWidth = 0.5
             button.tag = index
-            button.setAccessibilityLabel("F\(index + 1) \(title)")
+            button.setAccessibilityLabel("F\(index + 1): \(title)")
             button.isEnabled = command != nil
             buttons.append(button)
             addSubview(button)

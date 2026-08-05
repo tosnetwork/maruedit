@@ -13,9 +13,10 @@ Status legend:
 - ❌ **Incomplete** — a confirmed compatible Maru capability is absent or an
   acceptance requirement is not met.
 
-Overall status: **100% aligned for the compatible Maru 9.57 chrome scope**.
-Windows-owned lifecycle, IME and mounted-remote-volume operations are explicitly
-verified native mappings rather than byte-for-byte platform claims.
+Overall status: **functional status-bar alignment is implemented; screenshot-exact
+visual alignment is pending an observed Version 9.57 reference image**. Windows-owned
+lifecycle, IME and mounted-remote-volume operations are explicit native mappings
+rather than byte-for-byte platform claims.
 
 ## Evidence, naming, and network policy
 
@@ -39,8 +40,8 @@ confirmation before macOS opens them.
 |---|---:|---:|---:|
 | Menu rows | 13 | 0 | 0 |
 | Toolbar/function-key rows | 12 | 0 | 0 |
-| Status-bar rows | 16 | 0 | 0 |
-| Acceptance gates | 5 | 0 | 0 |
+| Status-bar rows | 16 | 0 | 1 |
+| Acceptance gates | 4 | 0 | 1 |
 
 ## Menu bar
 
@@ -132,13 +133,47 @@ verified in their corresponding live AppKit menu.
 
 ## Status bar
 
+### Version 9.57 status-bar correction audit
+
+An explicitly authorized review of the Version 9.57 official help on
+2026-08-05 invalidated the earlier blanket “complete” claim. No vendor URL,
+help prose, screenshot, or asset is stored here. The independently summarized
+requirements are:
+
+- normal and function-key-merged modes have independent field selections;
+- normal mode reserves a left message area for Grep counts, completion hints,
+  detected links/filenames, and macro status text; merged mode has no such area;
+- read-only and View Mode are separate conditional indicators;
+- selection line/character counts and BOX dimensions are independently useful;
+- fixed-pitch BOX width uses character cells, while proportional-font BOX width
+  uses pixels;
+- encoding, line ending, BOM, layout/columns, counts, cursor position, character
+  code, insert/overwrite, font size, profile, and recording state follow the
+  documented conditional and click behaviors;
+- a global switch disables all status-field click actions; and
+- exact height, borders, colors, padding, typography, default field order, and
+  narrow-window truncation still require a user-supplied Version 9.57 screenshot.
+
+The official product-introduction HTML also contains a full-window reference
+image. It is used only as transient visual evidence and is not copied into this
+repository. It confirms a bottom command row made of contiguous rectangular
+function-key cells, beginning with F1 Help, immediately adjacent to a narrow
+segmented status row. Maru Classic therefore defaults to the merged single-row
+layout; users can still separate the rows from the function-key context menu.
+
+Implementation status: independent normal/merged configurations, the dedicated
+normal-mode message area, separate read-only/View Mode indicators, fixed-cell
+versus proportional-font pixel BOX widths, and classic segmented styling are
+implemented and directly tested. Screenshot-exact geometry remains unresolved;
+therefore visual status-bar parity is **not** 100% complete.
+
 | Field or action | Maru | MaruEdit today | Status |
 |---|---|---|---|
 | Encoding, line ending, BOM | Display and click menus | Display and click menus | ✅ Complete |
-| Read-only/view mode | Conditional state | Distinct conditional Read-Only and View Mode states | ✅ Complete |
+| Read-only/view mode | Separate conditional states | Separate Read-Only and View Mode fields, including simultaneous display | ✅ Complete |
 | Cursor line/column | Display; click opens Go To | Display; click opens Go To Line | ✅ Complete |
 | Selection characters/ranges | Display | Display | ✅ Complete |
-| Selection line count/BOX dimensions | Display | Selection line count and live BOX width×height are displayed | ✅ Complete |
+| Selection line count/BOX dimensions | Cells for fixed-pitch; pixels for proportional fonts | Live cell dimensions for fixed-pitch fonts and calculated pixel width plus line height for proportional fonts | ✅ Complete |
 | Total line/character count | Optional fields and configurable calculation | Displayed and field-configurable; clicking opens persisted weights for full/half-width characters, both spaces, tabs, and line breaks with fractional rounding | ✅ Complete |
 | Character code at cursor | Encoding-aware display; click details | Unicode display for Unicode files, Shift-JIS-preferred display for Japanese legacy files, and a details alert containing Unicode, UTF-8, Windows-31J, and current-encoding bytes | ✅ Complete |
 | Insert/overwrite | Display; click toggles | Display and click toggles | ✅ Complete |
@@ -148,9 +183,10 @@ verified in their corresponding live AppKit menu.
 | Vertical/horizontal and column count | Display/click | HORZ/VERT/COL×n and a checked menu that toggles horizontal, vertical, or continuous column layout; the live count follows TextKit flow | ✅ Complete |
 | Macro recording | Conditional state/click | Distinct REC and MACRO states are shown; clicking REC stops the active recording through the coordinator | ✅ Complete |
 | Large-file mode | No direct equivalent | MaruEdit-specific safety field | ✅ Native addition (not a parity claim) |
-| Configurable fields/clickability | Fields and global click enablement are configurable | Right-click field selection plus a persistent global click-action switch | ✅ Complete |
+| Configurable fields/clickability | Normal/merged field sets plus global click enablement | Independent persistent normal/merged field selections, right-click controls, and a global click-action switch | ✅ Complete |
 | Cursor position placement | Compact line:column indicator at the far right of the menu-level top row | macOS reserves the system menu bar's right side, so Classic uses the nearest per-window equivalent: a right-aligned title-bar accessory above the toolbar, and suppresses the duplicate bottom-left field; Modern keeps the native status-bar field | ✅ Native equivalent |
-| Merge with function-key strip | Supported | Persistent merge shares one 24pt row and restores full-width F-key layout when status is hidden | ✅ Complete |
+| Merge with function-key strip | Independent merged configuration; Help at far left; no left message area | Classic defaults to one 24pt merged row beginning with MaruEdit Help, followed by next candidate, next result, copy word, split window, cut, copy, paste, tag jump, outline analysis, and line-number display; key-name prefixes are hidden, compact status fields follow, and the full-width function row is restored when status is hidden | ✅ Complete |
+| Exact visual geometry | Version 9.57 native rendering | Classic segmented neutral background implemented; exact metrics await an observed reference screenshot | ❌ Incomplete |
 
 ## Acceptance gates
 
@@ -160,9 +196,8 @@ verified in their corresponding live AppKit menu.
    unsupported reason; placeholders do not count.
 3. ✅ **Complete** — Toolbar configuration stores ordered command IDs and separators, supports
    add/remove/reorder/reset, and reflects command enabled/toggle state.
-4. ✅ **Complete** — Status fields are individually configurable, interactive where Maru is
-   interactive, and remain correct across tabs, IME, BOX/multi-selection,
-   encodings, large files, and profile changes.
+4. ❌ **Incomplete** — Functional field behavior, including proportional-font BOX pixel
+   width, is covered, but screenshot-exact visual geometry remains unverified.
 5. ✅ **Complete** — Default and customized chrome have screenshot baselines in light/dark and
    narrow/wide windows, plus keyboard-only and accessibility verification.
 

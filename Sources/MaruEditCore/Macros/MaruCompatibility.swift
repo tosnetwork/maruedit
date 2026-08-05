@@ -20,7 +20,7 @@ public enum MaruCompatibilityError: LocalizedError, Equatable {
 }
 
 public enum MaruCompatibility {
-    public static let featureFlag = "MARUEDIT_ENABLE_OLDMARU_COMPATIBILITY"
+    public static let featureFlag = "MARUEDIT_ENABLE_MARU_COMPATIBILITY"
     public static func isEnabled(environment: [String: String] = ProcessInfo.processInfo.environment,
                                  defaults: UserDefaults = .standard) -> Bool {
         environment[featureFlag] == "1" || defaults.bool(forKey: "ExperimentalMaruMacroCompatibility")

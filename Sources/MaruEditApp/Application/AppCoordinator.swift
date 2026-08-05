@@ -689,6 +689,9 @@ final class AppCoordinator {
     func toggleFloatingToolbar()         { ensureWindowControllerReady().toggleClassicToolbarFloating() }
     func copyCurrentWord()               { ensureWindowControllerReady().copyCurrentWord() }
     func cutCurrentWord()                { ensureWindowControllerReady().cutCurrentWord() }
+    func cut()                           { ensureWindowControllerReady().macroEditor.textView.cut(nil) }
+    func copy()                          { ensureWindowControllerReady().macroEditor.textView.copy(nil) }
+    func paste()                         { ensureWindowControllerReady().macroEditor.textView.paste(nil) }
     func deleteCurrentWord()             { ensureWindowControllerReady().deleteCurrentWord() }
     func copyCurrentLine()               { ensureWindowControllerReady().copyCurrentLine() }
     func cutCurrentLine()                { ensureWindowControllerReady().cutCurrentLine() }

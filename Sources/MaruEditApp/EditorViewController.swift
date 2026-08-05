@@ -1281,6 +1281,12 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         let displayColumn = lineIndex.displayColumn(
             atUTF16Offset: offset, in: textView.string, tabWidth: tabWidth)
         let ranges = textView.selectedRanges.map(\.rangeValue)
+        let boxWidth: Int? = columnSelectionDimensions.map { dimensions in
+            guard !preferredEditorFont.isFixedPitch else { return dimensions.width }
+            let cellWidth = max(1, ("0" as NSString).size(
+                withAttributes: [.font: preferredEditorFont]).width)
+            return Int(ceil(CGFloat(dimensions.width) * cellWidth))
+        }
         delegate?.editorCursorMoved(self, state: EditorCursorState(
             lineNumber: line + 1,
             displayColumn: displayColumn + 1,
@@ -1297,8 +1303,9 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
                     range, NSRange(location: 0, length: ns.length)))
                     .reduce(1) { $1 == "\n" ? $0 + 1 : $0 }
             },
-            boxWidth: columnSelectionDimensions?.width,
-            boxHeight: columnSelectionDimensions?.height
+            boxWidth: boxWidth,
+            boxHeight: columnSelectionDimensions?.height,
+            boxWidthIsPixels: columnSelectionDimensions != nil && !preferredEditorFont.isFixedPitch
         ))
     }
 

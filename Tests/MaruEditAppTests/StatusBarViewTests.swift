@@ -22,6 +22,11 @@ final class StatusBarViewTests: XCTestCase {
         XCTAssertEqual(bar.displayedInputModeText, "INS")
         bar.updateInputMode(.overwrite)
         XCTAssertEqual(bar.displayedInputModeText, "OVR")
+        bar.setMergedMode(true)
+        XCTAssertEqual(bar.displayedInputModeText, "上書きモード")
+        bar.updateInputMode(.insert)
+        XCTAssertEqual(bar.displayedInputModeText, "挿入モード")
+        XCTAssertEqual(bar.displayedEncodingText, "Unicode (UTF-8)")
     }
     func testAccessModeDistinguishesViewModeFromDiskReadOnly() async {
         let bar = StatusBarView(frame: NSRect(x: 0, y: 0, width: 900, height: 24))
@@ -30,6 +35,24 @@ final class StatusBarViewTests: XCTestCase {
         XCTAssertTrue(bar.subviews.compactMap { ($0 as? NSTextField)?.stringValue }.contains("View Mode"))
         bar.updateAccessMode(isReadOnly: true, isViewMode: false)
         XCTAssertTrue(bar.subviews.compactMap { ($0 as? NSTextField)?.stringValue }.contains("Read-Only"))
+        bar.updateAccessMode(isReadOnly: true, isViewMode: true)
+        bar.layoutSubtreeIfNeeded()
+        let accessLabels = bar.subviews.compactMap { $0 as? NSTextField }
+            .filter { ["Read-Only", "View Mode"].contains($0.stringValue) }
+        XCTAssertEqual(accessLabels.filter { !$0.isHidden }.count, 2)
+    }
+
+    func testMergedModeSuppressesDedicatedMessageArea() {
+        let bar = StatusBarView(frame: NSRect(x: 0, y: 0, width: 1_200, height: 24))
+        bar.showTransientMessage("3 Grep matches", duration: 10)
+        bar.layoutSubtreeIfNeeded()
+        XCTAssertTrue(bar.isMessageAreaVisible)
+        XCTAssertEqual(bar.displayedLeadingText, "3 Grep matches")
+
+        bar.setMergedMode(true)
+        bar.layoutSubtreeIfNeeded()
+        XCTAssertTrue(bar.isMergedMode)
+        XCTAssertFalse(bar.isMessageAreaVisible)
     }
     private final class Delegate: StatusBarViewDelegate {
         var controls: [StatusBarControl] = []
@@ -128,6 +151,16 @@ final class StatusBarViewTests: XCTestCase {
         XCTAssertTrue(status.displayedSelectionText.contains("BOX 4×3"))
     }
 
+    func testProportionalFontBoxSelectionUsesPixelWidth() {
+        let status = StatusBarView(frame: NSRect(x: 0, y: 0, width: 900, height: 24))
+        status.updateCursor(EditorCursorState(
+            lineNumber: 1, displayColumn: 1, utf16Offset: 0,
+            selectedCharacterCount: 6, selectedUTF16Length: 6,
+            selectionRangeCount: 3, selectedLineCount: 3,
+            boxWidth: 42, boxHeight: 3, boxWidthIsPixels: true))
+        XCTAssertTrue(status.displayedSelectionText.contains("BOX 42px×3"))
+    }
+
     func testEveryFormatFieldRoutesAsAClickableControl() async {
         let status = StatusBarView(frame: NSRect(x: 0, y: 0, width: 900, height: 24))
         let delegate = Delegate()
@@ -182,7 +215,9 @@ final class StatusBarViewTests: XCTestCase {
         let visible = StatusBarControl.allCases.compactMap { status.frame(for: $0) }
         for left in visible.indices {
             for right in visible.indices where left < right {
-                XCTAssertFalse(visible[left].intersects(visible[right]))
+                XCTAssertFalse(
+                    visible[left].intersects(visible[right]),
+                    "status fields overlap: \(visible[left]) and \(visible[right])")
             }
         }
     }
