@@ -24,6 +24,7 @@ final class MainWindowController: NSWindowController,
     private var diffHunks: [TextDiffHunk] = []
     private var currentDiffIndex = 0
     private var tagBackStack: [(url: URL, offset: Int)] = []
+    var openAssociatedURL: (URL) -> Void = { NSWorkspace.shared.open($0) }
     private var statusBar: StatusBarView!
     private var modifierFlagsMonitor: Any?
     private var classicChrome: ClassicWorkspaceChrome!
@@ -700,6 +701,51 @@ final class MainWindowController: NSWindowController,
         performSave(doc)
     }
 
+    func saveAllDocuments(onlyModified: Bool = false) {
+        let documents = documentController.documents.filter { document in
+            // The initial pristine Untitled tab is a workspace placeholder,
+            // not a user document that should interrupt Save All with a panel.
+            guard document.fileURL != nil || document.isModified else { return false }
+            return !onlyModified || document.isModified
+        }
+        saveDocuments(documents)
+    }
+
+    private func saveDocuments(_ documents: [Document]) {
+        guard let document = documents.first else { showStatusMessage("All documents saved"); return }
+        guard let index = documentController.documents.firstIndex(where: { $0 === document }) else {
+            saveDocuments(Array(documents.dropFirst())); return
+        }
+        tabBarDidSelectTab(at: index)
+        guard document.fileURL == nil else {
+            if document.isEditingDisabled { presentReadOnlySaveBlocked(document); return }
+            guard resolveMixedLineEndingIfNeeded(for: document) else { return }
+            performSave(document)
+            guard !document.isModified else { return }
+            saveDocuments(Array(documents.dropFirst()))
+            return
+        }
+        guard resolveMixedLineEndingIfNeeded(for: document), let window else { return }
+        let panel = NSSavePanel(); panel.canCreateDirectories = true
+        let accessory = SaveAsFormatAccessoryView(
+            initialEncoding: document.encoding,
+            initialHasByteOrderMark: document.hasByteOrderMark)
+        panel.accessoryView = accessory
+        panel.beginSheetModal(for: window) { [weak self] response in
+            guard let self, response == .OK, let url = panel.url else { return }
+            document.encoding = accessory.selectedEncoding
+            document.hasByteOrderMark = accessory.includesByteOrderMark
+            guard self.performSaveAs(document, to: url) else { return }
+            self.saveDocuments(Array(documents.dropFirst()))
+        }
+    }
+
+    func saveDocumentWithLFLineEndings() {
+        guard let doc = curDoc else { return }
+        doc.lineEnding = .lf
+        saveDocument()
+    }
+
     /// ROADMAP.md M2-08: intercepts Save on a read-only file before any
     /// write is attempted. `TextFileSaver` would fail on its own too (the
     /// OS denies the write), but surfacing this up front — with a "Save
@@ -1087,6 +1133,66 @@ final class MainWindowController: NSWindowController,
         if emptiedAndReplaced { return true }
         deferredRestoreCursor()
         return true
+    }
+
+    @discardableResult
+    func discardAndCloseCurrentTab() -> Bool {
+        guard let doc = curDoc else { return false }
+        let index = curIdx
+        if doc.fileURL == nil { recoveryStore.delete(doc.recoveryID) }
+        let replaced = documentController.closeDocument(at: index)
+        editorVC.document = curDoc
+        refreshTabs(); refreshStatus(); scheduleSessionSave()
+        if !replaced { deferredRestoreCursor() }
+        return true
+    }
+
+    func discardAllAndClose() {
+        let count = documentController.documents.count
+        for _ in 0..<count { _ = discardAndCloseCurrentTab() }
+    }
+
+    func openCursorTargetWithAssociatedApplication() {
+        guard let target = cursorTarget(), let url = resolvedTargetURL(target) else {
+            showStatusMessage("No URL or file target at the cursor"); return
+        }
+        openAssociatedURL(url)
+    }
+
+    func openCursorTargetInMaruEdit() {
+        guard let target = cursorTarget(), let url = resolvedTargetURL(target), url.isFileURL,
+              FileManager.default.fileExists(atPath: url.path) else {
+            showStatusMessage("No file target at the cursor"); return
+        }
+        openFile(url)
+    }
+
+    private func cursorTarget() -> String? {
+        let source = editorVC.textView.string as NSString
+        let selection = editorVC.selectionSet.primaryRange
+        if selection.length > 0, NSMaxRange(selection) <= source.length {
+            return source.substring(with: selection).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        guard selection.location < source.length else { return nil }
+        let line = source.lineRange(for: NSRange(location: selection.location, length: 0))
+        let value = source.substring(with: line)
+        let offset = selection.location - line.location
+        let nsValue = value as NSString
+        let separators = CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: "\"'<>"))
+        var start = min(offset, nsValue.length), end = start
+        while start > 0, let scalar = UnicodeScalar(nsValue.character(at: start - 1)), !separators.contains(scalar) { start -= 1 }
+        while end < nsValue.length, let scalar = UnicodeScalar(nsValue.character(at: end)), !separators.contains(scalar) { end += 1 }
+        guard start < end else { return nil }
+        return nsValue.substring(with: NSRange(location: start, length: end - start))
+            .trimmingCharacters(in: CharacterSet(charactersIn: ",;()[]{}"))
+    }
+
+    private func resolvedTargetURL(_ target: String) -> URL? {
+        if let url = URL(string: target), let scheme = url.scheme, !scheme.isEmpty { return url }
+        let expanded = (target as NSString).expandingTildeInPath
+        if expanded.hasPrefix("/") { return URL(fileURLWithPath: expanded) }
+        guard let base = curDoc?.fileURL?.deletingLastPathComponent() else { return nil }
+        return base.appendingPathComponent(expanded).standardizedFileURL
     }
 
     /// Hidemaru-style tab-order traversal. Both directions wrap at the ends.

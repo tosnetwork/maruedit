@@ -37,8 +37,15 @@ significantly, replace this with a small script that generates it from
 | `window.focusUtilityPane` | Focus Utility Pane | Window | — | Reveals and focuses the utility pane |
 | `file.save` | Save | File | ⌘S | `AppCoordinator.saveDocument()` |
 | `file.saveAs` | Save As... | File | ⌘⇧S | `AppCoordinator.saveDocumentAs()` |
+| `file.saveAll` | Save All | File | — | Saves every open document without closing tabs |
+| `file.saveAllModified` | Save All Modified Files | File | — | Saves only modified open documents |
+| `file.saveLF` | Save with LF Line Endings | File | — | Normalizes the active document to LF while saving |
 | `file.saveAndClose` | Save and Close | File | — | Saves the active tab when modified, then closes it only after a successful save |
 | `file.saveAllAndClose` | Save All and Close | File | — | Saves and closes every tab in order, stopping immediately on cancellation or save failure |
+| `file.discardAndClose` | Discard and Close | File | — | Closes the active tab without writing its changes |
+| `file.discardAllAndClose` | Discard All and Close | File | — | Closes all tabs without writing changes, retaining one blank editor |
+| `file.openCursorTargetAssociated` | Open Target with Associated Application | File | — | Opens the selected or cursor URL/file through macOS Launch Services |
+| `file.openCursorTargetInEditor` | Open Target in MaruEdit | File | — | Resolves and opens the selected or cursor file path in a tab |
 | `file.closeTab` | Close Tab | File | ⌘W | `AppCoordinator.closeCurrentTab()` |
 | `window.nextTab` | Next Tab | Window | ⌃Tab | `AppCoordinator.selectNextTab()` |
 | `window.previousTab` | Previous Tab | Window | ⌃⇧Tab | `AppCoordinator.selectPreviousTab()` |

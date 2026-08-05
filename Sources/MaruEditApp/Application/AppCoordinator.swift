@@ -250,8 +250,15 @@ final class AppCoordinator {
     func openFolderPanel()            { ensureWindowControllerReady().openFolder() }
     func saveDocument()               { ensureWindowControllerReady().saveDocument() }
     func saveDocumentAs()             { ensureWindowControllerReady().saveDocumentAs() }
+    func saveAllDocuments()           { ensureWindowControllerReady().saveAllDocuments() }
+    func saveAllModifiedDocuments()   { ensureWindowControllerReady().saveAllDocuments(onlyModified: true) }
+    func saveDocumentWithLFLineEndings() { ensureWindowControllerReady().saveDocumentWithLFLineEndings() }
     func saveAndCloseCurrentTab()     { ensureWindowControllerReady().saveAndCloseCurrentTab() }
     func saveAllAndClose()            { ensureWindowControllerReady().saveAllAndClose() }
+    func discardAndCloseCurrentTab()  { ensureWindowControllerReady().discardAndCloseCurrentTab() }
+    func discardAllAndClose()         { ensureWindowControllerReady().discardAllAndClose() }
+    func openCursorTargetWithAssociatedApplication() { ensureWindowControllerReady().openCursorTargetWithAssociatedApplication() }
+    func openCursorTargetInMaruEdit() { ensureWindowControllerReady().openCursorTargetInMaruEdit() }
     func closeCurrentTab()            { ensureWindowControllerReady().closeCurrentTab() }
     func insertDateTime()             { ensureWindowControllerReady().insertDateTime() }
     func insertPageBreak()            { ensureWindowControllerReady().insertPageBreak() }
