@@ -9,7 +9,7 @@ MaruEdit is a fast, native text and code editor for macOS. It combines AppKit pe
 
 **[Releases](https://github.com/tosnetwork/maruedit/releases)** · **[User guide](docs/user-guide.md)** · **[Command catalog](docs/commands.md)** · **[Roadmap](ROADMAP.md)**
 
-> MaruEdit is an independent open-source project. It began as a fork of [LiteEdit](https://github.com/arietan/lite-edit), which is MIT licensed. See [NOTICE.md](NOTICE.md) and [UPSTREAM.md](UPSTREAM.md) for attribution.
+> MaruEdit is an independent open-source project and is not affiliated with or endorsed by any commercial editor vendor. It began as a fork of [LiteEdit](https://github.com/arietan/lite-edit), which is MIT licensed. See [NOTICE.md](NOTICE.md) and [UPSTREAM.md](UPSTREAM.md) for attribution.
 
 ## The editor today
 
