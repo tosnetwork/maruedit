@@ -17,6 +17,8 @@ semantic version tags.
   edit/Undo-stable anchors, wrapped navigation, and a Results-pane marker list.
 - Added horizontal and vertical views of one document with independent selections,
   explicit close-split behavior, and optional bidirectional linked scrolling.
+- Added two-document line diff with wrapped difference navigation and an undo-safe
+  action for accepting the current hunk from the read-only right pane.
 - Added a Foundation-only incremental document-outline model with built-in
   symbol rules for source, markup, scripting, configuration, and SQL languages,
   plus bounded user-defined regex rules in versioned FileType Profiles. The

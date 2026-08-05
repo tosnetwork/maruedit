@@ -83,6 +83,8 @@ final class CommandRegistryTests: XCTestCase {
             .navigateNextMarker, .navigatePreviousMarker, .navigateClearMarkers,
             .viewSplitVertical, .viewSplitHorizontal, .viewCloseSplit,
             .viewToggleLinkedScrolling,
+            .navigateCompareNextDocument, .navigateNextDifference,
+            .navigatePreviousDifference, .navigateMergeDifferenceFromRight,
             .navigateToggleBookmark, .navigateNextBookmark,
             .navigatePreviousBookmark, .navigateClearBookmarks
             , .navigateToggleFold, .navigateCollapseAllFolds, .navigateExpandAllFolds

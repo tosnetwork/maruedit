@@ -129,6 +129,10 @@ final class AppCoordinator {
     func splitEditorHorizontal()         { ensureWindowControllerReady().showEditorSplit(.horizontal) }
     func closeEditorSplit()              { ensureWindowControllerReady().closeEditorSplit() }
     func toggleLinkedEditorScrolling()   { ensureWindowControllerReady().toggleLinkedEditorScrolling() }
+    func compareWithNextDocument()       { ensureWindowControllerReady().compareWithNextDocument() }
+    func nextDifference()                { ensureWindowControllerReady().nextDifference() }
+    func previousDifference()            { ensureWindowControllerReady().previousDifference() }
+    func mergeCurrentDifferenceFromRight() { ensureWindowControllerReady().mergeCurrentDifferenceFromRight() }
     func toggleFold()                    { ensureWindowControllerReady().toggleFold() }
     func collapseAllFolds()              { ensureWindowControllerReady().collapseAllFolds() }
     func expandAllFolds()                { ensureWindowControllerReady().expandAllFolds() }

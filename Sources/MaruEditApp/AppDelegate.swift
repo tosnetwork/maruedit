@@ -254,6 +254,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         viewMenu.addItem(commandItem(.viewSplitHorizontal))
         viewMenu.addItem(commandItem(.viewCloseSplit))
         viewMenu.addItem(commandItem(.viewToggleLinkedScrolling))
+        viewMenu.addItem(commandItem(.navigateCompareNextDocument))
+        viewMenu.addItem(commandItem(.navigateNextDifference))
+        viewMenu.addItem(commandItem(.navigatePreviousDifference))
+        viewMenu.addItem(commandItem(.navigateMergeDifferenceFromRight))
         viewItem.submenu = viewMenu
         main.addItem(viewItem)
 

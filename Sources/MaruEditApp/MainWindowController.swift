@@ -20,6 +20,9 @@ final class MainWindowController: NSWindowController,
     private var editorSplitView: NSSplitView!
     private var secondaryEditorVC: EditorViewController?
     private var linkedEditorScrolling = false
+    private var diffTargetDocument: Document?
+    private var diffHunks: [TextDiffHunk] = []
+    private var currentDiffIndex = 0
     private var statusBar: StatusBarView!
     private var classicChrome: ClassicWorkspaceChrome!
     private var workspaceStyle: WorkspaceStyle = .classic
@@ -1155,7 +1158,9 @@ final class MainWindowController: NSWindowController,
 
     private func refreshStatus() {
         if let doc = curDoc {
-            if secondaryEditorVC?.document !== doc { secondaryEditorVC?.document = doc }
+            if diffTargetDocument == nil, secondaryEditorVC?.document !== doc {
+                secondaryEditorVC?.document = doc
+            }
             refreshOutline(for: doc)
             refreshMarkerResults()
             statusBar.updateLanguage(doc.language, profileName: doc.fileTypeProfile?.name)
@@ -1408,6 +1413,7 @@ final class MainWindowController: NSWindowController,
         scheduleSessionSave()
         if vc === editorVC { secondaryEditorVC?.synchronizeSharedDocumentState() }
         else { editorVC.synchronizeSharedDocumentState() }
+        if diffTargetDocument != nil, vc === editorVC { refreshDiffHunks() }
     }
     func editorCursorMoved(_ vc: EditorViewController, state: EditorCursorState) {
         statusBar.updateCursor(state)
@@ -1547,6 +1553,7 @@ final class MainWindowController: NSWindowController,
         if secondaryEditorVC == nil {
             let secondary = EditorViewController()
             secondary.delegate = self
+            secondary.reusesDocumentTextStorage = false
             _ = secondary.view
             secondary.document = curDoc
             secondary.applyPreferences(editorVC.appliedPreferences)
@@ -1561,6 +1568,7 @@ final class MainWindowController: NSWindowController,
             secondaryEditorVC = secondary
             editorSplitView.addSubview(secondary.view)
         }
+        if diffTargetDocument == nil { secondaryEditorVC?.textView.isEditable = true }
         editorSplitView.adjustSubviews()
     }
 
@@ -1568,6 +1576,9 @@ final class MainWindowController: NSWindowController,
         secondaryEditorVC?.view.removeFromSuperview()
         secondaryEditorVC = nil
         editorVC.onScroll = nil
+        diffTargetDocument = nil
+        diffHunks = []
+        currentDiffIndex = 0
         editorSplitView.adjustSubviews()
     }
 
@@ -1576,6 +1587,49 @@ final class MainWindowController: NSWindowController,
     var editorSplitIsVerticalForTesting: Bool { editorSplitView.isVertical }
     var isLinkedEditorScrollingForTesting: Bool { linkedEditorScrolling }
     var secondaryEditorForTesting: EditorViewController? { secondaryEditorVC }
+
+    func compareWithNextDocument() {
+        guard documentController.documents.count > 1, let current = curDoc else { return }
+        let nextIndex = (curIdx + 1) % documentController.documents.count
+        guard let target = documentController.document(at: nextIndex), target !== current else { return }
+        showEditorSplit(.vertical)
+        diffTargetDocument = target
+        secondaryEditorVC?.document = target
+        secondaryEditorVC?.textView.isEditable = false
+        currentDiffIndex = 0
+        refreshDiffHunks()
+        navigateDifference(delta: 0)
+    }
+
+    func nextDifference() { navigateDifference(delta: 1) }
+    func previousDifference() { navigateDifference(delta: -1) }
+
+    func mergeCurrentDifferenceFromRight() {
+        guard diffHunks.indices.contains(currentDiffIndex) else { return }
+        let hunk = diffHunks[currentDiffIndex]
+        editorVC.batchReplace([hunk.originalRange], with: hunk.replacement)
+        refreshDiffHunks()
+    }
+
+    private func refreshDiffHunks() {
+        guard let current = curDoc, let target = diffTargetDocument else { return }
+        diffHunks = TextDiffEngine.compare(current.content, target.content)
+        currentDiffIndex = min(currentDiffIndex, max(0, diffHunks.count - 1))
+    }
+
+    private func navigateDifference(delta: Int) {
+        guard !diffHunks.isEmpty else { return }
+        currentDiffIndex = (currentDiffIndex + delta + diffHunks.count) % diffHunks.count
+        let hunk = diffHunks[currentDiffIndex]
+        let range = NSRange(location: hunk.originalRange.location, length: 0)
+        editorVC.setSelections([range], primaryRange: range)
+        editorVC.textView.scrollRangeToVisible(range)
+        secondaryEditorVC?.goToLine(hunk.replacementStartLine + 1)
+    }
+
+    var diffHunkCountForTesting: Int { diffHunks.count }
+    var currentDiffIndexForTesting: Int { currentDiffIndex }
+    var isComparingDocumentsForTesting: Bool { diffTargetDocument != nil }
 
     private func refreshMarkerResults() {
         guard let doc = curDoc else { return }

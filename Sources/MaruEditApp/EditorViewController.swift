@@ -195,6 +195,10 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
             if isViewLoaded { loadDoc() }
         }
     }
+    /// Secondary panes must own their TextKit storage. A single
+    /// `NSTextStorage` cannot safely be attached to two layout managers;
+    /// shared-document panes synchronize through the controller delegate.
+    var reusesDocumentTextStorage = true
 
     deinit {
         NotificationCenter.default.removeObserver(self)
@@ -359,7 +363,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         let lm = textView.layoutManager!
         suppressTextChange = true
 
-        if let cached = doc.cachedTextStorage {
+        if reusesDocumentTextStorage, let cached = doc.cachedTextStorage {
             lm.replaceTextStorage(cached)
         } else {
             let para = textView.defaultParagraphStyle ?? NSParagraphStyle.default
@@ -369,7 +373,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
                 .paragraphStyle: para,
             ])
             lm.replaceTextStorage(ts)
-            doc.cachedTextStorage = ts
+            if reusesDocumentTextStorage { doc.cachedTextStorage = ts }
         }
 
         suppressTextChange = false

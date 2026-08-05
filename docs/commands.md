@@ -88,6 +88,10 @@ significantly, replace this with a small script that generates it from
 | `navigate.nextMarker` | Next Marker | Edit | — | `AppCoordinator.nextMarker()` |
 | `navigate.previousMarker` | Previous Marker | Edit | — | `AppCoordinator.previousMarker()` |
 | `navigate.clearMarkers` | Clear Markers | Edit | — | `AppCoordinator.clearMarkers()` |
+| `navigate.compareNextDocument` | Compare with Next Document | Navigate | — | `AppCoordinator.compareWithNextDocument()` |
+| `navigate.nextDifference` | Next Difference | Navigate | — | `AppCoordinator.nextDifference()` |
+| `navigate.previousDifference` | Previous Difference | Navigate | — | `AppCoordinator.previousDifference()` |
+| `navigate.mergeDifferenceFromRight` | Accept Difference from Right | Navigate | — | `AppCoordinator.mergeCurrentDifferenceFromRight()` |
 
 All of them are enabled unconditionally right now (`isEnabled` always
 returns `true`) — the app has no state yet where one of them shouldn't be
