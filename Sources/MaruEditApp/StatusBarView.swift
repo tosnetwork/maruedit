@@ -6,6 +6,29 @@ enum StatusBarControl: CaseIterable {
     case largeFileMode, encoding, byteOrderMark, lineEnding, languageProfile
 }
 
+enum StatusBarField: String, CaseIterable {
+    case cursorPosition, selection, indentation, inputMode, totals, characterCode, fontSize
+    case readOnly, largeFileMode, lineEnding, byteOrderMark, encoding, languageProfile
+
+    var title: String {
+        switch self {
+        case .cursorPosition: "Cursor Position"
+        case .selection: "Selection"
+        case .indentation: "Indentation"
+        case .inputMode: "Insert/Overwrite"
+        case .totals: "Total Lines and Characters"
+        case .characterCode: "Character Code"
+        case .fontSize: "Font Size"
+        case .readOnly: "Read-Only State"
+        case .largeFileMode: "Large File Mode"
+        case .lineEnding: "Line Ending"
+        case .byteOrderMark: "Byte Order Mark"
+        case .encoding: "Encoding"
+        case .languageProfile: "File-Type Profile"
+        }
+    }
+}
+
 @MainActor
 protocol StatusBarViewDelegate: AnyObject {
     func statusBar(
@@ -31,6 +54,10 @@ final class StatusBarView: NSView {
     private var cursorText = "Ln 1, Col 1"
     private var documentText = ""
     private var messageWorkItem: DispatchWorkItem?
+    private var configuredFields = Set(StatusBarField.allCases)
+    private var isReadOnly = false
+    private var largeFileMode: LargeFileMode = .normal
+    private static let fieldsDefaultsKey = "MaruClassicStatusBarFields"
 
     var displayedLeadingText: String { lineColLabel.stringValue }
     var displayedSelectionText: String { selectionLabel.stringValue }
@@ -46,11 +73,16 @@ final class StatusBarView: NSView {
     var displayedLargeFileModeText: String? {
         largeFileModeLabel.isHidden ? nil : largeFileModeLabel.stringValue
     }
+    var configuredFieldIDs: Set<String> { Set(configuredFields.map(\.rawValue)) }
 
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
         layer?.backgroundColor = Theme.statusBg.cgColor
+        if let values = UserDefaults.standard.stringArray(forKey: Self.fieldsDefaultsKey) {
+            configuredFields = Set(values.compactMap(StatusBarField.init(rawValue:)))
+            configuredFields.insert(.cursorPosition)
+        }
         setup()
     }
 
@@ -59,26 +91,26 @@ final class StatusBarView: NSView {
 
     override func layout() {
         super.layout()
+        applyConfiguredVisibility()
         let midY = (bounds.height - 16) / 2
-        lineColLabel.frame = NSRect(
-            x: 14, y: midY, width: messageWorkItem == nil ? 105 : 280, height: 16)
-        selectionLabel.frame = NSRect(x: 122, y: midY, width: 130, height: 16)
-        indentLabel.frame = NSRect(x: 255, y: midY, width: 85, height: 16)
-        inputModeLabel.frame = NSRect(x: 342, y: midY, width: 34, height: 16)
-        totalsLabel.frame = NSRect(x: 380, y: midY, width: 125, height: 16)
-        characterCodeLabel.frame = NSRect(x: 508, y: midY, width: 70, height: 16)
-        fontSizeLabel.frame = NSRect(x: 580, y: midY, width: 45, height: 16)
-
         var right = bounds.width - 14
-        for label in [langLabel, encLabel, bomLabel, lineEndingLabel, largeFileModeLabel] {
-            label.sizeToFit()
-            right -= label.frame.width
-            label.frame.origin = NSPoint(x: right, y: midY)
-            right -= 18
+        for (field, label) in rightFields.reversed() where !label.isHidden {
+            guard configuredFields.contains(field) else { continue }
+            label.sizeToFit(); right -= label.frame.width
+            label.frame.origin = NSPoint(x: right, y: midY); right -= 14
         }
-        readOnlyLabel.sizeToFit()
-        right -= readOnlyLabel.frame.width
-        readOnlyLabel.frame.origin = NSPoint(x: right, y: midY)
+
+        var x: CGFloat = 14
+        for (field, label, width) in leftFields {
+            guard !label.isHidden else { continue }
+            let actualWidth = field == .cursorPosition && messageWorkItem != nil ? 280 : width
+            if field != .cursorPosition && x + actualWidth > right - 8 {
+                label.isHidden = true
+            } else {
+                label.frame = NSRect(x: x, y: midY, width: actualWidth, height: 16)
+                x += actualWidth + 4
+            }
+        }
         window?.invalidateCursorRects(for: self)
     }
 
@@ -231,16 +263,49 @@ final class StatusBarView: NSView {
     }
 
     func updateReadOnly(_ isReadOnly: Bool) {
-        guard readOnlyLabel.isHidden == isReadOnly else { return }
-        readOnlyLabel.isHidden = !isReadOnly
+        self.isReadOnly = isReadOnly
+        applyConfiguredVisibility()
         needsLayout = true
     }
 
     func updateLargeFileMode(_ mode: LargeFileMode) {
+        largeFileMode = mode
         largeFileModeLabel.stringValue = SettingsLocalization.text(
             mode == .readOnly ? "largeReadOnly" : "reducedFeatures")
-        largeFileModeLabel.isHidden = mode == .normal
+        applyConfiguredVisibility()
         needsLayout = true
+    }
+
+    override func rightMouseDown(with event: NSEvent) {
+        let menu = NSMenu(title: "Customize Status Bar")
+        for field in StatusBarField.allCases {
+            let item = NSMenuItem(title: field.title, action: #selector(toggleStatusField(_:)), keyEquivalent: "")
+            item.target = self; item.representedObject = field.rawValue
+            item.state = configuredFields.contains(field) ? .on : .off
+            item.isEnabled = field != .cursorPosition
+            menu.addItem(item)
+        }
+        menu.addItem(.separator())
+        let restore = NSMenuItem(title: "Restore Default Status Bar", action: #selector(restoreStatusFields), keyEquivalent: "")
+        restore.target = self; menu.addItem(restore)
+        NSMenu.popUpContextMenu(menu, with: event, for: self)
+    }
+
+    @objc private func toggleStatusField(_ sender: NSMenuItem) {
+        guard let rawValue = sender.representedObject as? String,
+              let field = StatusBarField(rawValue: rawValue), field != .cursorPosition else { return }
+        if configuredFields.contains(field) { configuredFields.remove(field) } else { configuredFields.insert(field) }
+        persistConfiguredFields(); applyConfiguredVisibility(); needsLayout = true
+    }
+
+    @objc private func restoreStatusFields() {
+        configuredFields = Set(StatusBarField.allCases)
+        persistConfiguredFields(); applyConfiguredVisibility(); needsLayout = true
+    }
+
+    func setConfiguredFieldsForTesting(_ fields: Set<StatusBarField>) {
+        configuredFields = fields.union([.cursorPosition])
+        applyConfiguredVisibility(); needsLayout = true
     }
 
     override func mouseDown(with event: NSEvent) {
@@ -261,16 +326,16 @@ final class StatusBarView: NSView {
 
     func frame(for control: StatusBarControl) -> NSRect? {
         switch control {
-        case .cursorPosition: return lineColLabel.frame
-        case .characterCode: return characterCodeLabel.stringValue.isEmpty ? nil : characterCodeLabel.frame
-        case .inputMode: return inputModeLabel.frame
-        case .fontSize: return fontSizeLabel.frame
-        case .largeFileMode:
-            return largeFileModeLabel.isHidden ? nil : largeFileModeLabel.frame
-        case .encoding: return encLabel.frame
-        case .byteOrderMark: return bomLabel.frame
-        case .lineEnding: return lineEndingLabel.frame
-        case .languageProfile: return langLabel.frame
+        case .cursorPosition: return visibleFrame(lineColLabel)
+        case .characterCode:
+            return characterCodeLabel.stringValue.isEmpty ? nil : visibleFrame(characterCodeLabel)
+        case .inputMode: return visibleFrame(inputModeLabel)
+        case .fontSize: return visibleFrame(fontSizeLabel)
+        case .largeFileMode: return visibleFrame(largeFileModeLabel)
+        case .encoding: return visibleFrame(encLabel)
+        case .byteOrderMark: return visibleFrame(bomLabel)
+        case .lineEnding: return visibleFrame(lineEndingLabel)
+        case .languageProfile: return visibleFrame(langLabel)
         }
     }
 
@@ -283,5 +348,35 @@ final class StatusBarView: NSView {
 
     private func control(at point: NSPoint) -> StatusBarControl? {
         StatusBarControl.allCases.first { frame(for: $0)?.contains(point) == true }
+    }
+
+    private var leftFields: [(StatusBarField, NSTextField, CGFloat)] {[
+        (.cursorPosition, lineColLabel, 105), (.selection, selectionLabel, 130),
+        (.indentation, indentLabel, 85), (.inputMode, inputModeLabel, 34),
+        (.totals, totalsLabel, 125), (.characterCode, characterCodeLabel, 70),
+        (.fontSize, fontSizeLabel, 45),
+    ]}
+
+    private var rightFields: [(StatusBarField, NSTextField)] {[
+        (.readOnly, readOnlyLabel), (.largeFileMode, largeFileModeLabel),
+        (.lineEnding, lineEndingLabel), (.byteOrderMark, bomLabel),
+        (.encoding, encLabel), (.languageProfile, langLabel),
+    ]}
+
+    private func applyConfiguredVisibility() {
+        for (field, label, _) in leftFields { label.isHidden = !configuredFields.contains(field) }
+        for (field, label) in rightFields {
+            let stateAllowsVisibility = field == .readOnly ? isReadOnly
+                : field == .largeFileMode ? largeFileMode != .normal : true
+            label.isHidden = !configuredFields.contains(field) || !stateAllowsVisibility
+        }
+    }
+
+    private func persistConfiguredFields() {
+        UserDefaults.standard.set(configuredFields.map(\.rawValue).sorted(), forKey: Self.fieldsDefaultsKey)
+    }
+
+    private func visibleFrame(_ label: NSTextField) -> NSRect? {
+        label.isHidden ? nil : label.frame
     }
 }

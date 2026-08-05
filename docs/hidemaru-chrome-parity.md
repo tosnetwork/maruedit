@@ -67,7 +67,7 @@ that functional parity is not complete.
 | Vertical/horizontal and column count | Display/click | Missing; vertical mode is not production-ready | Missing |
 | Macro recording | Conditional state/click | Missing | Missing |
 | Large-file mode | No direct equivalent | MaruEdit-specific safety field | Native addition |
-| Configurable fields/clickability | Supported | Fixed layout | Missing |
+| Configurable fields/clickability | Supported | Right-click field selection; interactive fields remain clickable | Present |
 | Merge with function-key strip | Supported | Separate rows | Missing |
 
 ## Acceptance gates

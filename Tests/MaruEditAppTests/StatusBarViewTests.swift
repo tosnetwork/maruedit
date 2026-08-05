@@ -110,6 +110,29 @@ final class StatusBarViewTests: XCTestCase {
         XCTAssertNil(status.displayedLargeFileModeText)
         XCTAssertNil(status.frame(for: .largeFileMode))
     }
+
+    func testFieldsAreConfigurableAndCursorPositionIsAlwaysRetained() async {
+        let status = StatusBarView(frame: NSRect(x: 0, y: 0, width: 1100, height: 24))
+        status.setConfiguredFieldsForTesting([.encoding, .fontSize])
+        status.layoutSubtreeIfNeeded()
+        XCTAssertEqual(status.configuredFieldIDs, ["cursorPosition", "encoding", "fontSize"])
+        XCTAssertNotNil(status.frame(for: .cursorPosition))
+        XCTAssertNotNil(status.frame(for: .encoding))
+        XCTAssertNotNil(status.frame(for: .fontSize))
+        XCTAssertNil(status.frame(for: .lineEnding))
+        XCTAssertNil(status.frame(for: .languageProfile))
+    }
+
+    func testNarrowStatusBarHidesLowerPriorityFieldsWithoutOverlap() async {
+        let status = StatusBarView(frame: NSRect(x: 0, y: 0, width: 420, height: 24))
+        status.layoutSubtreeIfNeeded()
+        let visible = StatusBarControl.allCases.compactMap { status.frame(for: $0) }
+        for left in visible.indices {
+            for right in visible.indices where left < right {
+                XCTAssertFalse(visible[left].intersects(visible[right]))
+            }
+        }
+    }
 }
 
 
