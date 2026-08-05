@@ -65,11 +65,11 @@ that would weaken MaruEdit's security model.
 
 ## MC8 — Macro compatibility
 
-- [ ] Build a legally redistributable macro behavior corpus.
-- [ ] Variables, expressions, branching, loops, functions and subroutines.
-- [ ] Portable editor/search/window/outline statements.
-- [ ] Explicit diagnostics for unsafe or Windows-only statements.
-- [ ] Compatibility report generated from executable tests.
+- [x] Build a legally redistributable macro behavior corpus.
+- [x] Variables, expressions, branching, loops, functions and subroutines.
+- [x] Portable editor/search/window/outline statements.
+- [x] Explicit diagnostics for unsafe or Windows-only statements.
+- [x] Compatibility report generated from executable tests.
 
 ## MC9 — Specialist workflows
 

@@ -32,6 +32,10 @@ semantic version tags.
   templates, ordered encoding candidates, read-only load policy, save transforms,
   and bounded fail-closed backups; added New from Template to the File menu.
 - Added Basic/Advanced Settings filtering and guarded per-section import/export.
+- Expanded the opt-in clean-room Hidemaru macro translator with typed variables,
+  guarded expressions, branches, cancellable loops, functions/subroutines, and
+  portable Command Registry statements. Unsafe and Windows-only operations now
+  receive distinct diagnostics, backed by a CC0 executable corpus and report.
 - Added a Foundation-only incremental document-outline model with built-in
   symbol rules for source, markup, scripting, configuration, and SQL languages,
   plus bounded user-defined regex rules in versioned FileType Profiles. The

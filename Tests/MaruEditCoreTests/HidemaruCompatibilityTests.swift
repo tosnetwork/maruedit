@@ -30,8 +30,40 @@ final class HidemaruCompatibilityTests: XCTestCase {
 
     func testUnsupportedSyntaxFailsExplicitly() {
         XCTAssertThrowsError(try HidemaruCompatibility.translate("run \"tool\";")) {
-            XCTAssertEqual($0 as? HidemaruCompatibilityError, .unsupportedCommand(line: 1, command: "run"))
+            XCTAssertEqual($0 as? HidemaruCompatibilityError, .unsafeCommand(line: 1, command: "run"))
         }
+        XCTAssertThrowsError(try HidemaruCompatibility.translate("registry;")) {
+            XCTAssertEqual($0 as? HidemaruCompatibilityError, .windowsOnlyCommand(line: 1, command: "registry"))
+        }
+        XCTAssertThrowsError(try HidemaruCompatibility.translate("#x = globalThis.secret;")) {
+            guard case .invalidExpression = $0 as? HidemaruCompatibilityError else { return XCTFail("wrong diagnostic: \($0)") }
+        }
+    }
+
+    func testVariablesExpressionsBranchesLoopsFunctionsAndSubroutines() throws {
+        try assertRun(
+            #"#i=0; $word=""; while(#i<3){$word=$word+"x"; #i=#i+1;} if($word=="xxx"){gofileend; insert "ok";} function append {gofileend; insert "!";} call append;"#,
+            initial: "body", selection: NSRange(location: 0, length: 0),
+            text: "bodyok!", selectionAfter: NSRange(location: 7, length: 0))
+    }
+
+    func testPortableStatementsRouteThroughStableCommands() throws {
+        var commands: [String] = []
+        let text = UnsafeMutablePointer<String>.allocate(capacity: 1); text.initialize(to: "")
+        let selections = UnsafeMutablePointer<[NSRange]>.allocate(capacity: 1); selections.initialize(to: [])
+        defer { text.deinitialize(count: 1); text.deallocate(); selections.deinitialize(count: 1); selections.deallocate() }
+        var value = host(text: text, selections: selections, message: { _ in }, begin: {}, end: {})
+        value.runCommand = { commands.append($0); return true }
+        _ = MacroEngine().execute(try HidemaruCompatibility.translate(
+            "findnext; findprevious; showoutline; nextwindow;"), host: value)
+        XCTAssertEqual(commands, ["search.findNext", "search.findPrevious", "view.toggleSidebar", "window.next"])
+    }
+
+    func testRedistributableCorpusGeneratesPassingExecutableReport() {
+        XCTAssertEqual(HidemaruCompatibilityCorpus.license, "CC0-1.0")
+        let report = HidemaruCompatibilityCorpus.markdownReport()
+        XCTAssertFalse(report.contains("FAIL"))
+        for item in HidemaruCompatibilityCorpus.cases { XCTAssertTrue(report.contains(item.id)) }
     }
 
     func testFeatureFlagAndCatalogKeepNativeMacrosUnchanged() throws {

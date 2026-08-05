@@ -4,7 +4,11 @@ This feature is experimental, incomplete, and disabled by default. It is a clean
 
 Enable it for one launch with `MARUEDIT_ENABLE_HIDEMARU_COMPATIBILITY=1`, or set the `ExperimentalHidemaruMacroCompatibility` user default to `true`, then reload macros. UTF-8 `.mac` files in the normal MaruEdit Macros directory appear with “(Experimental)” in their menu title and a separate `macro.compat.*` command ID. When disabled, `.mac` files are ignored.
 
-The parser accepts case-insensitive command names, semicolon-separated statements, `//` comments, and quoted strings with `\\`, `\"`, `\n`, and `\t`. Unsupported commands fail the complete macro with a line-numbered diagnostic. They are never guessed, partially executed, or forwarded to another interpreter.
+The parser accepts case-insensitive commands, semicolon-separated statements,
+comments, quoted strings, numeric `#variables`, string `$variables`, guarded
+expressions, brace-delimited `if`/`else` and `while`, named zero-argument
+functions, `call`, `return`, `break`, and `continue`. Loops inject cooperative
+cancellation checks. Unsupported input fails with a line-numbered diagnostic.
 
 ## Compatibility matrix
 
@@ -18,8 +22,15 @@ The parser accepts case-insensitive command names, semicolon-separated statement
 | `toupper;` | Compatible for documented cases | Uppercase each selected value independently and keep it selected. |
 | `tolower;` | Compatible for documented cases | Lowercase each selected value independently and keep it selected. |
 | `message "text";` | Compatible for documented cases | Display a non-file, non-process UI message. |
-| Variables, labels, flow control, functions | Unsupported | Rejected explicitly. |
+| Variables, expressions, `if`/`else`, `while` | Compatible for documented cases | Sandboxed values and cooperatively cancellable control flow. |
+| `function name { ... }`, `call name`, `return` | Compatible for documented cases | Named zero-argument subroutines. |
+| `findnext`, `findprevious`, `showoutline`, `nextwindow` | Native equivalent | Routed through stable Command Registry IDs. |
 | File, registry, process, shell, DLL, and network operations | Unsupported | Rejected explicitly; no capability is exposed. |
 | Every command not listed above | Unsupported | Rejected explicitly. |
 
 All document changes produced by one translated macro are committed through the existing frozen `maru` API inside one Undo group. The translator receives only `currentDocument` permission. It cannot read arbitrary files, execute a process, access the clipboard, or expand the native JavaScript API. Native `.js` macro loading and execution are byte-for-byte unchanged whether the compatibility flag is on or off.
+
+The executable clean-room corpus in `HidemaruCompatibilityCorpus.swift` is
+dedicated to CC0-1.0 and contains no copied vendor material. Tests execute its
+language, editing, search, window/outline, and diagnostic cases and generate
+`generated-macro-compatibility-report.md`; any FAIL blocks completion.

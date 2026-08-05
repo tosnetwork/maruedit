@@ -4,11 +4,17 @@ public enum HidemaruCompatibilityError: LocalizedError, Equatable {
     case unexpectedToken(line: Int, text: String)
     case missingArgument(line: Int, command: String)
     case unsupportedCommand(line: Int, command: String)
+    case unsafeCommand(line: Int, command: String)
+    case windowsOnlyCommand(line: Int, command: String)
+    case invalidExpression(line: Int, text: String)
     public var errorDescription: String? {
         switch self {
         case .unexpectedToken(let line, let text): "Line \(line): unexpected token \(text)."
         case .missingArgument(let line, let command): "Line \(line): \(command) requires a string."
         case .unsupportedCommand(let line, let command): "Line \(line): unsupported command \(command)."
+        case .unsafeCommand(let line, let command): "Line \(line): unsafe command \(command) is intentionally unavailable."
+        case .windowsOnlyCommand(let line, let command): "Line \(line): Windows-only command \(command) has no macOS equivalent."
+        case .invalidExpression(let line, let text): "Line \(line): invalid or unsafe expression \(text)."
         }
     }
 }
@@ -23,12 +29,12 @@ public enum HidemaruCompatibility {
     private enum Command: Equatable {
         case selectAll, fileTop, fileEnd, delete, upper, lower
         case insert(String), message(String)
+        case runCommand(String)
     }
 
     /// Clean-room parser for MaruEdit's documented semicolon-delimited subset.
     public static func translate(_ source: String) throws -> String {
-        let commands = try parse(source)
-        let encoded = commands.map(javaScript).joined(separator: "\n")
+        let encoded = try translateStatements(source).joined(separator: "\n")
         return #"""
         (() => {
           let text = maru.document.getText();
@@ -53,6 +59,142 @@ public enum HidemaruCompatibility {
           });
         })();
         """#
+    }
+
+    private struct Token { let line: Int; let text: String }
+
+    private static func translateStatements(_ source: String) throws -> [String] {
+        var output: [String] = []
+        var pendingWhileBody = false
+        for token in tokenize(source) {
+            let statement = token.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !statement.isEmpty else { continue }
+            if statement == "{" {
+                output.append(pendingWhileBody ? "{ maru.checkCancellation();" : "{")
+                pendingWhileBody = false
+                continue
+            }
+            if statement == "}" { output.append(statement); continue }
+            if statement.lowercased() == "else" { output.append("else"); continue }
+            let lower = statement.lowercased()
+            if lower.hasPrefix("if ") || lower.hasPrefix("if(") {
+                let raw = statement.dropFirst(2).trimmingCharacters(in: .whitespaces)
+                output.append("if (\(try expression(String(raw), line: token.line)))")
+                continue
+            }
+            if lower.hasPrefix("while ") || lower.hasPrefix("while(") {
+                let raw = statement.dropFirst(5).trimmingCharacters(in: .whitespaces)
+                output.append("while (\(try expression(String(raw), line: token.line)))")
+                pendingWhileBody = true
+                continue
+            }
+            if lower.hasPrefix("function ") {
+                let name = statement.dropFirst(9).trimmingCharacters(in: .whitespaces)
+                guard isIdentifier(name) else { throw HidemaruCompatibilityError.invalidExpression(line: token.line, text: statement) }
+                output.append("function compat_\(name)()")
+                continue
+            }
+            if lower.hasPrefix("call ") {
+                let name = statement.dropFirst(5).trimmingCharacters(in: .whitespaces)
+                guard isIdentifier(name) else { throw HidemaruCompatibilityError.invalidExpression(line: token.line, text: statement) }
+                output.append("compat_\(name)();")
+                continue
+            }
+            if lower == "return" { output.append("return;"); continue }
+            if lower == "break" || lower == "continue" { output.append(lower + ";"); continue }
+            if statement.first == "#" || statement.first == "$" {
+                guard let equals = statement.firstIndex(of: "=") else {
+                    throw HidemaruCompatibilityError.invalidExpression(line: token.line, text: statement)
+                }
+                let name = statement[..<equals].trimmingCharacters(in: .whitespaces)
+                let value = statement[statement.index(after: equals)...].trimmingCharacters(in: .whitespaces)
+                guard name.count > 1, isIdentifier(name.dropFirst()) else {
+                    throw HidemaruCompatibilityError.invalidExpression(line: token.line, text: statement)
+                }
+                output.append("\(variable(String(name))) = \(try expression(value, line: token.line));")
+                continue
+            }
+            let command = try parse(statement, line: token.line)
+            output.append(javaScript(command))
+        }
+        let variableRegex = try NSRegularExpression(pattern: #"[#$][A-Za-z_][A-Za-z0-9_]*"#)
+        let variables = Set(tokenize(source).flatMap { token -> [String] in
+            let ns = token.text as NSString
+            return variableRegex.matches(in: token.text, range: NSRange(location: 0, length: ns.length))
+                .map { variable(ns.substring(with: $0.range)) }
+        })
+        return variables.sorted().map { "let \($0);" } + output
+    }
+
+    private static func tokenize(_ source: String) -> [Token] {
+        let source = source.split(separator: "\n", omittingEmptySubsequences: false)
+            .map { stripComment(String($0)) }.joined(separator: "\n")
+        var result: [Token] = [], buffer = "", line = 1, startLine = 1
+        var quoted = false, escaped = false, comment = false
+        func flush() { if !buffer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { result.append(Token(line: startLine, text: buffer)) }; buffer = "" }
+        for character in source {
+            if comment {
+                if character == "\n" { comment = false; line += 1; if buffer.isEmpty { startLine = line } }
+                continue
+            }
+            if escaped { buffer.append(character); escaped = false; continue }
+            if character == "\\", quoted { buffer.append(character); escaped = true; continue }
+            if character == "\"" { quoted.toggle(); buffer.append(character); continue }
+            if !quoted, character == ";" { flush(); startLine = line; continue }
+            if !quoted, character == "{" || character == "}" {
+                flush(); result.append(Token(line: line, text: String(character))); startLine = line; continue
+            }
+            if character == "\n" { line += 1 }
+            buffer.append(character)
+        }
+        flush(); return result
+    }
+
+    private static func expression(_ raw: String, line: Int) throws -> String {
+        var value = raw.trimmingCharacters(in: .whitespaces)
+        if value.hasPrefix("("), value.hasSuffix(")") { value = String(value.dropFirst().dropLast()) }
+        let forbidden = ["globalthis", "eval", "constructor", "prototype", "require", "import", "fetch", "process"]
+        guard !value.isEmpty, !forbidden.contains(where: { value.lowercased().contains($0) }),
+              value.unicodeScalars.allSatisfy({ scalar in
+                  CharacterSet.alphanumerics.union(.whitespaces).union(CharacterSet(charactersIn: "_#$\"'()+-*/%<>=!&|.,[]")).contains(scalar)
+              }) else { throw HidemaruCompatibilityError.invalidExpression(line: line, text: raw) }
+        value = value.replacingOccurrences(of: #"#([A-Za-z_][A-Za-z0-9_]*)"#, with: "compat_num_$1", options: .regularExpression)
+        value = value.replacingOccurrences(of: #"\$([A-Za-z_][A-Za-z0-9_]*)"#, with: "compat_str_$1", options: .regularExpression)
+        return value
+    }
+
+    private static func variable(_ name: String) -> String {
+        "compat_" + (name.first == "#" ? "num" : "str") + "_" + name.dropFirst()
+    }
+
+    private static func isIdentifier<S: StringProtocol>(_ value: S) -> Bool {
+        let characters = Array(value)
+        guard let first = characters.first, first == "_" || first.isASCII && first.isLetter else { return false }
+        return characters.dropFirst().allSatisfy { $0 == "_" || $0.isASCII && ($0.isLetter || $0.isNumber) }
+    }
+
+    private static func parse(_ statement: String, line: Int) throws -> Command {
+        let end = statement.firstIndex(where: \.isWhitespace) ?? statement.endIndex
+        let name = statement[..<end].lowercased()
+        let rest = statement[end...].trimmingCharacters(in: .whitespaces)
+        switch name {
+        case "selectall": return .selectAll
+        case "gofiletop": return .fileTop
+        case "gofileend": return .fileEnd
+        case "delete": return .delete
+        case "toupper": return .upper
+        case "tolower": return .lower
+        case "insert", "message":
+            guard let value = parseString(rest) else { throw HidemaruCompatibilityError.missingArgument(line: line, command: name) }
+            return name == "insert" ? .insert(value) : .message(value)
+        case "findnext": return .runCommand("search.findNext")
+        case "findprevious": return .runCommand("search.findPrevious")
+        case "showoutline": return .runCommand("view.toggleSidebar")
+        case "nextwindow": return .runCommand("window.next")
+        case "run", "exec", "shell", "dll", "network": throw HidemaruCompatibilityError.unsafeCommand(line: line, command: name)
+        case "registry", "dde", "sendmessage", "trayicon": throw HidemaruCompatibilityError.windowsOnlyCommand(line: line, command: name)
+        default: throw HidemaruCompatibilityError.unsupportedCommand(line: line, command: name)
+        }
     }
 
     private static func parse(_ source: String) throws -> [Command] {
@@ -135,6 +277,7 @@ public enum HidemaruCompatibility {
         case .lower: "replace(value => maru.text.lowercase(value), true);"
         case .insert(let value): "replace(() => \(jsString(value)));"
         case .message(let value): "maru.ui.message(\(jsString(value)));"
+        case .runCommand(let id): "maru.commands.run(\(jsString(id)));"
         }
     }
     private static func jsString(_ value: String) -> String {
