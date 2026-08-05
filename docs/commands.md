@@ -50,7 +50,11 @@ significantly, replace this with a small script that generates it from
 | `window.nextTab` | Next Tab | Window | ⌃Tab | `AppCoordinator.selectNextTab()` |
 | `window.previousTab` | Previous Tab | Window | ⌃⇧Tab | `AppCoordinator.selectPreviousTab()` |
 | `insert.dateTime` | Date and Time | Insert | — | `AppCoordinator.insertDateTime()` |
+| `insert.newline` | Newline | Insert | — | Inserts a line break through the multi-selection-aware editor path |
+| `insert.tab` | Tab | Insert | — | Inserts a tab through the multi-selection-aware editor path |
 | `insert.pageBreak` | Page Break | Insert | — | `AppCoordinator.insertPageBreak()` |
+| `insert.blankLine` | Insert Blank Line Above | Insert | — | Inserts an indentation-preserving blank line above the current logical line |
+| `insert.currentFileName` | Current File Name | Insert | — | Inserts the current document's last path component |
 | `insert.controlCode` | Control Code… | Insert | — | `AppCoordinator.insertControlCode()` |
 | `app.help` | MaruEdit Help | Help | — | `AppCoordinator.showHelp()` |
 | `macro.startRecording` | Start Recording | Macro | — | Starts a fresh CommandRegistry recording |

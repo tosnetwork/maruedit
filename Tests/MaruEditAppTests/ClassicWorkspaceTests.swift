@@ -278,10 +278,14 @@ final class ClassicWorkspaceTests: XCTestCase {
 
     func testInsertMenuCommandsMutateTextThroughEditor() async {
         let controller = MainWindowController()
+        controller.insertTab()
+        controller.insertNewline()
         controller.insertPageBreak()
-        XCTAssertEqual(controller.editorTextForTesting, "\u{000C}")
-        controller.insertDateTime(now: Date(timeIntervalSince1970: 0))
-        XCTAssertGreaterThan(controller.editorTextForTesting.count, 1)
+        XCTAssertEqual(controller.editorTextForTesting, "\t\n\t\u{000C}")
+        controller.macroEditor.textView.string = "  alpha\n"
+        controller.macroEditor.textView.setSelectedRange(NSRange(location: 4, length: 0))
+        controller.insertBlankLine()
+        XCTAssertEqual(controller.editorTextForTesting, "  \n  alpha\n")
     }
 
     func testControlCodeInsertionAcceptsC0AndDELOnly() async {
@@ -291,6 +295,17 @@ final class ClassicWorkspaceTests: XCTestCase {
         XCTAssertTrue(controller.insertControlCode(0x1B))
         XCTAssertEqual(controller.macroEditor.textView.string, "A\u{001B}B")
         XCTAssertFalse(controller.insertControlCode(0x20))
+    }
+
+    func testCurrentFileNameInsertionUsesLastPathComponent() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MaruEdit-insert-name-\(UUID().uuidString).txt")
+        try "".write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let controller = MainWindowController()
+        controller.openFile(url)
+        controller.insertCurrentFileName()
+        XCTAssertEqual(controller.currentDocumentTextForTesting, url.lastPathComponent)
     }
 
     func testViewModeImmediatelyLocksAndUnlocksTheEditor() async {

@@ -261,7 +261,11 @@ final class AppCoordinator {
     func openCursorTargetInMaruEdit() { ensureWindowControllerReady().openCursorTargetInMaruEdit() }
     func closeCurrentTab()            { ensureWindowControllerReady().closeCurrentTab() }
     func insertDateTime()             { ensureWindowControllerReady().insertDateTime() }
+    func insertNewline()              { ensureWindowControllerReady().insertNewline() }
+    func insertTab()                  { ensureWindowControllerReady().insertTab() }
     func insertPageBreak()            { ensureWindowControllerReady().insertPageBreak() }
+    func insertBlankLine()            { ensureWindowControllerReady().insertBlankLine() }
+    func insertCurrentFileName()      { ensureWindowControllerReady().insertCurrentFileName() }
     func insertFileContents()         { ensureWindowControllerReady().insertFileContents() }
     func insertControlCode()          { ensureWindowControllerReady().insertControlCode() }
     func selectNextTab()              { ensureWindowControllerReady().selectRelativeTab(1) }

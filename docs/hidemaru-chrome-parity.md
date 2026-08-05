@@ -18,7 +18,7 @@ passing MaruEdit regression tests from exhaustive Hidemaru feature parity.
 
 | Area | ✅ Complete | 🟡 Partial/native | ❌ Incomplete |
 |---|---:|---:|---:|
-| Menu rows | 4 | 9 | 0 |
+| Menu rows | 5 | 8 | 0 |
 | Toolbar/function-key rows | 9 | 3 | 0 |
 | Status-bar rows | 16 | 0 | 0 |
 | Acceptance gates | 1 | 2 | 2 |
@@ -36,7 +36,7 @@ native menu before the Hidemaru-compatible business menus.
 | Edit | Undo/clipboard, repeat-last-edit, append cut/copy, line-boundary and word deletion, histories, quoted/BOX/history paste, deletion restore, inverted/reserved/multiple selections, Caps Lock correction, and native IME reconversion | ✅ Complete | Every confirmed compatible edit gap is implemented through stable commands and multi-selection-aware undo transactions. Physical Caps Lock state remains macOS-owned; text correction and IME reconversion use native AppKit paths. |
 | Convert | Case, generic and selective half/full-width, hiragana/katakana, Tab/space conversions, and ordered conversion pipelines | ✅ Complete | “Conversion Pipeline…” provides built-in and persistent named presets, ordered add/remove/reorder controls, parameterized literal/regex/whitespace modules, one-step multi-selection Undo, and a tested registration API for external conversion modules. |
 | View | Wrapping, invisibles, ruler marks, profile tab stops, editable vertical writing, continuous column flow, splits, chrome visibility, and output-pane focus | 🟡 Partial | Complete the official view/frame inventory and native mappings; browser/file-manager frame variants and all display configuration have not been audited one by one. |
-| Insert | Date/time, page break, C0/DEL control codes, and encoding-aware file-content insertion | 🟡 Partial | The implemented subset is tested, but the official insertion-command inventory has not been exhaustively mapped. |
+| Insert | Date/time, newline, tab, page break, duplicate line, indentation-preserving blank line, C0/DEL control codes, deletion restore, current filename, and encoding-aware file-content insertion | ✅ Complete | Every compatible command in the official 9.57 insertion-command inventory is placed in the Insert menu and covered by executable tests; MaruEdit additionally exposes templates and file-content insertion. |
 | Search | Search/replace/grep, case/word/regex/fuzzy flags, return to search start, edit marks, all-match operations, and persistent ranges | 🟡 Partial | Map and implement the remaining fine-grained Hidemaru search, marker, candidate, and result commands. |
 | Highlight | Red/yellow/blue markers, navigation, clearing, and sorted highlight list with preview/jump/remove | 🟡 Partial | Add the remaining temporary color-marker operations, including individual removal and complete select/navigation variants. |
 | Bookmark | Toggle, previous/next, clear, and a document list with jump/remove | ✅ Complete | No confirmed compatible gap in the scoped bookmark row; retain official-command regression coverage. |
@@ -144,6 +144,7 @@ inventory is mapped.
 ## Primary sources
 
 - Hidemaru 9.57 menu pages (`225_amnl*.html`), official help
+- Hidemaru 9.57 insertion-command inventory (`170_CmdInsert.html`), official help
 - Toolbar detail and toolbar design, official help
 - Status bar detail (`070_Env_Win_Statusbar.html`), official help
 - Command value list and tab/window management, official help

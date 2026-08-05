@@ -182,7 +182,11 @@ extension CommandID {
     static let convertFullWidthKatakana = CommandID("convert.fullWidthKatakana")
     static let convertPipelineDialog = CommandID("convert.pipelineDialog")
     static let insertDateTime = CommandID("insert.dateTime")
+    static let insertNewline = CommandID("insert.newline")
+    static let insertTab = CommandID("insert.tab")
     static let insertPageBreak = CommandID("insert.pageBreak")
+    static let insertBlankLine = CommandID("insert.blankLine")
+    static let insertCurrentFileName = CommandID("insert.currentFileName")
     static let insertFileContents = CommandID("insert.fileContents")
     static let insertControlCode = CommandID("insert.controlCode")
     static let viewToggleTableMode = CommandID("view.toggleTableMode")
@@ -497,9 +501,13 @@ enum AppCommands {
         registry.register(CommandDefinition(id: .insertDateTime, title: "Date and Time") {
             $0.coordinator.insertDateTime()
         })
+        registry.register(CommandDefinition(id: .insertNewline, title: "Newline") { $0.coordinator.insertNewline() })
+        registry.register(CommandDefinition(id: .insertTab, title: "Tab") { $0.coordinator.insertTab() })
         registry.register(CommandDefinition(id: .insertPageBreak, title: "Page Break") {
             $0.coordinator.insertPageBreak()
         })
+        registry.register(CommandDefinition(id: .insertBlankLine, title: "Insert Blank Line Above") { $0.coordinator.insertBlankLine() })
+        registry.register(CommandDefinition(id: .insertCurrentFileName, title: "Current File Name") { $0.coordinator.insertCurrentFileName() })
         registry.register(CommandDefinition(id: .insertFileContents, title: "File Contents…") {
             $0.coordinator.insertFileContents()
         })

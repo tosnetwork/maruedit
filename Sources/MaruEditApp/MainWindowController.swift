@@ -1239,8 +1239,33 @@ final class MainWindowController: NSWindowController,
             formatter.string(from: now), replacementRange: editorVC.textView.selectedRange())
     }
 
+    func insertNewline() {
+        editorVC.textView.insertText("\n", replacementRange: editorVC.textView.selectedRange())
+    }
+
+    func insertTab() {
+        editorVC.textView.insertText("\t", replacementRange: editorVC.textView.selectedRange())
+    }
+
     func insertPageBreak() {
         editorVC.textView.insertText("\u{000C}", replacementRange: editorVC.textView.selectedRange())
+    }
+
+    func insertBlankLine() {
+        let text = editorVC.textView.string as NSString
+        let selection = editorVC.selectionSet.primaryRange
+        let location = min(selection.location, text.length)
+        let line = text.lineRange(for: NSRange(location: location, length: 0))
+        let contents = text.substring(with: line)
+        let indentation = contents.prefix { $0 == " " || $0 == "\t" }
+        editorVC.batchReplace([NSRange(location: line.location, length: 0)], with: String(indentation) + "\n")
+    }
+
+    func insertCurrentFileName() {
+        guard let name = curDoc?.fileURL?.lastPathComponent else {
+            showStatusMessage("The current document has no file name"); return
+        }
+        editorVC.textView.insertText(name, replacementRange: editorVC.textView.selectedRange())
     }
 
     func insertControlCode() {
