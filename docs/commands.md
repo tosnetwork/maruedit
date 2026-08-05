@@ -130,6 +130,7 @@ significantly, replace this with a small script that generates it from
 | `edit.selectParagraph` | Select Paragraph | Edit | — | Selects the paragraph at the primary caret |
 | `edit.copyQuoted` | Copy with Quote Prefix | Edit | — | Copies selected lines with `> ` prefixes |
 | `edit.pasteQuoted` | Paste Removing Quote Prefix | Edit | — | Removes `>` quote prefixes while pasting |
+| `edit.clipboardHistory` | Clipboard History… | Edit | — | Selects, pastes or clears recently observed text clipboard values |
 | `navigate.toggleBookmark` | Toggle Bookmark | Edit | — | `AppCoordinator.toggleBookmark()` |
 | `navigate.nextBookmark` | Next Bookmark | Edit | — | `AppCoordinator.nextBookmark()` |
 | `navigate.previousBookmark` | Previous Bookmark | Edit | — | `AppCoordinator.previousBookmark()` |

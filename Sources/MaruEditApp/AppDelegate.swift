@@ -35,6 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var recentMenu: NSMenu!
     private var reopenWithEncodingMenu: NSMenu!
     private var menuCustomizationWindowController: MenuCustomizationWindowController?
+    private var clipboardTimer: Timer?
     private lazy var menuCustomizationStore: MenuCustomizationStore = {
         if isUITestMode {
             let suite = "network.tos.maruedit.MenuUITest.\(ProcessInfo.processInfo.processIdentifier)"
@@ -72,6 +73,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         macroManager.reload()
         externalCommandManager.reload()
+        coordinator.pollClipboard()
+        clipboardTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.coordinator.pollClipboard() }
+        }
         buildMenu()
         coordinator.ensureWindowControllerReady(restoreSession: !isUITestMode)
         if isUITestMode,
@@ -95,6 +100,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
     func applicationWillTerminate(_ notification: Notification) {
+        clipboardTimer?.invalidate()
         if !isUITestMode { coordinator.saveActiveSession() }
     }
 
@@ -188,6 +194,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
         editMenu.addItem(commandItem(.editCopyQuoted))
         editMenu.addItem(commandItem(.editPasteQuoted))
+        editMenu.addItem(commandItem(.editClipboardHistory))
         editMenu.addItem(.separator())
         editMenu.addItem(commandItem(.editSelectWord))
         editMenu.addItem(commandItem(.editSelectLine))

@@ -20,6 +20,7 @@ final class AppCoordinator {
     private(set) var isRecordingCommands = false
     private(set) var recordedCommands: [CommandID] = []
     private var isPlayingRecording = false
+    let clipboardHistory = ClipboardHistoryStore()
     let commandRegistry = CommandRegistry()
     var onShowMenuCustomization: (() -> Void)?
     var onShowMacroMenu: (() -> Void)?
@@ -218,6 +219,29 @@ final class AppCoordinator {
     func selectCurrentParagraph()       { ensureWindowControllerReady().macroEditor.selectCurrentParagraph() }
     func copyWithQuotePrefix()          { _ = ensureWindowControllerReady().macroEditor.copyWithQuotePrefix() }
     func pasteRemovingQuotePrefix()     { _ = ensureWindowControllerReady().macroEditor.pasteRemovingQuotePrefix() }
+    func pollClipboard() { clipboardHistory.poll() }
+    func showClipboardHistory() {
+        clipboardHistory.poll()
+        let entries = clipboardHistory.entries
+        guard !entries.isEmpty else { showStatusMessage("Clipboard history is empty"); return }
+        let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 440, height: 26))
+        popup.addItems(withTitles: entries.map {
+            let oneLine = $0.replacingOccurrences(of: "\n", with: " ↩ ")
+            return String(oneLine.prefix(100))
+        })
+        let alert = NSAlert(); alert.messageText = "Clipboard History"
+        alert.informativeText = "Choose an earlier text value to paste at every active selection."
+        alert.accessoryView = popup
+        alert.addButton(withTitle: "Paste"); alert.addButton(withTitle: "Clear History")
+        alert.addButton(withTitle: "Cancel")
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn, entries.indices.contains(popup.indexOfSelectedItem) {
+            let editor = ensureWindowControllerReady().macroEditor
+            editor.batchReplace(editor.selectionSet.ranges, with: entries[popup.indexOfSelectedItem])
+        } else if response == .alertSecondButtonReturn {
+            clipboardHistory.clear()
+        }
+    }
     func performLineCommand(_ command: LineEditCommand) { ensureWindowControllerReady().performLineCommand(command) }
     func toggleBookmark()               { ensureWindowControllerReady().toggleBookmark() }
     func nextBookmark()                 { ensureWindowControllerReady().nextBookmark() }
