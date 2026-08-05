@@ -1,6 +1,7 @@
 import Foundation
 
 enum RecentItems {
+    private static let recordingSuspendedKey = "RecentItemsRecordingSuspended"
     private static let filesKey = "RecentFiles"
     private static let foldersKey = "RecentFolders"
     private static let workspacesKey = "RecentWorkspaces"
@@ -19,6 +20,10 @@ enum RecentItems {
 
     static var workspaces: [URL] {
         paths(for: workspacesKey).map { URL(fileURLWithPath: $0) }
+    }
+    static var isRecordingSuspended: Bool {
+        get { UserDefaults.standard.bool(forKey: recordingSuspendedKey) }
+        set { UserDefaults.standard.set(newValue, forKey: recordingSuspendedKey) }
     }
 
     // MARK: - Write
@@ -61,6 +66,7 @@ enum RecentItems {
     }
 
     private static func add(_ path: String, to key: String, max: Int) {
+        guard !isRecordingSuspended else { return }
         var list = UserDefaults.standard.stringArray(forKey: key) ?? []
         list.removeAll { $0 == path }
         list.insert(path, at: 0)

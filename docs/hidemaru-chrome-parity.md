@@ -18,7 +18,7 @@ passing MaruEdit regression tests from exhaustive Hidemaru feature parity.
 
 | Area | ✅ Complete | 🟡 Partial/native | ❌ Incomplete |
 |---|---:|---:|---:|
-| Menu rows | 8 | 5 | 0 |
+| Menu rows | 9 | 4 | 0 |
 | Toolbar/function-key rows | 9 | 3 | 0 |
 | Status-bar rows | 16 | 0 | 0 |
 | Acceptance gates | 1 | 2 | 2 |
@@ -32,7 +32,7 @@ native menu before the Hidemaru-compatible business menus.
 
 | Hidemaru menu | MaruEdit today | Status | Remaining gap |
 |---|---|---|---|
-| File | Reload, properties, rename, View Mode, append save/read, bounded partial open, editable hexadecimal binary mode, save/close variants, recent projects, and workspace history | 🟡 Partial | Build an official File-command inventory and verify every encoding, history, desktop/workspace, and platform-specific entry one by one. |
+| File | New/open/partial/binary, close-and-open, encoding reopen, reload, properties, rename, View Mode, edit-preserving overwrite prohibition, append save/read, print/page setup, complete save/close/discard variants, cursor-target opening, project folders, desktop/workspace save/open/history, and suspendable file/folder/workspace history | ✅ Complete | Every compatible official 9.57 File entry is mapped. Hidemaru Project and Desktop files map to native folder projects and `.maruedit-workspace` files; Quit/Close use macOS lifecycle conventions. FTP and Hidemarnet/Web Browse commands depend on Windows-only modules and intentionally defer URLs/remote files to the user's default browser or mounted filesystem. |
 | Edit | Undo/clipboard, repeat-last-edit, append cut/copy, line-boundary and word deletion, histories, quoted/BOX/history paste, deletion restore, inverted/reserved/multiple selections, Caps Lock correction, and native IME reconversion | ✅ Complete | Every confirmed compatible edit gap is implemented through stable commands and multi-selection-aware undo transactions. Physical Caps Lock state remains macOS-owned; text correction and IME reconversion use native AppKit paths. |
 | Convert | Case, generic and selective half/full-width, hiragana/katakana, Tab/space conversions, and ordered conversion pipelines | ✅ Complete | “Conversion Pipeline…” provides built-in and persistent named presets, ordered add/remove/reorder controls, parameterized literal/regex/whitespace modules, one-step multi-selection Undo, and a tested registration API for external conversion modules. |
 | View | Independent toolbar/function-key/status/heading/ruler/gutter visibility, wrapping, invisibles, ruler marks and profile tab stops, native automatic spelling, character code/count entry points, redraw, editable vertical writing, continuous column flow, splits, partial editing/folding, full screen, sidebar, outline, and output-pane focus | ✅ Complete | Every compatible official 9.57 View entry is mapped. File Manager Frame maps to the Files sidebar; Outline Analysis Frame maps to Outline; Output Frame maps to Output. Hidemaru's embedded IE/WebView browser frames and Web Browse mode are Windows-specific and intentionally have no in-editor macOS substitute; URLs use the user's default browser. Folding margin is integrated with the line-number gutter. |
@@ -47,7 +47,7 @@ native menu before the Hidemaru-compatible business menus.
 | Help | MaruEdit guide, macro guide, shortcut reference, configurable External Help 1–6, release check, support, and native About | ✅ Complete | All six external-help slots have persistent names/URL-or-file targets, dynamic enablement, a configuration window, and tested dispatch; About uses the native macOS panel. |
 
 The official pages contain roughly 297 command references, including repeated
-placements, dynamic entries, and Windows-only commands. MaruEdit registers 282
+placements, dynamic entries, and Windows-only commands. MaruEdit registers 284
 stable command IDs plus dynamic and native-responder entries, so the raw totals
 are not a parity measure. `ChromeParityAuditTests` only requires every existing
 stable ID to appear exactly once in the command reference; it is a documentation
@@ -108,7 +108,7 @@ consistency check, not proof that the external Hidemaru inventory is complete.
 Gate notes:
 
 - Gate 1 needs an external Hidemaru-command inventory. Auditing only MaruEdit's
-  existing 282 IDs cannot detect commands that MaruEdit never registered.
+  existing 284 IDs cannot detect commands that MaruEdit never registered.
 - Gate 2 is complete for the floating-toolbar decision but not for every Windows-
   specific menu/frame/window command.
 - Gate 3 covers persistence, layout operations, configurable F-key count, and

@@ -49,6 +49,7 @@ final class Document: @unchecked Sendable {
     /// concept doesn't apply until there's a real file to be locked.
     var isReadOnly: Bool = false
     var isViewMode: Bool = false
+    var isOverwriteProhibited: Bool = false
     var isBinaryMode: Bool = false
     var isVerticalLayout: Bool = false
     var isColumnLayout: Bool = false

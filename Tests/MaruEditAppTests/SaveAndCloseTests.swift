@@ -4,6 +4,28 @@ import XCTest
 
 @MainActor
 final class SaveAndCloseTests: XCTestCase {
+    override func tearDown() {
+        RecentItems.isRecordingSuspended = false
+        super.tearDown()
+    }
+
+    func testOverwriteProtectionKeepsEditingAvailableAndHistoryCanBeSuspended() {
+        let controller = MainWindowController()
+        controller.prepareUITestDocument(content: "editable", selections: [])
+        controller.toggleOverwriteProtection()
+        XCTAssertTrue(controller.macroEditor.document?.isOverwriteProhibited == true)
+        XCTAssertTrue(controller.macroEditor.textView.isEditable)
+
+        let prior = RecentItems.files
+        RecentItems.isRecordingSuspended = true
+        let missing = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MaruEdit-suspended-\(UUID().uuidString).txt")
+        try? "x".write(to: missing, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: missing) }
+        RecentItems.addFile(missing)
+        XCTAssertEqual(RecentItems.files, prior)
+    }
+
     func testSaveAndCloseWritesNamedDocumentBeforeClosingItsTab() throws {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("MaruEdit-save-close-\(UUID().uuidString).txt")

@@ -694,7 +694,7 @@ final class MainWindowController: NSWindowController,
         // Checked before the mixed-line-ending prompt: no point asking the
         // user to pick LF/CRLF/CR for a write that can't happen anyway
         // (ROADMAP.md M2-08, "never presented as normally overwriteable").
-        if doc.isEditingDisabled {
+        if doc.isEditingDisabled || doc.isOverwriteProhibited {
             presentReadOnlySaveBlocked(doc)
             return
         }
@@ -719,7 +719,9 @@ final class MainWindowController: NSWindowController,
         }
         tabBarDidSelectTab(at: index)
         guard document.fileURL == nil else {
-            if document.isEditingDisabled { presentReadOnlySaveBlocked(document); return }
+            if document.isEditingDisabled || document.isOverwriteProhibited {
+                presentReadOnlySaveBlocked(document); return
+            }
             guard resolveMixedLineEndingIfNeeded(for: document) else { return }
             performSave(document)
             guard !document.isModified else { return }
@@ -755,13 +757,28 @@ final class MainWindowController: NSWindowController,
     private func presentReadOnlySaveBlocked(_ doc: Document) {
         let a = NSAlert()
         a.alertStyle = .warning
-        a.messageText = "\(doc.displayName) Is Read-Only"
-        a.informativeText = "This file can't be overwritten because it's read-only on disk. Use Save As to save your changes to a new location."
+        a.messageText = "\(doc.displayName) Cannot Be Overwritten"
+        a.informativeText = doc.isOverwriteProhibited
+            ? "Overwrite protection is enabled for this document. Use Save As to save to a new location."
+            : "This file can't be overwritten because it's read-only on disk. Use Save As to save your changes to a new location."
         a.addButton(withTitle: "Save As…")
         a.addButton(withTitle: "Cancel")
         if a.runModal() == .alertFirstButtonReturn {
             saveDocumentAs()
         }
+    }
+
+    func toggleOverwriteProtection() {
+        guard let doc = curDoc else { return }
+        doc.isOverwriteProhibited.toggle()
+        refreshStatus()
+        showStatusMessage(doc.isOverwriteProhibited ? "Overwrite protection on" : "Overwrite protection off")
+    }
+
+    func toggleHistoryRecording() {
+        RecentItems.isRecordingSuspended.toggle()
+        showStatusMessage(RecentItems.isRecordingSuspended
+            ? "History recording suspended" : "History recording resumed")
     }
 
     func saveDocumentAs() {
@@ -2100,7 +2117,9 @@ final class MainWindowController: NSWindowController,
             statusBar.updateLayoutMode(
                 isVertical: editorVC.isVerticalLayout, isColumn: editorVC.isColumnLayout,
                 columnCount: editorVC.columnCountForTesting)
-            statusBar.updateAccessMode(isReadOnly: doc.isReadOnly, isViewMode: doc.isViewMode)
+            statusBar.updateAccessMode(
+                isReadOnly: doc.isReadOnly || doc.isOverwriteProhibited,
+                isViewMode: doc.isViewMode)
             statusBar.updateLargeFileMode(doc.largeFileMode)
             statusBar.updateDocumentMetrics(
                 text: doc.content, fontSize: editorVC.currentEditorFont.pointSize)

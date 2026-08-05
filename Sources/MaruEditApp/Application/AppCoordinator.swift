@@ -291,6 +291,8 @@ final class AppCoordinator {
     func printDocument()              { ensureWindowControllerReady().printDocument() }
     func reloadDocument()             { ensureWindowControllerReady().reloadDocument() }
     func toggleViewMode()             { ensureWindowControllerReady().toggleViewMode() }
+    func toggleOverwriteProtection()  { ensureWindowControllerReady().toggleOverwriteProtection() }
+    func toggleHistoryRecording()     { ensureWindowControllerReady().toggleHistoryRecording() }
     func showFileProperties()         { ensureWindowControllerReady().showFileProperties() }
     func appendRead()                 { ensureWindowControllerReady().appendRead() }
     func appendSave()                 { ensureWindowControllerReady().appendSave() }

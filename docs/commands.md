@@ -147,6 +147,8 @@ significantly, replace this with a small script that generates it from
 | `file.print` | Print… | File | — | `AppCoordinator.printDocument()` |
 | `file.reload` | Reload from Disk | File | — | `AppCoordinator.reloadDocument()` |
 | `file.toggleViewMode` | View Mode | File | — | `AppCoordinator.toggleViewMode()` |
+| `file.toggleOverwriteProtection` | Prohibit Overwrite | File | — | Allows editing but blocks same-path Save in favor of Save As |
+| `file.toggleHistoryRecording` | Suspend History Recording | File | — | Persistently pauses/resumes file, folder, and workspace history writes |
 | `file.properties` | File Properties… | File | — | `AppCoordinator.showFileProperties()` |
 | `file.appendRead` | Append Read… | File | — | `AppCoordinator.appendRead()` |
 | `file.appendSave` | Append Save… | File | — | `AppCoordinator.appendSave()` |

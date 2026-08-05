@@ -168,6 +168,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         fileMenu.addItem(reopenItem)
         fileMenu.addItem(commandItem(.fileReload))
         fileMenu.addItem(commandItem(.fileToggleViewMode))
+        fileMenu.addItem(commandItem(.fileToggleOverwriteProtection))
         fileMenu.addItem(commandItem(.fileProperties))
         fileMenu.addItem(commandItem(.fileRename))
 
@@ -194,6 +195,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         fileMenu.addItem(commandItem(.filePrint))
         fileMenu.addItem(.separator())
         fileMenu.addItem(commandItem(.fileClearRecoveryData))
+        fileMenu.addItem(commandItem(.fileToggleHistoryRecording))
         fileItem.submenu = fileMenu
         main.addItem(fileItem)
 
