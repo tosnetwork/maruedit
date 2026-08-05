@@ -297,10 +297,10 @@ final class MainWindowController: NSWindowController,
     }
 
     private func editorXForTabBar() -> CGFloat {
-        guard !sidebarManuallyCollapsed,
-              !sidebarVC.view.isHidden,
-              !splitView.isSubviewCollapsed(sidebarVC.view) else { return 0 }
-        return sidebarVC.view.frame.width + splitView.dividerThickness
+        // The sidebar can retain a stale frame and inconsistent hidden/collapsed
+        // flags while a restored NSSplitView is settling. The editor container's
+        // actual origin is the authoritative geometry for tabs and the ruler.
+        return max(0, editorSplitView.frame.minX)
     }
 
     private var lastCursorColumn = 1
