@@ -16,20 +16,20 @@ native menu before the Hidemaru-compatible business menus.
 |---|---|---|
 | File | File | Missing partial open, close-and-open, append save/read, save-and-exit variants, reload, properties/rename, project/desktop histories, read-only/view/binary modes |
 | Edit | Edit | Core clipboard/Undo and line editing exist; missing clipboard history, quote copy/paste, restore deletion, kana/CapsLock correction and several selection commands |
-| Convert | Mixed into Edit > Lines | Missing dedicated menu and half/full-width, hiragana/katakana, Tab/space conversions |
+| Convert | Dedicated Convert menu | Upper/lower/title-case are present; missing half/full-width, hiragana/katakana and Tab/space conversions |
 | View | View | Wrapping, invisibles, splits exist; missing ruler modes, tab-stop display, vertical/column layouts and several pane commands |
-| Insert | None | Missing date/time, page break, control-code and file insertion menu |
-| Search | Named Find | Search/replace/grep core exists; missing Hidemaru hierarchy, search flags, highlight/refine variants and edit-mark navigation |
-| Highlight | None | Color markers exist but need a dedicated compatible menu; highlight-list commands are missing |
-| Bookmark | Mixed into Edit | Bookmark core exists but needs compatible top-level placement and list/organize operations |
+| Insert | Dedicated Insert menu | Date/time and page break are present; missing control-code and true file-content insertion |
+| Search | Dedicated Search menu | Search/replace/grep core exists; missing Hidemaru hierarchy, search flags, highlight/refine variants and edit-mark navigation |
+| Highlight | Dedicated Highlight menu | Color-marker operations are present; highlight-list commands are missing |
+| Bookmark | Dedicated Bookmark menu | Toggle/navigation/clear are present; list and organize operations are missing |
 | Tools | Empty dynamic menu | External commands exist; project/tag/compare commands need compatible grouping and command-list access |
-| Window | Minimal macOS Window | Tab cycling exists; missing tab list, close-range entries in menu, pane focus and desktop/window arrangement equivalents |
+| Window | Native window controls plus tab cycling | Missing tab list, close-range entries in menu, pane focus and desktop/window arrangement equivalents |
 | Macro | Dynamic Macro menu | Recording/playback and registration management remain incomplete |
-| Other | None | Settings, file-type profiles, key assignment, menu editing and command list must be grouped here |
-| Help | Native About only | Missing MaruEdit help, macro help, shortcut/command reference and update/support entries |
+| Other | Dedicated Other menu | Settings, font panel and menu editing are grouped; file-type profiles, key assignment and command list need direct entries |
+| Help | Dedicated Help menu plus native About | Documentation entry is present; missing macro help, shortcut reference and update/support entries |
 
 Official menu pages contain roughly 297 command references across these
-menus. MaruEdit currently registers 93 stable command IDs. Duplicate menu
+menus. MaruEdit currently registers 96 stable command IDs. Duplicate menu
 placements mean this is not a one-to-one command count, but it establishes
 that functional parity is not complete.
 
