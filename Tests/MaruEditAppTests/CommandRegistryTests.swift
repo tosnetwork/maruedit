@@ -66,7 +66,7 @@ final class CommandRegistryTests: XCTestCase {
             .appSettings, .appMacroMenu, .appHelp,
             .fileNew, .fileNewFromTemplate, .fileOpen, .fileOpenFolder, .fileOpenPartial,
             .fileSave, .fileSaveAs,
-            .fileCloseTab, .windowNextTab, .windowPreviousTab,
+            .fileCloseAndOpen, .fileCloseTab, .windowNextTab, .windowPreviousTab,
             .fileClearRecoveryData, .filePageSetup, .filePrint,
             .fileReload, .fileToggleViewMode, .fileProperties,
             .fileAppendRead, .fileAppendSave,

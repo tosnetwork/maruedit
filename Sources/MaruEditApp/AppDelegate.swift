@@ -163,6 +163,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         fileMenu.addItem(commandItem(.fileAppendSave))
         fileMenu.addItem(commandItem(.fileAppendRead))
         fileMenu.addItem(.separator())
+        fileMenu.addItem(commandItem(.fileCloseAndOpen))
         fileMenu.addItem(commandItem(.fileCloseTab))
         fileMenu.addItem(.separator())
         fileMenu.addItem(commandItem(.filePageSetup))

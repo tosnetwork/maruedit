@@ -480,6 +480,13 @@ final class MainWindowController: NSWindowController,
         }
     }
 
+    /// Hidemaru's “Close and Open” keeps the editor window in place while
+    /// applying the normal unsaved-changes protection to the current tab.
+    func closeAndOpen() {
+        guard closeCurrentTab() else { return }
+        openDocument()
+    }
+
     func openPartialFile() {
         guard let window else { return }
         let panel = NSOpenPanel()

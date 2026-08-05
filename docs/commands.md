@@ -22,6 +22,7 @@ significantly, replace this with a small script that generates it from
 | `file.open` | Open... | File | ⌘O | `AppCoordinator.openDocument()` |
 | `file.openFolder` | Open Folder... | File | ⌘⇧O | `AppCoordinator.openFolderPanel()` |
 | `file.openPartial` | Open Partial File… | File | — | `AppCoordinator.openPartialFile()` |
+| `file.closeAndOpen` | Close and Open… | File | — | `AppCoordinator.closeAndOpen()` |
 | `file.save` | Save | File | ⌘S | `AppCoordinator.saveDocument()` |
 | `file.saveAs` | Save As... | File | ⌘⇧S | `AppCoordinator.saveDocumentAs()` |
 | `file.closeTab` | Close Tab | File | ⌘W | `AppCoordinator.closeCurrentTab()` |
