@@ -224,6 +224,16 @@ final class AppCoordinator {
             showStatusMessage("No deleted text to restore")
         }
     }
+    func correctCapsLockMistake() {
+        if !ensureWindowControllerReady().macroEditor.correctCapsLockMistake() {
+            showStatusMessage("No word or selection to correct")
+        }
+    }
+    func reconvertWithInputMethod() {
+        if !ensureWindowControllerReady().macroEditor.reconvertWithCurrentInputMethod() {
+            showStatusMessage("The active input method does not support reconversion")
+        }
+    }
     func pollClipboard() { clipboardHistory.poll() }
     func showClipboardHistory() {
         clipboardHistory.poll()

@@ -132,6 +132,8 @@ significantly, replace this with a small script that generates it from
 | `edit.pasteQuoted` | Paste Removing Quote Prefix | Edit | — | Removes `>` quote prefixes while pasting |
 | `edit.clipboardHistory` | Clipboard History… | Edit | — | Selects, pastes or clears recently observed text clipboard values |
 | `edit.restoreDeletion` | Restore Last Deleted Text | Edit | — | Reinserts the most recently deleted text at every active selection |
+| `edit.correctCapsLock` | Correct Caps Lock Mistake | Edit | — | Toggles the selected/current word's letter case; macOS owns the physical Caps Lock state |
+| `edit.reconvert` | Reconvert with Input Method | Edit | — | Routes the selection to the active macOS input method's native reconversion command |
 | `navigate.toggleBookmark` | Toggle Bookmark | Edit | — | `AppCoordinator.toggleBookmark()` |
 | `navigate.nextBookmark` | Next Bookmark | Edit | — | `AppCoordinator.nextBookmark()` |
 | `navigate.previousBookmark` | Previous Bookmark | Edit | — | `AppCoordinator.previousBookmark()` |

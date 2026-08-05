@@ -45,6 +45,30 @@ extension EditorViewController {
         return true
     }
 
+    @discardableResult
+    func correctCapsLockMistake() -> Bool {
+        if selectionSet.ranges.allSatisfy({ $0.length == 0 }) {
+            selectCurrentWord()
+        }
+        let source = textView.string as NSString
+        let ranges = selectionSet.ranges.filter {
+            $0.length > 0 && NSMaxRange($0) <= source.length
+        }
+        guard !ranges.isEmpty else { return false }
+        let replacements = ranges.map { range in
+            let value = source.substring(with: range)
+            return value.rangeOfCharacter(from: .lowercaseLetters) == nil
+                ? value.lowercased() : value.uppercased()
+        }
+        batchReplace(ranges, with: replacements)
+        return true
+    }
+
+    @discardableResult
+    func reconvertWithCurrentInputMethod() -> Bool {
+        NSApp.sendAction(Selector(("reconvert:")), to: nil, from: textView)
+    }
+
     func addCursorAbove() { addCursorVertically(delta: -1) }
     func addCursorBelow() { addCursorVertically(delta: 1) }
 
