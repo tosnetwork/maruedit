@@ -203,19 +203,22 @@ final class ClassicWorkspaceTests: XCTestCase {
             "search.find", "search.replace", "search.findNext", "search.findPrevious",
             "search.grep", "navigate.toggleBookmark", "navigate.nextBookmark",
             "search.goToLine", "navigate.toggleFold", "app.macroMenu",
-            "view.toggleSidebar", "app.settings",
+            "view.toggleSidebar", "app.settings", "app.help",
         ])
 
         var received: CommandID?
         controller.onClassicToolbarCommand = { received = $0 }
         controller.activateClassicToolbarCommandForTesting(.searchGrep)
         XCTAssertEqual(received, .searchGrep)
+        controller.activateClassicToolbarCommandForTesting(.appHelp)
+        XCTAssertEqual(received, .appHelp)
         let labels = descendants(of: try! XCTUnwrap(controller.window?.contentView))
             .compactMap { $0.accessibilityLabel() }
         XCTAssertTrue(labels.contains("Maru Classic command toolbar"))
         XCTAssertTrue(labels.contains("Undo"))
         XCTAssertTrue(labels.contains("Replace"))
         XCTAssertTrue(labels.contains("Print"))
+        XCTAssertTrue(labels.contains("Help"))
     }
 
     func testClassicToolbarUsesAColorCodedOriginalIconPalette() async {
@@ -226,10 +229,53 @@ final class ClassicWorkspaceTests: XCTestCase {
             $0.accessibilityLabel() == "Maru Classic command toolbar"
         })
         let buttons = descendants(of: toolbar).compactMap { $0 as? NSButton }
-        XCTAssertEqual(buttons.count, 21)
+        XCTAssertEqual(buttons.count, 22)
         let palette = Set(buttons.compactMap { $0.contentTintColor?.description })
         XCTAssertGreaterThanOrEqual(palette.count, 8)
         XCTAssertTrue(buttons.allSatisfy { $0.image != nil && $0.contentTintColor != nil })
+    }
+
+    func testPasteAndReplaceUseFamiliarWindowsStyleToolbarGlyphs() async {
+        let controller = MainWindowController()
+        controller.applyPreferences(.defaults)
+        let root = try! XCTUnwrap(controller.window?.contentView)
+        let toolbar = try! XCTUnwrap(descendants(of: root).first {
+            $0.accessibilityLabel() == "Maru Classic command toolbar"
+        })
+        let buttons = descendants(of: toolbar).compactMap { $0 as? NSButton }
+        let paste = try! XCTUnwrap(buttons.first { $0.accessibilityLabel() == "Paste" })
+        let replace = try! XCTUnwrap(buttons.first { $0.accessibilityLabel() == "Replace" })
+        XCTAssertEqual(paste.image?.accessibilityDescription, "Paste")
+        XCTAssertEqual(replace.image?.accessibilityDescription, "Replace")
+        XCTAssertEqual(controller.classicToolbarIconSymbolsForTesting["Paste"], "clipboard.fill")
+        XCTAssertEqual(
+            controller.classicToolbarIconSymbolsForTesting["Replace"],
+            "arrow.triangle.2.circlepath"
+        )
+        XCTAssertNotNil(NSImage(systemSymbolName: "clipboard.fill", accessibilityDescription: nil))
+        XCTAssertNotNil(NSImage(systemSymbolName: "arrow.triangle.2.circlepath", accessibilityDescription: nil))
+    }
+
+    func testAmbiguousToolbarActionsUseWindowsEditorVisualMetaphors() async {
+        let controller = MainWindowController()
+        controller.applyPreferences(.defaults)
+        let symbols = controller.classicToolbarIconSymbolsForTesting
+        XCTAssertEqual(symbols["Save"], "maru.floppy")
+        XCTAssertEqual(symbols["Find Next"], "maru.find.down")
+        XCTAssertEqual(symbols["Find Previous"], "maru.find.up")
+        XCTAssertEqual(symbols["Next Bookmark"], "maru.bookmark.down")
+        XCTAssertEqual(symbols["Toggle Fold"], "minus.square.fill")
+
+        let root = try! XCTUnwrap(controller.window?.contentView)
+        let toolbar = try! XCTUnwrap(descendants(of: root).first {
+            $0.accessibilityLabel() == "Maru Classic command toolbar"
+        })
+        let buttons = descendants(of: toolbar).compactMap { $0 as? NSButton }
+        for title in ["Save", "Find Next", "Find Previous", "Next Bookmark", "Toggle Fold"] {
+            let button = try! XCTUnwrap(buttons.first { $0.accessibilityLabel() == title })
+            XCTAssertNotNil(button.image, "missing vector toolbar image for \(title)")
+            XCTAssertEqual(button.image?.accessibilityDescription, title)
+        }
     }
 
     func testClassicToolbarRebuildsFromOrderedPersistentLayout() async {

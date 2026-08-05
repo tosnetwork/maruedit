@@ -332,6 +332,9 @@ final class MainWindowController: NSWindowController,
     var classicToolbarLayoutForTesting: [String] { classicChrome.toolbarLayoutEntries }
     var classicToolbarDisplayModeForTesting: ToolbarDisplayMode { classicChrome.toolbarDisplayMode }
     var classicToolbarIconSizeForTesting: ToolbarIconSize { classicChrome.toolbarIconSize }
+    var classicToolbarIconSymbolsForTesting: [String: String] {
+        classicChrome.toolbarIconSymbolsForTesting
+    }
     var isClassicToolbarSearchVisibleForTesting: Bool { classicChrome.isToolbarSearchVisible }
     var isClassicToolbarFloatingForTesting: Bool { classicChrome.isToolbarFloating }
     var isFunctionKeyStripMergedForTesting: Bool { classicChrome.isFunctionKeyStripMerged }

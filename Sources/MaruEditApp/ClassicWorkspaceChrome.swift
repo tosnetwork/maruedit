@@ -113,6 +113,7 @@ final class ClassicWorkspaceChrome: NSView {
     var toolbarLayoutEntries: [String] { toolbar.layoutEntries }
     var toolbarDisplayMode: ToolbarDisplayMode { toolbar.displayMode }
     var toolbarIconSize: ToolbarIconSize { toolbar.iconSize }
+    var toolbarIconSymbolsForTesting: [String: String] { toolbar.iconSymbolsForTesting }
     var isToolbarSearchVisible: Bool { toolbar.showsSearchField }
     var isToolbarVisible: Bool { !toolbar.isHidden }
     var visibleToolbarHeight: CGFloat { toolbar.isHidden ? 0 : Self.toolbarHeight }
@@ -236,7 +237,7 @@ private final class ClassicToolbarView: NSView {
         [
             Item(command: .fileNew, title: "New", symbol: "doc.badge.plus", tint: .systemBlue, responderAction: nil),
             Item(command: .fileOpen, title: "Open", symbol: "folder.fill", tint: .systemYellow, responderAction: nil),
-            Item(command: .fileSave, title: "Save", symbol: "square.and.arrow.down.fill", tint: .systemBlue, responderAction: nil),
+            Item(command: .fileSave, title: "Save", symbol: "maru.floppy", tint: .systemBlue, responderAction: nil),
             Item(command: .filePrint, title: "Print", symbol: "printer.fill", tint: .systemPurple, responderAction: nil),
         ],
         [
@@ -246,25 +247,31 @@ private final class ClassicToolbarView: NSView {
         [
             Item(command: nil, title: "Cut", symbol: "scissors", tint: .systemRed, responderAction: #selector(NSText.cut(_:))),
             Item(command: nil, title: "Copy", symbol: "doc.on.doc.fill", tint: .systemTeal, responderAction: #selector(NSText.copy(_:))),
-            Item(command: nil, title: "Paste", symbol: "doc.on.clipboard.fill", tint: .systemOrange, responderAction: #selector(NSText.paste(_:))),
+            // A plain clipboard matches the paste glyph Windows editor users
+            // recognize; the former document-on-clipboard composite looked
+            // like document management at compact toolbar sizes.
+            Item(command: nil, title: "Paste", symbol: "clipboard.fill", tint: .systemOrange, responderAction: #selector(NSText.paste(_:))),
         ],
         [
             Item(command: .searchFind, title: "Find", symbol: "magnifyingglass", tint: .systemBlue, responderAction: nil),
-            Item(command: .searchReplace, title: "Replace", symbol: "arrow.left.arrow.right", tint: .systemPurple, responderAction: nil),
-            Item(command: .searchFindNext, title: "Find Next", symbol: "arrow.down.circle.fill", tint: .systemGreen, responderAction: nil),
-            Item(command: .searchFindPrevious, title: "Find Previous", symbol: "arrow.up.circle.fill", tint: .systemGreen, responderAction: nil),
+            // Two chasing arrows communicate replacement/exchange much more
+            // clearly than a single bidirectional navigation arrow.
+            Item(command: .searchReplace, title: "Replace", symbol: "arrow.triangle.2.circlepath", tint: .systemPurple, responderAction: nil),
+            Item(command: .searchFindNext, title: "Find Next", symbol: "maru.find.down", tint: .systemGreen, responderAction: nil),
+            Item(command: .searchFindPrevious, title: "Find Previous", symbol: "maru.find.up", tint: .systemGreen, responderAction: nil),
             Item(command: .searchGrep, title: "Grep", symbol: "text.magnifyingglass", tint: .systemCyan, responderAction: nil),
         ],
         [
             Item(command: .navigateToggleBookmark, title: "Bookmark", symbol: "bookmark.fill", tint: .systemRed, responderAction: nil),
-            Item(command: .navigateNextBookmark, title: "Next Bookmark", symbol: "bookmark.circle.fill", tint: .systemOrange, responderAction: nil),
+            Item(command: .navigateNextBookmark, title: "Next Bookmark", symbol: "maru.bookmark.down", tint: .systemOrange, responderAction: nil),
             Item(command: .searchGoToLine, title: "Go to Line", symbol: "number.circle.fill", tint: .systemBrown, responderAction: nil),
-            Item(command: .navigateToggleFold, title: "Toggle Fold", symbol: "chevron.left.forwardslash.chevron.right", tint: .systemPurple, responderAction: nil),
+            Item(command: .navigateToggleFold, title: "Toggle Fold", symbol: "minus.square.fill", tint: .systemPurple, responderAction: nil),
         ],
         [
             Item(command: .appMacroMenu, title: "Macro", symbol: "play.rectangle.fill", tint: .systemPink, responderAction: nil),
             Item(command: .viewToggleSidebar, title: "Utility Pane", symbol: "sidebar.left", tint: .systemBlue, responderAction: nil),
             Item(command: .appSettings, title: "Settings", symbol: "gearshape.fill", tint: .systemGray, responderAction: nil),
+            Item(command: .appHelp, title: "Help", symbol: "questionmark.circle.fill", tint: .systemBlue, responderAction: nil),
         ],
     ]
 
@@ -297,6 +304,9 @@ private final class ClassicToolbarView: NSView {
     }
     var commandIDs: [CommandID] { displayedItems.compactMap(\.command) }
     var layoutEntries: [String] { toolbarLayout.entries }
+    var iconSymbolsForTesting: [String: String] {
+        Dictionary(uniqueKeysWithValues: displayedItems.map { ($0.title, $0.symbol) })
+    }
     var keyboardFocusableViews: [NSView] {
         buttons.filter { !$0.isHidden && $0.isEnabled }
             + (searchField.isHidden || !searchField.isEnabled ? [] : [searchField])
@@ -544,7 +554,7 @@ private final class ClassicToolbarView: NSView {
                 let button = ClassicToolbarButton()
                 button.bezelStyle = .inline; button.isBordered = false
                 button.imageScaling = .scaleProportionallyDown
-                button.image = NSImage(systemSymbolName: item.symbol, accessibilityDescription: item.title)
+                button.image = Self.image(for: item)
                 button.symbolConfiguration = NSImage.SymbolConfiguration(
                     pointSize: CGFloat(iconSize.pointSize), weight: .regular)
                 button.imagePosition = imagePosition(for: displayMode)
@@ -645,6 +655,70 @@ private final class ClassicToolbarView: NSView {
 
     private static func key(for item: Item) -> String {
         item.command?.rawValue ?? "responder.\(item.title.lowercased())"
+    }
+
+    private static func image(for item: Item) -> NSImage? {
+        if item.symbol.hasPrefix("maru.") {
+            return windowsStyleImage(named: item.symbol, description: item.title)
+        }
+        return NSImage(systemSymbolName: item.symbol, accessibilityDescription: item.title)
+    }
+
+    /// Small monochrome vector glyphs for actions whose SF Symbol equivalent
+    /// carries a different meaning from the conventional Windows editor icon.
+    /// Template rendering preserves the toolbar palette and all icon sizes.
+    private static func windowsStyleImage(named name: String, description: String) -> NSImage {
+        let image = NSImage(size: NSSize(width: 24, height: 24), flipped: false) { _ in
+            NSColor.black.setStroke()
+            NSColor.black.setFill()
+            switch name {
+            case "maru.floppy":
+                let body = NSBezierPath(roundedRect: NSRect(x: 3, y: 3, width: 18, height: 18),
+                                        xRadius: 1.5, yRadius: 1.5)
+                body.lineWidth = 2; body.stroke()
+                NSBezierPath(rect: NSRect(x: 7, y: 14, width: 10, height: 7)).fill()
+                let label = NSBezierPath(rect: NSRect(x: 8, y: 5, width: 9, height: 6))
+                label.lineWidth = 2; label.stroke()
+                NSBezierPath(rect: NSRect(x: 14, y: 16, width: 1.8, height: 4)).fill()
+            case "maru.find.down", "maru.find.up":
+                let lens = NSBezierPath(ovalIn: NSRect(x: 2.5, y: 8.5, width: 11, height: 11))
+                lens.lineWidth = 2; lens.stroke()
+                let handle = NSBezierPath()
+                handle.move(to: NSPoint(x: 11.5, y: 10.5)); handle.line(to: NSPoint(x: 16, y: 6))
+                handle.lineWidth = 2.4; handle.stroke()
+                let down = name == "maru.find.down"
+                let shaft = NSBezierPath()
+                shaft.move(to: NSPoint(x: 19.5, y: down ? 18 : 5))
+                shaft.line(to: NSPoint(x: 19.5, y: down ? 7 : 19))
+                shaft.lineWidth = 2; shaft.stroke()
+                let arrow = NSBezierPath()
+                arrow.move(to: NSPoint(x: 16.5, y: down ? 10 : 16))
+                arrow.line(to: NSPoint(x: 19.5, y: down ? 6 : 20))
+                arrow.line(to: NSPoint(x: 22.5, y: down ? 10 : 16))
+                arrow.lineWidth = 2; arrow.lineCapStyle = .round; arrow.lineJoinStyle = .round
+                arrow.stroke()
+            case "maru.bookmark.down":
+                let bookmark = NSBezierPath()
+                bookmark.move(to: NSPoint(x: 3.5, y: 20.5))
+                bookmark.line(to: NSPoint(x: 14, y: 20.5))
+                bookmark.line(to: NSPoint(x: 14, y: 5))
+                bookmark.line(to: NSPoint(x: 8.75, y: 8.5))
+                bookmark.line(to: NSPoint(x: 3.5, y: 5))
+                bookmark.close(); bookmark.lineWidth = 2; bookmark.stroke()
+                let arrow = NSBezierPath()
+                arrow.move(to: NSPoint(x: 19, y: 19)); arrow.line(to: NSPoint(x: 19, y: 7))
+                arrow.move(to: NSPoint(x: 16, y: 10)); arrow.line(to: NSPoint(x: 19, y: 6))
+                arrow.line(to: NSPoint(x: 22, y: 10))
+                arrow.lineWidth = 2; arrow.lineCapStyle = .round; arrow.lineJoinStyle = .round
+                arrow.stroke()
+            default:
+                break
+            }
+            return true
+        }
+        image.isTemplate = true
+        image.accessibilityDescription = description
+        return image
     }
 }
 
