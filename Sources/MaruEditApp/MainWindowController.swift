@@ -1342,7 +1342,7 @@ final class MainWindowController: NSWindowController,
         scheduleSessionSave()
     }
 
-    func showFind(showingReplace: Bool = false) {
+    func showFind(showingReplace: Bool = false, direction: SearchDirection = .next) {
         if showingReplace { findBar.setReplaceRowVisible(true) }
         findBar.isHidden = false
         layoutContentViews()
@@ -1355,7 +1355,41 @@ final class MainWindowController: NSWindowController,
             editorVC.searchScopeSelection = selection.length > 0 ? selection : nil
         }
         syncSearchHistoryUI()
-        findBar.activate()
+        findBar.activate(direction: direction)
+    }
+
+    func showFindUpward() { showFind(direction: .previous) }
+
+    func findWordAtCursor() {
+        guard let pattern = searchTextAtCursor(), !pattern.isEmpty else { showFind(); return }
+        let query = SearchQuery(pattern: pattern, wholeWord: true)
+        lastQuery = query
+        searchStartOffset = editorVC.selectionSet.primaryRange.location
+        findBar.setSearchPattern(pattern)
+        findAgain(direction: .next)
+    }
+
+    func captureSearchStringAtCursor() {
+        guard let pattern = searchTextAtCursor(), !pattern.isEmpty else {
+            showStatusMessage("No search text at the cursor"); return
+        }
+        lastQuery = SearchQuery(pattern: pattern)
+        findBar.setSearchPattern(pattern)
+        showStatusMessage("Captured search text: \(pattern)")
+    }
+
+    private func searchTextAtCursor() -> String? {
+        let text = editorVC.textView.string as NSString
+        let selected = editorVC.selectionSet.primaryRange
+        if selected.length > 0, NSMaxRange(selected) <= text.length {
+            return text.substring(with: selected)
+        }
+        guard selected.location < text.length else { return nil }
+        let word = editorVC.textView.selectionRange(
+            forProposedRange: NSRange(location: selected.location, length: 0),
+            granularity: .selectByWord)
+        guard word.length > 0, NSMaxRange(word) <= text.length else { return nil }
+        return text.substring(with: word)
     }
 
     func toggleFindOption(_ option: FindOption) {
@@ -1859,6 +1893,7 @@ final class MainWindowController: NSWindowController,
     var outputMatchCountForTesting: Int { outputPane?.matches.count ?? 0 }
     var currentDocumentTextForTesting: String { curDoc?.content ?? "" }
     func setSearchQueryForTesting(_ query: SearchQuery) { lastQuery = query }
+    var currentSearchQueryForTesting: SearchQuery? { lastQuery }
 
     // MARK: - OutputPaneViewDelegate
 

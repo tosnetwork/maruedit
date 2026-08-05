@@ -56,4 +56,22 @@ final class SearchParityCommandTests: XCTestCase {
         controller.returnToSearchStart()
         XCTAssertEqual(controller.macroEditor.selectionSet.primaryRange.location, 5)
     }
+
+    func testFindWordAndCaptureSearchStringUseNativeCursorWord() {
+        let controller = MainWindowController()
+        controller.prepareUITestDocument(
+            content: "cat scatter cat", selections: [NSRange(location: 1, length: 0)])
+        controller.findWordAtCursor()
+        XCTAssertEqual(controller.currentSearchQueryForTesting?.pattern, "cat")
+        XCTAssertTrue(controller.currentSearchQueryForTesting?.wholeWord == true)
+        XCTAssertEqual(controller.macroEditor.selectionSet.primaryRange, NSRange(location: 12, length: 3))
+
+        controller.macroEditor.setSelections(
+            [NSRange(location: 4, length: 7)], primaryRange: NSRange(location: 4, length: 7))
+        controller.captureSearchStringAtCursor()
+        XCTAssertEqual(controller.currentSearchQueryForTesting?.pattern, "scatter")
+        XCTAssertFalse(controller.currentSearchQueryForTesting?.wholeWord == true)
+        XCTAssertEqual(controller.macroEditor.selectionSet.primaryRange, NSRange(location: 4, length: 7),
+                       "capturing must not execute a search or move the selection")
+    }
 }

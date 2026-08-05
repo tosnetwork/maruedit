@@ -303,6 +303,9 @@ final class AppCoordinator {
     func showWorkspaceHistory()       { ensureWindowControllerReady().showWorkspaceHistory() }
     func closeAndOpen()               { ensureWindowControllerReady().closeAndOpen() }
     func showFind()                   { ensureWindowControllerReady().showFind() }
+    func showFindUpward()             { ensureWindowControllerReady().showFindUpward() }
+    func findWordAtCursor()           { ensureWindowControllerReady().findWordAtCursor() }
+    func captureSearchStringAtCursor() { ensureWindowControllerReady().captureSearchStringAtCursor() }
     func showReplace()                { ensureWindowControllerReady().showFind(showingReplace: true) }
     func replaceAll()                 { ensureWindowControllerReady().replaceAllFromFindBar() }
     func findNext()                   { ensureWindowControllerReady().findAgain(direction: .next) }

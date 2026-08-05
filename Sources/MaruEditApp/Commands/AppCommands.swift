@@ -80,6 +80,9 @@ extension CommandID {
     static let fileWorkspaceHistory = CommandID("file.workspaceHistory")
     static let fileCloseAndOpen = CommandID("file.closeAndOpen")
     static let searchFind       = CommandID("search.find")
+    static let searchFindUpward = CommandID("search.findUpward")
+    static let searchFindWord = CommandID("search.findWord")
+    static let searchCaptureString = CommandID("search.captureString")
     static let searchFindNext   = CommandID("search.findNext")
     static let searchReplace    = CommandID("search.replace")
     static let searchReplaceAll = CommandID("search.replaceAll")
@@ -369,6 +372,9 @@ enum AppCommands {
         registry.register(CommandDefinition(id: .searchFind, title: "Find...") { ctx in
             ctx.coordinator.showFind()
         })
+        registry.register(CommandDefinition(id: .searchFindUpward, title: "Find Upward...") { $0.coordinator.showFindUpward() })
+        registry.register(CommandDefinition(id: .searchFindWord, title: "Find Word at Cursor") { $0.coordinator.findWordAtCursor() })
+        registry.register(CommandDefinition(id: .searchCaptureString, title: "Capture Search String") { $0.coordinator.captureSearchStringAtCursor() })
         registry.register(CommandDefinition(id: .searchReplace, title: "Find and Replace...") { ctx in
             ctx.coordinator.showReplace()
         })

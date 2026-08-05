@@ -94,6 +94,15 @@ final class FindBarViewTests: XCTestCase {
         XCTAssertTrue(bar.isHidden)
     }
 
+    func testUpwardActivationMakesReturnFindPrevious() {
+        let (bar, delegate) = makeBar()
+        bar.searchField.stringValue = "a"
+        bar.activate(direction: .previous)
+        _ = bar.control(bar.searchField, textView: fieldEditor,
+                        doCommandBy: #selector(NSResponder.insertNewline(_:)))
+        XCTAssertEqual(delegate.actions, [.findPrevious])
+    }
+
     func testReturnInTheReplaceFieldReplaces() async {
         let (bar, delegate) = makeBar()
         _ = bar.control(bar.replaceField, textView: fieldEditor,

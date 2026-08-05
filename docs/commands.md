@@ -46,6 +46,9 @@ significantly, replace this with a small script that generates it from
 | `file.discardAllAndClose` | Discard All and Close | File | — | Closes all tabs without writing changes, retaining one blank editor |
 | `file.openCursorTargetAssociated` | Open Target with Associated Application | File | — | Opens the selected or cursor URL/file through macOS Launch Services |
 | `file.openCursorTargetInEditor` | Open Target in MaruEdit | File | — | Resolves and opens the selected or cursor file path in a tab |
+| `search.findUpward` | Find Upward... | Search | — | Opens Find with Return searching toward the beginning; Shift-Return reverses it |
+| `search.findWord` | Find Word at Cursor | Search | — | Captures the native word range and immediately searches whole words |
+| `search.captureString` | Capture Search String | Search | — | Copies the selection or native word at the cursor into unified search state without moving |
 | `file.closeTab` | Close Tab | File | ⌘W | `AppCoordinator.closeCurrentTab()` |
 | `window.nextTab` | Next Tab | Window | ⌃Tab | `AppCoordinator.selectNextTab()` |
 | `window.previousTab` | Previous Tab | Window | ⌃⇧Tab | `AppCoordinator.selectPreviousTab()` |

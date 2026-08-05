@@ -27,6 +27,7 @@ final class FindBarView: NSView, NSTextFieldDelegate {
     weak var delegate: FindBarDelegate?
 
     let searchField  = MultilineTextField()
+    private var returnDirection: SearchDirection = .next
     let replaceField = MultilineTextField()
     private let matchLabel  = NSTextField(labelWithString: "")
     private let caseBtn     = NSButton()
@@ -240,9 +241,15 @@ final class FindBarView: NSView, NSTextFieldDelegate {
         }
     }
 
-    func activate() {
+    func activate(direction: SearchDirection = .next) {
+        returnDirection = direction
         window?.makeFirstResponder(searchField)
         searchField.currentEditor()?.selectAll(nil)
+    }
+
+    func setSearchPattern(_ pattern: String) {
+        searchField.stringValue = pattern
+        searchField.currentEditor()?.string = pattern
     }
 
     // MARK: - Query
@@ -440,7 +447,9 @@ final class FindBarView: NSView, NSTextFieldDelegate {
 
         if sel == #selector(insertNewline(_:)) {
             run(isSearchField
-                ? (NSEvent.modifierFlags.contains(.shift) ? .findPrevious : .findNext)
+                ? (NSEvent.modifierFlags.contains(.shift)
+                    ? (returnDirection == .next ? .findPrevious : .findNext)
+                    : (returnDirection == .next ? .findNext : .findPrevious))
                 : .replace)
             return true
         }
