@@ -18,6 +18,8 @@ final class MainWindowController: NSWindowController,
     private var findBar: FindBarView!
     private var editorVC: EditorViewController!
     private var statusBar: StatusBarView!
+    private var classicChrome: ClassicWorkspaceChrome!
+    private var workspaceStyle: WorkspaceStyle = .classic
     var macroEditor: EditorViewController { editorVC }
 
     private var quickOpen: QuickOpenPanel?
@@ -115,6 +117,10 @@ final class MainWindowController: NSWindowController,
         statusBar.frame = NSRect(x: 0, y: 0, width: cv.bounds.width, height: statusH)
         cv.addSubview(statusBar)
 
+        classicChrome = ClassicWorkspaceChrome()
+        classicChrome.autoresizingMask = [.width, .height]
+        cv.addSubview(classicChrome)
+
         findBar = FindBarView()
         findBar.delegate = self
         findBar.isHidden = true
@@ -157,9 +163,17 @@ final class MainWindowController: NSWindowController,
     }
 
     func applyPreferences(_ preferences: Preferences) {
+        workspaceStyle = preferences.workspaceStyle
+        classicChrome.isHidden = workspaceStyle != .classic
+        tabBar.compactStyle = workspaceStyle == .classic
         editorVC.applyPreferences(preferences)
+        layoutContentViews()
         refreshStatus()
     }
+
+    var isClassicWorkspace: Bool { workspaceStyle == .classic }
+    var isClassicChromeVisibleForTesting: Bool { !classicChrome.isHidden }
+    var classicHeadingForTesting: String { classicChrome.headingText }
 
     var effectiveWrapLines: Bool { editorVC.effectiveWrapLines }
     var effectiveTabWidth: Int { editorVC.effectiveTabWidth }
@@ -189,18 +203,28 @@ final class MainWindowController: NSWindowController,
         let statusH: CGFloat = 24
         let findH: CGFloat = findBar.isHidden ? 0 : (findBar.isReplaceRowVisible ? 66 : 34)
         let paneH: CGFloat = (outputPane?.isHidden == false) ? Self.outputPaneHeight : 0
+        let classicTop = workspaceStyle == .classic ? ClassicWorkspaceChrome.topHeight : 0
+        let classicBottom = workspaceStyle == .classic ? ClassicWorkspaceChrome.commandStripHeight : 0
 
         findBar.frame = NSRect(
             x: 0, y: cv.bounds.height - tabH - findH,
             width: cv.bounds.width, height: findH
         )
         outputPane?.frame = NSRect(x: 0, y: statusH, width: cv.bounds.width, height: paneH)
+        classicChrome.frame = NSRect(
+            x: editorXForChrome(), y: statusH + paneH,
+            width: max(0, cv.bounds.width - editorXForChrome()),
+            height: cv.bounds.height - statusH - paneH - tabH - findH)
         splitView.frame = NSRect(
-            x: 0, y: statusH + paneH,
+            x: 0, y: statusH + paneH + classicBottom,
             width: cv.bounds.width,
-            height: cv.bounds.height - tabH - findH - statusH - paneH
+            height: cv.bounds.height - tabH - findH - statusH - paneH - classicTop - classicBottom
         )
         updateTabBarFrame()
+    }
+
+    private func editorXForChrome() -> CGFloat {
+        sidebarVC.view.isHidden ? 0 : sidebarVC.view.frame.width + splitView.dividerThickness
     }
 
     private static let outputPaneHeight: CGFloat = 200
@@ -1078,6 +1102,7 @@ final class MainWindowController: NSWindowController,
     private func refreshTabs() {
         let items = documentController.documents.map { TabItem(title: $0.displayName, isModified: $0.isModified) }
         tabBar.setTabs(items, selectedIndex: curIdx)
+        classicChrome.updateHeading(curDoc?.displayName ?? "Untitled")
     }
 
     private func refreshStatus() {

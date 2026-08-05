@@ -6,6 +6,10 @@ import XCTest
 
 @preconcurrency @MainActor
 final class StatusBarViewTests: XCTestCase {
+    func testClassicInputModeSegmentIsExplicit() async {
+        let bar = StatusBarView()
+        XCTAssertEqual(bar.displayedInputModeText, "INS")
+    }
     private final class Delegate: StatusBarViewDelegate {
         var controls: [StatusBarControl] = []
         func statusBar(

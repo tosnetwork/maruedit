@@ -21,6 +21,7 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
     private let tabWidthField = NSTextField()
     private let lineNumbersButton = NSButton(checkboxWithTitle: "", target: nil, action: nil)
     private let wrapLinesButton = NSButton(checkboxWithTitle: "", target: nil, action: nil)
+    private let workspacePopup = NSPopUpButton()
 
     init(preferences: Preferences, onChange: @escaping (Preferences) -> Void) {
         self.preferences = preferences
@@ -133,6 +134,15 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
             stack.addArrangedSubview(row(SettingsLocalization.text("fontName"), fontNameField))
             stack.addArrangedSubview(row(SettingsLocalization.text("fontSize"), fontSizeField))
         case .general:
+            workspacePopup.removeAllItems()
+            workspacePopup.addItems(withTitles: [
+                SettingsLocalization.text("classicWorkspace"),
+                SettingsLocalization.text("modernWorkspace"),
+            ])
+            workspacePopup.selectItem(at: preferences.workspaceStyle == .classic ? 0 : 1)
+            workspacePopup.target = self; workspacePopup.action = #selector(controlChanged)
+            workspacePopup.identifier = NSUserInterfaceItemIdentifier("settings.workspaceStyle")
+            stack.addArrangedSubview(row(SettingsLocalization.text("workspace"), workspacePopup))
             stack.addArrangedSubview(NSTextField(wrappingLabelWithString: SettingsLocalization.text("immediate")))
         case .advanced:
             stack.addArrangedSubview(NSTextField(
@@ -183,6 +193,8 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
             preferences.fontName = fontNameField.stringValue.isEmpty
                 ? Preferences.defaults.fontName : fontNameField.stringValue
             preferences.fontSize = Double(max(8, min(72, fontSizeField.integerValue)))
+        case .general:
+            preferences.workspaceStyle = workspacePopup.indexOfSelectedItem == 0 ? .classic : .modern
         default: break
         }
         onChange(preferences)
@@ -191,6 +203,8 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
     @objc private func restoreGroupDefaults() {
         let defaults = Preferences.defaults
         switch selectedGroup {
+        case .general:
+            preferences.workspaceStyle = defaults.workspaceStyle
         case .editor:
             preferences.tabWidth = defaults.tabWidth
             preferences.showLineNumbers = defaults.showLineNumbers
@@ -269,5 +283,10 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
     func searchForTesting(_ query: String) {
         searchField.stringValue = query
         controlTextDidChange(Notification(name: NSControl.textDidChangeNotification, object: searchField))
+    }
+    func setWorkspaceForTesting(_ style: WorkspaceStyle) {
+        select(.general)
+        workspacePopup.selectItem(at: style == .classic ? 0 : 1)
+        controlChanged()
     }
 }

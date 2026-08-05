@@ -150,3 +150,5 @@ file-type settings and macros without reading source code. A usability test
 with at least five experienced Hidemaru users should complete a scripted task
 set and record time, errors, missing commands and subjective familiarity. Visual
 similarity alone is not a pass if daily workflows remain absent.
+
+Implementation is tracked in the executable [Maru Classic roadmap](maru-classic-roadmap.md).

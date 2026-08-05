@@ -1,0 +1,89 @@
+# Maru Classic Implementation Roadmap
+
+This roadmap turns the product-gap audit into testable work. “Complete” means
+portable, publicly documented Hidemaru workflows on macOS; it excludes copied
+assets/code, Windows registry/DLL/tray integration, and implicit capabilities
+that would weaken MaruEdit's security model.
+
+## MC1 — Workspace foundation
+
+- [x] Versioned `WorkspaceStyle` preference with schema migration.
+- [x] Maru Classic is the new-user default; Maru Modern remains selectable.
+- [x] Immediate Settings switch without document mutation.
+- [x] Current-document heading bar.
+- [x] Character-column ruler foundation.
+- [x] Compact Classic tab presentation.
+- [x] Favorite/function command strip foundation.
+- [x] Explicit insert-mode status segment.
+- [ ] Original Classic Light palette with live switching.
+- [ ] Native customizable toolbar backed by Command Registry IDs.
+- [ ] Files / Outline / Results pane switcher and single-file closed default.
+- [ ] User-configurable visibility for heading, ruler and command strip.
+- [ ] Real VoiceOver and visible screenshot verification.
+
+## MC2 — Outline and folding
+
+- [ ] Pure incremental outline model and per-language symbol rules.
+- [ ] User-defined regex outline rules in FileType Profiles.
+- [ ] Outline pane and current-heading synchronization.
+- [ ] Fold gutter, fold commands and persisted fold state.
+- [ ] Large-file and malformed-rule degradation tests.
+
+## MC3 — Editing parity
+
+- [ ] Insert/overwrite editing modes with a visible status segment.
+- [ ] IME, grapheme, BOX, multiple-selection and single-undo coverage.
+- [ ] Richer word/paragraph movement, deletion and conversion commands.
+- [ ] Color markers, marker navigation and marker list.
+
+## MC4 — Split, compare and navigation
+
+- [ ] Horizontal/vertical editor split and independent selections.
+- [ ] Optional linked scrolling.
+- [ ] Native text diff, next/previous difference and merge-safe actions.
+- [ ] Tag jump, direct tag jump and back-tag stack.
+
+## MC5 — Completion and spelling
+
+- [ ] Current-document word completion.
+- [ ] User dictionaries and per-profile completion sources/ranking.
+- [ ] Manual/automatic list, tooltip and status presentation.
+- [ ] Per-profile macOS spell checking and corrections.
+
+## MC6 — Search/Grep parity
+
+- [ ] Resizable multiline Find/Replace/Grep fields.
+- [ ] Search color markers and marker-list results.
+- [ ] Grep current unsaved document and all open documents.
+- [ ] Output results as a document and refine Grep results.
+
+## MC7 — File-type and settings depth
+
+- [ ] Profile font/colors, spelling, completion, outline and folding.
+- [ ] Templates, backups, load/save policies and encoding candidate order.
+- [ ] Searchable Basic/Advanced settings with per-section reset/import/export.
+
+## MC8 — Macro compatibility
+
+- [ ] Build a legally redistributable macro behavior corpus.
+- [ ] Variables, expressions, branching, loops, functions and subroutines.
+- [ ] Portable editor/search/window/outline statements.
+- [ ] Explicit diagnostics for unsafe or Windows-only statements.
+- [ ] Compatibility report generated from executable tests.
+
+## MC9 — Specialist workflows
+
+- [ ] Native print and page setup.
+- [ ] CSV/TSV table mode.
+- [ ] Partial editing of an outline region.
+- [ ] Vertical writing/column-layout feasibility spike.
+- [ ] Streaming editable huge-file and binary-view architecture.
+
+## MC10 — Adoption gate
+
+- [ ] Every portable public behavior in the gap matrix is supported or has a
+  documented macOS-native equivalent.
+- [ ] Five experienced Hidemaru users complete the scripted migration study.
+- [ ] English/Japanese/Simplified Chinese, IME and VoiceOver manual matrix.
+- [ ] Fresh screenshots and guides contain no stale LiteEdit branding.
+- [ ] Signed/notarized Universal build passes Gatekeeper on a clean Mac.

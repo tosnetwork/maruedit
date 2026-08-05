@@ -19,6 +19,7 @@ final class TabBarView: NSView {
 
     private let tabHeight: CGFloat = 32
     private let tabWidth: CGFloat = 180
+    var compactStyle = false { didSet { needsLayout = true; updateAppearance() } }
 
     private var bgLayers: [NSView] = []
     private var accentLayers: [NSView] = []
@@ -78,8 +79,8 @@ final class TabBarView: NSView {
             let x = CGFloat(i) * tabWidth
             bg.frame = NSRect(x: x, y: 0, width: tabWidth, height: tabHeight)
             accentLayers[i].frame = NSRect(x: x, y: 0, width: tabWidth, height: 2)
-            titleLabels[i].frame = NSRect(x: x + 14, y: 8, width: tabWidth - 42, height: 16)
-            closeLabels[i].frame = NSRect(x: x + tabWidth - 26, y: 8, width: 14, height: 16)
+            titleLabels[i].frame = NSRect(x: x + (compactStyle ? 8 : 14), y: 8, width: tabWidth - (compactStyle ? 34 : 42), height: 16)
+            closeLabels[i].frame = NSRect(x: x + tabWidth - 24, y: 8, width: 14, height: 16)
             separators[i].frame = NSRect(x: x + tabWidth - 1, y: 4, width: 1, height: tabHeight - 8)
         }
     }
@@ -148,9 +149,12 @@ final class TabBarView: NSView {
     private func updateAppearance() {
         for i in 0..<bgLayers.count {
             let active = (i == selectedIndex)
-            bgLayers[i].layer?.backgroundColor = (active ? Theme.background : Theme.tabInactive).cgColor
-            accentLayers[i].isHidden = !active
-            titleLabels[i].textColor = active ? Theme.tabTextActive : Theme.tabText
+            bgLayers[i].layer?.backgroundColor = compactStyle
+                ? (active ? NSColor.controlBackgroundColor : NSColor.windowBackgroundColor).cgColor
+                : (active ? Theme.background : Theme.tabInactive).cgColor
+            accentLayers[i].isHidden = compactStyle || !active
+            titleLabels[i].textColor = compactStyle
+                ? NSColor.labelColor : (active ? Theme.tabTextActive : Theme.tabText)
             titleLabels[i].font = NSFont.systemFont(ofSize: 12, weight: active ? .medium : .regular)
             closeLabels[i].textColor = active ? Theme.tabText : Theme.tabText.withAlphaComponent(0.3)
             separators[i].isHidden = active

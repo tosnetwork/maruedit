@@ -29,6 +29,7 @@ final class PreferencesStoreTests: XCTestCase {
         prefs.invisibleCharacters = InvisibleCharacterOptions(
             spaces: true, tabs: false, lineEndings: true, fullWidthSpaces: true)
         prefs.theme = .monokai
+        prefs.workspaceStyle = .modern
         store.save(prefs)
 
         XCTAssertEqual(store.load(), prefs)
@@ -93,8 +94,9 @@ final class PreferencesStoreTests: XCTestCase {
         """
         let decoded = try JSONDecoder().decode(Preferences.self, from: Data(json.utf8))
         let migrated = PreferencesStore.migrate(decoded)
-        XCTAssertEqual(migrated.schemaVersion, 2)
+        XCTAssertEqual(migrated.schemaVersion, 3)
         XCTAssertEqual(migrated.invisibleCharacters, .none)
+        XCTAssertEqual(migrated.workspaceStyle, .classic)
     }
 
     func testExportImportRestoreAndRejectFutureSchema() throws {

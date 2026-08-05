@@ -17,6 +17,7 @@ final class StatusBarView: NSView {
     private let lineColLabel = NSTextField(labelWithString: "Ln 1, Col 1")
     private let selectionLabel = NSTextField(labelWithString: "")
     private let indentLabel = NSTextField(labelWithString: "Spaces: 4")
+    private let inputModeLabel = NSTextField(labelWithString: "INS")
     private let langLabel = NSTextField(labelWithString: "Plain Text")
     private let encLabel = NSTextField(labelWithString: "UTF-8")
     private let bomLabel = NSTextField(labelWithString: "No BOM")
@@ -32,6 +33,7 @@ final class StatusBarView: NSView {
     var displayedBOMText: String { bomLabel.stringValue }
     var displayedLineEndingText: String { lineEndingLabel.stringValue }
     var displayedLanguageProfileText: String { langLabel.stringValue }
+    var displayedInputModeText: String { inputModeLabel.stringValue }
     var displayedLargeFileModeText: String? {
         largeFileModeLabel.isHidden ? nil : largeFileModeLabel.stringValue
     }
@@ -53,6 +55,7 @@ final class StatusBarView: NSView {
             x: 14, y: midY, width: messageWorkItem == nil ? 105 : 280, height: 16)
         selectionLabel.frame = NSRect(x: 122, y: midY, width: 130, height: 16)
         indentLabel.frame = NSRect(x: 255, y: midY, width: 85, height: 16)
+        inputModeLabel.frame = NSRect(x: 342, y: midY, width: 34, height: 16)
 
         var right = bounds.width - 14
         for label in [langLabel, encLabel, bomLabel, lineEndingLabel, largeFileModeLabel] {
@@ -68,7 +71,7 @@ final class StatusBarView: NSView {
     }
 
     private func setup() {
-        let labels = [lineColLabel, selectionLabel, indentLabel, langLabel, encLabel,
+        let labels = [lineColLabel, selectionLabel, indentLabel, inputModeLabel, langLabel, encLabel,
                       bomLabel, lineEndingLabel, readOnlyLabel, largeFileModeLabel]
         for label in labels {
             label.font = Theme.uiFontSmall
@@ -92,6 +95,8 @@ final class StatusBarView: NSView {
         }
         lineColLabel.setAccessibilityLabel("Cursor line and display column")
         selectionLabel.setAccessibilityLabel("Selection count")
+        inputModeLabel.setAccessibilityLabel("Input mode: insert")
+        inputModeLabel.toolTip = "Insert mode; overwrite mode is not enabled"
         readOnlyLabel.textColor = .systemOrange
         readOnlyLabel.toolTip = "This file is read-only on disk; use Save As to save changes"
         readOnlyLabel.isHidden = true

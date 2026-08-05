@@ -8,7 +8,7 @@ import Foundation
 /// Defaults preserve the original editor appearance, and decoding supplies
 /// defaults for fields introduced by later schema versions.
 public struct Preferences: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 2
+    public static let currentSchemaVersion = 3
 
     public var schemaVersion: Int
     public var fontName: String
@@ -18,6 +18,7 @@ public struct Preferences: Codable, Equatable, Sendable {
     public var wrapLines: Bool
     public var tabWidth: Int
     public var invisibleCharacters: InvisibleCharacterOptions
+    public var workspaceStyle: WorkspaceStyle
 
     public init(
         schemaVersion: Int = Preferences.currentSchemaVersion,
@@ -27,7 +28,8 @@ public struct Preferences: Codable, Equatable, Sendable {
         showLineNumbers: Bool,
         wrapLines: Bool,
         tabWidth: Int,
-        invisibleCharacters: InvisibleCharacterOptions = .none
+        invisibleCharacters: InvisibleCharacterOptions = .none,
+        workspaceStyle: WorkspaceStyle = .classic
     ) {
         self.schemaVersion = schemaVersion
         self.fontName = fontName
@@ -37,6 +39,7 @@ public struct Preferences: Codable, Equatable, Sendable {
         self.wrapLines = wrapLines
         self.tabWidth = tabWidth
         self.invisibleCharacters = invisibleCharacters
+        self.workspaceStyle = workspaceStyle
     }
 
     /// Matches the values currently hardcoded in `Theme.swift` and
@@ -48,12 +51,13 @@ public struct Preferences: Codable, Equatable, Sendable {
         theme: .monokai,
         showLineNumbers: true,
         wrapLines: false,
-        tabWidth: 4
+        tabWidth: 4,
+        workspaceStyle: .classic
     )
 
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, fontName, fontSize, theme, showLineNumbers, wrapLines, tabWidth
-        case invisibleCharacters
+        case invisibleCharacters, workspaceStyle
     }
 
     public init(from decoder: Decoder) throws {
@@ -68,7 +72,18 @@ public struct Preferences: Codable, Equatable, Sendable {
         tabWidth = try values.decodeIfPresent(Int.self, forKey: .tabWidth) ?? Self.defaults.tabWidth
         invisibleCharacters = try values.decodeIfPresent(
             InvisibleCharacterOptions.self, forKey: .invisibleCharacters) ?? .none
+        workspaceStyle = try values.decodeIfPresent(
+            WorkspaceStyle.self, forKey: .workspaceStyle) ?? .classic
     }
+}
+
+/// Selects the window information architecture without changing document
+/// contents or file-format behavior. Classic is the migration-oriented,
+/// high-density editor workspace; Modern preserves the original project-editor
+/// layout for existing users who prefer it.
+public enum WorkspaceStyle: String, Codable, Sendable, CaseIterable {
+    case classic
+    case modern
 }
 
 public struct InvisibleCharacterOptions: Codable, Equatable, Sendable {

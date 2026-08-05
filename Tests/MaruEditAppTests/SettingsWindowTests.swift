@@ -24,6 +24,16 @@ final class SettingsWindowTests: XCTestCase {
         XCTAssertEqual(controller.visibleGroups, SettingsWindowController.Group.allCases)
     }
 
+    func testWorkspaceStyleAppliesImmediatelyAndDefaultsToClassic() async {
+        var received: Preferences?
+        let controller = SettingsWindowController(preferences: .defaults) { received = $0 }
+        XCTAssertEqual(controller.currentPreferences.workspaceStyle, .classic)
+        controller.setWorkspaceForTesting(.modern)
+        XCTAssertEqual(received?.workspaceStyle, .modern)
+        controller.restoreForTesting()
+        XCTAssertEqual(received?.workspaceStyle, .classic)
+    }
+
     func testRestoreDefaultsAffectsOnlySelectedGroupAndNotifies() async {
         var custom = Preferences.defaults
         custom.fontSize = 22

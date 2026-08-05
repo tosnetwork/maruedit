@@ -58,7 +58,7 @@ public final class PreferencesStore {
 
     /// Migration entry point: brings a decoded, possibly-older schema up
     /// to `Preferences.currentSchemaVersion`. Preferences' decoder supplies
-    /// v2's invisible-character defaults for v1 blobs; this entry point then
+    /// later fields' defaults for older blobs; this entry point then
     /// records the current version and remains the home for future migrations.
     public static func migrate(_ preferences: Preferences) -> Preferences {
         var migrated = preferences
