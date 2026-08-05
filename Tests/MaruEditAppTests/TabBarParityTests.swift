@@ -23,6 +23,17 @@ final class TabBarParityTests: XCTestCase {
         XCTAssertEqual(bar.effectiveHeight, 32)
     }
 
+    func testSingleTabIsHiddenByDefaultAndExplicitVisibleChoiceIsRespected() {
+        let bar = TabBarView(frame: NSRect(x: 0, y: 0, width: 500, height: 32))
+        bar.setTabs([TabItem(title: "one", isModified: false)], selectedIndex: 0)
+        XCTAssertTrue(bar.hidesForSingleTab)
+        XCTAssertEqual(bar.effectiveHeight, 0)
+
+        bar.hidesForSingleTab = false
+        XCTAssertFalse(bar.hidesForSingleTab)
+        XCTAssertEqual(bar.effectiveHeight, 32)
+    }
+
     func testAutomaticWidthsKeepAllTabsInsideAvailableRow() {
         let bar = TabBarView(frame: NSRect(x: 0, y: 0, width: 320, height: 32))
         bar.setTabs((0..<10).map { TabItem(title: "tab-\($0)", isModified: false) }, selectedIndex: 0)

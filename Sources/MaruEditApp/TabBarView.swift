@@ -31,7 +31,13 @@ final class TabBarView: NSView {
         set { UserDefaults.standard.set(newValue.rawValue, forKey: "MaruTabBarPosition"); delegate?.tabBarLayoutOptionsDidChange() }
     }
     var hidesForSingleTab: Bool {
-        get { UserDefaults.standard.bool(forKey: "MaruTabBarHideSingle") }
+        get {
+            // Match Hidemaru's compact single-document workspace while still
+            // respecting an explicit user choice to keep the bar visible.
+            UserDefaults.standard.object(forKey: "MaruTabBarHideSingle") == nil
+                ? true
+                : UserDefaults.standard.bool(forKey: "MaruTabBarHideSingle")
+        }
         set { UserDefaults.standard.set(newValue, forKey: "MaruTabBarHideSingle"); delegate?.tabBarLayoutOptionsDidChange() }
     }
     var effectiveHeight: CGFloat { hidesForSingleTab && tabs.count <= 1 ? 0 : tabHeight }
@@ -71,6 +77,7 @@ final class TabBarView: NSView {
     // MARK: - Public update API
 
     func setTabs(_ newTabs: [TabItem], selectedIndex idx: Int) {
+        let previousHeight = effectiveHeight
         let needsRebuild = newTabs.count != tabs.count
         tabs = newTabs
         selectedIndex = idx
@@ -79,6 +86,9 @@ final class TabBarView: NSView {
         } else {
             updateLabels()
             updateAppearance()
+        }
+        if effectiveHeight != previousHeight {
+            delegate?.tabBarLayoutOptionsDidChange()
         }
     }
 
