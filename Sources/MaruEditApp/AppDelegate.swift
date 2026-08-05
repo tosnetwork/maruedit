@@ -247,7 +247,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         main.addItem(findItem)
 
         let toolsItem = NSMenuItem(title: "Tools", action: nil, keyEquivalent: "")
-        toolsItem.submenu = externalCommandManager.menu
+        let toolsMenu = NSMenu(title: "Tools")
+        toolsMenu.addItem(commandItem(.navigateCompareNextDocument))
+        toolsMenu.addItem(commandItem(.navigateNextDifference))
+        toolsMenu.addItem(commandItem(.navigatePreviousDifference))
+        toolsMenu.addItem(commandItem(.navigateMergeDifferenceFromRight))
+        toolsMenu.addItem(.separator())
+        toolsMenu.addItem(commandItem(.navigateTagJump))
+        toolsMenu.addItem(commandItem(.navigateDirectTagJump))
+        toolsMenu.addItem(commandItem(.navigateBackTagJump))
+        toolsMenu.addItem(.separator())
+        let externalItem = NSMenuItem(title: "External Commands", action: nil, keyEquivalent: "")
+        externalItem.submenu = externalCommandManager.menu
+        toolsMenu.addItem(externalItem)
+        toolsMenu.addItem(commandItem(.otherCommandList))
+        toolsItem.submenu = toolsMenu
         main.addItem(toolsItem)
 
         let macroItem = NSMenuItem(title: "Macro", action: nil, keyEquivalent: "")

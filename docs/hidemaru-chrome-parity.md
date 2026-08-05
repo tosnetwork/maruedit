@@ -22,7 +22,7 @@ native menu before the Hidemaru-compatible business menus.
 | Search | Dedicated Search menu | Search/replace/grep core exists; missing Hidemaru hierarchy, search flags, highlight/refine variants and edit-mark navigation |
 | Highlight | Dedicated Highlight menu | Color-marker operations plus sorted highlight list with preview, jump and remove are present | No known compatible gap |
 | Bookmark | Dedicated Bookmark menu | Toggle/navigation/clear plus document bookmark list with jump/remove organization are present | No known compatible gap |
-| Tools | Empty dynamic menu | External commands exist; project/tag/compare commands need compatible grouping and command-list access |
+| Tools | Dedicated grouped Tools menu | Compare/difference, tag navigation, dynamic external commands and complete command-list access are grouped | No known compatible gap |
 | Window | Native window controls plus tab management | Tab list, close-other/left/right, pane focus and tab cycling are present; Minimize/Zoom and macOS window management replace Windows arrangement, while session restore replaces desktop restore | Native equivalent |
 | Macro | Dynamic Macro menu | Recording/playback and registration management remain incomplete |
 | Other | Dedicated Other menu | Settings, file-type profiles, key assignments, complete command list/menu editing and font panel have direct entries | No known compatible gap |
