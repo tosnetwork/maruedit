@@ -93,6 +93,7 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
     private var suppressSelectionCallback = false
     private var outlineSymbols: [OutlineSymbol] = []
     private var markerResultText = "No color markers."
+    private var searchResultText = ""
 
     override func loadView() {
         let wrapper = NSView()
@@ -195,7 +196,7 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
             headerLabel.stringValue = "OUTLINE"
         case .results:
             headerLabel.stringValue = "RESULTS"
-            placeholderLabel.stringValue = markerResultText
+            placeholderLabel.stringValue = searchResultText.isEmpty ? markerResultText : searchResultText
         }
         outlineView.reloadData()
     }
@@ -230,8 +231,27 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
             return "\(color.rawValue.capitalized) · Ln \(line): \(preview)"
         }.joined(separator: "\n")
         if markerResultText.isEmpty { markerResultText = "No color markers." }
-        if selectedUtilityPane == .results { placeholderLabel.stringValue = markerResultText }
+        if selectedUtilityPane == .results, searchResultText.isEmpty { placeholderLabel.stringValue = markerResultText }
     }
+
+
+    func updateSearchResults(_ ranges: [NSRange], text: String) {
+        let ns = text as NSString
+        let index = LineIndex(text)
+        searchResultText = ranges.prefix(500).map { match in
+            let safe = min(max(0, match.location), ns.length)
+            let line = index.line(atUTF16Offset: safe) + 1
+            let lineRange = ns.lineRange(for: NSRange(location: safe, length: 0))
+            let preview = ns.substring(with: lineRange).trimmingCharacters(in: .whitespacesAndNewlines)
+            return "Search · Ln \(line): \(preview)"
+        }.joined(separator: "\n")
+        if ranges.count > 500 { searchResultText += "\n… \(ranges.count - 500) more matches" }
+        if selectedUtilityPane == .results {
+            placeholderLabel.stringValue = searchResultText.isEmpty ? markerResultText : searchResultText
+        }
+    }
+
+    var searchResultTextForTesting: String { searchResultText }
 
     var markerResultTextForTesting: String { markerResultText }
 

@@ -71,6 +71,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     private var markedTextSnapshot: (text: String, ranges: [NSRange], primary: NSRange)?
     private var isCompositionCommitScheduled = false
     private var completionDictionaries: [String] = []
+    private var searchMarkerOffsets: Set<Int> = []
     var inputLatencySignpostID: OSSignpostID?
     var lineIndex = LineIndex()
     private var preferences = Preferences.defaults
@@ -393,8 +394,20 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
 
     func refreshBookmarkGutter() {
         lineNumbers?.bookmarkOffsets = document?.bookmarks.offsets ?? []
+        var colors = Dictionary(uniqueKeysWithValues: searchMarkerOffsets.map { ($0, MarkerColor.yellow) })
+        for (offset, color) in document?.colorMarkers.markers ?? [:] { colors[offset] = color }
+        lineNumbers?.markerColors = colors
         refreshFolding()
     }
+
+    func showSearchMarkers(_ ranges: [NSRange]) {
+        let ns = textView.string as NSString
+        searchMarkerOffsets = Set(ranges.map {
+            ns.lineRange(for: NSRange(location: min($0.location, ns.length), length: 0)).location
+        })
+        refreshBookmarkGutter()
+    }
+    var searchMarkerOffsetsForTesting: Set<Int> { searchMarkerOffsets }
 
     func applyPreferences(_ preferences: Preferences) {
         self.preferences = preferences
@@ -644,7 +657,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         delegate?.editorTextDidChange(self)
         lineNumbers?.needsDisplay = true
         lineNumbers?.bookmarkOffsets = document?.bookmarks.offsets ?? []
-        lineNumbers?.markerColors = document?.colorMarkers.markers ?? [:]
+        refreshBookmarkGutter()
         emitCursor()
 
         if document?.fileTypeProfile?.settings.completion?.automatic == true,

@@ -943,6 +943,97 @@ final class MainWindowController: NSWindowController,
         }
     }
 
+    func grepCurrentDocument() {
+        guard let document = curDoc else { return }
+        runInMemoryGrep(documents: [memorySearchDocument(document, index: curIdx)])
+    }
+
+    func grepOpenDocuments() {
+        runInMemoryGrep(documents: documentController.documents.enumerated().map {
+            memorySearchDocument($0.element, index: $0.offset)
+        })
+    }
+
+    func refineGrepResults() {
+        guard let query = activeSearchQuery(), !query.pattern.isEmpty,
+              let pane = outputPane, !pane.matches.isEmpty else {
+            showStatusMessage("Run Grep and enter a refinement pattern first")
+            return
+        }
+        let existing = pane.matches
+        grepQueue.async { [weak self] in
+            let result = Result { try InMemoryGrepService.refine(existing, query: query) }
+            Task { @MainActor in
+                guard let self else { return }
+                switch result {
+                case .success(let matches): self.presentMemoryGrep(matches, pattern: query.pattern)
+                case .failure(let error): self.showStatusMessage(error.localizedDescription)
+                }
+            }
+        }
+    }
+
+    func outputGrepResultsAsDocument() {
+        guard let pane = outputPane, !pane.matches.isEmpty else {
+            showStatusMessage("There are no Grep results to output")
+            return
+        }
+        let summary = GrepSummary(
+            scannedFiles: Set(pane.matches.map(\.url)).count,
+            matchedFiles: Set(pane.matches.map(\.url)).count,
+            matchCount: pane.matches.count)
+        let text = GrepResultFormatter.plainText(
+            matches: pane.matches, summary: summary, pattern: activeSearchQuery()?.pattern ?? "")
+        newDocument()
+        curDoc?.content = text
+        curDoc?.markModified()
+        curDoc?.cachedTextStorage = nil
+        editorVC.reloadCurrentDocument()
+        refreshTabs()
+    }
+
+    private func runInMemoryGrep(documents: [InMemorySearchDocument]) {
+        guard let query = activeSearchQuery(), !query.pattern.isEmpty else {
+            showFind(); showStatusMessage("Enter a search pattern first"); return
+        }
+        let pane = ensureOutputPane()
+        pane.beginRun(pattern: query.pattern)
+        layoutContentViews()
+        grepQueue.async { [weak self] in
+            let result = Result { try InMemoryGrepService.search(documents, query: query) }
+            Task { @MainActor in
+                guard let self else { return }
+                switch result {
+                case .success(let matches): self.presentMemoryGrep(matches, pattern: query.pattern)
+                case .failure(let error): self.showStatusMessage(error.localizedDescription)
+                }
+            }
+        }
+    }
+
+    private func presentMemoryGrep(_ matches: [GrepMatch], pattern: String) {
+        let pane = ensureOutputPane()
+        pane.beginRun(pattern: pattern)
+        matches.forEach(pane.append)
+        let fileCount = Set(matches.map(\.url)).count
+        pane.finish(GrepSummary(
+            scannedFiles: fileCount, matchedFiles: fileCount, matchCount: matches.count))
+        layoutContentViews()
+    }
+
+    private func activeSearchQuery() -> SearchQuery? {
+        findBar.isHidden ? lastQuery : findBar.currentQuery
+    }
+
+    private func memorySearchDocument(_ document: Document, index: Int) -> InMemorySearchDocument {
+        let url = document.fileURL
+            ?? URL(string: "maruedit-memory://document/\(index)")
+            ?? URL(fileURLWithPath: "/MaruEdit/Untitled-\(index)")
+        return InMemorySearchDocument(
+            url: url, displayName: document.displayName,
+            text: document.content, encoding: document.encoding)
+    }
+
     private func runGrepReplacePreview(request: GrepRequest, replacement: String) {
         grepReplaceCancellation?.cancel()
         let token = CancellationToken(); grepReplaceCancellation = token
@@ -1069,6 +1160,9 @@ final class MainWindowController: NSWindowController,
         let pane = ensureOutputPane(); pane.beginOperation(title); layoutContentViews()
     }
     var outputTextForTesting: String { outputPane?.resultsText ?? "" }
+    var outputMatchCountForTesting: Int { outputPane?.matches.count ?? 0 }
+    var currentDocumentTextForTesting: String { curDoc?.content ?? "" }
+    func setSearchQueryForTesting(_ query: SearchQuery) { lastQuery = query }
 
     // MARK: - OutputPaneViewDelegate
 
@@ -1076,7 +1170,15 @@ final class MainWindowController: NSWindowController,
         // Goes through the normal open path, so a file that is already
         // open is re-selected rather than opened a second time
         // (`DocumentController.open` reports `wasAlreadyOpen`).
-        openFile(match.url)
+        if match.url.scheme == "maruedit-memory",
+           let index = Int(match.url.lastPathComponent),
+           let document = documentController.document(at: index) {
+            documentController.selectDocument(at: index)
+            editorVC.document = document
+            refreshTabs(); refreshStatus()
+        } else {
+            openFile(match.url)
+        }
         let length = (editorVC.textView.string as NSString).length
         guard match.range.location <= length else { return }
         let clamped = NSRange(
@@ -1481,6 +1583,9 @@ final class MainWindowController: NSWindowController,
 
     func findBar(_ bar: FindBarView, perform action: FindBarAction, query: SearchQuery) -> FindOutcome {
         if action != .incremental { lastQuery = query }
+        let ranges = (try? SearchEngine.matches(for: query, in: curDoc?.content ?? ""))?.map(\.range) ?? []
+        editorVC.showSearchMarkers(ranges)
+        sidebarVC.updateSearchResults(ranges, text: curDoc?.content ?? "")
 
         switch action {
         case .incremental:
@@ -1505,6 +1610,8 @@ final class MainWindowController: NSWindowController,
         layoutContentViews()
         editorVC.incrementalSearchAnchor = nil
         editorVC.searchScopeSelection = nil
+        editorVC.showSearchMarkers([])
+        sidebarVC.updateSearchResults([], text: curDoc?.content ?? "")
         window?.makeFirstResponder(editorVC.textView)
     }
 

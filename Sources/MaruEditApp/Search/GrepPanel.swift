@@ -20,8 +20,8 @@ final class GrepPanel: NSObject, NSTextFieldDelegate {
 
     let window: NSWindow
 
-    let patternField = NSTextField()
-    let replacementField = NSTextField()
+    let patternField = MultilineTextField()
+    let replacementField = MultilineTextField()
     private let folderField = NSTextField()
     private let includeField = NSTextField()
     private let excludeField = NSTextField()
@@ -35,10 +35,11 @@ final class GrepPanel: NSObject, NSTextFieldDelegate {
     override init() {
         window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 520, height: 340),
-            styleMask: [.titled], backing: .buffered, defer: true
+            styleMask: [.titled, .resizable], backing: .buffered, defer: true
         )
         super.init()
         window.title = "Find in Folder"
+        window.minSize = NSSize(width: 520, height: 340)
         buildUI()
     }
 
@@ -88,6 +89,8 @@ final class GrepPanel: NSObject, NSTextFieldDelegate {
         ])
         grid.translatesAutoresizingMaskIntoConstraints = false
         grid.column(at: 1).width = 380
+        patternField.visibleLines = 3
+        replacementField.visibleLines = 3
 
         let buttons = NSStackView(views: [cancelButton, replaceButton, searchButton])
         buttons.orientation = .horizontal

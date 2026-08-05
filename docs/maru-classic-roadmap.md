@@ -52,10 +52,10 @@ that would weaken MaruEdit's security model.
 
 ## MC6 — Search/Grep parity
 
-- [ ] Resizable multiline Find/Replace/Grep fields.
-- [ ] Search color markers and marker-list results.
-- [ ] Grep current unsaved document and all open documents.
-- [ ] Output results as a document and refine Grep results.
+- [x] Resizable multiline Find/Replace/Grep fields.
+- [x] Search color markers and marker-list results.
+- [x] Grep current unsaved document and all open documents.
+- [x] Output results as a document and refine Grep results.
 
 ## MC7 — File-type and settings depth
 

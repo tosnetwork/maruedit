@@ -94,6 +94,10 @@ final class AppCoordinator {
     func showGoToLine()                { ensureWindowControllerReady().showGoToLine() }
     func showQuickOpen()               { ensureWindowControllerReady().showQuickOpen() }
     func showGrep()                    { ensureWindowControllerReady().showGrep() }
+    func grepCurrentDocument()         { ensureWindowControllerReady().grepCurrentDocument() }
+    func grepOpenDocuments()           { ensureWindowControllerReady().grepOpenDocuments() }
+    func refineGrepResults()           { ensureWindowControllerReady().refineGrepResults() }
+    func outputGrepResultsAsDocument() { ensureWindowControllerReady().outputGrepResultsAsDocument() }
     func clearSearchHistory()          { ensureWindowControllerReady().clearSearchHistory() }
     func showStatusMessage(_ message: String, duration: TimeInterval = 1.5) {
         ensureWindowControllerReady().showStatusMessage(message, duration: duration)

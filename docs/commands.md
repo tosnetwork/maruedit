@@ -32,6 +32,10 @@ significantly, replace this with a small script that generates it from
 | `search.goToLine` | Go to Line... | Find | ⌘L | `AppCoordinator.showGoToLine()` |
 | `search.quickOpen` | Quick Open... | Find | ⌘P | `AppCoordinator.showQuickOpen()` |
 | `search.grep` | Find in Folder... | Find | ⇧⌘F | `AppCoordinator.showGrep()` |
+| `search.grepCurrentDocument` | Grep Current Document | Find | — | `AppCoordinator.grepCurrentDocument()` |
+| `search.grepOpenDocuments` | Grep All Open Documents | Find | — | `AppCoordinator.grepOpenDocuments()` |
+| `search.refineGrepResults` | Refine Grep Results | Find | — | `AppCoordinator.refineGrepResults()` |
+| `search.outputGrepDocument` | Output Grep Results as Document | Find | — | `AppCoordinator.outputGrepResultsAsDocument()` |
 | `search.clearHistory` | Clear Search History | Find | — | `AppCoordinator.clearSearchHistory()` |
 | `view.toggleSidebar` | Toggle Sidebar | View | ⌘B | `AppCoordinator.toggleSidebar()` |
 | `view.toggleWrap` | Wrap Lines | View | — | `AppCoordinator.toggleWrapLines()` |

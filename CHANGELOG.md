@@ -24,6 +24,10 @@ semantic version tags.
 - Added bounded current-document and UTF-8 user-dictionary word completion with
   profile-controlled ranking, manual/automatic list, tooltip or status display,
   and per-profile macOS spelling and correction controls.
+- Added expandable multiline Find/Replace fields and resizable multiline Grep
+  fields, transient search-result gutter markers, and a bounded Results list.
+- Added background Grep over the current unsaved buffer or every open buffer,
+  Grep-over-results refinement, and export of structured results to a new document.
 - Added a Foundation-only incremental document-outline model with built-in
   symbol rules for source, markup, scripting, configuration, and SQL languages,
   plus bounded user-defined regex rules in versioned FileType Profiles. The

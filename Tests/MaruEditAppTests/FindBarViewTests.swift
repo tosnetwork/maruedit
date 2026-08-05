@@ -215,7 +215,7 @@ final class FindBarViewTests: XCTestCase {
             view.subviews.forEach(collect)
         }
         collect(bar)
-        XCTAssertEqual(buttons.count, 9)
+        XCTAssertEqual(buttons.count, 10)
         for button in buttons {
             XCTAssertFalse(button.accessibilityLabel()?.isEmpty ?? true,
                            "button '\(button.title)' has no VoiceOver label")

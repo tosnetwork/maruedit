@@ -1,5 +1,16 @@
 # Search and Grep
 
+Find and Replace accept multiline patterns and replacements; use the resize button
+to expand or collapse their visible rows. Matching lines receive transient yellow
+gutter markers and appear in the Classic Results pane without altering persistent
+user color markers. The Grep window is resizable and its Find and Replace fields
+accept multiline input.
+
+In addition to **Find in Folder**, the Find menu can Grep the current in-memory
+document or all open documents, including unnamed and modified buffers. **Refine
+Grep Results** applies the current Find pattern to existing result previews, while
+**Output Grep Results as Document** creates an ordinary unsaved text document.
+
 ## Find and Replace
 
 Open Find with Command-F. Literal and regular-expression modes share the same

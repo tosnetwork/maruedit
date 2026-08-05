@@ -24,8 +24,8 @@ protocol FindBarDelegate: AnyObject {
 final class FindBarView: NSView, NSTextFieldDelegate {
     weak var delegate: FindBarDelegate?
 
-    let searchField  = NSTextField()
-    let replaceField = NSTextField()
+    let searchField  = MultilineTextField()
+    let replaceField = MultilineTextField()
     private let matchLabel  = NSTextField(labelWithString: "")
     private let caseBtn     = NSButton()
     private let wordBtn     = NSButton()
@@ -36,8 +36,12 @@ final class FindBarView: NSView, NSTextFieldDelegate {
     private let replAllBtn  = NSButton()
     private let closeBtn    = NSButton()
     private let expandBtn   = NSButton()
+    private let resizeBtn   = NSButton()
     private var showReplace  = false
     private var replaceRow: NSView!
+    private var searchRowHeight: NSLayoutConstraint!
+    private var replaceRowHeight: NSLayoutConstraint!
+    private var inputsExpanded = false
 
     /// Most-recent-first history, supplied by the owner and recalled with
     /// Up/Down in the matching field. The bar only presents it; persistence
@@ -48,7 +52,8 @@ final class FindBarView: NSView, NSTextFieldDelegate {
     private var replacementHistoryIndex: Int?
 
     override var intrinsicContentSize: NSSize {
-        NSSize(width: NSView.noIntrinsicMetric, height: showReplace ? 66 : 34)
+        let rowHeight: CGFloat = inputsExpanded ? 72 : 34
+        return NSSize(width: NSView.noIntrinsicMetric, height: showReplace ? rowHeight * 2 : rowHeight)
     }
 
     override init(frame: NSRect) {
@@ -99,6 +104,7 @@ final class FindBarView: NSView, NSTextFieldDelegate {
         matchLabel.setAccessibilityLabel("Search status")
 
         style(expandBtn, title: "⇅", tip: "Toggle Replace", action: #selector(toggleReplace), accessibility: "Toggle replace row")
+        style(resizeBtn, title: "↕", tip: "Expand multiline fields", action: #selector(toggleInputSize), accessibility: "Resize search fields")
         style(caseBtn, title: "Aa", tip: "Case Sensitive (⌥⌘C)", action: #selector(toggleCase), accessibility: "Case sensitive")
         style(wordBtn, title: "W", tip: "Whole Word (⌥⌘W)", action: #selector(toggleWholeWord), accessibility: "Whole word")
         style(regexBtn, title: ".*", tip: "Regular Expression (⌥⌘R)", action: #selector(toggleRegex), accessibility: "Regular expression")
@@ -115,7 +121,7 @@ final class FindBarView: NSView, NSTextFieldDelegate {
 
         let searchRow = NSView()
         searchRow.translatesAutoresizingMaskIntoConstraints = false
-        for v: NSView in [expandBtn, searchField, matchLabel, caseBtn, wordBtn, regexBtn, prevBtn, nextBtn, closeBtn] {
+        for v: NSView in [expandBtn, searchField, matchLabel, caseBtn, wordBtn, regexBtn, prevBtn, nextBtn, resizeBtn, closeBtn] {
             searchRow.addSubview(v)
         }
 
@@ -129,11 +135,13 @@ final class FindBarView: NSView, NSTextFieldDelegate {
         addSubview(searchRow)
         addSubview(replaceRow)
 
+        searchRowHeight = searchRow.heightAnchor.constraint(equalToConstant: 34)
+        replaceRowHeight = replaceRow.heightAnchor.constraint(equalToConstant: 32)
         NSLayoutConstraint.activate([
             searchRow.topAnchor.constraint(equalTo: topAnchor),
             searchRow.leadingAnchor.constraint(equalTo: leadingAnchor),
             searchRow.trailingAnchor.constraint(equalTo: trailingAnchor),
-            searchRow.heightAnchor.constraint(equalToConstant: 34),
+            searchRowHeight,
 
             expandBtn.leadingAnchor.constraint(equalTo: searchRow.leadingAnchor, constant: 6),
             expandBtn.centerYAnchor.constraint(equalTo: searchRow.centerYAnchor),
@@ -161,13 +169,17 @@ final class FindBarView: NSView, NSTextFieldDelegate {
             nextBtn.leadingAnchor.constraint(equalTo: prevBtn.trailingAnchor, constant: 4),
             nextBtn.centerYAnchor.constraint(equalTo: searchRow.centerYAnchor),
 
+            resizeBtn.trailingAnchor.constraint(equalTo: closeBtn.leadingAnchor, constant: -6),
+            resizeBtn.centerYAnchor.constraint(equalTo: searchRow.centerYAnchor),
+            nextBtn.trailingAnchor.constraint(lessThanOrEqualTo: resizeBtn.leadingAnchor, constant: -6),
+
             closeBtn.trailingAnchor.constraint(equalTo: searchRow.trailingAnchor, constant: -8),
             closeBtn.centerYAnchor.constraint(equalTo: searchRow.centerYAnchor),
 
             replaceRow.topAnchor.constraint(equalTo: searchRow.bottomAnchor),
             replaceRow.leadingAnchor.constraint(equalTo: leadingAnchor),
             replaceRow.trailingAnchor.constraint(equalTo: trailingAnchor),
-            replaceRow.heightAnchor.constraint(equalToConstant: 32),
+            replaceRowHeight,
 
             replaceField.leadingAnchor.constraint(equalTo: searchField.leadingAnchor),
             replaceField.centerYAnchor.constraint(equalTo: replaceRow.centerYAnchor),
@@ -182,6 +194,22 @@ final class FindBarView: NSView, NSTextFieldDelegate {
 
         setAccessibilityLabel("Find bar")
     }
+
+    @objc private func toggleInputSize() {
+        setInputsExpanded(!inputsExpanded)
+    }
+
+    func setInputsExpanded(_ expanded: Bool) {
+        inputsExpanded = expanded
+        searchField.visibleLines = inputsExpanded ? 3 : 1
+        replaceField.visibleLines = inputsExpanded ? 3 : 1
+        searchRowHeight.constant = inputsExpanded ? 72 : 34
+        replaceRowHeight.constant = inputsExpanded ? 72 : 32
+        invalidateIntrinsicContentSize()
+        superview?.needsLayout = true
+    }
+
+    var areInputsExpandedForTesting: Bool { inputsExpanded }
 
     /// Handles the option toggles' ⌥⌘ shortcuts directly instead of
     /// assigning them as `NSButton.keyEquivalent`s, which were verified

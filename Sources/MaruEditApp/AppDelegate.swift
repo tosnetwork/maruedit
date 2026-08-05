@@ -211,6 +211,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         findMenu.addItem(.separator())
         findMenu.addItem(commandItem(.searchQuickOpen))
         findMenu.addItem(commandItem(.searchGrep))
+        findMenu.addItem(commandItem(.searchGrepCurrentDocument))
+        findMenu.addItem(commandItem(.searchGrepOpenDocuments))
+        findMenu.addItem(commandItem(.searchRefineGrepResults))
+        findMenu.addItem(commandItem(.searchOutputGrepDocument))
         findMenu.addItem(.separator())
         findMenu.addItem(commandItem(.searchClearHistory))
         findItem.submenu = findMenu

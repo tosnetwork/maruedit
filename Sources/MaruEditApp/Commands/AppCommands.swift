@@ -20,6 +20,10 @@ extension CommandID {
     static let searchGoToLine   = CommandID("search.goToLine")
     static let searchQuickOpen  = CommandID("search.quickOpen")
     static let searchGrep       = CommandID("search.grep")
+    static let searchGrepCurrentDocument = CommandID("search.grepCurrentDocument")
+    static let searchGrepOpenDocuments = CommandID("search.grepOpenDocuments")
+    static let searchRefineGrepResults = CommandID("search.refineGrepResults")
+    static let searchOutputGrepDocument = CommandID("search.outputGrepDocument")
     static let searchClearHistory = CommandID("search.clearHistory")
     static let viewToggleSidebar = CommandID("view.toggleSidebar")
     static let viewToggleWrap = CommandID("view.toggleWrap")
@@ -141,6 +145,10 @@ enum AppCommands {
         registry.register(CommandDefinition(id: .searchGrep, title: "Find in Folder...") { ctx in
             ctx.coordinator.showGrep()
         })
+        registry.register(CommandDefinition(id: .searchGrepCurrentDocument, title: "Grep Current Document") { $0.coordinator.grepCurrentDocument() })
+        registry.register(CommandDefinition(id: .searchGrepOpenDocuments, title: "Grep All Open Documents") { $0.coordinator.grepOpenDocuments() })
+        registry.register(CommandDefinition(id: .searchRefineGrepResults, title: "Refine Grep Results") { $0.coordinator.refineGrepResults() })
+        registry.register(CommandDefinition(id: .searchOutputGrepDocument, title: "Output Grep Results as Document") { $0.coordinator.outputGrepResultsAsDocument() })
         registry.register(CommandDefinition(id: .searchClearHistory, title: "Clear Search History") { ctx in
             ctx.coordinator.clearSearchHistory()
         })
