@@ -21,7 +21,7 @@ passing MaruEdit regression tests from exhaustive Hidemaru feature parity.
 | Menu rows | 13 | 0 | 0 |
 | Toolbar/function-key rows | 9 | 3 | 0 |
 | Status-bar rows | 16 | 0 | 0 |
-| Acceptance gates | 1 | 2 | 2 |
+| Acceptance gates | 2 | 2 | 1 |
 
 ## Menu bar
 
@@ -46,12 +46,16 @@ native menu before the Hidemaru-compatible business menus.
 | Other | Settings, file-type profiles, key assignments, command/menu editing, font entry points, categorized history clearing, tag navigation/generation, control-code input, native spelling corrections, View Mode, overwrite protection, free cursor, vertical/column layout, and full/section settings transfer | ✅ Complete | Every compatible official 9.57 Other entry has a stable placement. The Windows IME word-registration and Kana/Kanji-mode APIs have no macOS app-level equivalent; “Japanese User Dictionary…” opens Apple's supported Input-menu/Text Replacements workflow, while input-source switching remains OS-owned. See [Apple's Japanese input-method guide](https://support.apple.com/guide/japanese-input-method/edit-and-use-your-user-dictionaries-jpim10228/mac). |
 | Help | MaruEdit guide, macro guide, shortcut reference, configurable External Help 1–6, release check, support, and native About | ✅ Complete | All six external-help slots have persistent names/URL-or-file targets, dynamic enablement, a configuration window, and tested dispatch; About uses the native macOS panel. |
 
-The official pages contain roughly 297 command references, including repeated
-placements, dynamic entries, and Windows-only commands. MaruEdit registers 308
+The checked-in [official 9.57 inventory](hidemaru-9.57-menu-inventory.tsv)
+contains 336 rows extracted from the 13 official pages, including repeated
+placements, dynamic entries, submenus, commands that are bindable but absent
+from the menu bar, and Windows-only commands. MaruEdit registers 308
 stable command IDs plus dynamic and native-responder entries, so the raw totals
-are not a parity measure. `ChromeParityAuditTests` only requires every existing
-stable ID to appear exactly once in the command reference; it is a documentation
-consistency check, not proof that the external Hidemaru inventory is complete.
+are not a parity measure. `ChromeParityAuditTests` freezes the official per-menu
+counts, schema, placement classification, uniqueness, and cross-menu sentinels,
+in addition to requiring every existing stable ID to appear exactly once in the
+command reference. Gate 1 remains open until every inventory row has an audited
+MaruEdit disposition and executable target check.
 
 ## Toolbar and function-key strip
 
@@ -99,7 +103,7 @@ consistency check, not proof that the external Hidemaru inventory is complete.
    unsupported reason; placeholders do not count.
 3. ✅ **Complete** — Toolbar configuration stores ordered command IDs and separators, supports
    add/remove/reorder/reset, and reflects command enabled/toggle state.
-4. ❌ **Incomplete** — Status fields are individually configurable, interactive where Hidemaru is
+4. ✅ **Complete** — Status fields are individually configurable, interactive where Hidemaru is
    interactive, and remain correct across tabs, IME, BOX/multi-selection,
    encodings, large files, and profile changes.
 5. 🟡 **Partial** — Default and customized chrome have screenshot baselines in light/dark and
@@ -107,14 +111,16 @@ consistency check, not proof that the external Hidemaru inventory is complete.
 
 Gate notes:
 
-- Gate 1 needs an external Hidemaru-command inventory. Auditing only MaruEdit's
-  existing 308 IDs cannot detect commands that MaruEdit never registered.
+- Gate 1 now has a checked-in 336-row external Hidemaru inventory. Per-row
+  stable/native/dynamic/unsupported mappings and target validation remain open.
 - Gate 2 is complete for the floating-toolbar decision but not for every Windows-
   specific menu/frame/window command.
 - Gate 3 covers persistence, layout operations, configurable F-key count, and
   live enabled/toggle synchronization in `ClassicWorkspaceTests`.
-- Gate 4 has strong field-level tests but still lacks the interactions identified
-  in the status table and a complete cross-state matrix.
+- Gate 4 has field-level interaction tests, a cross-state matrix covering tab
+  transitions, BOX/multi-selection, Unicode and legacy encodings, line endings,
+  profile changes and large-file modes, the existing marked-text IME suite, and
+  executable VoiceOver Press actions for all twelve interactive fields.
 - Gate 5 has all eight screenshot baselines and basic keyboard/accessibility tests;
   full keyboard traversal, focus-order, and VoiceOver verification remain open.
 
@@ -138,8 +144,8 @@ ChromeSnapshotTests`. `ClassicWorkspaceTests`, `FindBarViewTests`,
 `MenuCustomizationUITests`, and `KeyBindingManagerTests` cover accessibility
 labels, keyboard-only search/options, the full menu hierarchy, configurable
 F-key activation, and user key bindings. `ChromeParityAuditTests` checks internal
-command-document consistency; Gate 1 remains open until the external command
-inventory is mapped.
+command-document consistency and the checked-in official inventory; Gate 1
+remains open until every external row is mapped and its target is validated.
 
 ## Primary sources
 

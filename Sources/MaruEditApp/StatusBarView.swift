@@ -49,25 +49,33 @@ protocol StatusBarViewDelegate: AnyObject {
         _ statusBar: StatusBarView, didClick control: StatusBarControl, at point: NSPoint)
 }
 
+private final class ActionableStatusLabel: NSTextField {
+    var onAccessibilityPress: (() -> Bool)?
+
+    override func accessibilityPerformPress() -> Bool {
+        onAccessibilityPress?() ?? false
+    }
+}
+
 final class StatusBarView: NSView {
     weak var delegate: StatusBarViewDelegate?
 
-    private let lineColLabel = NSTextField(labelWithString: "Ln 1, Col 1")
+    private let lineColLabel = ActionableStatusLabel(labelWithString: "Ln 1, Col 1")
     private let selectionLabel = NSTextField(labelWithString: "")
     private let indentLabel = NSTextField(labelWithString: "Spaces: 4")
-    private let inputModeLabel = NSTextField(labelWithString: "INS")
-    private let layoutModeLabel = NSTextField(labelWithString: "HORZ")
-    private let totalsLabel = NSTextField(labelWithString: "1 lines · 0 chars")
-    private let characterCodeLabel = NSTextField(labelWithString: "")
-    private let fontSizeLabel = NSTextField(labelWithString: "13 pt")
-    private let macroActivityLabel = NSTextField(labelWithString: "MACRO")
+    private let inputModeLabel = ActionableStatusLabel(labelWithString: "INS")
+    private let layoutModeLabel = ActionableStatusLabel(labelWithString: "HORZ")
+    private let totalsLabel = ActionableStatusLabel(labelWithString: "1 lines · 0 chars")
+    private let characterCodeLabel = ActionableStatusLabel(labelWithString: "")
+    private let fontSizeLabel = ActionableStatusLabel(labelWithString: "13 pt")
+    private let macroActivityLabel = ActionableStatusLabel(labelWithString: "MACRO")
     private let capsLockLabel = NSTextField(labelWithString: "CAPS")
-    private let langLabel = NSTextField(labelWithString: "Plain Text")
-    private let encLabel = NSTextField(labelWithString: "UTF-8")
-    private let bomLabel = NSTextField(labelWithString: "No BOM")
-    private let lineEndingLabel = NSTextField(labelWithString: "LF")
+    private let langLabel = ActionableStatusLabel(labelWithString: "Plain Text")
+    private let encLabel = ActionableStatusLabel(labelWithString: "UTF-8")
+    private let bomLabel = ActionableStatusLabel(labelWithString: "No BOM")
+    private let lineEndingLabel = ActionableStatusLabel(labelWithString: "LF")
     private let readOnlyLabel = NSTextField(labelWithString: "Read-Only")
-    private let largeFileModeLabel = NSTextField(labelWithString: "Reduced Features")
+    private let largeFileModeLabel = ActionableStatusLabel(labelWithString: "Reduced Features")
     private var cursorText = "Ln 1, Col 1"
     private var documentText = ""
     private var cursorUTF16Offset = 0
@@ -180,6 +188,10 @@ final class StatusBarView: NSView {
         lineColLabel.setAccessibilityLabel("Cursor line and display column")
         totalsLabel.setAccessibilityLabel("Total lines and configured character count")
         totalsLabel.toolTip = "Click to configure how characters are counted"
+        characterCodeLabel.setAccessibilityLabel("Character code at cursor")
+        characterCodeLabel.toolTip = "Click for Unicode and encoded byte details"
+        fontSizeLabel.setAccessibilityLabel("Editor font size")
+        fontSizeLabel.toolTip = "Click to adjust the editor font size"
         selectionLabel.setAccessibilityLabel("Selection count")
         inputModeLabel.setAccessibilityLabel("Input mode: insert")
         inputModeLabel.toolTip = "Insert mode; overwrite mode is not enabled"
@@ -206,6 +218,23 @@ final class StatusBarView: NSView {
         largeFileModeLabel.setAccessibilityLabel(SettingsLocalization.text("largeFileMode"))
         largeFileModeLabel.toolTip = SettingsLocalization.text("largeFileTooltip")
         largeFileModeLabel.isHidden = true
+
+        let actionable: [(ActionableStatusLabel, StatusBarControl)] = [
+            (lineColLabel, .cursorPosition), (totalsLabel, .totals),
+            (characterCodeLabel, .characterCode), (inputModeLabel, .inputMode),
+            (layoutModeLabel, .layoutMode), (fontSizeLabel, .fontSize),
+            (macroActivityLabel, .macroActivity), (largeFileModeLabel, .largeFileMode),
+            (encLabel, .encoding), (bomLabel, .byteOrderMark),
+            (lineEndingLabel, .lineEnding), (langLabel, .languageProfile),
+        ]
+        for (label, control) in actionable {
+            label.onAccessibilityPress = { [weak self, weak label] in
+                guard let self, let label, self.areClicksEnabled, !label.isHidden,
+                      self.frame(for: control) != nil else { return false }
+                self.activate(control)
+                return true
+            }
+        }
     }
 
     func applyTheme() {
@@ -472,6 +501,23 @@ final class StatusBarView: NSView {
     func setConfiguredFieldsForTesting(_ fields: Set<StatusBarField>) {
         configuredFields = fields.union([.cursorPosition])
         applyConfiguredVisibility(); needsLayout = true
+    }
+
+    func accessibilityElement(for control: StatusBarControl) -> NSView? {
+        switch control {
+        case .cursorPosition: lineColLabel
+        case .totals: totalsLabel
+        case .characterCode: characterCodeLabel
+        case .inputMode: inputModeLabel
+        case .layoutMode: layoutModeLabel
+        case .fontSize: fontSizeLabel
+        case .macroActivity: macroActivityLabel
+        case .largeFileMode: largeFileModeLabel
+        case .encoding: encLabel
+        case .byteOrderMark: bomLabel
+        case .lineEnding: lineEndingLabel
+        case .languageProfile: langLabel
+        }
     }
 
     override func mouseDown(with event: NSEvent) {

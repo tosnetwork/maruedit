@@ -241,6 +241,36 @@ final class StatusBarViewTests: XCTestCase {
         XCTAssertEqual(delegate.controls, [.cursorPosition])
     }
 
+    func testVoiceOverPressInvokesEveryInteractiveStatusField() {
+        let status = StatusBarView(frame: NSRect(x: 0, y: 0, width: 1_600, height: 24))
+        let delegate = Delegate(); status.delegate = delegate
+        status.updateDocumentMetrics(text: "A", fontSize: 13)
+        status.updateCursor(EditorCursorState(
+            lineNumber: 1, displayColumn: 1, utf16Offset: 0,
+            selectedCharacterCount: 0, selectedUTF16Length: 0, selectionRangeCount: 1))
+        status.updateMacroActivity(isRunning: true)
+        status.updateLargeFileMode(.reducedFeatures)
+        status.layoutSubtreeIfNeeded()
+
+        let expected: [StatusBarControl] = [
+            .cursorPosition, .totals, .characterCode, .inputMode, .layoutMode, .fontSize,
+            .macroActivity, .largeFileMode, .encoding, .byteOrderMark, .lineEnding,
+            .languageProfile,
+        ]
+        for control in expected {
+            let field = try! XCTUnwrap(status.accessibilityElement(for: control))
+            XCTAssertEqual(field.accessibilityRole(), .button)
+            XCTAssertFalse(field.accessibilityLabel()?.isEmpty ?? true)
+            XCTAssertTrue(field.accessibilityPerformPress(), "VoiceOver cannot press \(control)")
+        }
+        XCTAssertEqual(delegate.controls, expected)
+
+        status.setClickActionsEnabled(false)
+        let cursor = try! XCTUnwrap(status.accessibilityElement(for: .cursorPosition))
+        XCTAssertFalse(cursor.accessibilityPerformPress())
+        XCTAssertEqual(delegate.controls, expected)
+    }
+
     func testStatusFontSizeAdjustmentClampsAndUpdatesEditorImmediately() async {
         let controller = MainWindowController()
         controller.adjustStatusFontSizeForTesting(21)
@@ -249,6 +279,86 @@ final class StatusBarViewTests: XCTestCase {
         XCTAssertEqual(controller.currentStatusFontSizeForTesting, 72)
         controller.adjustStatusFontSizeForTesting(2)
         XCTAssertEqual(controller.currentStatusFontSizeForTesting, 8)
+    }
+
+    func testCrossStateMatrixDoesNotLeakStatusBetweenDocumentsOrEditingModes() {
+        let status = StatusBarView(frame: NSRect(x: 0, y: 0, width: 1_400, height: 24))
+
+        struct State {
+            let text: String
+            let cursor: EditorCursorState
+            let encoding: TextEncoding
+            let bom: Bool
+            let lineEnding: LineEndingState
+            let language: Language
+            let profile: String?
+            let inputMode: EditorInputMode
+            let largeFileMode: LargeFileMode
+        }
+        let states = [
+            State(
+                text: "ASCII\nsecond", cursor: EditorCursorState(
+                    lineNumber: 1, displayColumn: 1, utf16Offset: 0,
+                    selectedCharacterCount: 0, selectedUTF16Length: 0,
+                    selectionRangeCount: 1),
+                encoding: .utf8, bom: true, lineEnding: .lf,
+                language: .plainText, profile: nil, inputMode: .insert,
+                largeFileMode: .normal),
+            State(
+                text: "日本語\r\n二行目", cursor: EditorCursorState(
+                    lineNumber: 1, displayColumn: 2, utf16Offset: 1,
+                    selectedCharacterCount: 6, selectedUTF16Length: 6,
+                    selectionRangeCount: 3, selectedLineCount: 2,
+                    boxWidth: 2, boxHeight: 3),
+                encoding: .windows31J, bom: false, lineEnding: .crlf,
+                language: .markdown, profile: "Japanese Notes", inputMode: .overwrite,
+                largeFileMode: .reducedFeatures),
+            State(
+                text: "e\u{301} emoji 👨‍👩‍👧", cursor: EditorCursorState(
+                    lineNumber: 1, displayColumn: 3, utf16Offset: 2,
+                    selectedCharacterCount: 0, selectedUTF16Length: 0,
+                    selectionRangeCount: 4),
+                encoding: .utf16LittleEndian, bom: true, lineEnding: .cr,
+                language: .swift, profile: "Swift Strict", inputMode: .insert,
+                largeFileMode: .readOnly),
+        ]
+
+        for (index, state) in states.enumerated() {
+            status.updateDocumentMetrics(text: state.text, fontSize: CGFloat(13 + index))
+            status.updateEncoding(state.encoding)
+            status.updateByteOrderMark(state.bom)
+            status.updateLineEnding(state.lineEnding)
+            status.updateLanguage(state.language, profileName: state.profile)
+            status.updateInputMode(state.inputMode)
+            status.updateLargeFileMode(state.largeFileMode)
+            status.updateCursor(state.cursor)
+            status.layoutSubtreeIfNeeded()
+
+            XCTAssertEqual(status.displayedEncodingText, state.encoding.displayName)
+            XCTAssertEqual(status.displayedBOMText, state.bom ? "BOM" : "No BOM")
+            XCTAssertEqual(status.displayedLineEndingText, state.lineEnding.displayName)
+            XCTAssertEqual(status.displayedInputModeText, state.inputMode == .insert ? "INS" : "OVR")
+            XCTAssertEqual(
+                status.displayedLanguageProfileText,
+                state.profile.map { "\(state.language.displayName) · \($0)" }
+                    ?? state.language.displayName)
+            XCTAssertEqual(status.displayedLargeFileModeText == nil, state.largeFileMode == .normal)
+        }
+
+        // Returning to the ordinary tab must clear every conditional value
+        // produced by BOX/multi-selection and large-file tabs.
+        let ordinary = states[0]
+        status.updateDocumentMetrics(text: ordinary.text, fontSize: 13)
+        status.updateEncoding(ordinary.encoding)
+        status.updateByteOrderMark(ordinary.bom)
+        status.updateLineEnding(ordinary.lineEnding)
+        status.updateLanguage(ordinary.language, profileName: ordinary.profile)
+        status.updateInputMode(ordinary.inputMode)
+        status.updateLargeFileMode(ordinary.largeFileMode)
+        status.updateCursor(ordinary.cursor)
+        XCTAssertEqual(status.displayedSelectionText, "")
+        XCTAssertNil(status.displayedLargeFileModeText)
+        XCTAssertEqual(status.displayedCharacterCodeText, "U+0041")
     }
 }
 

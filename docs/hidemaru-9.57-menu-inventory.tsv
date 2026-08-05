@@ -1,0 +1,337 @@
+menu	official_label_ja	official_label_en	placement
+File	新規作成(N)	New	menu
+File	開く(O)...	Open	menu
+File	ファイルの一部を開く...	Open part of file...	menu
+File	閉じて開く(L)...	Load...	menu
+File	ファイルを閉じる(C)	Close file	menu
+File	上書き保存(S)	Save	menu
+File	上書き保存(改行=LF)([)	save(line separated by LF only)([)	menu
+File	名前を付けて保存(A)...	Save as...	menu
+File	別ファイルへの追加保存(])	Append save to other file(])	menu
+File	カーソル位置への読込み(I)...	Insert file...	menu
+File	印刷(P)...	Print...	menu
+File	プロジェクトを開く...	Open project...	menu
+File	名前を付けてプロジェクトを保存...	Save as project...	menu
+File	デスクトップを開く...	Open desktop...	menu
+File	名前を付けてデスクトップを保存...	Save as desktop...	menu
+File	デスクトップを閉じる	Close desktop	menu
+File	新規Webブラウズモード(H)	New web browse mode(H)	menu
+File	FTPで開く(G)...	FTP Open(G)...	menu
+File	FTPで名前を付けて保存(V)...	FTP Save as...	menu
+File	エンコードの種類(D) バイナリモード(B)	Encoding	menu
+File	閲覧モード(R)	Browse mode	menu
+File	上書き禁止(N)	Switch Read-only	menu
+File	Web 保存して終了(E)	Web	menu
+File	終了(X)	Exit	menu
+File	全保存終了(T)	Save and Exit all	menu
+File	全終了(Q)	Quit all	menu
+File	全保存(Z)	Save all(Z)	menu
+File	全保存(更新ファイルのみ)(U)	save all(updated file only)	menu
+File	破棄して終了(K)	Quit without saving(K)	menu
+File	全て破棄して終了	Quit all without saving	menu
+File	ウィンドウを閉じる	Close window	menu
+File	ファイルのプロパティ	Property of file	menu
+File	ファイル名変更(-)...	Rename current file(-)...	menu
+File	...を開く(J)	Open it(J)	menu
+File	...を秀丸エディタで開く(M)	Open it by Maruo Editor	menu
+File	関連付けで開く(Y)	Open by shell	menu
+File	再読み込み(/)	Reload(/)	menu
+File	ヒストリの記録を中断(^)	Stop file history(^)	menu
+File	ファイルヒストリ	File history	menu
+File	フォルダヒストリ	Folder history	menu
+File	デスクトップヒストリ	Desktop history(@)	menu
+File	プロジェクトヒストリ	Project history(:)	menu
+Edit	やり直し(U)	Undo	menu
+Edit	やり直しのやり直し(R)	Redo	menu
+Edit	前の操作のくり返し(I)	Repeat previous action	menu
+Edit	削除内容復元(D)	Restore deletion	menu
+Edit	切り抜き(T)	Cut	menu
+Edit	コピー(C)	Copy	menu
+Edit	引用付きコピー(Q)	Copy with Reference	menu
+Edit	追加切り抜き(W)	Cut for append(W)	menu
+Edit	追加コピー(A)	Copy for append(A)	menu
+Edit	貼り付け(P)	Paste	menu
+Edit	引用付き貼り付け(@)	Paste with Reference(@)	menu
+Edit	削除(L)	Delete	menu
+Edit	行削除(N)	Delete line	menu
+Edit	論理行削除(N)	Delete line 2	menu
+Edit	カーソルより後ろを削除	Delete after cursor	menu
+Edit	カーソルより前を削除	Delete before cursor	menu
+Edit	単語削除（ｶｰｿﾙから後ろ）	Delete word	menu
+Edit	単語削除（全部）	Delete Word (all)	menu
+Edit	単語削除（ｶｰｿﾙから前）	Delete Word (front)	menu
+Edit	バックスペース	Backspace	menu
+Edit	変換(V) 整形(-) CapsLockし忘れの是正(M)	Convert	menu
+Edit	再変換(G)	Reconvert(G)	menu
+Edit	大文字 &lt;-&gt; 小文字の変換(K)	Change case(K)	menu
+Edit	選択開始(B)	Begin selection	menu
+Edit	BOX選択開始(X)	Begin Box selection	menu
+Edit	BOX選択開始(複数選択化)(X)	Begin Box selection (by multi)	menu
+Edit	行選択開始(:)	Begin line selection(:)	menu
+Edit	すべてを選択(S)	Select all	menu
+Edit	複数選択化(])	To multi select(])	menu
+Edit	範囲選択を反転(^)	Invert selection(^)	menu
+Edit	貼り付け＋履歴戻し(Y)	paste + history back	menu
+Edit	貼り付け＋履歴戻し2(¥)	paste + history back(¥)	menu
+Edit	クリップボード履歴(H)...	Clipboard History...	menu
+Edit	BOX貼り付け(J)	Box paste(J)	menu
+Edit	単語選択（全部）	Select word	menu
+Edit	行の選択	Select line	menu
+Edit	単語をコピー	Copy word	menu
+Edit	単語を切り抜き	Cut word	menu
+Edit	行をコピー	Copy line	menu
+Edit	行を切り抜き(/)	Cut line(/)	menu
+Edit	カーソルより後ろを切り抜き	Cut after cursor	menu
+Edit	...をコピー(Z)	Copy it(Z)	menu
+Edit	複数選択(.) 単語補完([)	Multi select(.)	menu
+Edit	単語補完候補1(1)	Complete decide 1	menu
+Edit	単語補完候補2(2)	Complete decide 2	menu
+Edit	単語補完候補3(3)	Complete decide 3	menu
+Edit	テンプレート		menu
+Edit	検索(F)...	Find...	menu
+Edit	置換(E)...	Replace...	menu
+Edit	再読み込み(O)	Reload	menu
+Edit	やり直しバッファのクリア	Clear undo buffer	menu
+Conv	UPPER CASE(U)	to Upper case	menu
+Conv	lower case(L)	to Lower case	menu
+Conv	ﾊﾝｶｸ(H)	Convert to hankaku	menu
+Conv	全角ひらがな(Z)	To zenkaku-hiragana	menu
+Conv	全角カタカナ(K)	To zenkaku-katakana	menu
+Conv	英数字/記号/空白のみ半角に(A)	To hankaku alphabet	menu
+Conv	英数字/記号/空白のみ全角に(P)	To zenkaku alphabet	menu
+Conv	カタカナのみ半角に(O)	To hankaku katakana only	menu
+Conv	カタカナのみ全角に(Y)	To zenkaku katakana only	menu
+Conv	TAB -&gt; 空白(S)	Tab -&gt; Space	menu
+Conv	空白 -&gt; TAB(T)	Space -&gt; Tab	menu
+Conv	インデント(I)	Indent	menu
+Conv	逆インデント(N)	Unindent	menu
+Conv	ソート(R)...	Sort...	menu
+Disp	ツールバー(T)	Tool bar	menu
+Disp	タブモード(B)	Tab mode	menu
+Disp	ファンクションキー表示(F)	Function-Key	menu
+Disp	ステータスバー(S)	Status bar	menu
+Disp	ファイルマネージャ枠(X)	File maneger pane(X)	menu
+Disp	アウトプット枠(P)	Output pane	menu
+Disp	ブラウザ枠(¥)	Browser pane	menu
+Disp	ブラウザ枠表示/非表示(¥)	Browser pane show/hide	menu
+Disp	アウトライン解析の枠(O)	Outline pane	menu
+Disp	見出しバー(U)	Headline bar(U)	menu
+Disp	折りたたみ用の余白(M)	Left margin for folding	menu
+Disp	行番号(L)	Line-number	menu
+Disp	ルーラー(R)	Ruler	menu
+Disp	自動スペルチェック(K)	Auto spell check	menu
+Disp	個別ブラウザ枠(¥)	Each browser pane	menu
+Disp	個別ブラウザ枠表示/非表示(¥)	Each browser pane show/hide	menu
+Disp	折り返し(I) ルーラーの表示(D) タブストップ(A) 縦書きモード(Q)	Column(I)	menu
+Disp	段組モード(J)	Multi column mode(J)	menu
+Disp	Webブラウズモード(W)	Web browse mode	menu
+Disp	文字コード表示(C)	Show character code	menu
+Disp	文字数計算	Count characters	menu
+Disp	再描画(E)	Redraw	menu
+Disp	部分編集([)	Range-Edit In([)	menu
+Disp	部分編集解除(])	Range-Edit Out(])	menu
+Disp	折りたたみ(V) 全画面表示(Z)	Folding(V)	menu
+Insert	日付と時刻(D)	Date and Time	menu
+Insert	改行(R)	Return	menu
+Insert	改ページ(O)	Form feed	menu
+Insert	タブ(T)	Insert tab	menu
+Insert	行の二重化(U)	Duplicate line	menu
+Insert	空行挿入(L)	Insert line	menu
+Insert	制御コード入力(I)...	Insert control code...	menu
+Insert	カーソル位置への読込み(F)...	Insert file...	menu
+Insert	現在のファイル名(N)	Current file name	menu
+Insert	削除内容復元	Undelete	menu
+Insert	テンプレート		menu
+Search	検索(F)...	Find...	menu
+Search	検索(上)(I)...	Find(up)...	menu
+Search	単語の検索(W)...	Find word...	menu
+Search	下候補(N)	Next	menu
+Search	上候補(P)	Previous	menu
+Search	すべての候補を選択(¥)	Select all found(¥)	menu
+Search	すべての候補を一覧表示	List all found(¥¥)	menu
+Search	すべての候補をアウトラインに表示	Show outline for all found	menu
+Search	すべての候補を色付け(:)	Color marker all found(:)	menu
+Search	すべての候補の色付けを消去	Clear color marker all found	menu
+Search	置換(R)...	Replace...	menu
+Search	検索文字列の強調(O)	Highlight found string	menu
+Search	検索文字列の取得(E)	Get find text	menu
+Search	検索開始位置へ戻る(S)	Return to start position	menu
+Search	指定行(J)...	Jump...	menu
+Search	ファイルの先頭(T)	Top of file	menu
+Search	ファイルの最後(B)	Bottom of file	menu
+Search	画面の先頭(Y)	To Screen top(Y)	menu
+Search	画面の最後(Z)	To Screen bottom(Z)	menu
+Search	単語右	Word right	menu
+Search	単語右（サルネン風）	Word right (salnen style)	menu
+Search	単語左	Word left	menu
+Search	単語の先頭に移動	Move to word top	menu
+Search	単語の最後に移動	Move to word bottom	menu
+Search	行頭に移動	To top of line	menu
+Search	行末に移動	To bottom of line	menu
+Search	行末に移動（その２）	To bottom of line(type 2)	menu
+Search	論理行頭に移動	go logical line top	menu
+Search	論理行末に移動	go logical line end	menu
+Search	次ページ	Next page	menu
+Search	前ページ	Previous page	menu
+Search	半次ページ	Half next page	menu
+Search	半前ページ	Half prev page	menu
+Search	スクロールアップ	Scroll up	menu
+Search	スクロールダウン	Scroll down	menu
+Search	スクロールアップ（その２）	Scroll Up (type 2)	menu
+Search	スクロールダウン（その２）	Scroll Down (type 2)	menu
+Search	タブ後退	Back tab	menu
+Search	タブ前進	Forward tab	menu
+Search	対応する括弧に移動(K)	Jump to mached parenthesis(K)	menu
+Search	{に移動	move to {	menu
+Search	}に移動	move to }	menu
+Search	対応するタグに移動	Jump to mached tag	menu
+Search	最後に編集した所(L)	Last updated position	menu
+Search	下の編集マーク(D)	Find Updated position Down	menu
+Search	上の編集マーク(U)	Find Updated position Up	menu
+Search	編集マークのクリア(C)	Clear edit marks	menu
+Search	前のカーソル位置(V)	Previous position	menu
+Search	強調(H) 現在行をマーク/マーク解除(A)	Highlighted line	menu
+Search	マーク一覧(M)...	Mark list...	menu
+Search	マーク行の下検索(X)	Search marked line down(X)	menu
+Search	マーク行の上検索(Q)	Search marked line up(Q)	menu
+Search	マークを全て解除	Clear all mark	menu
+Search	現在のファイルのマークを解除	Clear current file mark	menu
+Search	検索の色付け一覧(-)...	Find-marker list(-)...	menu
+Search	カラーマーカー(/) 次の結果	Color marker(/)	menu
+Search	前の結果	Previous result	menu
+Search	次のgrep結果	Nest grep result	menu
+Search	前のgrep結果	Previous grep result	menu
+Search	grepして置換(@)...	grep and replace(@)...	menu
+Search	grepの実行(G)...	grep...	menu
+Search	範囲内検索を選択	Select inselect	menu
+Search	範囲内検索に指定	Set inselect	menu
+Search	カーソル上	Cursor up	binding
+Search	カーソル下	Cursor down	binding
+Search	カーソル右	Cursor right	binding
+Search	カーソル左	Cursor left	binding
+Search	カーソル上(折り返し無視)	Cursor up (no wrap)	binding
+Search	カーソル下(折り返し無視)	Cursor down (no wrap)	binding
+Search	高速上移動	Fast cursor up	binding
+Search	高速下移動	Fast cursor down	binding
+Hilight	アウトライン解析(L)...	Outline...	menu
+Hilight	下の強調行(N)	Go Next Highlighted line	menu
+Hilight	上の強調行(P)	Go Previous Highlighted line	menu
+Hilight	強調行の範囲選択(S)	Select Highlighted line area	menu
+Bookmark	ブックマークに追加...	Add bookmark...	menu
+Bookmark	ブックマークの整理...	Edit bookmark...	menu
+Tool	ユーザーメニュー1	User Menu 1	menu
+Tool	ユーザーメニュー2	User Menu 2	menu
+Tool	ユーザーメニュー3	User Menu 3	menu
+Tool	ユーザーメニュー4	User Menu 4	menu
+Tool	ユーザーメニュー5	User Menu 5	menu
+Tool	ユーザーメニュー6	User Menu 6	menu
+Tool	ユーザーメニュー7	User Menu 7	menu
+Tool	ユーザーメニュー8	User Menu 8	menu
+Tool	外部ヘルプ(1)	External Help(1)	menu
+Tool	外部ヘルプ２(2)	External Help 2(2)	menu
+Tool	外部ヘルプ３(3)	External Help 3(3)	menu
+Tool	外部ヘルプ４(4)	External Help 4(4)	menu
+Tool	外部ヘルプ５(5)	External Help 5(5)	menu
+Tool	外部ヘルプ６(6)	External Help 6(6)	menu
+Tool	プログラム実行(X)...	Execute program...	menu
+Tool	エクスプローラ(P)	Explorer	menu
+Tool	マクロファイル用のフォルダ(A)	Macro folder	menu
+Tool	タグジャンプ(T)	Tag jump	menu
+Tool	ダイレクトタグジャンプ(D)	Direct tag jump	menu
+Tool	バックタグジャンプ(B)	Back tag jump	menu
+Tool	tagsファイルの作成(G)...	Make tags file...	menu
+Tool	設定内容の保存/復元(U)...	Backup/Restore environment...	menu
+Tool	ファイルタイプ別の設定(C)...	Configure for each file type...	menu
+Tool	ファイルタイプ別の設定のリスト...	Configure for each file type list...	menu
+Tool	動作環境(E)...	Environment...	menu
+Tool	キー割り当て(K)...	Key assignment...	menu
+Tool	メニュー編集(M)...	Edit user-menu...	menu
+Tool	履歴の消去(L)...	Clear history...	menu
+Window	縦に並べる(V)	Vertical	menu
+Window	横に並べる(H)	Horizontal	menu
+Window	重ねて表示(C)	Cascade	menu
+Window	並べて表示(T)	Tile	menu
+Window	全部最小化(N)	Minimize all	menu
+Window	ウィンドウ分割上下(D)	Divide window	menu
+Window	ウィンドウ分割左右(M)	Divide window R-L(M)	menu
+Window	分割ウィンドウ切り替え(J)	Switch divided window(J)	menu
+Window	分割ウィンドウの同時スクロール	Scroll link of split	menu
+Window	他の秀丸エディタと同時スクロール(L)...	Scroll link...	menu
+Window	他の秀丸エディタと内容比較(F)...	Compare file...	menu
+Window	次の内容比較(E)	Next Compare	menu
+Window	前の内容比較(P)	Previous Compare	menu
+Window	デスクトップ保存(S)	Save desktop	menu
+Window	デスクトップ復元(R)	Restore desktop	menu
+Window	デスクトップを開く(Q)...	Open desktop(Q)...	menu
+Window	名前を付けてデスクトップを保存(Y)...	Save as desktop(Y)...	menu
+Window	デスクトップを閉じる	Close desktop	menu
+Window	常に手前に表示(A)	Always on top	menu
+Window	全画面表示(Z)	Full screen(Z)	menu
+Window	アウトライン解析の枠(O)	Outline pane	menu
+Window	個別ブラウザ枠(¥)	Each browser pane	menu
+Window	ファイルマネージャ枠(X)	File maneger pane(X)	menu
+Window	ファイルマネージャ枠切り替え	Switch file maneger pane	menu
+Window	アウトプット枠(U)	Output pane	menu
+Window	アウトプット枠切り替え	Switch output pane	menu
+Window	ブラウザ枠(¥)	Browser pane	menu
+Window	ブラウザ枠表示/非表示(¥)	Browser pane show/hide	menu
+Window	ブラウザ枠切り替え(¥)	Switch browser pane	menu
+Window	枠のフォーカス切り替え(G)	Switch pane focus(G)	menu
+Window	タブモード(B)	Tab mode	menu
+Window	このタブを分離/移動(I)	Separate/Move this tab(I)	menu
+Window	このタブを分離(I)	Separate/Move this tab (no dialog)(I)	menu
+Window	このタブを最小化(K)	Minimize current tab(K)	menu
+Window	このタブ以外を閉じる	Close other tab	menu
+Window	左のタブを全て閉じる	Close all left tab	menu
+Window	右のタブを全て閉じる	Close all right tab	menu
+Window	次の秀丸エディタ	Next Maruo Editor	menu
+Window	前の秀丸エディタ	Previous Maruo Editor	menu
+Window	次の秀丸エディタ(最小化のも含む)	Next Maruo Editor(with minimize)	menu
+Window	前の秀丸エディタ(最小化のも含む)	Prev Maruo Editor(with minimize)	menu
+Window	直前のアクティブ	Just before active	menu
+Window	ウィンドウ一覧(W)...	Window list...	menu
+Macro	キー操作の記録開始/終了(R)	Start/Stop record	menu
+Macro	キー操作の再生(P)	Play	menu
+Macro	キー操作のリピート再生...	Repeat play...	menu
+Macro	キー操作の保存(S)...	Save record...	menu
+Macro	キー操作の読込み(L)...	Load record...	menu
+Macro	マクロ実行(X)...	Execute macro...	menu
+Macro	マクロ登録(E)...	Register macro...	menu
+Macro	マクロファイル用のフォルダ(A)	Macro folder	menu
+Macro	マクロヘルプ(H)	Macro help	menu
+Other	ファイルタイプ別の設定(C)...	Configure for each file type...	menu
+Other	ファイルタイプ別の設定のリスト...	Configure for each file type list...	menu
+Other	動作環境(E)...	Environment...	menu
+Other	キー割り当て(K)...	Key assignment...	menu
+Other	メニュー編集(M)...	Edit user-menu...	menu
+Other	履歴の消去(L)...	Clear history...	menu
+Other	タグジャンプ(T)	Tag jump	menu
+Other	ダイレクトタグジャンプ(D)	Direct tag jump	menu
+Other	バックタグジャンプ(B)	Back tag jump	menu
+Other	制御コード入力(I)...	Insert control code...	menu
+Other	tagsファイルの作成(G)...	Make tags file...	menu
+Other	プログラム実行(X)...	Execute program...	menu
+Other	スペルミスの修正(Z)...	Edit spell miss(Z)...	menu
+Other	コマンド一覧(O)...	Command list...	menu
+Other	閲覧モード(R)	Browse mode	menu
+Other	上書き禁止(N)	Switch Read-only	menu
+Other	かな漢モードの切り替え(W)	(kanji-key switch)	menu
+Other	かな漢への単語登録(S)	(kanji register)	menu
+Other	フリーカーソルモード(F)	Free cursor mode	menu
+Other	縦書きモード(Q)	Tategaki mode(Q)	menu
+Other	段組モード(J)	Multi column mode(J)	menu
+Other	設定内容の保存/復元(U)...	Backup/Restore environment...	menu
+Other	最新バージョンの確認(V)...	Version check...	menu
+Other	秀丸エディタヘルプ(P)	Help for Maruo Editor	menu
+Other	マクロヘルプ(H)	Macro help	menu
+Other	秀丸エディタについて(A)...	About Maruo Editor	menu
+Help	外部ヘルプ(1)	External Help(1)	menu
+Help	外部ヘルプ２(2)	External Help 2(2)	menu
+Help	外部ヘルプ３(3)	External Help 3(3)	menu
+Help	外部ヘルプ４(4)	External Help 4(4)	menu
+Help	外部ヘルプ５(5)	External Help 5(5)	menu
+Help	外部ヘルプ６(6)	External Help 6(6)	menu
+Help	最新バージョンの確認(V)...	Version check...	menu
+Help	秀丸エディタヘルプ(P)	Help for Maruo Editor	menu
+Help	マクロヘルプ(H)	Macro help	menu
+Help	秀丸エディタについて(A)...	About Maruo Editor	menu
