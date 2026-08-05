@@ -89,6 +89,12 @@ final class MenuCustomizationUITests: XCTestCase {
         XCTAssertTrue(titles.contains("External Commands"))
         XCTAssertTrue(titles.contains("Command List…"))
         XCTAssertNotNil(tools?.item(withTitle: "External Commands")?.submenu)
+        for slot in 1...8 {
+            XCTAssertNotNil(tools?.item(withTitle: "User Menu \(slot)")?.submenu)
+        }
+        XCTAssertTrue(titles.contains("Configure User Menus…"))
+        XCTAssertTrue(titles.contains("Show in Finder"))
+        XCTAssertTrue(titles.contains("Open Macro Folder"))
     }
 
     func testHelpMenuContainsSixConfigurableExternalHelpSlots() async {

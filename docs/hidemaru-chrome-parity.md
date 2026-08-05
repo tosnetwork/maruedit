@@ -18,7 +18,7 @@ passing MaruEdit regression tests from exhaustive Hidemaru feature parity.
 
 | Area | ✅ Complete | 🟡 Partial/native | ❌ Incomplete |
 |---|---:|---:|---:|
-| Menu rows | 11 | 2 | 0 |
+| Menu rows | 13 | 0 | 0 |
 | Toolbar/function-key rows | 9 | 3 | 0 |
 | Status-bar rows | 16 | 0 | 0 |
 | Acceptance gates | 1 | 2 | 2 |
@@ -40,14 +40,14 @@ native menu before the Hidemaru-compatible business menus.
 | Search | Search/replace/Grep Replace, case/word/regex/fuzzy flags, return to search start, the complete cursor-navigation inventory, edit marks, all-match selection/list/outline/color operations, document-local persistent color layers, line marks, temporary color markers, search ranges, and unified/dedicated Grep-result navigation | ✅ Complete | Every compatible entry on the official 9.57 Search menu has a stable command, menu placement, documentation, and direct registry or behavior test. Unified result navigation follows Hidemaru's difference → search color → Grep priority. |
 | Highlight | Outline analysis, highlighted-line navigation/area selection, persistent line markers, and temporary selection-range color markers | ✅ Complete | The official Highlight submenu and Temporary Color Marker submenu are mapped: configure/apply, selection-intersection removal, clear all, convert markers to multiple selections, bidirectional wrap navigation, edit tracking, and profile-aware highlighted-line commands have direct tests. |
 | Bookmark | Toggle, previous/next, clear, and a document list with jump/remove | ✅ Complete | No confirmed compatible gap in the scoped bookmark row; retain official-command regression coverage. |
-| Tools | Compare/difference, deterministic portable tags-file generation, tag navigation, dynamic external commands, and command-list access | 🟡 Partial | Native generation is bounded, skips dependency/hidden trees, writes atomically, and feeds Tag Jump directly; finish the official Tools-command inventory one by one. |
-| Window | Tab list, close-other/left/right, pane focus, tab cycling, native Minimize/Zoom, and session restoration | 🟡 Native substitute | Windows arrangement/process/desktop behavior is not identical; document each native replacement explicitly. |
+| Tools | Eight persistent ordered user menus, six external-help slots, dynamic external programs, Finder and macro-folder access, compare/difference, deterministic portable tags generation and navigation, settings transfer, file-type/environment/key/menu settings, categorized history clearing, and the complete command list | ✅ Complete | Every compatible official 9.57 Tools entry is mapped. User menus accept ordered stable CommandIDs and separators and rebuild live. Windows Explorer maps to Finder; external programs remain permission-scoped and stream through the shared Output pane. Tags generation is bounded, skips dependency/hidden trees, writes atomically, and feeds Tag Jump directly. |
+| Window | Native vertical/horizontal/grid/cascade arrangement, minimize-all, topmost/full-screen state, horizontal/vertical editor splits and linked scrolling, compare/difference, workspace save/restore, Files/Outline/Output panes, tab cycling/list/close scopes, ownership-preserving tab detach into fully managed windows, current/all-window cycling including minimized windows, previous-active activation, and native Minimize/Zoom | ✅ Complete | Every compatible official 9.57 Window entry is mapped. MaruEdit's document windows live in one macOS process instead of one Windows process per editor; “next Hidemaru including minimized” therefore cycles managed `NSWindow`s and restores them. “Minimize this tab” minimizes its containing native window. Hidemaru browser-frame commands remain explicitly unavailable because they depend on Windows browser controls. MaruEdit keeps Hidemaru-style tab mode enabled and uses Detach/Move to represent mode-off separate windows. |
 | Macro | Start/stop recording, single and bounded repeat playback, non-overwriting JavaScript save, run chooser, metadata-driven registered macros, reload, folder access, enablement, shortcuts, permissions, output/errors, and macro help | ✅ Complete | The official 9.57 Macro inventory is mapped. Hidemaru's “load key operations” is represented by loading/reloading saved JavaScript recordings into the registered-macro catalog; persistent named macros replace fixed Windows macro slots while retaining keyboard assignment and menu invocation. |
 | Other | Settings, file-type profiles, key assignments, command/menu editing, font entry points, categorized history clearing, tag navigation/generation, control-code input, native spelling corrections, View Mode, overwrite protection, free cursor, vertical/column layout, and full/section settings transfer | ✅ Complete | Every compatible official 9.57 Other entry has a stable placement. The Windows IME word-registration and Kana/Kanji-mode APIs have no macOS app-level equivalent; “Japanese User Dictionary…” opens Apple's supported Input-menu/Text Replacements workflow, while input-source switching remains OS-owned. See [Apple's Japanese input-method guide](https://support.apple.com/guide/japanese-input-method/edit-and-use-your-user-dictionaries-jpim10228/mac). |
 | Help | MaruEdit guide, macro guide, shortcut reference, configurable External Help 1–6, release check, support, and native About | ✅ Complete | All six external-help slots have persistent names/URL-or-file targets, dynamic enablement, a configuration window, and tested dispatch; About uses the native macOS panel. |
 
 The official pages contain roughly 297 command references, including repeated
-placements, dynamic entries, and Windows-only commands. MaruEdit registers 290
+placements, dynamic entries, and Windows-only commands. MaruEdit registers 308
 stable command IDs plus dynamic and native-responder entries, so the raw totals
 are not a parity measure. `ChromeParityAuditTests` only requires every existing
 stable ID to appear exactly once in the command reference; it is a documentation
@@ -108,7 +108,7 @@ consistency check, not proof that the external Hidemaru inventory is complete.
 Gate notes:
 
 - Gate 1 needs an external Hidemaru-command inventory. Auditing only MaruEdit's
-  existing 290 IDs cannot detect commands that MaruEdit never registered.
+  existing 308 IDs cannot detect commands that MaruEdit never registered.
 - Gate 2 is complete for the floating-toolbar decision but not for every Windows-
   specific menu/frame/window command.
 - Gate 3 covers persistence, layout operations, configurable F-key count, and

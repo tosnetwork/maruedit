@@ -35,6 +35,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var recentMenu: NSMenu!
     private var reopenWithEncodingMenu: NSMenu!
     private var menuCustomizationWindowController: MenuCustomizationWindowController?
+    private var userMenuWindowController: UserMenuConfigurationWindowController?
+    private let userMenuStore = UserMenuConfigurationStore()
+    private lazy var userMenuConfiguration = userMenuStore.load()
     private var clipboardTimer: Timer?
     private lazy var menuCustomizationStore: MenuCustomizationStore = {
         if isUITestMode {
@@ -59,6 +62,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         coordinator.onOpenMacroFolder = { [weak self] in self?.macroManager.openFolder() }
         coordinator.onReloadMacros = { [weak self] in self?.macroManager.reload() }
+        coordinator.onShowUserMenuConfiguration = { [weak self] in self?.showUserMenuConfiguration() }
         EditorShortcuts.install(
             keyBindings: keyBindings,
             execute: { [coordinator] id in
@@ -359,6 +363,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         let toolsItem = NSMenuItem(title: "Tools", action: nil, keyEquivalent: "")
         let toolsMenu = NSMenu(title: "Tools")
+        for index in 0..<UserMenuConfiguration.menuCount {
+            let item = NSMenuItem(title: "User Menu \(index + 1)", action: nil, keyEquivalent: "")
+            item.submenu = buildUserMenu(at: index)
+            toolsMenu.addItem(item)
+        }
+        toolsMenu.addItem(commandItem(.toolsConfigureUserMenus))
+        toolsMenu.addItem(.separator())
+        for id: CommandID in [
+            .helpExternal1, .helpExternal2, .helpExternal3,
+            .helpExternal4, .helpExternal5, .helpExternal6,
+        ] { toolsMenu.addItem(commandItem(id)) }
+        toolsMenu.addItem(commandItem(.toolsOpenFinder))
+        toolsMenu.addItem(commandItem(.macroOpenFolder))
+        toolsMenu.addItem(.separator())
         toolsMenu.addItem(commandItem(.navigateCompareNextDocument))
         toolsMenu.addItem(commandItem(.navigateNextDifference))
         toolsMenu.addItem(commandItem(.navigatePreviousDifference))
@@ -373,6 +391,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         externalItem.submenu = externalCommandManager.menu
         toolsMenu.addItem(externalItem)
         toolsMenu.addItem(commandItem(.otherCommandList))
+        toolsMenu.addItem(.separator())
+        toolsMenu.addItem(commandItem(.otherExportSettings))
+        toolsMenu.addItem(commandItem(.otherFileTypeProfiles))
+        toolsMenu.addItem(commandItem(.appSettings))
+        toolsMenu.addItem(commandItem(.otherKeyAssignments))
+        toolsMenu.addItem(commandItem(.viewCustomizeMenus))
+        toolsMenu.addItem(commandItem(.otherClearAllHistories))
         toolsItem.submenu = toolsMenu
         main.addItem(toolsItem)
 
@@ -462,6 +487,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         winMenu.addItem(withTitle: "Minimize", action: #selector(NSWindow.miniaturize(_:)), keyEquivalent: "m")
         winMenu.addItem(withTitle: "Zoom", action: #selector(NSWindow.zoom(_:)), keyEquivalent: "")
         winMenu.addItem(.separator())
+        for id: CommandID in [
+            .windowTileVertical, .windowTileHorizontal, .windowCascade, .windowTileGrid,
+            .windowMinimizeAll, .viewSplitHorizontal, .viewSplitVertical,
+            .viewCloseSplit, .viewToggleLinkedScrolling,
+            .navigateCompareNextDocument, .navigateNextDifference, .navigatePreviousDifference,
+            .fileSaveWorkspace, .fileOpenWorkspace,
+            .windowAlwaysOnTop, .windowFullScreen,
+            .windowShowOutlinePane, .windowShowFilesPane,
+            .viewToggleOutputPane, .windowFocusUtilityPane,
+        ] { winMenu.addItem(commandItem(id)) }
+        winMenu.addItem(.separator())
         winMenu.addItem(commandItem(.windowNextTab))
         winMenu.addItem(commandItem(.windowPreviousTab))
         winMenu.addItem(commandItem(.windowTabList))
@@ -469,6 +505,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         winMenu.addItem(commandItem(.windowCloseOtherTabs))
         winMenu.addItem(commandItem(.windowCloseTabsLeft))
         winMenu.addItem(commandItem(.windowCloseTabsRight))
+        winMenu.addItem(commandItem(.windowDetachTab))
+        winMenu.addItem(commandItem(.windowMinimizeTab))
+        for id: CommandID in [
+            .windowNextManaged, .windowPreviousManaged,
+            .windowNextManagedIncludingMinimized, .windowPreviousManagedIncludingMinimized,
+            .windowPreviousActive,
+        ] { winMenu.addItem(commandItem(id)) }
         winMenu.addItem(.separator())
         winMenu.addItem(commandItem(.windowFocusEditor))
         winMenu.addItem(commandItem(.windowFocusUtilityPane))
@@ -627,6 +670,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         menuCustomizationWindowController?.showWindow(nil)
         menuCustomizationWindowController?.window?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func buildUserMenu(at index: Int) -> NSMenu {
+        let menu = NSMenu(title: "User Menu \(index + 1)")
+        for entry in userMenuConfiguration[index] {
+            if entry == UserMenuConfiguration.separator {
+                menu.addItem(.separator())
+            } else {
+                let id = CommandID(entry)
+                guard coordinator.commandRegistry.definition(for: id) != nil else { continue }
+                menu.addItem(commandItem(id))
+            }
+        }
+        if menu.items.isEmpty {
+            let empty = NSMenuItem(title: "No Commands Configured", action: nil, keyEquivalent: "")
+            empty.isEnabled = false; menu.addItem(empty)
+        }
+        return menu
+    }
+
+    private func showUserMenuConfiguration() {
+        if userMenuWindowController == nil {
+            userMenuWindowController = UserMenuConfigurationWindowController(
+                definitions: coordinator.commandRegistry.allDefinitions,
+                configuration: userMenuConfiguration
+            ) { [weak self] value in
+                guard let self else { return }
+                self.userMenuConfiguration = value
+                self.userMenuStore.save(value)
+                self.buildMenu()
+            }
+        }
+        userMenuWindowController?.showWindow(nil)
+        userMenuWindowController?.window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 

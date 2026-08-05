@@ -1153,6 +1153,20 @@ final class MainWindowController: NSWindowController,
         return true
     }
 
+    func takeCurrentDocumentForDetaching() -> Document? {
+        guard let document = documentController.takeDocument(at: curIdx) else { return nil }
+        editorVC.document = curDoc
+        refreshTabs(); refreshStatus(); layoutContentViews()
+        return document
+    }
+
+    func adoptDetachedDocument(_ document: Document) {
+        documentController.replaceCurrentDocument(with: document)
+        editorVC.document = document
+        refreshTabs(); refreshStatus(); layoutContentViews()
+        window?.title = "MaruEdit — \(document.displayName)"
+    }
+
     @discardableResult
     func discardAndCloseCurrentTab() -> Bool {
         guard let doc = curDoc else { return false }
@@ -1358,6 +1372,12 @@ final class MainWindowController: NSWindowController,
         }
         layoutContentViews()
         scheduleSessionSave()
+    }
+
+    func showFilesPane() {
+        sidebarVC.showUtilityPane(.files)
+        if sidebarVC.view.isHidden || splitView.isSubviewCollapsed(sidebarVC.view) { toggleSidebar() }
+        sidebarVC.focusCurrentPane(in: window)
     }
 
     func showFind(showingReplace: Bool = false, direction: SearchDirection = .next) {
@@ -1944,6 +1964,15 @@ final class MainWindowController: NSWindowController,
     func showSpellingCorrections() {
         window?.makeFirstResponder(editorVC.textView)
         editorVC.textView.showGuessPanel(nil)
+    }
+    func openCurrentFolderInFinder() {
+        if let file = curDoc?.fileURL {
+            NSWorkspace.shared.activateFileViewerSelecting([file])
+        } else if let folder = sidebarVC.rootFolderURL {
+            NSWorkspace.shared.open(folder)
+        } else {
+            NSWorkspace.shared.open(FileManager.default.homeDirectoryForCurrentUser)
+        }
     }
 
     func showCharacterCode() {

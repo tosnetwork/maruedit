@@ -154,6 +154,22 @@ final class DocumentController {
         return false
     }
 
+    func takeDocument(at index: Int) -> Document? {
+        guard documents.indices.contains(index) else { return nil }
+        let document = documents.remove(at: index)
+        if documents.isEmpty { _ = newDocument() }
+        currentIndex = min(index, documents.count - 1)
+        return document
+    }
+
+    func replaceCurrentDocument(with document: Document) {
+        if documents.indices.contains(currentIndex) {
+            documents[currentIndex] = document
+        } else {
+            documents = [document]; currentIndex = 0
+        }
+    }
+
     func selectDocument(at index: Int) {
         guard index >= 0, index < documents.count else { return }
         currentIndex = index

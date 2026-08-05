@@ -12,6 +12,7 @@ import MaruEditCore
 @MainActor
 final class AppCoordinator {
     private var windowController: MainWindowController?
+    private var additionalWindowControllers: [MainWindowController] = []
     private var settingsWindowController: SettingsWindowController?
     private var externalHelpWindowController: ExternalHelpWindowController?
     private var conversionDialogWindowController: ConversionDialogWindowController?
@@ -31,6 +32,7 @@ final class AppCoordinator {
     var onShowMacroMenu: (() -> Void)?
     var onOpenMacroFolder: (() -> Void)?
     var onReloadMacros: (() -> Void)?
+    var onShowUserMenuConfiguration: (() -> Void)?
     var onSaveRecordedMacro: ((String, [CommandID]) -> Void)?
     var openDocumentationURL: (URL) -> Void = { NSWorkspace.shared.open($0) }
 
@@ -54,23 +56,36 @@ final class AppCoordinator {
 
     @discardableResult
     func ensureWindowControllerReady(restoreSession: Bool = true) -> MainWindowController {
-        if let wc = windowController { return wc }
+        if let wc = windowController {
+            let candidates = [wc] + additionalWindowControllers
+            if let key = NSApp.keyWindow?.windowController as? MainWindowController,
+               candidates.contains(where: { $0 === key }) { return key }
+            return wc
+        }
         let wc = MainWindowController(fileTypeResolver: fileTypeProfileStore.resolver())
         // Publish the controller before wiring presentation callbacks: their initial
         // refresh queries view state through this coordinator and must not recursively
         // create another window.
         windowController = wc
+        configureWindowController(wc, restoreSession: restoreSession)
+        return wc
+    }
+
+    private func configureWindowController(
+        _ wc: MainWindowController, restoreSession: Bool = false
+    ) {
         wc.onEditorFontChange = { [weak self] font in
             guard let self else { return }
             self.preferences.fontName = font.fontName
             self.preferences.fontSize = font.pointSize
             self.preferencesStore.save(self.preferences)
-            self.windowController?.applyPreferences(self.preferences)
+            ([self.windowController].compactMap { $0 } + self.additionalWindowControllers)
+                .forEach { $0.applyPreferences(self.preferences) }
         }
-        wc.onClassicToolbarCommand = { [weak self] id in
+        wc.onClassicToolbarCommand = { [weak self, weak wc] id in
             guard let self else { return }
             _ = self.commandRegistry.execute(id, context: CommandContext(coordinator: self))
-            self.windowController?.refreshClassicCommandPresentation()
+            wc?.refreshClassicCommandPresentation()
         }
         wc.onStatusMacroControl = { [weak self] in
             guard let self, self.isRecordingCommands else { return }
@@ -86,7 +101,79 @@ final class AppCoordinator {
         wc.showWindow(nil)
         wc.applyPreferences(preferences)
         if restoreSession { wc.restoreSession() }
-        return wc
+    }
+
+    func detachCurrentTab() {
+        let source = ensureWindowControllerReady()
+        guard let document = source.takeCurrentDocumentForDetaching() else { return }
+        let detached = MainWindowController(fileTypeResolver: fileTypeProfileStore.resolver())
+        additionalWindowControllers.append(detached)
+        configureWindowController(detached)
+        detached.adoptDetachedDocument(document)
+        detached.window?.makeKeyAndOrderFront(nil)
+    }
+
+    private var managedWindows: [NSWindow] {
+        ([windowController].compactMap { $0 } + additionalWindowControllers).compactMap(\.window)
+    }
+
+    func arrangeWindowsVertically() { tileManagedWindows(columns: managedWindows.count) }
+    func arrangeWindowsHorizontally() { tileManagedWindows(columns: 1) }
+    func arrangeWindowsGrid() {
+        tileManagedWindows(columns: max(1, Int(ceil(sqrt(Double(managedWindows.count))))))
+    }
+    func cascadeWindows() {
+        var point = managedWindows.first?.screen?.visibleFrame.origin ?? .zero
+        for window in managedWindows { point = window.cascadeTopLeft(from: point) }
+    }
+    func minimizeAllWindows() { managedWindows.forEach { $0.miniaturize(nil) } }
+    func toggleAlwaysOnTop() {
+        guard let window = ensureWindowControllerReady().window else { return }
+        window.level = window.level == .floating ? .normal : .floating
+    }
+    func minimizeCurrentTabWindow() { ensureWindowControllerReady().window?.miniaturize(nil) }
+    func activateRelativeWindow(_ delta: Int, includingMinimized: Bool) {
+        let windows = managedWindows.filter { includingMinimized || !$0.isMiniaturized }
+        guard !windows.isEmpty else { return }
+        let current = NSApp.keyWindow ?? ensureWindowControllerReady().window
+        let index = windows.firstIndex { $0 === current } ?? 0
+        let target = windows[(index + delta + windows.count) % windows.count]
+        if target.isMiniaturized { target.deminiaturize(nil) }
+        target.makeKeyAndOrderFront(nil)
+    }
+    func activatePreviouslyActiveWindow() {
+        let managed = managedWindows
+        guard let target = NSApp.orderedWindows.first(where: { candidate in
+            candidate !== NSApp.keyWindow && managed.contains(where: { $0 === candidate })
+        }) else { return }
+        if target.isMiniaturized { target.deminiaturize(nil) }
+        target.makeKeyAndOrderFront(nil)
+    }
+    func showFilesPane() { ensureWindowControllerReady().showFilesPane() }
+    func showOutlinePane() { ensureWindowControllerReady().showOutlineAnalysis() }
+
+    private func tileManagedWindows(columns: Int) {
+        let windows = managedWindows.filter { $0.isVisible && !$0.isMiniaturized }
+        guard !windows.isEmpty, let screen = windows.first?.screen ?? NSScreen.main else { return }
+        let columns = max(1, min(columns, windows.count))
+        let rows = Int(ceil(Double(windows.count) / Double(columns)))
+        let frame = screen.visibleFrame
+        let width = frame.width / CGFloat(columns)
+        let height = frame.height / CGFloat(rows)
+        for (index, window) in windows.enumerated() {
+            let column = index % columns, row = index / columns
+            window.setFrame(NSRect(
+                x: frame.minX + CGFloat(column) * width,
+                y: frame.maxY - CGFloat(row + 1) * height,
+                width: width, height: height), display: true, animate: false)
+        }
+    }
+
+    var managedWindowCountForTesting: Int {
+        (windowController == nil ? 0 : 1) + additionalWindowControllers.count
+    }
+    var lastDetachedWindowControllerForTesting: MainWindowController? {
+        additionalWindowControllers.last
     }
 
     func showSettings() {
@@ -198,6 +285,8 @@ final class AppCoordinator {
     }
     func openMacroFolder() { onOpenMacroFolder?() }
     func reloadMacros() { onReloadMacros?() }
+    func showUserMenuConfiguration() { onShowUserMenuConfiguration?() }
+    func openCurrentFolderInFinder() { ensureWindowControllerReady().openCurrentFolderInFinder() }
     func saveMacroRecording() {
         guard !recordedCommands.isEmpty else { showStatusMessage("No recorded commands"); return }
         let alert = NSAlert(); alert.messageText = "Save Recording as Macro"

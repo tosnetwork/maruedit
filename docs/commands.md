@@ -35,6 +35,22 @@ significantly, replace this with a small script that generates it from
 | `window.closeTabsRight` | Close Tabs to the Right | Window | — | Closes tabs right of the active tab with save confirmation |
 | `window.focusEditor` | Focus Editor | Window | — | Moves keyboard focus to the editor |
 | `window.focusUtilityPane` | Focus Utility Pane | Window | — | Reveals and focuses the utility pane |
+| `window.tileVertical` | Tile Vertically | Window | — | Tiles managed document windows in columns on the current screen |
+| `window.tileHorizontal` | Tile Horizontally | Window | — | Tiles managed document windows in rows on the current screen |
+| `window.cascade` | Cascade Windows | Window | — | Uses native AppKit cascading for managed document windows |
+| `window.tileGrid` | Tile Windows | Window | — | Tiles managed windows in a balanced grid |
+| `window.minimizeAll` | Minimize All | Window | — | Minimizes every managed MaruEdit document window |
+| `window.alwaysOnTop` | Always on Top | Window | — | Toggles the active document window between normal and floating levels |
+| `window.fullScreen` | Full Screen | Window | — | Toggles native macOS full-screen mode |
+| `window.detachTab` | Detach/Move This Tab | Window | — | Transfers the active Document object into a new fully managed window |
+| `window.minimizeTab` | Minimize This Tab Window | Window | — | Maps Hidemaru tab minimization to native window minimization |
+| `window.showFilesPane` | File Manager Pane | Window | — | Reveals and focuses the Files utility pane |
+| `window.showOutlinePane` | Outline Analysis Pane | Window | — | Reveals the document Outline utility pane |
+| `window.nextManaged` | Next MaruEdit Window | Window | — | Activates the next non-minimized managed document window |
+| `window.previousManaged` | Previous MaruEdit Window | Window | — | Activates the previous non-minimized managed document window |
+| `window.nextManagedIncludingMinimized` | Next Window Including Minimized | Window | — | Cycles forward and restores minimized managed windows |
+| `window.previousManagedIncludingMinimized` | Previous Window Including Minimized | Window | — | Cycles backward and restores minimized managed windows |
+| `window.previousActive` | Previously Active Window | Window | — | Activates the previous managed window in native AppKit ordering |
 | `file.save` | Save | File | ⌘S | `AppCoordinator.saveDocument()` |
 | `file.saveAs` | Save As... | File | ⌘⇧S | `AppCoordinator.saveDocumentAs()` |
 | `file.saveAll` | Save All | File | — | Saves every open document without closing tabs |
@@ -137,6 +153,8 @@ significantly, replace this with a small script that generates it from
 | `other.restoreSettings` | Restore Default Settings… | Other › Settings Transfer | — | Confirms and restores every settings group to defaults |
 | `other.japaneseUserDictionary` | Japanese User Dictionary… | Other | — | Opens Apple's official Japanese input-method user-dictionary workflow (native substitute) |
 | `other.correctSpelling` | Correct Spelling… | Other | — | Opens the native AppKit spelling suggestions panel at the cursor |
+| `tools.openFinder` | Show in Finder | Tools | — | Reveals the current file, project folder, or home folder in Finder |
+| `tools.configureUserMenus` | Configure User Menus… | Tools | — | Edits eight persistent ordered command/separator menus by stable CommandID |
 | `convert.halfWidth` | Convert to Half-Width | Convert | — | `LineEditCommand.halfWidth` |
 | `convert.fullWidth` | Convert to Full-Width | Convert | — | `LineEditCommand.fullWidth` |
 | `convert.hiragana` | Convert to Hiragana | Convert | — | `LineEditCommand.hiragana` |

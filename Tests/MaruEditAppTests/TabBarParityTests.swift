@@ -76,4 +76,21 @@ final class TabBarParityTests: XCTestCase {
         XCTAssertEqual(controller.tabCountForTesting, 1)
         XCTAssertEqual(controller.selectedTabIndexForTesting, 0)
     }
+
+    func testDetachingTransfersDocumentOwnershipToManagedKeyWindow() {
+        _ = NSApplication.shared
+        let coordinator = AppCoordinator()
+        let source = coordinator.ensureWindowControllerReady(restoreSession: false)
+        source.prepareUITestDocument(content: "detached content", selections: [])
+        let document = source.macroEditor.document
+
+        coordinator.detachCurrentTab()
+
+        XCTAssertEqual(coordinator.managedWindowCountForTesting, 2)
+        let target = try! XCTUnwrap(coordinator.lastDetachedWindowControllerForTesting)
+        XCTAssertTrue(target.macroEditor.document === document)
+        XCTAssertEqual(target.macroEditor.textView.string, "detached content")
+        XCTAssertEqual(source.tabCountForTesting, 1)
+        NSApp.windows.filter { $0.windowController is MainWindowController }.forEach { $0.close() }
+    }
 }
