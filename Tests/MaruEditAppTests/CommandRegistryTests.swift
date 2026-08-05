@@ -77,6 +77,7 @@ final class CommandRegistryTests: XCTestCase {
             .editSortLines, .editReverseLines, .editIndent, .editOutdent, .editToggleComment,
             .navigateToggleBookmark, .navigateNextBookmark,
             .navigatePreviousBookmark, .navigateClearBookmarks
+            , .navigateToggleFold, .navigateCollapseAllFolds, .navigateExpandAllFolds
         ]
         for id in ids {
             XCTAssertNotNil(registry.definition(for: id), "\(id.rawValue) should be registered")

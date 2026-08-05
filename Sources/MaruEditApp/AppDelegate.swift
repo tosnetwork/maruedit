@@ -180,6 +180,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         editMenu.addItem(commandItem(.navigateNextBookmark))
         editMenu.addItem(commandItem(.navigatePreviousBookmark))
         editMenu.addItem(commandItem(.navigateClearBookmarks))
+        editMenu.addItem(.separator())
+        editMenu.addItem(commandItem(.navigateToggleFold))
+        editMenu.addItem(commandItem(.navigateCollapseAllFolds))
+        editMenu.addItem(commandItem(.navigateExpandAllFolds))
         editItem.submenu = editMenu
         main.addItem(editItem)
 

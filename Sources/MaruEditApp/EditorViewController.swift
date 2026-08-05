@@ -17,7 +17,7 @@ private final class FlippedView: NSView {
     override var isFlipped: Bool { true }
 }
 
-final class EditorViewController: NSViewController, NSTextViewDelegate {
+final class EditorViewController: NSViewController, NSTextViewDelegate, NSLayoutManagerDelegate {
     static let inputLatencyLog = OSLog(subsystem: "com.maruedit.editor", category: "InputLatency")
     weak var delegate: EditorViewControllerDelegate?
 
@@ -191,7 +191,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         textView = maruTextView
         textView.setAccessibilityLabel("Editor")
         // Force TextKit 1 so layout manager APIs work reliably
-        _ = textView.layoutManager
+        textView.layoutManager?.delegate = self
 
         textView.isEditable = true
         textView.isSelectable = true
@@ -229,6 +229,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         ]
 
         lineNumbers = LineNumberView(textView: textView)
+        lineNumbers?.onToggleFold = { [weak self] id in self?.toggleFold(regionID: id) }
 
         wrapper.addSubview(lineNumbers!)
         wrapper.addSubview(scrollView)
@@ -318,6 +319,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
 
     func refreshBookmarkGutter() {
         lineNumbers?.bookmarkOffsets = document?.bookmarks.offsets ?? []
+        refreshFolding()
     }
 
     func applyPreferences(_ preferences: Preferences) {
@@ -518,6 +520,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         document?.bookmarks.normalize(in: content as NSString)
         document?.content = content
         document?.markModified()
+        refreshFolding()
         delegate?.editorTextDidChange(self)
         lineNumbers?.needsDisplay = true
         lineNumbers?.bookmarkOffsets = document?.bookmarks.offsets ?? []
@@ -539,6 +542,83 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
                 allowLargeFileHighlighting: document?.hasExplicitlyEnabledLargeFileFeatures == true)
         }
         endInputLatencySignpost()
+    }
+
+    func refreshFolding() {
+        guard isViewLoaded, let document, let layoutManager = textView.layoutManager else { return }
+        let outline = OutlineModel(
+            text: document.content, language: document.language,
+            customRules: document.fileTypeProfile?.settings.outlineRules ?? [])
+        document.foldModel.rebuild(text: document.content, symbols: outline.symbols)
+        layoutManager.invalidateGlyphs(
+            forCharacterRange: NSRange(location: 0, length: (document.content as NSString).length),
+            changeInLength: 0, actualCharacterRange: nil)
+        layoutManager.invalidateLayout(
+            forCharacterRange: NSRange(location: 0, length: (document.content as NSString).length),
+            actualCharacterRange: nil)
+        layoutManager.ensureGlyphs(forCharacterRange: NSRange(
+            location: 0, length: (document.content as NSString).length))
+        lineNumbers?.foldRegions = document.foldModel.regions
+        lineNumbers?.collapsedFoldIDs = document.foldModel.collapsedRegionIDs
+        textView.needsDisplay = true
+    }
+
+    @discardableResult
+    func toggleFold(regionID: String) -> Bool {
+        guard let document else { return false }
+        let collapsed = document.foldModel.toggle(regionID: regionID)
+        refreshFolding()
+        return collapsed
+    }
+
+    func toggleFoldAtCursor() {
+        guard let document else { return }
+        let line = LineIndex(textView.string).line(atUTF16Offset: textView.selectedRange().location)
+        guard let region = document.foldModel.region(startingAtLine: line) else { return }
+        _ = toggleFold(regionID: region.id)
+    }
+
+    func collapseAllFolds() { document?.foldModel.collapseAll(); refreshFolding() }
+    func expandAllFolds() { document?.foldModel.expandAll(); refreshFolding() }
+
+    var collapsedFoldCountForTesting: Int { document?.foldModel.collapsedRegionIDs.count ?? 0 }
+
+    nonisolated func layoutManager(
+        _ layoutManager: NSLayoutManager,
+        shouldGenerateGlyphs glyphs: UnsafePointer<CGGlyph>,
+        properties props: UnsafePointer<NSLayoutManager.GlyphProperty>,
+        characterIndexes charIndexes: UnsafePointer<Int>,
+        font: NSFont,
+        forGlyphRange glyphRange: NSRange
+    ) -> Int {
+        MainActor.assumeIsolated {
+            let hidden = document?.foldModel.collapsedRanges() ?? []
+            guard !hidden.isEmpty else { return 0 }
+            var properties = Array(UnsafeBufferPointer(start: props, count: glyphRange.length))
+            for index in properties.indices where hidden.contains(where: {
+                NSLocationInRange(charIndexes[index], $0)
+            }) {
+                properties[index].insert(.null)
+            }
+            properties.withUnsafeBufferPointer { propertyBuffer in
+                layoutManager.setGlyphs(
+                    glyphs, properties: propertyBuffer.baseAddress!,
+                    characterIndexes: charIndexes, font: font, forGlyphRange: glyphRange)
+            }
+            return glyphRange.length
+        }
+    }
+
+    nonisolated func layoutManager(
+        _ layoutManager: NSLayoutManager,
+        shouldUse action: NSLayoutManager.ControlCharacterAction,
+        forControlCharacterAt charIndex: Int
+    ) -> NSLayoutManager.ControlCharacterAction {
+        MainActor.assumeIsolated {
+            let hidden = document?.foldModel.collapsedRanges() ?? []
+            return hidden.contains(where: { NSLocationInRange(charIndex, $0) })
+                ? .zeroAdvancement : action
+        }
     }
 
     func beginInputLatencySignpost() {

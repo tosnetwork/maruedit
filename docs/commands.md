@@ -67,6 +67,9 @@ significantly, replace this with a small script that generates it from
 | `navigate.nextBookmark` | Next Bookmark | Edit | — | `AppCoordinator.nextBookmark()` |
 | `navigate.previousBookmark` | Previous Bookmark | Edit | — | `AppCoordinator.previousBookmark()` |
 | `navigate.clearBookmarks` | Clear Bookmarks | Edit | — | `AppCoordinator.clearBookmarks()` |
+| `navigate.toggleFold` | Toggle Fold | Edit | — | `AppCoordinator.toggleFold()` |
+| `navigate.collapseAllFolds` | Collapse All Folds | Edit | — | `AppCoordinator.collapseAllFolds()` |
+| `navigate.expandAllFolds` | Expand All Folds | Edit | — | `AppCoordinator.expandAllFolds()` |
 
 All of them are enabled unconditionally right now (`isEnabled` always
 returns `true`) — the app has no state yet where one of them shouldn't be

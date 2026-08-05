@@ -26,7 +26,7 @@ that would weaken MaruEdit's security model.
 - [x] Pure incremental outline model and per-language symbol rules.
 - [x] User-defined regex outline rules in FileType Profiles.
 - [x] Outline pane and current-heading synchronization.
-- [ ] Fold gutter, fold commands and persisted fold state.
+- [x] Fold gutter, fold commands and persisted fold state.
 - [ ] Large-file and malformed-rule degradation tests.
 
 ## MC3 — Editing parity

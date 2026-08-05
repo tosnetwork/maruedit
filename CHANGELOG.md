@@ -14,7 +14,9 @@ semantic version tags.
   Outline utility pane follows the active document and cursor and navigates to
   symbols without changing document content.
 - Added a UI-independent folding model that derives nested fold regions from
-  document outlines and preserves collapsed regions when surrounding lines move.
+  document outlines and preserves collapsed regions when surrounding lines move,
+  with clickable gutter markers, registry-backed fold commands, TextKit layout,
+  and per-file session restoration.
 - Added the Maru Classic workspace foundation: a Classic Light palette, compact tabs,
   current-document heading and character ruler, favorite-command strip, explicit
   insert-mode status, a customizable command-registry toolbar, and Files / Outline /

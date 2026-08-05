@@ -1512,6 +1512,9 @@ final class MainWindowController: NSWindowController,
     func nextBookmark() { editorVC.nextBookmark() }
     func previousBookmark() { editorVC.previousBookmark() }
     func clearBookmarks() { editorVC.clearBookmarks() }
+    func toggleFold() { editorVC.toggleFoldAtCursor() }
+    func collapseAllFolds() { editorVC.collapseAllFolds() }
+    func expandAllFolds() { editorVC.expandAllFolds() }
 
     func prepareUITestDocument(content: String, selections: [NSRange]) {
         guard let document = curDoc else { return }
@@ -1551,7 +1554,8 @@ final class MainWindowController: NSWindowController,
                 path: path,
                 cursorPosition: doc.cursorPosition,
                 scrollOffsetX: doc.scrollOffset.x,
-                scrollOffsetY: doc.scrollOffset.y
+                scrollOffsetY: doc.scrollOffset.y,
+                collapsedFoldIDs: doc.foldModel.collapsedRegionIDs.sorted()
             )
         }
         let state = SessionState(
@@ -1589,6 +1593,12 @@ final class MainWindowController: NSWindowController,
             guard let doc = documentController.documents.first(where: { $0.fileURL?.path == fileState.path }) else { continue }
             doc.cursorPosition = fileState.cursorPosition
             doc.scrollOffset = NSPoint(x: fileState.scrollOffsetX, y: fileState.scrollOffsetY)
+            let outline = OutlineModel(
+                text: doc.content, language: doc.language,
+                customRules: doc.fileTypeProfile?.settings.outlineRules ?? [])
+            doc.foldModel = FoldModel(
+                text: doc.content, symbols: outline.symbols,
+                collapsedRegionIDs: Set(fileState.collapsedFoldIDs ?? []))
         }
 
         documentController.selectDocumentClamped(to: state.activeIndex)

@@ -10,12 +10,17 @@ public struct OpenFileState: Codable, Equatable, Sendable {
     public var cursorPosition: Int
     public var scrollOffsetX: Double
     public var scrollOffsetY: Double
+    public var collapsedFoldIDs: [String]?
 
-    public init(path: String, cursorPosition: Int, scrollOffsetX: Double, scrollOffsetY: Double) {
+    public init(
+        path: String, cursorPosition: Int, scrollOffsetX: Double, scrollOffsetY: Double,
+        collapsedFoldIDs: [String]? = nil
+    ) {
         self.path = path
         self.cursorPosition = cursorPosition
         self.scrollOffsetX = scrollOffsetX
         self.scrollOffsetY = scrollOffsetY
+        self.collapsedFoldIDs = collapsedFoldIDs
     }
 }
 
@@ -28,7 +33,7 @@ public struct OpenFileState: Codable, Equatable, Sendable {
 /// concern (`RecoveryStore`, ROADMAP.md M2) — this schema only restores
 /// which already-saved files were open and where the caret/scroll was.
 public struct SessionState: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 1
+    public static let currentSchemaVersion = 2
 
     public var schemaVersion: Int
     public var rootFolderPath: String?

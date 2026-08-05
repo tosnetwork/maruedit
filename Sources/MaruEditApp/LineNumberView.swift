@@ -1,4 +1,5 @@
 import AppKit
+import MaruEditCore
 
 /// Line number gutter implemented as a plain NSView (not NSRulerView) because
 /// overriding drawHashMarksAndLabels on NSRulerView subclasses breaks
@@ -7,6 +8,9 @@ final class LineNumberView: NSView {
     private weak var textView: NSTextView?
     private var gutterWidth: NSLayoutConstraint!
     var bookmarkOffsets: Set<Int> = [] { didSet { needsDisplay = true } }
+    var foldRegions: [FoldRegion] = [] { didSet { needsDisplay = true } }
+    var collapsedFoldIDs: Set<String> = [] { didSet { needsDisplay = true } }
+    var onToggleFold: ((String) -> Void)?
     override var isFlipped: Bool { true }
 
     init(textView: NSTextView) {
@@ -72,7 +76,9 @@ final class LineNumberView: NSView {
             if cr.location == lr.location {
                 let y = fragRect.origin.y + containerOrigin.y - yOffset
                 let active = NSLocationInRange(selectedRange.location, lr)
-                drawNumber(lineNum, y: y, active: active, bookmarked: bookmarkOffsets.contains(lr.location))
+                let fold = foldRegions.first { $0.startLine == lineNum - 1 }
+                drawNumber(lineNum, y: y, active: active,
+                           bookmarked: bookmarkOffsets.contains(lr.location), fold: fold)
                 lineNum += 1
             }
             gi = NSMaxRange(effectiveRange)
@@ -83,7 +89,10 @@ final class LineNumberView: NSView {
         textView?.enclosingScrollView?.contentView.bounds.origin.y ?? 0
     }
 
-    private func drawNumber(_ num: Int, y: CGFloat, active: Bool, bookmarked: Bool = false) {
+    private func drawNumber(
+        _ num: Int, y: CGFloat, active: Bool, bookmarked: Bool = false,
+        fold: FoldRegion? = nil
+    ) {
         let attrs: [NSAttributedString.Key: Any] = [
             .font: Theme.lineNumFont,
             .foregroundColor: active ? Theme.gutterActiveText : Theme.gutterText
@@ -97,5 +106,39 @@ final class LineNumberView: NSView {
             Theme.accent.setFill()
             NSBezierPath(ovalIn: NSRect(x: 5, y: y + 5, width: 7, height: 7)).fill()
         }
+        if let fold {
+            let collapsed = collapsedFoldIDs.contains(fold.id)
+            let path = NSBezierPath()
+            if collapsed {
+                path.move(to: NSPoint(x: 16, y: y + 5))
+                path.line(to: NSPoint(x: 16, y: y + 13))
+                path.line(to: NSPoint(x: 22, y: y + 9))
+            } else {
+                path.move(to: NSPoint(x: 15, y: y + 6))
+                path.line(to: NSPoint(x: 23, y: y + 6))
+                path.line(to: NSPoint(x: 19, y: y + 12))
+            }
+            path.close()
+            Theme.gutterText.setFill()
+            path.fill()
+        }
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        guard convert(event.locationInWindow, from: nil).x < 26,
+              let tv = textView, let lm = tv.layoutManager, let tc = tv.textContainer else {
+            super.mouseDown(with: event); return
+        }
+        let point = tv.convert(event.locationInWindow, from: nil)
+        let containerPoint = NSPoint(
+            x: point.x - tv.textContainerOrigin.x,
+            y: point.y - tv.textContainerOrigin.y)
+        let glyph = lm.glyphIndex(for: containerPoint, in: tc)
+        let offset = lm.characterIndexForGlyph(at: glyph)
+        let line = LineIndex(tv.string).line(atUTF16Offset: offset)
+        guard let region = foldRegions.first(where: { $0.startLine == line }) else {
+            super.mouseDown(with: event); return
+        }
+        onToggleFold?(region.id)
     }
 }

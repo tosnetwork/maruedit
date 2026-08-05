@@ -45,6 +45,7 @@ final class Document: @unchecked Sendable {
     var scrollOffset: NSPoint = .zero
     var cachedTextStorage: NSTextStorage?
     let bookmarks = BookmarkSet()
+    var foldModel: FoldModel
     /// Stable for this document's lifetime, used to key its crash-
     /// recovery record while it's unnamed (ROADMAP.md M2-07). Kept even
     /// after the document gains a file — `MainWindowController` deletes
@@ -60,6 +61,8 @@ final class Document: @unchecked Sendable {
         self.language = language
         self.savedContent = content
         self.recoveryID = recoveryID
+        let outline = OutlineModel(text: content, language: language)
+        self.foldModel = FoldModel(text: content, symbols: outline.symbols)
     }
 
     /// Reconstructs an unnamed document from a crash-recovery record

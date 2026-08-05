@@ -24,7 +24,7 @@ final class SessionStoreTests: XCTestCase {
         let state = SessionState(
             rootFolderPath: "/Users/tester/project",
             openFiles: [
-                OpenFileState(path: "/Users/tester/project/a.swift", cursorPosition: 42, scrollOffsetX: 0, scrollOffsetY: 120.5),
+                OpenFileState(path: "/Users/tester/project/a.swift", cursorPosition: 42, scrollOffsetX: 0, scrollOffsetY: 120.5, collapsedFoldIDs: ["type:Editor:0"]),
                 OpenFileState(path: "/Users/tester/project/b.swift", cursorPosition: 0, scrollOffsetX: 0, scrollOffsetY: 0)
             ],
             activeIndex: 1,
