@@ -335,7 +335,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let highlightMenu = NSMenu(title: "Highlight")
         for id: CommandID in [
             .navigateMarkerRed, .navigateMarkerYellow, .navigateMarkerBlue,
-            .navigateNextMarker, .navigatePreviousMarker, .navigateClearMarkers,
+            .navigateNextMarker, .navigatePreviousMarker, .navigateHighlightList,
+            .navigateClearMarkers,
         ] { highlightMenu.addItem(commandItem(id)) }
         highlightItem.submenu = highlightMenu
 

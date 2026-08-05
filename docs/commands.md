@@ -133,6 +133,7 @@ significantly, replace this with a small script that generates it from
 | `navigate.markerBlue` | Toggle Blue Marker | Edit | — | `AppCoordinator.toggleMarker(.blue)` |
 | `navigate.nextMarker` | Next Marker | Edit | — | `AppCoordinator.nextMarker()` |
 | `navigate.previousMarker` | Previous Marker | Edit | — | `AppCoordinator.previousMarker()` |
+| `navigate.highlightList` | Highlight List… | Highlight | — | Lists, previews, navigates and removes color markers |
 | `navigate.clearMarkers` | Clear Markers | Edit | — | `AppCoordinator.clearMarkers()` |
 | `navigate.compareNextDocument` | Compare with Next Document | Navigate | — | `AppCoordinator.compareWithNextDocument()` |
 | `navigate.nextDifference` | Next Difference | Navigate | — | `AppCoordinator.nextDifference()` |

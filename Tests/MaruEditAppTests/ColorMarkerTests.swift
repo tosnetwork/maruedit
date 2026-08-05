@@ -16,6 +16,17 @@ final class ColorMarkerTests: XCTestCase {
         XCTAssertFalse(markers.toggle(lineAt: 2, color: .red, in: "x\na\nb\nc\n" as NSString))
     }
 
+    func testHighlightListIsSortedAndSupportsRemoval() {
+        let markers = ColorMarkerSet()
+        let text = "a\nb\nc" as NSString
+        markers.toggle(lineAt: 4, color: .blue, in: text)
+        markers.toggle(lineAt: 0, color: .red, in: text)
+        XCTAssertEqual(markers.sortedMarkers.map(\.offset), [0, 4])
+        XCTAssertEqual(markers.sortedMarkers.map(\.color), [.red, .blue])
+        markers.remove(at: 0)
+        XCTAssertEqual(markers.sortedMarkers.map(\.offset), [4])
+    }
+
     func testEditorMarkerCommandsDoNotMutateText() {
         let editor = EditorViewController()
         _ = editor.view

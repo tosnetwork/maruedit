@@ -14,6 +14,10 @@ final class ColorMarkerSet {
     }
 
     func clear() { markers.removeAll() }
+    func remove(at offset: Int) { markers.removeValue(forKey: offset) }
+    var sortedMarkers: [(offset: Int, color: MarkerColor)] {
+        markers.sorted { $0.key < $1.key }.map { ($0.key, $0.value) }
+    }
     func restore(_ saved: [Int: MarkerColor]) { markers = saved }
     func next(after offset: Int) -> Int? {
         markers.keys.filter { $0 > offset }.min() ?? markers.keys.min()

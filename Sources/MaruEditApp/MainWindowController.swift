@@ -2031,6 +2031,38 @@ final class MainWindowController: NSWindowController,
     func nextMarker() { editorVC.nextMarker() }
     func previousMarker() { editorVC.previousMarker() }
     func clearMarkers() { editorVC.clearMarkers(); refreshMarkerResults() }
+
+    func showHighlightList() {
+        guard let document = curDoc else { return }
+        let markers = document.colorMarkers.sortedMarkers
+        guard !markers.isEmpty else { showStatusMessage("No highlights"); return }
+        let text = editorVC.textView.string as NSString
+        let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 440, height: 26))
+        for marker in markers {
+            let safe = min(marker.offset, text.length)
+            let line = text.substring(to: safe).reduce(1) { $1 == "\n" ? $0 + 1 : $0 }
+            let preview = text.substring(with: text.lineRange(for: NSRange(location: safe, length: 0)))
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            popup.addItem(withTitle: "\(marker.color.rawValue.capitalized) · Line \(line)  \(preview)")
+        }
+        let alert = NSAlert()
+        alert.messageText = "Highlight List"
+        alert.informativeText = "Go to a highlighted line or remove its marker."
+        alert.accessoryView = popup
+        alert.addButton(withTitle: "Go To"); alert.addButton(withTitle: "Remove")
+        alert.addButton(withTitle: "Cancel")
+        let response = alert.runModal()
+        guard markers.indices.contains(popup.indexOfSelectedItem) else { return }
+        let marker = markers[popup.indexOfSelectedItem]
+        if response == .alertFirstButtonReturn {
+            let range = NSRange(location: marker.offset, length: 0)
+            editorVC.setSelections([range], primaryRange: range)
+            editorVC.textView.scrollRangeToVisible(range)
+        } else if response == .alertSecondButtonReturn {
+            document.colorMarkers.remove(at: marker.offset)
+            editorVC.refreshBookmarkGutter(); refreshMarkerResults()
+        }
+    }
     func showCompletions() { editorVC.showCompletions() }
     func toggleTableMode() { editorVC.toggleDelimitedTableMode() }
 

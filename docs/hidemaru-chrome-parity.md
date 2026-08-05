@@ -20,7 +20,7 @@ native menu before the Hidemaru-compatible business menus.
 | View | View | Wrapping, invisibles, splits exist; missing ruler modes, tab-stop display, vertical/column layouts and several pane commands |
 | Insert | Dedicated Insert menu | Date/time, page break, C0/DEL control-code selection and encoding-aware file-content insertion are present | No known compatible gap |
 | Search | Dedicated Search menu | Search/replace/grep core exists; missing Hidemaru hierarchy, search flags, highlight/refine variants and edit-mark navigation |
-| Highlight | Dedicated Highlight menu | Color-marker operations are present; highlight-list commands are missing |
+| Highlight | Dedicated Highlight menu | Color-marker operations plus sorted highlight list with preview, jump and remove are present | No known compatible gap |
 | Bookmark | Dedicated Bookmark menu | Toggle/navigation/clear plus document bookmark list with jump/remove organization are present | No known compatible gap |
 | Tools | Empty dynamic menu | External commands exist; project/tag/compare commands need compatible grouping and command-list access |
 | Window | Native window controls plus tab management | Tab list, close-other/left/right, pane focus and tab cycling are present; Minimize/Zoom and macOS window management replace Windows arrangement, while session restore replaces desktop restore | Native equivalent |
@@ -29,7 +29,7 @@ native menu before the Hidemaru-compatible business menus.
 | Help | Dedicated Help menu plus native About | User guide, macro help, shortcut reference, latest-release check and support/reporting entries are present | No known compatible gap |
 
 Official menu pages contain roughly 297 command references across these
-menus. MaruEdit currently registers 126 stable command IDs. Duplicate menu
+menus. MaruEdit currently registers 127 stable command IDs. Duplicate menu
 placements mean this is not a one-to-one command count, but it establishes
 that functional parity is not complete.
 
