@@ -115,6 +115,12 @@ final class AppCoordinator {
     func previousBookmark()             { ensureWindowControllerReady().previousBookmark() }
     func clearBookmarks()               { ensureWindowControllerReady().clearBookmarks() }
     func toggleInputMode()               { ensureWindowControllerReady().toggleInputMode() }
+    func moveWordLeft()                  { ensureWindowControllerReady().moveWordLeft() }
+    func moveWordRight()                 { ensureWindowControllerReady().moveWordRight() }
+    func moveToParagraphStart()          { ensureWindowControllerReady().moveToParagraphStart() }
+    func moveToParagraphEnd()            { ensureWindowControllerReady().moveToParagraphEnd() }
+    func deleteWordBackward()            { ensureWindowControllerReady().deleteWordBackward() }
+    func deleteWordForward()             { ensureWindowControllerReady().deleteWordForward() }
     func toggleFold()                    { ensureWindowControllerReady().toggleFold() }
     func collapseAllFolds()              { ensureWindowControllerReady().collapseAllFolds() }
     func expandAllFolds()                { ensureWindowControllerReady().expandAllFolds() }

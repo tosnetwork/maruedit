@@ -3,7 +3,7 @@ import MaruEditCore
 
 enum LineEditCommand {
     case delete, duplicate, moveUp, moveDown, join
-    case trimTrailingWhitespace, uppercase, lowercase, sort, reverse
+    case trimTrailingWhitespace, uppercase, lowercase, titlecase, sort, reverse
     case indent, outdent, toggleComment
 }
 
@@ -39,7 +39,7 @@ extension EditorViewController {
 
     private func commandRanges(for command: LineEditCommand, in text: NSString) -> [NSRange] {
         let hasSelection = selectionSet.ranges.contains { $0.length > 0 }
-        if [.uppercase, .lowercase].contains(command), hasSelection {
+        if [.uppercase, .lowercase, .titlecase].contains(command), hasSelection {
             return SelectionSet.normalize(selectionSet.ranges.filter { $0.length > 0 })
         }
         if !hasSelection && [.trimTrailingWhitespace, .sort, .reverse].contains(command) {
@@ -111,6 +111,7 @@ extension EditorViewController {
                 of: #"[ \t]+$"#, with: "", options: .regularExpression) })
         case .uppercase: return (range, original, original.uppercased())
         case .lowercase: return (range, original, original.lowercased())
+        case .titlecase: return (range, original, original.capitalized)
         case .sort: return (range, original, reorderLines(original) { $0.sorted() })
         case .reverse: return (range, original, reorderLines(original) { Array($0.reversed()) })
         case .indent:

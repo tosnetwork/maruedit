@@ -72,6 +72,8 @@ final class LineEditingCommandsTests: XCTestCase {
         XCTAssertEqual(upper.textView.string, "AA BB")
         upper.performLineCommand(.lowercase)
         XCTAssertEqual(upper.textView.string, "aa bb")
+        upper.performLineCommand(.titlecase)
+        XCTAssertEqual(upper.textView.string, "Aa Bb")
     }
 
     func testSortAndReverseLines() async {
@@ -134,6 +136,7 @@ final class LineEditingCommandsTests: XCTestCase {
             (.trimTrailingWhitespace, "c  \nb\ta\n", NSRange(location: 0, length: 0), .plainText),
             (.uppercase, "c\nb\na\n", NSRange(location: 0, length: 1), .plainText),
             (.lowercase, "C\nb\na\n", NSRange(location: 0, length: 1), .plainText),
+            (.titlecase, "hello world\n", NSRange(location: 0, length: 11), .plainText),
             (.sort, "c\nb\na\n", NSRange(location: 0, length: 6), .plainText),
             (.reverse, "c\nb\na\n", NSRange(location: 0, length: 6), .plainText),
             (.indent, "c\nb\na\n", NSRange(location: 0, length: 4), .plainText),

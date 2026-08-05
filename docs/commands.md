@@ -64,6 +64,13 @@ significantly, replace this with a small script that generates it from
 | `edit.outdent` | Outdent | Edit > Lines | — | `performLineCommand(.outdent)` |
 | `edit.toggleComment` | Toggle Comment | Edit > Lines | — | `performLineCommand(.toggleComment)` |
 | `edit.toggleInputMode` | Toggle Insert/Overwrite Mode | Edit | — | `AppCoordinator.toggleInputMode()` |
+| `edit.moveWordLeft` | Move Word Left | Edit | — | `AppCoordinator.moveWordLeft()` |
+| `edit.moveWordRight` | Move Word Right | Edit | — | `AppCoordinator.moveWordRight()` |
+| `edit.moveParagraphStart` | Move to Paragraph Start | Edit | — | `AppCoordinator.moveToParagraphStart()` |
+| `edit.moveParagraphEnd` | Move to Paragraph End | Edit | — | `AppCoordinator.moveToParagraphEnd()` |
+| `edit.deleteWordBackward` | Delete Word Backward | Edit | — | `AppCoordinator.deleteWordBackward()` |
+| `edit.deleteWordForward` | Delete Word Forward | Edit | — | `AppCoordinator.deleteWordForward()` |
+| `edit.titlecase` | Convert to Title Case | Edit | — | `performLineCommand(.titlecase)` |
 | `navigate.toggleBookmark` | Toggle Bookmark | Edit | — | `AppCoordinator.toggleBookmark()` |
 | `navigate.nextBookmark` | Next Bookmark | Edit | — | `AppCoordinator.nextBookmark()` |
 | `navigate.previousBookmark` | Previous Bookmark | Edit | — | `AppCoordinator.previousBookmark()` |

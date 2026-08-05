@@ -1514,6 +1514,12 @@ final class MainWindowController: NSWindowController,
     func previousBookmark() { editorVC.previousBookmark() }
     func clearBookmarks() { editorVC.clearBookmarks() }
     func toggleInputMode() { editorVC.toggleInputMode() }
+    func moveWordLeft() { editorVC.textView.moveWordLeft(nil) }
+    func moveWordRight() { editorVC.textView.moveWordRight(nil) }
+    func moveToParagraphStart() { editorVC.textView.moveToBeginningOfParagraph(nil) }
+    func moveToParagraphEnd() { editorVC.textView.moveToEndOfParagraph(nil) }
+    func deleteWordBackward() { editorVC.textView.deleteWordBackward(nil) }
+    func deleteWordForward() { editorVC.textView.deleteWordForward(nil) }
     func toggleFold() { editorVC.toggleFoldAtCursor() }
     func collapseAllFolds() { editorVC.collapseAllFolds() }
     func expandAllFolds() { editorVC.expandAllFolds() }

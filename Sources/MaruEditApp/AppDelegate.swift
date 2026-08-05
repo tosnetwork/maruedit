@@ -176,6 +176,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         linesItem.identifier = NSUserInterfaceItemIdentifier("menu.group.lines")
         editMenu.addItem(linesItem)
         editMenu.addItem(commandItem(.editToggleInputMode))
+        for id: CommandID in [
+            .editMoveWordLeft, .editMoveWordRight, .editMoveParagraphStart,
+            .editMoveParagraphEnd, .editDeleteWordBackward, .editDeleteWordForward,
+            .editTitlecase,
+        ] { editMenu.addItem(commandItem(id)) }
         editMenu.addItem(.separator())
         editMenu.addItem(commandItem(.navigateToggleBookmark))
         editMenu.addItem(commandItem(.navigateNextBookmark))

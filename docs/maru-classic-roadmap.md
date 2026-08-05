@@ -32,8 +32,8 @@ that would weaken MaruEdit's security model.
 ## MC3 — Editing parity
 
 - [x] Insert/overwrite editing modes with a visible status segment.
-- [ ] IME, grapheme, BOX, multiple-selection and single-undo coverage.
-- [ ] Richer word/paragraph movement, deletion and conversion commands.
+- [x] IME, grapheme, BOX, multiple-selection and single-undo coverage.
+- [x] Richer word/paragraph movement, deletion and conversion commands.
 - [ ] Color markers, marker navigation and marker list.
 
 ## MC4 — Split, compare and navigation

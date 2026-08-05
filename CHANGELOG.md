@@ -11,6 +11,8 @@ semantic version tags.
 - Added per-document insert/overwrite modes with an explicit INS/OVR status,
   grapheme-safe replacement, IME and multiple-selection support, and a stable
   `edit.toggleInputMode` command.
+- Added registry-backed word and paragraph movement, forward/backward word
+  deletion, and multiple-selection-aware Title Case conversion.
 - Added a Foundation-only incremental document-outline model with built-in
   symbol rules for source, markup, scripting, configuration, and SQL languages,
   plus bounded user-defined regex rules in versioned FileType Profiles. The
