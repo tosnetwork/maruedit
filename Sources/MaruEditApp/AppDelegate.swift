@@ -40,6 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let userMenuStore = UserMenuConfigurationStore()
     private lazy var userMenuConfiguration = userMenuStore.load()
     private var clipboardTimer: Timer?
+    private var benchmarkCommandTimer: Timer?
     private var languageObserver: NSObjectProtocol?
     private lazy var menuCustomizationStore: MenuCustomizationStore = {
         if isUITestMode {
@@ -140,20 +141,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             showStatus: { [coordinator] message, duration in
                 coordinator.showStatusMessage(message, duration: duration)
             })
-        macroManager.executionDidStart = { [coordinator] _ in
-            coordinator.updateMacroActivity(isRunning: true)
-        }
-        macroManager.executionDidFinish = { [coordinator] _, _ in
-            coordinator.updateMacroActivity(isRunning: false)
-        }
-        macroManager.reload()
-        externalCommandManager.reload()
-        coordinator.pollClipboard()
-        clipboardTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.coordinator.pollClipboard() }
-        }
-        buildMenu()
-        coordinator.ensureWindowControllerReady(restoreSession: !isUITestMode)
+        coordinator.ensureWindowControllerReady(
+            restoreSession: !isUITestMode && !BenchmarkProbe.isEnabled)
         if isUITestMode,
            let content = ProcessInfo.processInfo.environment["MARUEDIT_UI_TEST_CONTENT"] {
             let ranges = ProcessInfo.processInfo.environment["MARUEDIT_UI_TEST_SELECTIONS"]?
@@ -170,12 +159,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         }
         NSApp.activate(ignoringOtherApps: true)
+        BenchmarkProbe.record(
+            "launch-ready", detail: String(ProcessInfo.processInfo.processIdentifier))
+        DispatchQueue.main.async { [weak self] in self?.startDeferredServices() }
+        if BenchmarkProbe.isEnabled {
+            benchmarkCommandTimer = Timer.scheduledTimer(
+                withTimeInterval: 0.005, repeats: true
+            ) { [coordinator] _ in
+                MainActor.assumeIsolated {
+                    BenchmarkProbe.consumeOpenRequests().forEach(coordinator.openFile)
+                }
+            }
+        }
+    }
+
+    private func startDeferredServices() {
+        buildMenu()
+        macroManager.executionDidStart = { [coordinator] _ in
+            coordinator.updateMacroActivity(isRunning: true)
+        }
+        macroManager.executionDidFinish = { [coordinator] _, _ in
+            coordinator.updateMacroActivity(isRunning: false)
+        }
+        macroManager.reload()
+        externalCommandManager.reload()
+        coordinator.pollClipboard()
+        clipboardTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.coordinator.pollClipboard() }
+        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
     func applicationWillTerminate(_ notification: Notification) {
         clipboardTimer?.invalidate()
+        benchmarkCommandTimer?.invalidate()
         if let languageObserver { NotificationCenter.default.removeObserver(languageObserver) }
         if !isUITestMode { coordinator.saveActiveSession() }
     }

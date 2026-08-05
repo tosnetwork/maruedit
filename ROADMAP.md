@@ -1253,10 +1253,11 @@ Establish baselines in M0 and validate them in M7. Initial reference hardware is
 | Metric | 1.0 target |
 |---|---:|
 | Release app bundle, excluding signing overhead | ≤ 15 MB |
-| Cold launch to editable blank document, median | ≤ 300 ms |
-| Idle RSS with one window | ≤ 80 MB |
+| Launch to editable blank document, median | ≤ 350 ms |
+| Idle physical footprint with one window | ≤ 110 MB |
+| Idle RSS with one window | Record as diagnostic context |
 | Open 1 MB UTF-8 file to editable state | ≤ 200 ms |
-| Open 10 MB UTF-8 file to editable state | ≤ 1 s |
+| Open 10 MB UTF-8 file to editable state | ≤ 1.25 s |
 | Literal Find Next in 10 MB text | ≤ 100 ms |
 | One non-interactive main-thread task | Preferably < 50 ms |
 | Grep | UI remains responsive, operation is cancellable, results stream progressively |

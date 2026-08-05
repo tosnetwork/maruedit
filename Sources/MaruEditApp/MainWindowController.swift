@@ -857,6 +857,11 @@ final class MainWindowController: NSWindowController,
         editorVC.document = result.document
         refreshTabs(); refreshStatus()
         window?.title = AppLocalization.string("window.document.title", [result.document.displayName])
+        // Report after the document model, text storage, tabs, and status are
+        // installed. AppKit may lay out additional offscreen glyphs later;
+        // deferred highlighting and ancillary history/sidebar/session work
+        // remain outside the editable-ready gate.
+        BenchmarkProbe.record("file-open-ready", detail: url.path)
         RecentItems.addFile(url)
         sidebarVC.revealFile(url)
         if result.wasAlreadyOpen { deferredRestoreCursor() }

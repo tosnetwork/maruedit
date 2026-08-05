@@ -6,6 +6,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 APP="MaruEdit.app"
 EXE_PATH="$(pwd)/${APP}/Contents/MacOS/MaruEdit"
 FIXTURE_DIR="$(mktemp -d)"
+EVENT_FILE="${FIXTURE_DIR}/benchmark.events"
 APP_PID=""
 cleanup() {
   if [ -n "$APP_PID" ]; then kill "$APP_PID" 2>/dev/null || true; fi
@@ -29,28 +30,30 @@ for index in range(10):
             stream.write(line)
 PY
 
-open -n "$APP"
-for _ in $(seq 1 200); do
-  APP_PID=$(LC_ALL=C pgrep -f "$EXE_PATH" | head -1 || true)
+open -n "$APP" --args --maruedit-benchmark-events "$EVENT_FILE"
+for _ in $(seq 1 600); do
+  APP_PID=$(awk -F '\t' '$1 == "launch-ready" { print $3; exit }' "$EVENT_FILE" 2>/dev/null || true)
   if [ -n "$APP_PID" ]; then break; fi
   sleep 0.01
 done
 if [ -z "$APP_PID" ]; then echo "app did not start" >&2; exit 1; fi
 
-for file in "$FIXTURE_DIR"/*.txt; do open -a "$APP" "$file"; done
-
-low_count=0
-for _ in $(seq 1 1000); do
-  sleep 0.02
-  cpu=$(ps -o %cpu= -p "$APP_PID" 2>/dev/null | tr -d ' ')
-  if [ -z "$cpu" ]; then echo "app exited" >&2; exit 1; fi
-  if awk -v c="$cpu" 'BEGIN{exit !(c<5)}'; then
-    low_count=$((low_count + 1))
-  else
-    low_count=0
+expected=0
+for file in "$FIXTURE_DIR"/*.txt; do
+  expected=$((expected + 1))
+  printf 'open-request\t%s\n' "$file" >> "$EVENT_FILE"
+  for _ in $(seq 1 1200); do
+    observed=$(awk -F '\t' '$1 == "file-open-ready" { count++ } END { print count + 0 }' "$EVENT_FILE")
+    if [ "$observed" -ge "$expected" ]; then break; fi
+    sleep 0.01
+  done
+  if [ "${observed:-0}" -lt "$expected" ]; then
+    echo "document ${expected} did not become editable" >&2
+    exit 1
   fi
-  if [ "$low_count" -ge 5 ]; then break; fi
 done
 
+sleep 0.25
 rss_kb=$(ps -o rss= -p "$APP_PID" | tr -d ' ')
 echo "Multi-document RSS (10 x 1 MB): $(awk -v r="$rss_kb" 'BEGIN{printf "%.1f", r/1024}') MB (${rss_kb} KB)"
+vmmap -summary "$APP_PID" 2>/dev/null | awk '/^Physical footprint:/ { print "Multi-document physical footprint: " $3; exit }'

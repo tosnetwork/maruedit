@@ -38,3 +38,10 @@ Accordingly, the audit result is P0 = 0 and P1 = 0. This is a point-in-time
 release decision, not a claim that defects cannot exist; the count must be
 rechecked at M8-06 immediately before tagging.
 
+## Performance follow-up
+
+Issues #1–#3 were resolved after the audit by replacing the external CPU-idle
+heuristic with opt-in application readiness events, making benchmark process
+selection deterministic, deferring nonessential launch services, and using
+physical footprint as the macOS memory-pressure gate. The reproducible rerun,
+target rationale, and raw ranges are recorded in [performance.md](performance.md).

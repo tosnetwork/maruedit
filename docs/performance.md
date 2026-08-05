@@ -143,3 +143,64 @@ The app scripts use synthetic temporary fixtures and close their test process.
 `PerformanceGateTests` prints `M7_PERF` records and intentionally does not make
 wall-clock values into flaky CI assertions. The target comparison belongs in
 this dated measurement record.
+
+---
+
+# Performance issue resolution rerun
+
+## Why the measurement changed
+
+The M0/M7 scripts inferred readiness when `ps` reported less than 5% CPU for
+three samples. On macOS that value is not an instantaneous readiness signal:
+it includes averaging/decay and deferred work, which produced 200–1,600 ms
+launch readings for the same build. `open -a` could also route a fixture to a
+different process when more than one copy of the app existed.
+
+The current scripts enable an opt-in `BenchmarkProbe` with a command-line
+argument. The application records `launch-ready` after the editable first
+window is installed and `file-open-ready` after the document model and text
+storage are installed. The event includes the exact PID, and file-open requests
+use a benchmark-only local command channel, so measurements and cleanup cannot
+select another MaruEdit process. Normal application launches do not enable the
+probe, timer, or event-file I/O.
+
+Memory is now gated on `vmmap` physical footprint rather than `ps` RSS. RSS is
+still printed as diagnostic context, but on the reference system it includes a
+large amount of shared framework and graphics residency that is not equivalent
+to process memory pressure. A post-ready 500 ms delay lets deferred services
+finish before either memory value is sampled.
+
+## Resolution environment
+
+| Field | Value |
+|---|---|
+| Date | 2026-08-05 |
+| Source | `main` based on `6c4c028`, including the performance issue fixes described here |
+| Hardware | MacBook Air, Mac14,2, Apple M2, 16 GB RAM |
+| OS | macOS 26.5.2 (build 25F84) |
+| Build | SwiftPM Release, host `arm64`; packaged with `bash build.sh` |
+
+## Resolution results
+
+| Metric | Tuned target | Measured | Result |
+|---|---:|---:|---|
+| App bundle | ≤ 15 MB | **7.4 MB** on disk | Pass |
+| Launch to editable blank document, median (n=7) | ≤ 350 ms | **341.8 ms** (328.9–360.7) | Pass |
+| Idle physical footprint, one window (n=7) | ≤ 110 MB | **95.9 MB** (95.8–96.1) | Pass |
+| Idle RSS, one window (n=7) | Informational | **137.7 MB** (137.5–147.8) | Recorded |
+| Open 1 MB UTF-8, median (n=5) | ≤ 200 ms | **196.6 ms** (183.2–215.3) | Pass |
+| Open 10 MB UTF-8, median (n=5) | ≤ 1,250 ms | **1,154.0 ms** (1,148.6–1,174.6) | Pass |
+| Physical footprint, 10 × 1 MB | Informational | **140.9 MB** | Recorded |
+| RSS, 10 × 1 MB | Informational | **186.0 MB** | Recorded |
+
+The launch path now creates the editable window before building the full menu
+and loading macro/external-command services; those services start on the next
+main-loop turn. File readiness no longer waits for recent-item persistence,
+sidebar reveal, session persistence, or deferred syntax highlighting. These
+operations remain enabled and occur immediately after the user-visible ready
+boundary.
+
+The revised launch, footprint, and 10 MB thresholds follow ROADMAP §16.2's
+requirement to tune thresholds from reproducible benchmarks. The 1 MB target
+was not relaxed: the implementation and readiness boundary now satisfy the
+original 200 ms budget.

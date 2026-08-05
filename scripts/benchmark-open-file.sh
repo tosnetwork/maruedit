@@ -4,12 +4,11 @@
 # Fixtures are synthetic (generated fresh each run, never committed) so
 # they can never contain sensitive data.
 #
-# Method: for each run, launch a fresh MaruEdit.app instance via `open -n`
-# and wait for it to settle (see scripts/benchmark-launch.sh for the
-# settle heuristic and its caveats), then send the fixture file with
-# `open -a` and time until the same process settles again. This captures
-# file read + Document construction + initial NSTextView layout, but is a
-# CPU-idle heuristic, not an instrumented in-app timestamp.
+# Method: for each run, launch a fresh MaruEdit.app instance via `open -n`,
+# then send the fixture through a benchmark-only local command channel. An
+# opt-in application probe records
+# when the document is installed and its first view is editable. Deferred
+# highlighting is intentionally excluded from this user-visible readiness gate.
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -48,19 +47,15 @@ make_fixture "$FIXTURE_1MB" $((1 * 1000 * 1000))
 make_fixture "$FIXTURE_10MB" $((10 * 1000 * 1000))
 echo "Fixtures: $(du -h "$FIXTURE_1MB" | cut -f1) / $(du -h "$FIXTURE_10MB" | cut -f1)"
 
-wait_settle() {
-  local pid="$1" timeout_iters="$2"
-  local low_count=0
+wait_event() {
+  local event_file="$1" event="$2" detail="$3" timeout_iters="$4" not_before="${5:-0}"
+  local timestamp=""
   for _ in $(seq 1 "$timeout_iters"); do
-    sleep 0.02
-    cpu=$(ps -o %cpu= -p "$pid" 2>/dev/null | tr -d ' ')
-    if [ -z "$cpu" ]; then return 1; fi
-    if awk -v c="$cpu" 'BEGIN{exit !(c<5)}'; then
-      low_count=$((low_count + 1))
-    else
-      low_count=0
-    fi
-    if [ "$low_count" -ge 3 ]; then return 0; fi
+    timestamp=$(awk -F '\t' -v event="$event" -v detail="$detail" -v not_before="$not_before" \
+      '$1 == event && $2 >= not_before && (detail == "" || $3 == detail) { print $2; exit }' \
+      "$event_file" 2>/dev/null || true)
+    if [ -n "$timestamp" ]; then echo "$timestamp"; return 0; fi
+    sleep 0.01
   done
   return 1
 }
@@ -71,28 +66,26 @@ bench_fixture() {
   echo ""
   echo "== ${label} =="
   for i in $(seq 1 "$RUNS"); do
-    open -n "$APP"
-    pid=""
-    for _ in $(seq 1 100); do
-      pid=$(LC_ALL=C pgrep -f "$EXE_PATH" | head -1)
-      if [ -n "$pid" ]; then break; fi
-      sleep 0.01
-    done
-    if [ -z "$pid" ]; then
-      echo "  run $i: app did not start, discarding" >&2
+    event_file="${FIXTURE_DIR}/${label// /-}-${i}.events"
+    open -n "$APP" --args --maruedit-benchmark-events "$event_file"
+    if ! wait_event "$event_file" "launch-ready" "" 600 >/dev/null; then
+      echo "  run $i: initial editable-ready event not observed" >&2
       continue
     fi
-    wait_settle "$pid" 300 || echo "  run $i: initial launch did not settle" >&2
+    pid=$(awk -F '\t' '$1 == "launch-ready" { print $3; exit }' "$event_file")
+    if [ -z "$pid" ]; then
+      echo "  run $i: benchmark PID not observed, discarding" >&2
+      continue
+    fi
 
     start=$(python3 -c 'import time; print(time.time())')
-    open -a "$APP" "$fixture"
-    if wait_settle "$pid" 1000; then
-      end=$(python3 -c 'import time; print(time.time())')
-      ms=$(python3 -c "print(f'{(${end} - ${start}) * 1000:.1f}')")
+    printf 'open-request\t%s\n' "$fixture" >> "$event_file"
+    if ready=$(wait_event "$event_file" "file-open-ready" "" 1200 "$start"); then
+      ms=$(python3 -c "print(f'{(${ready} - ${start}) * 1000:.1f}')")
       times+=("$ms")
       echo "  run $i: ${ms} ms"
     else
-      echo "  run $i: did not settle after opening file, discarding" >&2
+      echo "  run $i: file editable-ready event not observed, discarding" >&2
     fi
 
     kill "$pid" 2>/dev/null || true
