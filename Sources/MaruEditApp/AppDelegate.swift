@@ -455,6 +455,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         let highlightItem = NSMenuItem()
         let highlightMenu = NSMenu(title: "Highlight")
+        highlightMenu.addItem(commandItem(.highlightOutlineAnalysis))
+        highlightMenu.addItem(commandItem(.highlightNextLine))
+        highlightMenu.addItem(commandItem(.highlightPreviousLine))
+        highlightMenu.addItem(commandItem(.highlightSelectLineArea))
+        highlightMenu.addItem(.separator())
+        let temporaryMarkerItem = NSMenuItem(title: "Temporary Color Marker", action: nil, keyEquivalent: "")
+        let temporaryMarkerMenu = NSMenu(title: "Temporary Color Marker")
+        for id: CommandID in [
+            .highlightTemporaryConfigure, .highlightTemporaryApply, .highlightTemporaryRemove,
+            .highlightTemporaryClear, .highlightTemporarySelect,
+            .highlightTemporaryNext, .highlightTemporaryPrevious,
+        ] { temporaryMarkerMenu.addItem(commandItem(id)) }
+        temporaryMarkerItem.submenu = temporaryMarkerMenu
+        highlightMenu.addItem(temporaryMarkerItem)
+        highlightMenu.addItem(.separator())
         for id: CommandID in [
             .navigateMarkerRed, .navigateMarkerYellow, .navigateMarkerBlue,
             .navigateNextMarker, .navigatePreviousMarker, .navigateHighlightList,

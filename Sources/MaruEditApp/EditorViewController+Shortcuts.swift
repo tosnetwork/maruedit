@@ -430,10 +430,12 @@ extension EditorViewController {
         for operation in merged.reversed() {
             document?.bookmarks.applyEdit(range: operation.range, replacement: operation.replacement)
             document?.colorMarkers.applyEdit(range: operation.range, replacement: operation.replacement)
+            applyTemporaryColorMarkerEdit(range: operation.range, replacement: operation.replacement)
             lineIndex.applyEdit(range: operation.range, replacement: operation.replacement)
             ts.replaceCharacters(in: operation.range, with: operation.replacement)
         }
         ts.endEditing()
+        refreshColorOverlays()
 
         let newContent = textView.string
         document?.bookmarks.normalize(in: newContent as NSString)

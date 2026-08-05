@@ -55,6 +55,17 @@ significantly, replace this with a small script that generates it from
 | `insert.pageBreak` | Page Break | Insert | — | `AppCoordinator.insertPageBreak()` |
 | `insert.blankLine` | Insert Blank Line Above | Insert | — | Inserts an indentation-preserving blank line above the current logical line |
 | `insert.currentFileName` | Current File Name | Insert | — | Inserts the current document's last path component |
+| `highlight.temporary.configure` | Temporary Color Marker… | Highlight | — | Chooses a color and marks every active selection |
+| `highlight.temporary.apply` | Apply Temporary Color Marker | Highlight | — | Applies the last selected temporary marker style |
+| `highlight.temporary.remove` | Remove Temporary Color Marker | Highlight | — | Removes temporary markers intersecting active selections |
+| `highlight.temporary.clear` | Clear All Temporary Color Markers | Highlight | — | Clears the document's temporary marker layer |
+| `highlight.temporary.select` | Select Temporary Color Markers | Highlight | — | Converts every temporary marker range into a multiple selection |
+| `highlight.temporary.next` | Next Temporary Color Marker | Highlight | — | Jumps to the next marker with wraparound |
+| `highlight.temporary.previous` | Previous Temporary Color Marker | Highlight | — | Jumps to the previous marker with wraparound |
+| `highlight.nextLine` | Next Highlighted Line | Highlight | — | Jumps to the next syntax/profile-highlighted logical line with wraparound |
+| `highlight.outlineAnalysis` | Outline Analysis… | Highlight | — | Reveals the live profile-aware outline analysis pane |
+| `highlight.previousLine` | Previous Highlighted Line | Highlight | — | Jumps to the previous syntax/profile-highlighted logical line with wraparound |
+| `highlight.selectLineArea` | Select Highlighted Line Area | Highlight | — | Selects the contiguous highlighted logical-line region at the cursor |
 | `insert.controlCode` | Control Code… | Insert | — | `AppCoordinator.insertControlCode()` |
 | `app.help` | MaruEdit Help | Help | — | `AppCoordinator.showHelp()` |
 | `macro.startRecording` | Start Recording | Macro | — | Starts a fresh CommandRegistry recording |

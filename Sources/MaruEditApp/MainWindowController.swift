@@ -2571,6 +2571,36 @@ final class MainWindowController: NSWindowController,
     func nextMarker() { editorVC.nextMarker() }
     func previousMarker() { editorVC.previousMarker() }
     func clearMarkers() { editorVC.clearMarkers(); refreshMarkerResults() }
+    func configureTemporaryColorMarker() {
+        let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 180, height: 26))
+        popup.addItems(withTitles: MarkerColor.allCases.map { $0.rawValue.capitalized })
+        if let index = MarkerColor.allCases.firstIndex(of: editorVC.temporaryColorMarkerColor) {
+            popup.selectItem(at: index)
+        }
+        let alert = NSAlert()
+        alert.messageText = "Temporary Color Marker"
+        alert.informativeText = "Choose a color to apply to every active selection."
+        alert.accessoryView = popup
+        alert.addButton(withTitle: "Apply"); alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn,
+              MarkerColor.allCases.indices.contains(popup.indexOfSelectedItem) else { return }
+        editorVC.addTemporaryColorMarkers(MarkerColor.allCases[popup.indexOfSelectedItem])
+    }
+    func applyTemporaryColorMarker() { editorVC.addTemporaryColorMarkers() }
+    func removeTemporaryColorMarker() { editorVC.removeTemporaryColorMarkersInSelection() }
+    func clearTemporaryColorMarkers() { editorVC.clearTemporaryColorMarkers() }
+    func selectTemporaryColorMarkers() { editorVC.selectTemporaryColorMarkers() }
+    func nextTemporaryColorMarker() { editorVC.nextTemporaryColorMarker() }
+    func previousTemporaryColorMarker() { editorVC.previousTemporaryColorMarker() }
+    func nextHighlightedLine() { editorVC.nextHighlightedLine() }
+    func showOutlineAnalysis() {
+        guard let document = curDoc else { return }
+        refreshOutline(for: document)
+        sidebarVC.showUtilityPane(.outline)
+        if sidebarVC.view.isHidden || splitView.isSubviewCollapsed(sidebarVC.view) { toggleSidebar() }
+    }
+    func previousHighlightedLine() { editorVC.previousHighlightedLine() }
+    func selectHighlightedLineArea() { editorVC.selectHighlightedLineArea() }
     func nextEditMark() { editorVC.nextEditMark() }
     func previousEditMark() { editorVC.previousEditMark() }
     func clearEditMarks() { editorVC.clearEditMarks() }

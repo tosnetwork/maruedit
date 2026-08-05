@@ -199,20 +199,46 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     var searchScopeSelection: NSRange?
     var hasExplicitSearchScope = false
     private var temporarySearchHighlightRanges: [NSRange] = []
+    struct TemporaryColorMarker: Equatable {
+        var range: NSRange
+        var color: MarkerColor
+    }
+    var temporaryColorMarkers: [TemporaryColorMarker] = []
+    var temporaryColorMarkerColor: MarkerColor = .yellow
 
     func showSearchHighlights(_ ranges: [NSRange], color: NSColor = .systemYellow) {
+        temporarySearchHighlightRanges = ranges
+        searchHighlightColor = color
+        refreshColorOverlays()
+    }
+
+    private var searchHighlightColor: NSColor = .systemYellow
+
+    func refreshColorOverlays() {
         guard let layoutManager = textView.layoutManager else { return }
         let length = layoutManager.textStorage?.length ?? 0
-        for range in temporarySearchHighlightRanges where range.location <= length {
-            let safe = NSRange(location: range.location, length: min(range.length, length - range.location))
-            layoutManager.removeTemporaryAttribute(.backgroundColor, forCharacterRange: safe)
-        }
-        temporarySearchHighlightRanges = ranges
-        for range in ranges where range.length > 0 {
+        layoutManager.removeTemporaryAttribute(
+            .backgroundColor, forCharacterRange: NSRange(location: 0, length: length))
+        for range in temporarySearchHighlightRanges where range.length > 0 && NSMaxRange(range) <= length {
             layoutManager.addTemporaryAttribute(
-                .backgroundColor, value: color.withAlphaComponent(0.38), forCharacterRange: range)
+                .backgroundColor, value: searchHighlightColor.withAlphaComponent(0.38),
+                forCharacterRange: range)
+        }
+        for marker in temporaryColorMarkers where marker.range.length > 0 && NSMaxRange(marker.range) <= length {
+            layoutManager.addTemporaryAttribute(
+                .backgroundColor, value: Self.markerDisplayColor(marker.color).withAlphaComponent(0.45),
+                forCharacterRange: marker.range)
         }
         textView.needsDisplay = true
+    }
+
+    private static func markerDisplayColor(_ color: MarkerColor) -> NSColor {
+        switch color {
+        case .red: return .systemRed
+        case .yellow: return .systemYellow
+        case .blue: return .systemBlue
+        case .green: return .systemGreen
+        }
     }
 
     var searchHighlightRangesForTesting: [NSRange] { temporarySearchHighlightRanges }
@@ -824,6 +850,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         if suppressAutoIndent || replacement != "\n" {
             document?.bookmarks.applyEdit(range: range, replacement: replacement)
             document?.colorMarkers.applyEdit(range: range, replacement: replacement)
+            applyTemporaryColorMarkerEdit(range: range, replacement: replacement)
             if let document {
                 document.editMarks.recordEdit(
                     range: range, replacement: replacement, in: textView.string as NSString)
@@ -844,6 +871,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         guard !indent.isEmpty else {
             document?.bookmarks.applyEdit(range: range, replacement: replacement)
             document?.colorMarkers.applyEdit(range: range, replacement: replacement)
+            applyTemporaryColorMarkerEdit(range: range, replacement: replacement)
             if let document {
                 document.editMarks.recordEdit(range: range, replacement: replacement, in: ns)
             }
@@ -895,6 +923,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         document?.bookmarks.normalize(in: content as NSString)
         document?.colorMarkers.normalize(in: content as NSString)
         document?.editMarks.normalize(in: content as NSString)
+        refreshColorOverlays()
         document?.content = content
         document?.markModified()
         refreshFolding()

@@ -18,7 +18,7 @@ passing MaruEdit regression tests from exhaustive Hidemaru feature parity.
 
 | Area | ✅ Complete | 🟡 Partial/native | ❌ Incomplete |
 |---|---:|---:|---:|
-| Menu rows | 5 | 8 | 0 |
+| Menu rows | 6 | 7 | 0 |
 | Toolbar/function-key rows | 9 | 3 | 0 |
 | Status-bar rows | 16 | 0 | 0 |
 | Acceptance gates | 1 | 2 | 2 |
@@ -38,7 +38,7 @@ native menu before the Hidemaru-compatible business menus.
 | View | Wrapping, invisibles, ruler marks, profile tab stops, editable vertical writing, continuous column flow, splits, chrome visibility, and output-pane focus | 🟡 Partial | Complete the official view/frame inventory and native mappings; browser/file-manager frame variants and all display configuration have not been audited one by one. |
 | Insert | Date/time, newline, tab, page break, duplicate line, indentation-preserving blank line, C0/DEL control codes, deletion restore, current filename, and encoding-aware file-content insertion | ✅ Complete | Every compatible command in the official 9.57 insertion-command inventory is placed in the Insert menu and covered by executable tests; MaruEdit additionally exposes templates and file-content insertion. |
 | Search | Search/replace/grep, case/word/regex/fuzzy flags, return to search start, edit marks, all-match operations, and persistent ranges | 🟡 Partial | Map and implement the remaining fine-grained Hidemaru search, marker, candidate, and result commands. |
-| Highlight | Red/yellow/blue markers, navigation, clearing, and sorted highlight list with preview/jump/remove | 🟡 Partial | Add the remaining temporary color-marker operations, including individual removal and complete select/navigation variants. |
+| Highlight | Outline analysis, highlighted-line navigation/area selection, persistent line markers, and temporary selection-range color markers | ✅ Complete | The official Highlight submenu and Temporary Color Marker submenu are mapped: configure/apply, selection-intersection removal, clear all, convert markers to multiple selections, bidirectional wrap navigation, edit tracking, and profile-aware highlighted-line commands have direct tests. |
 | Bookmark | Toggle, previous/next, clear, and a document list with jump/remove | ✅ Complete | No confirmed compatible gap in the scoped bookmark row; retain official-command regression coverage. |
 | Tools | Compare/difference, deterministic portable tags-file generation, tag navigation, dynamic external commands, and command-list access | 🟡 Partial | Native generation is bounded, skips dependency/hidden trees, writes atomically, and feeds Tag Jump directly; finish the official Tools-command inventory one by one. |
 | Window | Tab list, close-other/left/right, pane focus, tab cycling, native Minimize/Zoom, and session restoration | 🟡 Native substitute | Windows arrangement/process/desktop behavior is not identical; document each native replacement explicitly. |
@@ -145,6 +145,9 @@ inventory is mapped.
 
 - Hidemaru 9.57 menu pages (`225_amnl*.html`), official help
 - Hidemaru 9.57 insertion-command inventory (`170_CmdInsert.html`), official help
+- Hidemaru 9.57 Search/Highlight and Temporary Color Marker menus
+  (`225_amnlSearch.html`, `225_amnlHilight.html`, and
+  `225_amnlSearchColormarker.html`), official help
 - Toolbar detail and toolbar design, official help
 - Status bar detail (`070_Env_Win_Statusbar.html`), official help
 - Command value list and tab/window management, official help

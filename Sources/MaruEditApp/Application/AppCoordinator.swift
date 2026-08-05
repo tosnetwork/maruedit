@@ -266,6 +266,17 @@ final class AppCoordinator {
     func insertPageBreak()            { ensureWindowControllerReady().insertPageBreak() }
     func insertBlankLine()            { ensureWindowControllerReady().insertBlankLine() }
     func insertCurrentFileName()      { ensureWindowControllerReady().insertCurrentFileName() }
+    func configureTemporaryColorMarker() { ensureWindowControllerReady().configureTemporaryColorMarker() }
+    func applyTemporaryColorMarker()  { ensureWindowControllerReady().applyTemporaryColorMarker() }
+    func removeTemporaryColorMarker() { ensureWindowControllerReady().removeTemporaryColorMarker() }
+    func clearTemporaryColorMarkers() { ensureWindowControllerReady().clearTemporaryColorMarkers() }
+    func selectTemporaryColorMarkers() { ensureWindowControllerReady().selectTemporaryColorMarkers() }
+    func nextTemporaryColorMarker()   { ensureWindowControllerReady().nextTemporaryColorMarker() }
+    func previousTemporaryColorMarker() { ensureWindowControllerReady().previousTemporaryColorMarker() }
+    func nextHighlightedLine()        { ensureWindowControllerReady().nextHighlightedLine() }
+    func showOutlineAnalysis()        { ensureWindowControllerReady().showOutlineAnalysis() }
+    func previousHighlightedLine()    { ensureWindowControllerReady().previousHighlightedLine() }
+    func selectHighlightedLineArea()  { ensureWindowControllerReady().selectHighlightedLineArea() }
     func insertFileContents()         { ensureWindowControllerReady().insertFileContents() }
     func insertControlCode()          { ensureWindowControllerReady().insertControlCode() }
     func selectNextTab()              { ensureWindowControllerReady().selectRelativeTab(1) }
