@@ -237,6 +237,7 @@ significantly, replace this with a small script that generates it from
 | `view.toggleWrap` | Wrap Lines | View | — | `AppCoordinator.toggleWrapLines()` |
 | `view.toggleSpaces` | Show Spaces | View > Show Invisibles | — | `AppCoordinator.toggleInvisible(\.spaces)` |
 | `view.toggleTabs` | Show Tabs | View > Show Invisibles | — | `AppCoordinator.toggleInvisible(\.tabs)` |
+| `view.toggleTabMode` | Tab Mode | View / Window | — | Enables or disables the document tab workspace without closing documents |
 | `view.toggleLineEndings` | Show Line Endings | View > Show Invisibles | — | `AppCoordinator.toggleInvisible(\.lineEndings)` |
 | `view.toggleFullWidthSpaces` | Show Full-Width Spaces | View > Show Invisibles | — | `AppCoordinator.toggleInvisible(\.fullWidthSpaces)` |
 | `view.tabWidth2` | 2 Spaces | View > Tab Width | — | `AppCoordinator.setTabWidth(2)` |
@@ -364,8 +365,8 @@ M3-02 moved Go to Line off ⌘G, which macOS reserves for Find Next, onto
   selectors (`cut:`, `copy:`, `miniaturize:`, ...) with no target set, so
   the first responder handles them directly. These aren't MaruEdit-specific
   commands, so they're intentionally left outside the registry.
-- **Open Recent**, **Clear Recent**, and (new in M2-02) **Reopen with
-  Encoding** are dynamically generated — per recent file/folder, or per
+- **Open Recent**, **Clear Recent**, and the File menu's dynamic **Encoding
+  Type** submenu are generated — per recent file/folder, or per
   candidate `TextEncoding` — rebuilt every time the submenu opens, so they
   don't map cleanly onto a single stable `CommandID`. They still go
   through `AppCoordinator`/`MainWindowController`, just not through

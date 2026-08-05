@@ -714,6 +714,7 @@ final class AppCoordinator {
         preferences.classicChrome.showToolbar.toggle()
         saveAndApplyPreferences()
     }
+    func toggleTabMode() { ensureWindowControllerReady().toggleTabMode() }
     func setRulerInterval(_ interval: Int) {
         preferences.classicChrome.rulerInterval = interval == 8 ? 8 : 10
         saveAndApplyPreferences()
@@ -754,6 +755,7 @@ final class AppCoordinator {
 
     func isViewCommandActive(_ id: CommandID) -> Bool {
         switch id {
+        case .viewToggleTabMode: ensureWindowControllerReady().isTabModeEnabled
         case .viewToggleWrap: ensureWindowControllerReady().effectiveWrapLines
         case .viewToggleSpaces: preferences.invisibleCharacters.spaces
         case .viewToggleTabs: preferences.invisibleCharacters.tabs

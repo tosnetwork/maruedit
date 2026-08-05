@@ -73,7 +73,20 @@ final class TabBarView: NSView {
         }
         set { UserDefaults.standard.set(newValue, forKey: "MaruTabBarHideSingle"); delegate?.tabBarLayoutOptionsDidChange() }
     }
-    var effectiveHeight: CGFloat { hidesForSingleTab && tabs.count <= 1 ? 0 : tabHeight }
+    var isTabModeEnabled: Bool {
+        get {
+            UserDefaults.standard.object(forKey: "MaruTabModeEnabled") == nil
+                ? true : UserDefaults.standard.bool(forKey: "MaruTabModeEnabled")
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "MaruTabModeEnabled")
+            delegate?.tabBarLayoutOptionsDidChange()
+        }
+    }
+    var effectiveHeight: CGFloat {
+        guard isTabModeEnabled else { return 0 }
+        return hidesForSingleTab && tabs.count <= 1 ? 0 : tabHeight
+    }
     private var pressedIndex: Int?
     private var hoveredIndex: Int? { didSet { updateAppearance() } }
     private var trackingArea: NSTrackingArea?

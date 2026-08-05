@@ -15,7 +15,26 @@ final class TabBarParityTests: XCTestCase {
     override func tearDown() {
         UserDefaults.standard.removeObject(forKey: "MaruTabBarPosition")
         UserDefaults.standard.removeObject(forKey: "MaruTabBarHideSingle")
+        UserDefaults.standard.removeObject(forKey: "MaruTabModeEnabled")
         super.tearDown()
+    }
+
+    func testTabModeCanHideAndRestoreTheBarWithoutDiscardingTabs() {
+        let bar = TabBarView(frame: NSRect(x: 0, y: 0, width: 500, height: 32))
+        bar.setTabs([
+            TabItem(title: "one", isModified: false),
+            TabItem(title: "two", isModified: true),
+        ], selectedIndex: 1)
+        XCTAssertTrue(bar.isTabModeEnabled)
+        XCTAssertEqual(bar.effectiveHeight, 32)
+
+        bar.isTabModeEnabled = false
+        XCTAssertEqual(bar.effectiveHeight, 0)
+        XCTAssertEqual(bar.tabs.count, 2)
+        XCTAssertEqual(bar.selectedIndex, 1)
+
+        bar.isTabModeEnabled = true
+        XCTAssertEqual(bar.effectiveHeight, 32)
     }
 
     func testPositionAndSingleTabVisibilityOptionsPersist() {

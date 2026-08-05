@@ -34,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let isUITestMode = ProcessInfo.processInfo.environment["MARUEDIT_UI_TEST_MODE"] == "1"
     private var recentMenu: NSMenu!
     private var reopenWithEncodingMenu: NSMenu!
+    private weak var classicWindowMenu: NSMenu?
     private var menuCustomizationWindowController: MenuCustomizationWindowController?
     private var userMenuWindowController: UserMenuConfigurationWindowController?
     private let userMenuStore = UserMenuConfigurationStore()
@@ -53,33 +54,61 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     static let classicDefaultMenuPlacements: [String: Set<CommandID>] = [
         // Dynamic Recent/Encoding menus remain visible alongside File commands.
         "File": Set([
-            "file.new", "file.open", "file.reload", "file.save", "file.saveAs",
-            "file.closeTab", "file.pageSetup", "file.print",
+            "file.new", "file.open", "file.closeAndOpen", "file.save", "file.saveAs",
+            "insert.fileContents", "file.print", "file.saveAndClose",
+            "file.saveAllAndClose", "file.discardAllAndClose",
         ].map { CommandID($0) }),
         // AppKit supplies Undo/Redo/Cut/Copy/Paste/Select All in Edit.
-        "Edit": [.editRepeatLastOperation],
+        "Edit": Set([
+            .editAppendCut, .editAppendCopy, .convertPipelineDialog,
+            .editIndent, .editOutdent, .editSortLines,
+            .editClipboardHistory, .editCompleteWord, .fileReload,
+        ]),
         "View": Set([
-            "view.toggleToolbar", "view.toggleLineNumbers", "view.toggleRuler",
-            "view.toggleFunctionKeys", "view.toggleStatusBar", "view.toggleWrap",
-            "view.showFonts", "view.toggleFullScreen",
+            "view.toggleToolbar", "view.toggleFunctionKeys", "view.toggleStatusBar",
+            "window.showFilesPane", "view.toggleOutputPane", "window.showSharedBrowserPane",
+            "window.showOutlinePane", "view.toggleHeading", "view.toggleFoldMargin",
+            "view.toggleLineNumbers", "view.toggleRuler", "view.toggleSpellChecking",
+            "window.showDocumentBrowserPane", "view.toggleWrap", "view.toggleTabStops",
+            "view.toggleTabMode", "view.rulerInterval8",
+            "view.toggleVerticalLayout", "view.toggleColumnLayout",
+            "view.beginPartialEditing", "view.endPartialEditing", "navigate.toggleFold",
+            "view.toggleFullScreen",
         ].map { CommandID($0) }),
         "Search": Set([
-            "search.find", "search.findUpward", "search.replace",
-            "search.findNext", "search.findPrevious", "search.goToLine",
-            "search.grep", "search.grepReplace",
+            "search.find", "search.findNext", "search.findPrevious", "search.replace",
+            "search.toggleHighlight", "search.returnToStart", "search.goToLine",
+            "navigate.documentStart", "navigate.documentEnd", "navigate.lastEdit",
+            "search.nextEditMark", "search.previousEditMark", "navigate.previousCursor",
+            "search.listMarks", "search.listColorLayers", "search.grepReplace", "search.grep",
+            "highlight.outlineAnalysis",
+            "highlight.nextLine", "highlight.previousLine", "highlight.selectLineArea",
+            "highlight.temporary.configure", "highlight.temporary.apply",
+            "highlight.temporary.remove", "highlight.temporary.clear",
+            "highlight.temporary.select", "highlight.temporary.next",
+            "highlight.temporary.previous",
         ].map { CommandID($0) }),
         "Window": Set([
             "window.tileVertical", "window.tileHorizontal", "window.cascade",
-            "window.nextTab", "window.previousTab", "window.tabList",
-            "window.nextManaged", "window.previousManaged", "window.previousActive",
+            "window.tileGrid", "window.minimizeAll", "view.splitHorizontal",
+            "window.toggleCrossDocumentScrollLink", "navigate.compareNextDocument",
+            "file.saveWorkspace", "file.openWorkspace", "window.alwaysOnTop",
+            "window.showOutlinePane", "window.showFilesPane", "view.toggleOutputPane",
+            "window.showSharedBrowserPane", "window.detachTab",
+            "view.toggleTabMode",
         ].map { CommandID($0) }),
         "Macro": Set([
             "macro.toggleRecording", "macro.playRecording", "macro.saveRecording",
-            "macro.run",
+            "macro.reload", "macro.run", "macro.help",
+            "app.macroMenu",
         ].map { CommandID($0) }),
         "Other": Set([
-            "app.settings", "other.fileTypeProfiles", "other.keyAssignments",
-            "other.commandList", "view.customizeMenus", "app.help",
+            "other.fileTypeProfiles", "app.settings", "other.keyAssignments",
+            "view.customizeMenus", "navigate.tagJump", "navigate.directTagJump",
+            "navigate.backTagJump", "insert.controlCode", "navigate.generateTags",
+            "other.correctSpelling", "other.commandList", "file.toggleViewMode",
+            "other.exportSettings", "help.checkUpdates", "app.help",
+            "other.importSettings", "other.restoreSettings",
         ].map { CommandID($0) }),
     ]
     static let classicDefaultVisibleCommandIDs = Set(
@@ -203,9 +232,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         recentItem.identifier = NSUserInterfaceItemIdentifier("menu.dynamic.openRecent")
         fileMenu.addItem(recentItem)
 
-        reopenWithEncodingMenu = NSMenu(title: "Reopen with Encoding")
+        reopenWithEncodingMenu = NSMenu(title: "エンコードの種類(D)")
         reopenWithEncodingMenu.delegate = self
-        let reopenItem = NSMenuItem(title: "Reopen with Encoding", action: nil, keyEquivalent: "")
+        let reopenItem = NSMenuItem(title: "エンコードの種類(D)", action: nil, keyEquivalent: "")
         reopenItem.submenu = reopenWithEncodingMenu
         reopenItem.identifier = NSUserInterfaceItemIdentifier("menu.dynamic.reopenEncoding")
         fileMenu.addItem(reopenItem)
@@ -708,13 +737,286 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         helpMenu.addItem(withTitle: "About MaruEdit", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         helpItem.submenu = helpMenu
 
+        // The default seven-menu presentation is intentionally compact and
+        // follows the locally recorded classic menu screenshots. Items not
+        // selected here remain in their original menu and can be restored by
+        // the menu editor.
+        func take(_ id: CommandID, from menu: NSMenu) -> NSMenuItem {
+            let item = menu.items.first { $0.representedObject as? CommandID == id }
+                ?? commandItem(id)
+            item.menu?.removeItem(item)
+            return item
+        }
+        func titled(_ title: String, _ id: CommandID, from menu: NSMenu) -> NSMenuItem {
+            let item = take(id, from: menu); item.title = title; return item
+        }
+        func preserveExtendedItems(_ oldItems: [NSMenuItem], in menu: NSMenu) {
+            func commandIDs(in items: [NSMenuItem]) -> Set<CommandID> {
+                Set(items.flatMap { item -> [CommandID] in
+                    let own = (item.representedObject as? CommandID).map { [$0] } ?? []
+                    return own + (item.submenu.map { Array(commandIDs(in: $0.items)) } ?? [])
+                })
+            }
+            let existingIDs = commandIDs(in: menu.items)
+            func pruneDuplicates(from item: NSMenuItem) -> Bool {
+                if let id = item.representedObject as? CommandID {
+                    return !existingIDs.contains(id)
+                }
+                guard let submenu = item.submenu else { return false }
+                for child in submenu.items where !child.isSeparatorItem {
+                    if !pruneDuplicates(from: child) { submenu.removeItem(child) }
+                }
+                return !commandIDs(in: submenu.items).isEmpty
+            }
+            if !menu.items.isEmpty { menu.addItem(.separator()) }
+            for item in oldItems {
+                guard pruneDuplicates(from: item) else { continue }
+                item.menu?.removeItem(item)
+                menu.addItem(item)
+            }
+        }
+
+        let oldFileItems = fileMenu.items
+        fileMenu.removeAllItems()
+        for item in [
+            titled("新規作成(N)", .fileNew, from: fileMenu),
+            titled("開く(O)...", .fileOpen, from: fileMenu),
+            titled("閉じて開く(L)...", .fileCloseAndOpen, from: fileMenu),
+            titled("上書き保存(S)", .fileSave, from: fileMenu),
+            titled("名前を付けて保存(A)...", .fileSaveAs, from: fileMenu),
+            titled("カーソル位置への読み込み(I)...", .insertFileContents, from: fileMenu),
+            titled("印刷(P)...", .filePrint, from: fileMenu),
+        ] { fileMenu.addItem(item) }
+        fileMenu.addItem(.separator())
+        reopenItem.menu?.removeItem(reopenItem); fileMenu.addItem(reopenItem)
+        fileMenu.addItem(.separator())
+        fileMenu.addItem(titled("保存して終了(E)", .fileSaveAndClose, from: fileMenu))
+        fileMenu.addItem(NSMenuItem(title: "終了(X)", action: #selector(NSApplication.terminate(_:)), keyEquivalent: ""))
+        fileMenu.addItem(titled("全保存終了(T)", .fileSaveAllAndClose, from: fileMenu))
+        fileMenu.addItem(titled("全終了(Q)", .fileDiscardAllAndClose, from: fileMenu))
+        preserveExtendedItems(oldFileItems, in: fileMenu)
+
+        let oldEditItems = editMenu.items
+        let undo = oldEditItems.first { $0.action == Selector(("undo:")) }!
+        let redo = oldEditItems.first { $0.action == Selector(("redo:")) }!
+        let cut = oldEditItems.first { $0.action == #selector(NSText.cut(_:)) }!
+        let copy = oldEditItems.first { $0.action == #selector(NSText.copy(_:)) }!
+        let paste = oldEditItems.first { $0.action == #selector(NSText.paste(_:)) }!
+        let selectAll = oldEditItems.first { $0.action == #selector(NSText.selectAll(_:)) }!
+        let conversion = NSMenuItem(title: "変換(V)", action: nil, keyEquivalent: "")
+        let conversionMenu = NSMenu(title: "変換(V)")
+        for id: CommandID in [
+            .convertPipelineDialog, .editUppercase, .editLowercase, .editTitlecase,
+            .convertHalfWidth, .convertFullWidth, .convertHiragana, .convertKatakana,
+            .convertHalfWidthAlphanumeric, .convertFullWidthAlphanumeric,
+            .convertHalfWidthKatakana, .convertFullWidthKatakana,
+            .convertTabsToSpaces, .convertSpacesToTabs,
+        ] { conversionMenu.addItem(commandItem(id)) }
+        conversion.submenu = conversionMenu
+        let formatting = oldEditItems.first { $0.identifier?.rawValue == "menu.group.lines" }!
+        formatting.title = "整形(-)"
+        editMenu.removeAllItems()
+        undo.title = "やり直し(U)"; redo.title = "やり直しのやり直し(R)"
+        editMenu.addItem(undo); editMenu.addItem(redo); editMenu.addItem(.separator())
+        cut.title = "切り抜き(T)"; copy.title = "コピー(C)"; paste.title = "貼り付け(P)"
+        editMenu.addItem(cut); editMenu.addItem(copy)
+        editMenu.addItem(titled("追加切り抜き(W)", .editAppendCut, from: editMenu))
+        editMenu.addItem(titled("追加コピー(A)", .editAppendCopy, from: editMenu))
+        editMenu.addItem(paste)
+        editMenu.addItem(NSMenuItem(title: "削除(L)", action: #selector(NSText.deleteForward(_:)), keyEquivalent: ""))
+        editMenu.addItem(conversion); editMenu.addItem(formatting); editMenu.addItem(.separator())
+        selectAll.title = "すべてを選択(S)"; editMenu.addItem(selectAll)
+        editMenu.addItem(titled("クリップボード履歴(H)...", .editClipboardHistory, from: editMenu))
+        editMenu.addItem(.separator())
+        editMenu.addItem(titled("単語補完(I)", .editCompleteWord, from: editMenu))
+        editMenu.addItem(.separator())
+        editMenu.addItem(titled("再読み込み(O)", .fileReload, from: editMenu))
+        preserveExtendedItems(oldEditItems.filter { $0 !== formatting }, in: editMenu)
+
+        func rebuildCommandMenu(
+            _ menu: NSMenu,
+            entries: [(String, CommandID)],
+            separatorsAfter: Set<Int>
+        ) {
+            let oldItems = menu.items
+            menu.removeAllItems()
+            for (index, entry) in entries.enumerated() {
+                menu.addItem(titled(entry.0, entry.1, from: menu))
+                if separatorsAfter.contains(index) { menu.addItem(.separator()) }
+            }
+            preserveExtendedItems(oldItems, in: menu)
+        }
+
+        rebuildCommandMenu(findMenu, entries: [
+            ("検索(F)...", .searchFind), ("下候補(N)", .searchFindNext),
+            ("上候補(P)", .searchFindPrevious), ("置換(R)...", .searchReplace),
+            ("検索文字列の強調(O)", .searchToggleHighlight),
+            ("検索開始位置へ戻る(S)", .searchReturnToStart),
+            ("指定行(J)...", .searchGoToLine), ("ファイルの先頭(T)", .navigateDocumentStart),
+            ("ファイルの最後(B)", .navigateDocumentEnd), ("最後に編集した所(L)", .navigateLastEdit),
+            ("下の編集マーク(D)", .searchNextEditMark), ("上の編集マーク(U)", .searchPreviousEditMark),
+            ("前のカーソル位置(V)", .navigatePreviousCursor), ("強調(H)", .highlightOutlineAnalysis),
+            ("マーカー一覧(M)...", .searchListMarks), ("カラーマーカー(I)", .searchListColorLayers),
+            ("grepして置換(@)...", .searchGrepReplace), ("grepの実行(G)...", .searchGrep),
+        ], separatorsAfter: [5, 12, 15])
+        if let highlight = findMenu.item(withTitle: "強調(H)") {
+            highlight.action = nil
+            highlight.identifier = NSUserInterfaceItemIdentifier("menu.dynamic.searchHighlight")
+            let submenu = NSMenu(title: highlight.title)
+            for id: CommandID in [
+                .highlightOutlineAnalysis, .highlightNextLine,
+                .highlightPreviousLine, .highlightSelectLineArea,
+            ] { submenu.addItem(commandItem(id)) }
+            highlight.submenu = submenu
+        }
+        if let colorMarker = findMenu.item(withTitle: "カラーマーカー(I)") {
+            colorMarker.action = nil
+            colorMarker.identifier = NSUserInterfaceItemIdentifier("menu.dynamic.searchColorMarker")
+            let submenu = NSMenu(title: colorMarker.title)
+            for id: CommandID in [
+                .searchListColorLayers,
+                .highlightTemporaryConfigure, .highlightTemporaryApply,
+                .highlightTemporaryRemove, .highlightTemporaryClear,
+                .highlightTemporarySelect, .highlightTemporaryNext,
+                .highlightTemporaryPrevious,
+            ] { submenu.addItem(commandItem(id)) }
+            colorMarker.submenu = submenu
+            for duplicate in findMenu.items where
+                duplicate !== colorMarker
+                && ((duplicate.representedObject as? CommandID) == .searchListColorLayers
+                    || duplicate.title == "Color Marker")
+            {
+                findMenu.removeItem(duplicate)
+            }
+        }
+
+        rebuildCommandMenu(macroMenu, entries: [
+            ("キー操作の記録開始/終了(R)", .macroToggleRecording),
+            ("キー操作の再生(P)", .macroPlayRecording),
+            ("キー操作の保存(S)...", .macroSaveRecording),
+            ("キー操作の読み込み(L)...", .macroReload),
+            ("マクロ実行(X)...", .macroRun),
+            ("マクロ登録(E)...", .appMacroMenu),
+            ("マクロヘルプ(H)", .macroHelp),
+        ], separatorsAfter: [4])
+
+        rebuildCommandMenu(winMenu, entries: [
+            ("縦に並べる(V)", .windowTileVertical), ("横に並べる(H)", .windowTileHorizontal),
+            ("重ねて表示(C)", .windowCascade), ("並べて表示(T)", .windowTileGrid),
+            ("全部最小化(N)", .windowMinimizeAll), ("ウィンドウ分割上下(D)", .viewSplitHorizontal),
+            ("他のMaruエディタと同時スクロール(L)...", .windowToggleCrossDocumentScrollLink),
+            ("他のMaruエディタと内容比較(F)...", .navigateCompareNextDocument),
+            ("デスクトップ保存(S)", .fileSaveWorkspace), ("デスクトップ復元(R)", .fileOpenWorkspace),
+            ("常に手前に表示(A)", .windowAlwaysOnTop), ("アウトライン解析の枠(O)", .windowShowOutlinePane),
+            ("ファイルマネージャ枠(X)", .windowShowFilesPane), ("アウトプット枠(U)", .viewToggleOutputPane),
+            ("ブラウザ枠(￥)", .windowShowSharedBrowserPane), ("タブモード(B)", .viewToggleTabMode),
+            ("このタブを分離/移動(I)", .windowDetachTab),
+        ], separatorsAfter: [4, 7, 9, 10, 14, 16])
+
+        let oldViewItems = viewMenu.items
+        viewMenu.removeAllItems()
+        func viewCommand(_ title: String, _ id: CommandID) {
+            viewMenu.addItem(titled(title, id, from: viewMenu))
+        }
+        func viewGroup(_ title: String, primary: CommandID, children: [CommandID]) {
+            let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+            item.representedObject = primary
+            let submenu = NSMenu(title: title)
+            for id in children { submenu.addItem(commandItem(id)) }
+            item.submenu = submenu
+            viewMenu.addItem(item)
+        }
+        viewCommand("ツールバー(T)", .viewToggleToolbar)
+        viewCommand("タブモード(B)", .viewToggleTabMode)
+        viewCommand("ファンクションキー表示(F)", .viewToggleFunctionKeys)
+        viewCommand("ステータスバー(S)", .viewToggleStatusBar); viewMenu.addItem(.separator())
+        viewCommand("ファイルマネージャ枠(X)", .windowShowFilesPane)
+        viewCommand("アウトプット枠(P)", .viewToggleOutputPane)
+        viewCommand("ブラウザ枠(￥)", .windowShowSharedBrowserPane); viewMenu.addItem(.separator())
+        viewCommand("アウトライン解析の枠(O)", .windowShowOutlinePane)
+        viewCommand("見出しバー(U)", .viewToggleHeading)
+        viewCommand("折りたたみ用の余白(M)", .viewToggleFoldMargin)
+        viewCommand("行番号(L)", .viewToggleLineNumbers)
+        viewCommand("ルーラー(R)", .viewToggleRuler)
+        viewCommand("自動スペルチェック(K)", .viewToggleSpellChecking)
+        viewCommand("個別ブラウザ枠(￥)", .windowShowDocumentBrowserPane); viewMenu.addItem(.separator())
+        viewGroup("折り返し(I)", primary: .viewToggleWrap, children: [.viewToggleWrap])
+        viewGroup("ルーラーの表示(D)", primary: .viewRulerInterval8,
+                  children: [.viewToggleRuler, .viewRulerInterval8, .viewRulerInterval10])
+        viewGroup("タブストップ(A)", primary: .viewToggleTabStops,
+                  children: [.viewToggleTabStops, .viewTabWidth2, .viewTabWidth4, .viewTabWidth8])
+        viewCommand("縦書きモード(Q)", .viewToggleVerticalLayout)
+        viewCommand("段組モード(J)", .viewToggleColumnLayout); viewMenu.addItem(.separator())
+        viewCommand("部分編集([)", .viewBeginPartialEditing)
+        viewCommand("部分編集解除(])", .viewEndPartialEditing)
+        viewGroup("折りたたみ(V)", primary: .navigateToggleFold,
+                  children: [.navigateToggleFold, .navigateCollapseAllFolds, .navigateExpandAllFolds])
+        viewMenu.addItem(.separator())
+        viewCommand("全画面表示(Z)", .viewToggleFullScreen)
+        preserveExtendedItems(oldViewItems.filter {
+            ($0.representedObject as? CommandID) != .viewCustomizeMenus
+        }, in: viewMenu)
+
+        let oldOtherItems = otherMenu.items
+        otherMenu.removeAllItems()
+        let otherEntries: [(String, CommandID)] = [
+            ("ファイルタイプ別の設定(C)...", .otherFileTypeProfiles), ("動作環境(E)...", .appSettings),
+            ("キー割り当て(K)...", .otherKeyAssignments), ("メニュー編集(M)...", .viewCustomizeMenus),
+            ("タグジャンプ(T)", .navigateTagJump), ("ダイレクトタグジャンプ(D)", .navigateDirectTagJump),
+            ("バックタグジャンプ(B)", .navigateBackTagJump), ("制御コード入力(I)...", .insertControlCode),
+            ("tagsファイルの作成(G)...", .navigateGenerateTags),
+        ]
+        for (index, entry) in otherEntries.enumerated() {
+            otherMenu.addItem(titled(entry.0, entry.1, from: otherMenu))
+            if index == 3 { otherMenu.addItem(.separator()) }
+        }
+        func cloneMenu(_ source: NSMenu) -> NSMenu {
+            let copy = NSMenu(title: source.title)
+            for sourceItem in source.items {
+                if sourceItem.isSeparatorItem { copy.addItem(.separator()); continue }
+                let item = NSMenuItem(
+                    title: sourceItem.title, action: sourceItem.action,
+                    keyEquivalent: sourceItem.keyEquivalent)
+                item.target = sourceItem.target
+                item.representedObject = sourceItem.representedObject
+                item.isEnabled = sourceItem.isEnabled
+                if let submenu = sourceItem.submenu { item.submenu = cloneMenu(submenu) }
+                copy.addItem(item)
+            }
+            return copy
+        }
+        let program = NSMenuItem(title: "プログラム実行(X)...", action: nil, keyEquivalent: "")
+        program.submenu = cloneMenu(externalCommandManager.menu); otherMenu.addItem(program)
+        otherMenu.addItem(titled("スペルミスの修正(Z)...", .otherCorrectSpelling, from: otherMenu))
+        otherMenu.addItem(titled("コマンド一覧(O)...", .otherCommandList, from: otherMenu))
+        otherMenu.addItem(titled("閲覧モード(R)", .fileToggleViewMode, from: otherMenu))
+        otherMenu.addItem(.separator())
+        let transfer = NSMenuItem(title: "設定内容の保存/復元(U)...", action: nil, keyEquivalent: "")
+        let transferMenu = NSMenu(title: transfer.title)
+        for id: CommandID in [.otherExportSettings, .otherImportSettings, .otherRestoreSettings] {
+            transferMenu.addItem(commandItem(id))
+        }
+        transfer.submenu = transferMenu; otherMenu.addItem(transfer); otherMenu.addItem(.separator())
+        otherMenu.addItem(titled("最新バージョンの確認(V)...", .helpCheckUpdates, from: otherMenu))
+        otherMenu.addItem(titled("MaruEditヘルプ(P)", .appHelp, from: otherMenu))
+        otherMenu.addItem(NSMenuItem(title: "MaruEditについて(A)...", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: ""))
+        preserveExtendedItems(oldOtherItems, in: otherMenu)
+
         main.removeAllItems()
         [appItem, fileItem, editItem, convertItem, viewItem, insertItem, findItem,
          highlightItem, bookmarkItem, toolsItem, winItem, macroItem, otherItem,
          helpItem].forEach(main.addItem)
 
+        for (item, title) in zip(
+            [fileItem, editItem, viewItem, findItem, winItem, macroItem, otherItem],
+            ["ファイル(F)", "編集(E)", "表示(V)", "検索(S)",
+             "ウィンドウ(W)", "マクロ(M)", "その他(O)"]
+        ) { item.title = title }
+
         NSApp.mainMenu = main
         NSApp.windowsMenu = winMenu
+        classicWindowMenu = winMenu
+        winMenu.delegate = self
         applyMenuCustomization(to: main)
         syncCommandMenuBindings()
     }
@@ -876,6 +1178,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard let id = menuItem.representedObject as? CommandID else { return true }
         let statefulViewCommands: Set<CommandID> = [
             .viewToggleWrap, .viewToggleSpaces, .viewToggleTabs,
+            .viewToggleTabMode,
             .viewToggleLineEndings, .viewToggleFullWidthSpaces,
             .viewTabWidth2, .viewTabWidth4, .viewTabWidth8,
             .viewToggleRuler, .viewRulerInterval8, .viewRulerInterval10,
@@ -901,6 +1204,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // MARK: - NSMenuDelegate (Open Recent, Reopen with Encoding)
 
     func menuNeedsUpdate(_ menu: NSMenu) {
+        if menu === classicWindowMenu {
+            var index = 1
+            for item in menu.items {
+                guard let window = item.target as? NSWindow else { continue }
+                let rawTitle = window.title
+                let name = rawTitle.components(separatedBy: " — ").last ?? rawTitle
+                let displayName = name == "Untitled" ? "無題" : name
+                item.title = "\(index) (\(displayName))\(window.isDocumentEdited ? "(更新)" : "")"
+                index += 1
+            }
+            return
+        }
         if menu === reopenWithEncodingMenu {
             let fresh = coordinator.reopenWithEncodingMenu()
             menu.removeAllItems()

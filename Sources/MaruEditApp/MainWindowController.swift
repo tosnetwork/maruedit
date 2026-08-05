@@ -2897,6 +2897,9 @@ final class MainWindowController: NSWindowController,
 
     func tabBarLayoutOptionsDidChange() { layoutContentViews() }
 
+    func toggleTabMode() { tabBar.isTabModeEnabled.toggle() }
+    var isTabModeEnabled: Bool { tabBar.isTabModeEnabled }
+
     var selectedTabIndexForTesting: Int { curIdx }
     var tabCountForTesting: Int { documentController.documents.count }
     var editorTextForTesting: String { editorVC.textView.string }

@@ -220,6 +220,9 @@ Gate notes:
   classic grouped encoding menu: automatic re-detection, common Japanese and
   Unicode encodings, an Other submenu, CR+LF/CR/LF and BOM controls. Input mode
   opens explicit Overwrite/Insert choices with a checkmark on the active mode.
+- The File menu's `エンコードの種類(D)` dynamic submenu and the recessed
+  encoding status field use that same menu builder, including identical active
+  encoding, line-ending and BOM checkmarks.
 - Gate 5 has all eight screenshot baselines, an explicit wrapping forward/reverse
   focus loop across toolbar, F-key strip, Find/Replace, tabs, editor, sidebar,
   output and status fields, first-responder verification for every member, and
