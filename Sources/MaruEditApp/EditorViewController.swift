@@ -1,4 +1,4 @@
-import AppKit
+@preconcurrency import AppKit
 import MaruEditCore
 import os.log
 
@@ -17,8 +17,41 @@ private final class FlippedView: NSView {
     override var isFlipped: Bool { true }
 }
 
-final class EditorViewController: NSViewController, NSTextViewDelegate,
-    @preconcurrency NSLayoutManagerDelegate {
+private final class FoldLayoutDelegate: NSObject, NSLayoutManagerDelegate {
+    var collapsedRanges: [NSRange] = []
+
+    func layoutManager(
+        _ layoutManager: NSLayoutManager,
+        shouldGenerateGlyphs glyphs: UnsafePointer<CGGlyph>,
+        properties props: UnsafePointer<NSLayoutManager.GlyphProperty>,
+        characterIndexes charIndexes: UnsafePointer<Int>,
+        font: NSFont,
+        forGlyphRange glyphRange: NSRange
+    ) -> Int {
+        guard !collapsedRanges.isEmpty else { return 0 }
+        var properties = Array(UnsafeBufferPointer(start: props, count: glyphRange.length))
+        for index in properties.indices where collapsedRanges.contains(where: {
+            NSLocationInRange(charIndexes[index], $0)
+        }) { properties[index].insert(.null) }
+        properties.withUnsafeBufferPointer {
+            layoutManager.setGlyphs(
+                glyphs, properties: $0.baseAddress!, characterIndexes: charIndexes,
+                font: font, forGlyphRange: glyphRange)
+        }
+        return glyphRange.length
+    }
+
+    func layoutManager(
+        _ layoutManager: NSLayoutManager,
+        shouldUse action: NSLayoutManager.ControlCharacterAction,
+        forControlCharacterAt charIndex: Int
+    ) -> NSLayoutManager.ControlCharacterAction {
+        collapsedRanges.contains { NSLocationInRange(charIndex, $0) }
+            ? .zeroAdvancement : action
+    }
+}
+
+final class EditorViewController: NSViewController, NSTextViewDelegate {
     static let inputLatencyLog = OSLog(subsystem: "com.maruedit.editor", category: "InputLatency")
     weak var delegate: EditorViewControllerDelegate?
 
@@ -26,6 +59,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate,
     private(set) var textView: NSTextView!
     private var lineNumbers: LineNumberView?
     private let syntaxHighlightCoordinator = SyntaxHighlightCoordinator()
+    private let foldLayoutDelegate = FoldLayoutDelegate()
 
     private var suppressTextChange = false
     private var suppressAutoIndent = false
@@ -192,7 +226,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate,
         textView = maruTextView
         textView.setAccessibilityLabel("Editor")
         // Force TextKit 1 so layout manager APIs work reliably
-        textView.layoutManager?.delegate = self
+        textView.layoutManager?.delegate = foldLayoutDelegate
 
         textView.isEditable = true
         textView.isSelectable = true
@@ -554,6 +588,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate,
             text: document.content, language: document.language,
             customRules: document.fileTypeProfile?.settings.outlineRules ?? [])
         document.foldModel.rebuild(text: document.content, symbols: outline.symbols)
+        foldLayoutDelegate.collapsedRanges = document.foldModel.collapsedRanges()
         layoutManager.invalidateGlyphs(
             forCharacterRange: NSRange(location: 0, length: (document.content as NSString).length),
             changeInLength: 0, actualCharacterRange: nil)
@@ -586,40 +621,6 @@ final class EditorViewController: NSViewController, NSTextViewDelegate,
     func expandAllFolds() { document?.foldModel.expandAll(); refreshFolding() }
 
     var collapsedFoldCountForTesting: Int { document?.foldModel.collapsedRegionIDs.count ?? 0 }
-
-    func layoutManager(
-        _ layoutManager: NSLayoutManager,
-        shouldGenerateGlyphs glyphs: UnsafePointer<CGGlyph>,
-        properties props: UnsafePointer<NSLayoutManager.GlyphProperty>,
-        characterIndexes charIndexes: UnsafePointer<Int>,
-        font: NSFont,
-        forGlyphRange glyphRange: NSRange
-    ) -> Int {
-        let hidden = document?.foldModel.collapsedRanges() ?? []
-        guard !hidden.isEmpty else { return 0 }
-        var properties = Array(UnsafeBufferPointer(start: props, count: glyphRange.length))
-        for index in properties.indices where hidden.contains(where: {
-            NSLocationInRange(charIndexes[index], $0)
-        }) {
-            properties[index].insert(.null)
-        }
-        properties.withUnsafeBufferPointer { propertyBuffer in
-            layoutManager.setGlyphs(
-                glyphs, properties: propertyBuffer.baseAddress!,
-                characterIndexes: charIndexes, font: font, forGlyphRange: glyphRange)
-        }
-        return glyphRange.length
-    }
-
-    func layoutManager(
-        _ layoutManager: NSLayoutManager,
-        shouldUse action: NSLayoutManager.ControlCharacterAction,
-        forControlCharacterAt charIndex: Int
-    ) -> NSLayoutManager.ControlCharacterAction {
-        let hidden = document?.foldModel.collapsedRanges() ?? []
-        return hidden.contains(where: { NSLocationInRange(charIndex, $0) })
-            ? .zeroAdvancement : action
-    }
 
     func beginInputLatencySignpost() {
         endInputLatencySignpost()
