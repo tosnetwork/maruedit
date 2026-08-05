@@ -275,7 +275,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let allMatchesMenu = NSMenu(title: "All Matches")
         for id: CommandID in [
             .searchToggleHighlight, .searchSelectAllMatches, .searchColorAllMatches,
-            .searchClearMatchColors, .searchListAllMatches,
+            .searchClearMatchColors, .searchListAllMatches, .searchOutlineAllMatches,
         ] { allMatchesMenu.addItem(commandItem(id)) }
         allMatchesItem.submenu = allMatchesMenu
         findMenu.addItem(allMatchesItem)
@@ -324,7 +324,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         cursorItem.submenu = cursorMenu
         findMenu.addItem(cursorItem)
         findMenu.addItem(.separator())
+        for id: CommandID in [
+            .searchToggleMark, .searchListMarks, .navigateNextMarker, .navigatePreviousMarker,
+            .searchClearAllMarks, .searchClearCurrentMarks, .searchListColorLayers,
+        ] { findMenu.addItem(commandItem(id)) }
+        let searchColorMarkerItem = NSMenuItem(title: "Color Marker", action: nil, keyEquivalent: "")
+        let searchColorMarkerMenu = NSMenu(title: "Color Marker")
+        for id: CommandID in [
+            .highlightTemporaryConfigure, .highlightTemporaryApply, .highlightTemporaryRemove,
+            .highlightTemporaryClear, .highlightTemporarySelect,
+            .highlightTemporaryNext, .highlightTemporaryPrevious,
+        ] { searchColorMarkerMenu.addItem(commandItem(id)) }
+        searchColorMarkerItem.submenu = searchColorMarkerMenu
+        findMenu.addItem(searchColorMarkerItem)
+        for id: CommandID in [
+            .searchNextResult, .searchPreviousResult, .searchNextGrepResult, .searchPreviousGrepResult,
+        ] { findMenu.addItem(commandItem(id)) }
+        findMenu.addItem(.separator())
         findMenu.addItem(commandItem(.searchQuickOpen))
+        findMenu.addItem(commandItem(.searchGrepReplace))
         findMenu.addItem(commandItem(.searchGrep))
         findMenu.addItem(commandItem(.searchGrepCurrentDocument))
         findMenu.addItem(commandItem(.searchGrepOpenDocuments))

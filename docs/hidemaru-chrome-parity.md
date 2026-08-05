@@ -18,7 +18,7 @@ passing MaruEdit regression tests from exhaustive Hidemaru feature parity.
 
 | Area | ✅ Complete | 🟡 Partial/native | ❌ Incomplete |
 |---|---:|---:|---:|
-| Menu rows | 6 | 7 | 0 |
+| Menu rows | 7 | 6 | 0 |
 | Toolbar/function-key rows | 9 | 3 | 0 |
 | Status-bar rows | 16 | 0 | 0 |
 | Acceptance gates | 1 | 2 | 2 |
@@ -37,7 +37,7 @@ native menu before the Hidemaru-compatible business menus.
 | Convert | Case, generic and selective half/full-width, hiragana/katakana, Tab/space conversions, and ordered conversion pipelines | ✅ Complete | “Conversion Pipeline…” provides built-in and persistent named presets, ordered add/remove/reorder controls, parameterized literal/regex/whitespace modules, one-step multi-selection Undo, and a tested registration API for external conversion modules. |
 | View | Wrapping, invisibles, ruler marks, profile tab stops, editable vertical writing, continuous column flow, splits, chrome visibility, and output-pane focus | 🟡 Partial | Complete the official view/frame inventory and native mappings; browser/file-manager frame variants and all display configuration have not been audited one by one. |
 | Insert | Date/time, newline, tab, page break, duplicate line, indentation-preserving blank line, C0/DEL control codes, deletion restore, current filename, and encoding-aware file-content insertion | ✅ Complete | Every compatible command in the official 9.57 insertion-command inventory is placed in the Insert menu and covered by executable tests; MaruEdit additionally exposes templates and file-content insertion. |
-| Search | Search/replace/grep, case/word/regex/fuzzy flags, return to search start, edit marks, all-match operations, and persistent ranges | 🟡 Partial | Map and implement the remaining fine-grained Hidemaru search, marker, candidate, and result commands. |
+| Search | Search/replace/Grep Replace, case/word/regex/fuzzy flags, return to search start, the complete cursor-navigation inventory, edit marks, all-match selection/list/outline/color operations, document-local persistent color layers, line marks, temporary color markers, search ranges, and unified/dedicated Grep-result navigation | ✅ Complete | Every compatible entry on the official 9.57 Search menu has a stable command, menu placement, documentation, and direct registry or behavior test. Unified result navigation follows Hidemaru's difference → search color → Grep priority. |
 | Highlight | Outline analysis, highlighted-line navigation/area selection, persistent line markers, and temporary selection-range color markers | ✅ Complete | The official Highlight submenu and Temporary Color Marker submenu are mapped: configure/apply, selection-intersection removal, clear all, convert markers to multiple selections, bidirectional wrap navigation, edit tracking, and profile-aware highlighted-line commands have direct tests. |
 | Bookmark | Toggle, previous/next, clear, and a document list with jump/remove | ✅ Complete | No confirmed compatible gap in the scoped bookmark row; retain official-command regression coverage. |
 | Tools | Compare/difference, deterministic portable tags-file generation, tag navigation, dynamic external commands, and command-list access | 🟡 Partial | Native generation is bounded, skips dependency/hidden trees, writes atomically, and feeds Tag Jump directly; finish the official Tools-command inventory one by one. |
@@ -47,7 +47,7 @@ native menu before the Hidemaru-compatible business menus.
 | Help | MaruEdit guide, macro guide, shortcut reference, configurable External Help 1–6, release check, support, and native About | ✅ Complete | All six external-help slots have persistent names/URL-or-file targets, dynamic enablement, a configuration window, and tested dispatch; About uses the native macOS panel. |
 
 The official pages contain roughly 297 command references, including repeated
-placements, dynamic entries, and Windows-only commands. MaruEdit registers 175
+placements, dynamic entries, and Windows-only commands. MaruEdit registers 276
 stable command IDs plus dynamic and native-responder entries, so the raw totals
 are not a parity measure. `ChromeParityAuditTests` only requires every existing
 stable ID to appear exactly once in the command reference; it is a documentation
@@ -108,7 +108,7 @@ consistency check, not proof that the external Hidemaru inventory is complete.
 Gate notes:
 
 - Gate 1 needs an external Hidemaru-command inventory. Auditing only MaruEdit's
-  existing 175 IDs cannot detect commands that MaruEdit never registered.
+  existing 276 IDs cannot detect commands that MaruEdit never registered.
 - Gate 2 is complete for the floating-toolbar decision but not for every Windows-
   specific menu/frame/window command.
 - Gate 3 covers persistence, layout operations, configurable F-key count, and

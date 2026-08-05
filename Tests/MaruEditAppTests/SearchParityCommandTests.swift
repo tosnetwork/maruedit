@@ -16,9 +16,15 @@ final class SearchParityCommandTests: XCTestCase {
         XCTAssertTrue(controller.macroEditor.searchHighlightRangesForTesting.isEmpty)
 
         controller.colorAllSearchMatches()
-        XCTAssertEqual(controller.macroEditor.searchHighlightRangesForTesting.count, 3)
+        XCTAssertEqual(controller.macroEditor.searchColorLayers.count, 1)
+        XCTAssertEqual(controller.macroEditor.searchColorLayers[0].ranges.count, 3)
+        controller.macroEditor.setSelections([NSRange(location: 0, length: 0)])
+        controller.navigateResult(forward: true, grepOnly: false)
+        XCTAssertEqual(controller.macroEditor.selectionSet.primaryRange,
+                       NSRange(location: 6, length: 3))
         controller.clearSearchColors()
         XCTAssertTrue(controller.macroEditor.searchHighlightRangesForTesting.isEmpty)
+        XCTAssertTrue(controller.macroEditor.searchColorLayers.isEmpty)
 
         controller.selectAllSearchMatches()
         XCTAssertEqual(controller.macroEditor.textView.selectedRanges.map(\.rangeValue), [
@@ -73,5 +79,26 @@ final class SearchParityCommandTests: XCTestCase {
         XCTAssertFalse(controller.currentSearchQueryForTesting?.wholeWord == true)
         XCTAssertEqual(controller.macroEditor.selectionSet.primaryRange, NSRange(location: 4, length: 7),
                        "capturing must not execute a search or move the selection")
+    }
+
+    func testSearchColorLayersAreDocumentLocalAndTrackEdits() {
+        let controller = MainWindowController()
+        controller.prepareUITestDocument(content: "foo foo", selections: [])
+        controller.setSearchQueryForTesting(SearchQuery(pattern: "foo"))
+        controller.colorAllSearchMatches()
+        let firstDocument = controller.macroEditor.document
+        XCTAssertEqual(firstDocument?.searchColorLayers.first?.ranges,
+                       [NSRange(location: 0, length: 3), NSRange(location: 4, length: 3)])
+
+        controller.macroEditor.setSelections([NSRange(location: 0, length: 0)])
+        controller.macroEditor.textView.insertText(
+            "x", replacementRange: NSRange(location: 0, length: 0))
+        XCTAssertEqual(firstDocument?.searchColorLayers.first?.ranges.first,
+                       NSRange(location: 1, length: 3))
+
+        controller.macroEditor.document = Document(content: "other")
+        XCTAssertTrue(controller.macroEditor.searchColorLayers.isEmpty)
+        controller.macroEditor.document = firstDocument
+        XCTAssertEqual(controller.macroEditor.searchColorLayers.count, 1)
     }
 }

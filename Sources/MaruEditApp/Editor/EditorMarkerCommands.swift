@@ -1,6 +1,25 @@
 import Foundation
 
 extension EditorViewController {
+    func applySearchColorLayerEdit(range: NSRange, replacement: String) {
+        let delta = (replacement as NSString).length - range.length
+        let editEnd = NSMaxRange(range)
+        guard let document else { return }
+        document.searchColorLayers = document.searchColorLayers.map { layer in
+            var updated = layer
+            updated.ranges = layer.ranges.compactMap { existing in
+                if editEnd <= existing.location {
+                    return NSRange(location: max(0, existing.location + delta), length: existing.length)
+                }
+                if range.location >= NSMaxRange(existing) { return existing }
+                let start = min(existing.location, range.location)
+                let end = max(start, NSMaxRange(existing) + delta)
+                return end > start ? NSRange(location: start, length: end - start) : nil
+            }
+            return updated
+        }
+    }
+
     func applyTemporaryColorMarkerEdit(range: NSRange, replacement: String) {
         let delta = (replacement as NSString).length - range.length
         let editEnd = NSMaxRange(range)

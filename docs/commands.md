@@ -160,6 +160,7 @@ significantly, replace this with a small script that generates it from
 | `search.goToLine` | Go to Line... | Find | ⌘L | `AppCoordinator.showGoToLine()` |
 | `search.quickOpen` | Quick Open... | Find | ⌘P | `AppCoordinator.showQuickOpen()` |
 | `search.grep` | Find in Folder... | Find | ⇧⌘F | `AppCoordinator.showGrep()` |
+| `search.grepReplace` | Grep Replace… | Search | — | Opens Grep with its replacement workflow |
 | `search.grepCurrentDocument` | Grep Current Document | Find | — | `AppCoordinator.grepCurrentDocument()` |
 | `search.grepOpenDocuments` | Grep All Open Documents | Find | — | `AppCoordinator.grepOpenDocuments()` |
 | `search.refineGrepResults` | Refine Grep Results | Find | — | `AppCoordinator.refineGrepResults()` |
@@ -177,6 +178,16 @@ significantly, replace this with a small script that generates it from
 | `search.colorAllMatches` | Color All Matches | Search › All Matches | — | Applies a rotating temporary match color |
 | `search.clearMatchColors` | Clear Match Colors | Search › All Matches | — | Removes temporary match coloring and gutter markers |
 | `search.listAllMatches` | List All Matches | Search › All Matches | — | Lists matching lines in the Results utility pane |
+| `search.outlineAllMatches` | Show All Matches in Outline | Search › All Matches | — | Builds navigable outline rows for every match |
+| `search.listColorLayers` | Search Color List… | Search | — | Lists persistent query/color layers and match counts |
+| `search.toggleMark` | Mark/Unmark Current Line | Search | — | Toggles the classic yellow line mark |
+| `search.listMarks` | Mark List… | Search | — | Shows marked lines in the Results utility pane |
+| `search.clearAllMarks` | Clear All Marks | Search | — | Clears marks across all open documents |
+| `search.clearCurrentMarks` | Clear Marks in Current File | Search | — | Clears marks only in the active document |
+| `search.nextResult` | Next Result | Search | — | Navigates search colors first, then Grep output |
+| `search.previousResult` | Previous Result | Search | — | Navigates search colors first, then Grep output |
+| `search.nextGrepResult` | Next Grep Result | Search | — | Selects and opens the next Grep output row |
+| `search.previousGrepResult` | Previous Grep Result | Search | — | Selects and opens the previous Grep output row |
 | `search.returnToStart` | Return to Search Start | Search | — | Restores the caret captured when search began |
 | `search.setRange` | Set Selection as Search Range | Search › Search Range | — | Persists the current selection as the explicit search scope |
 | `search.selectRange` | Select Search Range | Search › Search Range | — | Reselects the active explicit search scope |

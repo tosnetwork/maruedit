@@ -3,6 +3,12 @@ import MaruEditCore
 
 enum EditorInputMode: String { case insert, overwrite }
 
+struct SearchColorLayer {
+    var query: String
+    var ranges: [NSRange]
+    var color: NSColor
+}
+
 /// A newly opened document may be constructed on the file-I/O queue and then
 /// transferred exactly once to `MainActor`. After adoption by a window, all
 /// mutation and all `cachedTextStorage` access are main-actor confined.
@@ -54,6 +60,7 @@ final class Document: @unchecked Sendable {
     let bookmarks = BookmarkSet()
     let colorMarkers = ColorMarkerSet()
     let editMarks = EditMarkSet()
+    var searchColorLayers: [SearchColorLayer] = []
     var foldModel: FoldModel
     var inputMode: EditorInputMode = .insert
     /// Stable for this document's lifetime, used to key its crash-

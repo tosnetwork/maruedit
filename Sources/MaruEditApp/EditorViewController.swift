@@ -203,6 +203,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     var searchScopeSelection: NSRange?
     var hasExplicitSearchScope = false
     private var temporarySearchHighlightRanges: [NSRange] = []
+    var searchColorLayers: [SearchColorLayer] { document?.searchColorLayers ?? [] }
     struct TemporaryColorMarker: Equatable {
         var range: NSRange
         var color: MarkerColor
@@ -216,6 +217,30 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         refreshColorOverlays()
     }
 
+    func addSearchColorLayer(query: String, ranges: [NSRange], color: NSColor) {
+        document?.searchColorLayers.append(SearchColorLayer(query: query, ranges: ranges, color: color))
+        refreshColorOverlays()
+    }
+
+    func clearSearchColorLayers() {
+        document?.searchColorLayers.removeAll()
+        refreshColorOverlays()
+    }
+
+    func navigateSearchResult(forward: Bool) -> Bool {
+        let ranges = (searchColorLayers.flatMap(\.ranges) + temporarySearchHighlightRanges)
+            .sorted { $0.location < $1.location }
+        guard !ranges.isEmpty else { return false }
+        let current = selectionSet.primaryRange.location
+        let target = forward
+            ? ranges.first(where: { $0.location > current }) ?? ranges.first
+            : ranges.last(where: { $0.location < current }) ?? ranges.last
+        guard let target else { return false }
+        setSelections([target], primaryRange: target)
+        textView.scrollRangeToVisible(target)
+        return true
+    }
+
     private var searchHighlightColor: NSColor = .systemYellow
 
     func refreshColorOverlays() {
@@ -227,6 +252,13 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
             layoutManager.addTemporaryAttribute(
                 .backgroundColor, value: searchHighlightColor.withAlphaComponent(0.38),
                 forCharacterRange: range)
+        }
+        for layer in searchColorLayers {
+            for range in layer.ranges where range.length > 0 && NSMaxRange(range) <= length {
+                layoutManager.addTemporaryAttribute(
+                    .backgroundColor, value: layer.color.withAlphaComponent(0.38),
+                    forCharacterRange: range)
+            }
         }
         for marker in temporaryColorMarkers where marker.range.length > 0 && NSMaxRange(marker.range) <= length {
             layoutManager.addTemporaryAttribute(
@@ -264,7 +296,12 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         didSet {
             guard document !== oldValue else { return }
             isMultiEditActive = false
-            if isViewLoaded { loadDoc() }
+            temporarySearchHighlightRanges.removeAll()
+            searchMarkerOffsets.removeAll()
+            if isViewLoaded {
+                loadDoc()
+                refreshColorOverlays()
+            }
             cursorHistory.removeAll()
         }
     }
@@ -856,6 +893,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         if suppressAutoIndent || replacement != "\n" {
             document?.bookmarks.applyEdit(range: range, replacement: replacement)
             document?.colorMarkers.applyEdit(range: range, replacement: replacement)
+            applySearchColorLayerEdit(range: range, replacement: replacement)
             applyTemporaryColorMarkerEdit(range: range, replacement: replacement)
             if let document {
                 document.editMarks.recordEdit(
@@ -877,6 +915,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         guard !indent.isEmpty else {
             document?.bookmarks.applyEdit(range: range, replacement: replacement)
             document?.colorMarkers.applyEdit(range: range, replacement: replacement)
+            applySearchColorLayerEdit(range: range, replacement: replacement)
             applyTemporaryColorMarkerEdit(range: range, replacement: replacement)
             if let document {
                 document.editMarks.recordEdit(range: range, replacement: replacement, in: ns)

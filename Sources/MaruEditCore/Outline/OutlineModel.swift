@@ -12,6 +12,14 @@ public struct OutlineSymbol: Equatable, Sendable, Identifiable {
     public let level: Int
 
     public var id: String { "\(line):\(utf16Range.location):\(kind.rawValue):\(title)" }
+
+    public init(kind: OutlineSymbolKind, title: String, line: Int, utf16Range: NSRange, level: Int) {
+        self.kind = kind
+        self.title = title
+        self.line = line
+        self.utf16Range = utf16Range
+        self.level = level
+    }
 }
 
 public struct OutlineRule: Codable, Equatable, Sendable, Identifiable {

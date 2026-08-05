@@ -298,6 +298,24 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         return match
     }
 
+    @discardableResult
+    func activateAdjacentGrepResult(forward: Bool) -> Bool {
+        let rows = grepRows.indices.filter {
+            if case .match = grepRows[$0] { return true }
+            return false
+        }
+        guard !rows.isEmpty else { return false }
+        let current = tableView.selectedRow
+        let row = forward
+            ? rows.first(where: { $0 > current }) ?? rows.first
+            : rows.last(where: { $0 < current }) ?? rows.last
+        guard let row else { return false }
+        tableView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+        tableView.scrollRowToVisible(row)
+        activateSelectedRow()
+        return true
+    }
+
     var resultsText: String {
         if contentMode == .externalCommand { return externalLines.joined(separator: "\n") }
         return outputBuffer.entries.map(Self.formatted).joined(separator: "\n")

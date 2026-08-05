@@ -1490,15 +1490,17 @@ final class MainWindowController: NSWindowController,
     }
 
     func colorAllSearchMatches() {
-        guard let (_, ranges) = currentSearchMatches() else { return }
+        guard let (query, ranges) = currentSearchMatches() else { return }
         let colors: [NSColor] = [.systemYellow, .systemGreen, .systemCyan, .systemPink]
-        editorVC.showSearchHighlights(ranges, color: colors[searchColorIndex % colors.count])
+        editorVC.addSearchColorLayer(
+            query: query.pattern, ranges: ranges, color: colors[searchColorIndex % colors.count])
         editorVC.showSearchMarkers(ranges)
         searchColorIndex += 1
         showStatusMessage("Colored \(ranges.count) matches")
     }
 
     func clearSearchColors() {
+        editorVC.clearSearchColorLayers()
         editorVC.showSearchHighlights([])
         editorVC.showSearchMarkers([])
     }
@@ -1508,6 +1510,46 @@ final class MainWindowController: NSWindowController,
         sidebarVC.updateSearchResults(ranges, text: curDoc?.content ?? "")
         sidebarVC.showUtilityPane(.results)
         if sidebarVC.view.isHidden || splitView.isSubviewCollapsed(sidebarVC.view) { toggleSidebar() }
+    }
+
+    func outlineAllSearchMatches() {
+        guard let (_, ranges) = currentSearchMatches() else { return }
+        sidebarVC.updateSearchOutline(ranges, text: curDoc?.content ?? "")
+        sidebarVC.showUtilityPane(.outline)
+        if sidebarVC.view.isHidden || splitView.isSubviewCollapsed(sidebarVC.view) { toggleSidebar() }
+    }
+
+    func listSearchColorLayers() {
+        let lines = editorVC.searchColorLayers.enumerated().map { index, layer in
+            "\(index + 1). \(layer.query) — \(layer.ranges.count) matches"
+        }
+        sidebarVC.updateSearchColorList(lines)
+        sidebarVC.showUtilityPane(.results)
+        if sidebarVC.view.isHidden || splitView.isSubviewCollapsed(sidebarVC.view) { toggleSidebar() }
+    }
+
+    func showMarkerList() {
+        refreshMarkerResults()
+        sidebarVC.showMarkerResults()
+        if sidebarVC.view.isHidden || splitView.isSubviewCollapsed(sidebarVC.view) { toggleSidebar() }
+    }
+
+    func clearAllDocumentMarkers() {
+        documentController.documents.forEach { $0.colorMarkers.clear() }
+        editorVC.refreshBookmarkGutter()
+        refreshMarkerResults()
+    }
+
+    func navigateResult(forward: Bool, grepOnly: Bool) {
+        if !grepOnly, !diffHunks.isEmpty {
+            navigateDifference(delta: forward ? 1 : -1)
+            return
+        }
+        if !grepOnly, editorVC.navigateSearchResult(forward: forward) { return }
+        guard outputPane?.activateAdjacentGrepResult(forward: forward) == true else {
+            showStatusMessage(grepOnly ? "No Grep results" : "No results")
+            return
+        }
     }
 
     func returnToSearchStart() {

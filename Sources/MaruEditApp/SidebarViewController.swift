@@ -212,6 +212,21 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
         if selectedUtilityPane == .outline { outlineView.reloadData() }
     }
 
+    func updateSearchOutline(_ ranges: [NSRange], text: String) {
+        let ns = text as NSString
+        let index = LineIndex(text)
+        outlineSymbols = ranges.prefix(5_000).map { range in
+            let safe = min(max(0, range.location), ns.length)
+            let line = index.line(atUTF16Offset: safe)
+            let lineRange = ns.lineRange(for: NSRange(location: safe, length: 0))
+            let preview = ns.substring(with: lineRange).trimmingCharacters(in: .whitespacesAndNewlines)
+            return OutlineSymbol(
+                kind: .section, title: "Ln \(line + 1): \(preview)", line: line,
+                utf16Range: range, level: 0)
+        }
+        if selectedUtilityPane == .outline { outlineView.reloadData() }
+    }
+
     @discardableResult
     func selectOutlineSymbol(containingLine line: Int) -> String? {
         guard let index = outlineSymbols.lastIndex(where: { $0.line <= line }) else { return nil }
@@ -254,6 +269,16 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
         if selectedUtilityPane == .results {
             placeholderLabel.stringValue = searchResultText.isEmpty ? markerResultText : searchResultText
         }
+    }
+
+    func updateSearchColorList(_ lines: [String]) {
+        searchResultText = lines.isEmpty ? "No search color layers." : lines.joined(separator: "\n")
+        if selectedUtilityPane == .results { placeholderLabel.stringValue = searchResultText }
+    }
+
+    func showMarkerResults() {
+        searchResultText = ""
+        showUtilityPane(.results)
     }
 
     var searchResultTextForTesting: String { searchResultText }

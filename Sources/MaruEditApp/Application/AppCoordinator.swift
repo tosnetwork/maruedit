@@ -334,6 +334,7 @@ final class AppCoordinator {
     func showGoToLine()                { ensureWindowControllerReady().showGoToLine() }
     func showQuickOpen()               { ensureWindowControllerReady().showQuickOpen() }
     func showGrep()                    { ensureWindowControllerReady().showGrep() }
+    func showGrepReplace()             { ensureWindowControllerReady().showGrep() }
     func grepCurrentDocument()         { ensureWindowControllerReady().grepCurrentDocument() }
     func grepOpenDocuments()           { ensureWindowControllerReady().grepOpenDocuments() }
     func refineGrepResults()           { ensureWindowControllerReady().refineGrepResults() }
@@ -499,6 +500,11 @@ final class AppCoordinator {
     func colorAllSearchMatches()         { ensureWindowControllerReady().colorAllSearchMatches() }
     func clearSearchColors()             { ensureWindowControllerReady().clearSearchColors() }
     func listAllSearchMatches()           { ensureWindowControllerReady().listAllSearchMatches() }
+    func outlineAllSearchMatches()        { ensureWindowControllerReady().outlineAllSearchMatches() }
+    func listSearchColorLayers()          { ensureWindowControllerReady().listSearchColorLayers() }
+    func showMarkerList()                 { ensureWindowControllerReady().showMarkerList() }
+    func clearAllDocumentMarkers()        { ensureWindowControllerReady().clearAllDocumentMarkers() }
+    func navigateResult(forward: Bool, grepOnly: Bool) { ensureWindowControllerReady().navigateResult(forward: forward, grepOnly: grepOnly) }
     func returnToSearchStart()            { ensureWindowControllerReady().returnToSearchStart() }
     func setSearchRangeFromSelection()    { ensureWindowControllerReady().setSearchRangeFromSelection() }
     func selectSearchRange()              { ensureWindowControllerReady().selectSearchRange() }
