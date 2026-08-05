@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Generate MaruEdit's placeholder app icon.
+"""Generate MaruEdit's application icon.
 
-This is an original design: a flat rounded square with a single hand-drawn-
-style ring ("maru", 丸 — Japanese for "circle"). It intentionally does not
-reuse LiteEdit's code-editor-window artwork (title bar, tabs, syntax-colored
-code lines) per ROADMAP.md task M0-03, which requires an original placeholder
-icon until MaruEdit's real branding is finalized.
+This is an original design: a flat rounded square, the "maru" ring, and an M
+drawn with dense, rounded seal strokes inspired by Japanese insō-style hanko.
+The letter is constructed as geometry instead of depending on a machine-local
+font, so every release build reproduces exactly the same icon.
 """
 from PIL import Image, ImageDraw
 import subprocess, os, tempfile
@@ -24,6 +23,19 @@ def rounded_rect_mask(size, radius):
     return mask
 
 
+def draw_inso_m(draw):
+    """Draw a compact seal-style M with monoline, rounded stamp strokes."""
+    points = [(376, 646), (376, 396), (512, 548), (648, 396), (648, 646)]
+    stroke = 70
+    draw.line(points, fill=RING, width=stroke, joint="curve")
+
+    # Pillow's curved joints vary slightly by version. Explicit round seals at
+    # every turn/end make the master deterministic and evoke carved hanko ends.
+    radius = stroke // 2
+    for x, y in points:
+        draw.ellipse([x - radius, y - radius, x + radius, y + radius], fill=RING)
+
+
 def draw_icon():
     img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
@@ -35,6 +47,8 @@ def draw_icon():
     outer, inner = 320, 210
     d.ellipse([cx - outer, cy - outer, cx + outer, cy + outer], fill=RING)
     d.ellipse([cx - inner, cy - inner, cx + inner, cy + inner], fill=BACKGROUND)
+
+    draw_inso_m(d)
 
     mask = rounded_rect_mask(SIZE, R)
     img.putalpha(mask)
