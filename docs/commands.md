@@ -17,6 +17,7 @@ significantly, replace this with a small script that generates it from
 | Command ID | Title | Menu | Default Shortcut | Implementation |
 |---|---|---|---|---|
 | `app.settings` | Settings... | MaruEdit | ⌘, | `AppCoordinator.showSettings()` |
+| `app.macroMenu` | Macro Menu | Toolbar/Function Keys | — | Opens the registered macro menu from configurable chrome |
 | `file.new` | New File | File | ⌘N | `AppCoordinator.newDocument()` |
 | `file.newFromTemplate` | New from Template… | File | — | `AppCoordinator.newDocumentFromTemplate()` |
 | `file.open` | Open... | File | ⌘O | `AppCoordinator.openDocument()` |
