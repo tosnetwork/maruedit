@@ -64,7 +64,9 @@ final class CommandRegistryTests: XCTestCase {
 
         let ids: [CommandID] = [
             .appSettings, .appMacroMenu, .macroStartRecording, .macroStopRecording,
-            .macroPlayRecording, .macroSaveRecording, .appHelp, .helpMacros, .helpShortcuts,
+            .macroPlayRecording, .macroRepeatPlayback, .macroSaveRecording,
+            .macroRun, .macroReload, .macroOpenFolder, .macroHelp,
+            .appHelp, .helpMacros, .helpShortcuts,
             .helpCheckUpdates, .helpSupport, .helpConfigureExternal,
             .helpExternal1, .helpExternal2, .helpExternal3,
             .helpExternal4, .helpExternal5, .helpExternal6,
@@ -172,6 +174,21 @@ final class CommandRegistryTests: XCTestCase {
             XCTAssertNotNil(registry.definition(for: id), "\(id.rawValue) should be registered")
         }
         XCTAssertEqual(registry.allDefinitions.count, ids.count)
+    }
+
+    func testRecordedMacroSupportsBoundedRepeatPlayback() {
+        let coordinator = AppCoordinator()
+        let id = CommandID("test.recorded.repeat")
+        var executions = 0
+        coordinator.commandRegistry.register(CommandDefinition(id: id, title: "Repeat") { _ in
+            executions += 1
+        })
+        coordinator.startMacroRecording()
+        XCTAssertTrue(coordinator.commandRegistry.execute(
+            id, context: CommandContext(coordinator: coordinator)))
+        coordinator.stopMacroRecording()
+        coordinator.playMacroRecording(repeatCount: 3)
+        XCTAssertEqual(executions, 4)
     }
 
     func testHelpCommandsRouteToSpecificDocumentationAndSupportDestinations() async {

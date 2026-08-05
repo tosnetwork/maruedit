@@ -102,7 +102,12 @@ significantly, replace this with a small script that generates it from
 | `macro.startRecording` | Start Recording | Macro | — | Starts a fresh CommandRegistry recording |
 | `macro.stopRecording` | Stop Recording | Macro | — | Stops recording while retaining captured commands |
 | `macro.playRecording` | Play Recorded Commands | Macro | — | Replays captured stable command IDs |
+| `macro.repeatPlayback` | Repeat Recorded Commands… | Macro | — | Replays the captured sequence a validated bounded number of times |
 | `macro.saveRecording` | Save Recording as Macro… | Macro | — | Writes a non-overwriting reloadable JavaScript macro |
+| `macro.run` | Run Macro… | Macro | — | Opens the enabled registered-macro chooser |
+| `macro.reload` | Reload Macros | Macro | — | Reloads macro files, metadata, enablement, menus, and shortcuts |
+| `macro.openFolder` | Open Macro Folder | Macro | — | Opens the sandboxed MaruEdit macro directory in Finder |
+| `macro.help` | Macro Help | Macro | — | Opens MaruEdit's macro/API guide |
 | `help.macros` | Macro Help | Help | — | `AppCoordinator.showMacroHelp()` |
 | `help.shortcuts` | Keyboard Shortcut Reference | Help | — | `AppCoordinator.showShortcutReference()` |
 | `help.checkUpdates` | Check for Updates… | Help | — | Opens the latest GitHub release |

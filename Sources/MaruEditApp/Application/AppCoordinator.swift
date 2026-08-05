@@ -29,6 +29,8 @@ final class AppCoordinator {
     let commandRegistry = CommandRegistry()
     var onShowMenuCustomization: (() -> Void)?
     var onShowMacroMenu: (() -> Void)?
+    var onOpenMacroFolder: (() -> Void)?
+    var onReloadMacros: (() -> Void)?
     var onSaveRecordedMacro: ((String, [CommandID]) -> Void)?
     var openDocumentationURL: (URL) -> Void = { NSWorkspace.shared.open($0) }
 
@@ -180,6 +182,22 @@ final class AppCoordinator {
         for id in commands { _ = commandRegistry.execute(id, context: CommandContext(coordinator: self)) }
         isPlayingRecording = false
     }
+    func repeatMacroRecording() {
+        guard !recordedCommands.isEmpty else { showStatusMessage("No recorded commands"); return }
+        let alert = NSAlert(); alert.messageText = "Repeat Recorded Commands"
+        alert.addButton(withTitle: "Play"); alert.addButton(withTitle: "Cancel")
+        let field = NSTextField(string: "2")
+        field.frame.size = NSSize(width: 120, height: 24); alert.accessoryView = field
+        guard alert.runModal() == .alertFirstButtonReturn,
+              let count = Int(field.stringValue), count > 0 else { return }
+        playMacroRecording(repeatCount: min(count, 10_000))
+    }
+    func playMacroRecording(repeatCount: Int) {
+        guard repeatCount > 0, !recordedCommands.isEmpty else { return }
+        for _ in 0..<repeatCount { playMacroRecording() }
+    }
+    func openMacroFolder() { onOpenMacroFolder?() }
+    func reloadMacros() { onReloadMacros?() }
     func saveMacroRecording() {
         guard !recordedCommands.isEmpty else { showStatusMessage("No recorded commands"); return }
         let alert = NSAlert(); alert.messageText = "Save Recording as Macro"
@@ -192,7 +210,10 @@ final class AppCoordinator {
         onSaveRecordedMacro?(name, recordedCommands)
     }
     private func recordExecutedCommand(_ id: CommandID) {
-        let controls: Set<CommandID> = [.macroStartRecording, .macroStopRecording, .macroPlayRecording, .macroSaveRecording]
+        let controls: Set<CommandID> = [
+            .macroStartRecording, .macroStopRecording, .macroPlayRecording,
+            .macroRepeatPlayback, .macroSaveRecording,
+        ]
         guard isRecordingCommands, !isPlayingRecording, !controls.contains(id) else { return }
         recordedCommands.append(id)
     }

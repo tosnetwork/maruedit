@@ -146,7 +146,7 @@ final class MacroManager: NSObject {
         reload()
     }
     @objc private func reloadAction() { reload() }
-    @objc private func openFolder() {
+    @objc func openFolder() {
         _ = MacroCatalogLoader.load(from: directory)
         NSWorkspace.shared.open(directory)
     }

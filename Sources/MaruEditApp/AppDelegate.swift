@@ -57,6 +57,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         coordinator.onSaveRecordedMacro = { [weak self] name, commands in
             self?.macroManager.saveRecording(name: name, commands: commands)
         }
+        coordinator.onOpenMacroFolder = { [weak self] in self?.macroManager.openFolder() }
+        coordinator.onReloadMacros = { [weak self] in self?.macroManager.reload() }
         EditorShortcuts.install(
             keyBindings: keyBindings,
             execute: { [coordinator] id in
@@ -379,11 +381,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         macroMenu.addItem(commandItem(.macroStartRecording))
         macroMenu.addItem(commandItem(.macroStopRecording))
         macroMenu.addItem(commandItem(.macroPlayRecording))
+        macroMenu.addItem(commandItem(.macroRepeatPlayback))
         macroMenu.addItem(commandItem(.macroSaveRecording))
         macroMenu.addItem(.separator())
+        macroMenu.addItem(commandItem(.macroRun))
         let registeredMacros = NSMenuItem(title: "Registered Macros", action: nil, keyEquivalent: "")
         registeredMacros.submenu = macroManager.menu
         macroMenu.addItem(registeredMacros)
+        macroMenu.addItem(commandItem(.macroReload))
+        macroMenu.addItem(commandItem(.macroOpenFolder))
+        macroMenu.addItem(commandItem(.macroHelp))
         macroItem.submenu = macroMenu
         main.addItem(macroItem)
 

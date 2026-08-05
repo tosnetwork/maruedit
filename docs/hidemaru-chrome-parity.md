@@ -18,7 +18,7 @@ passing MaruEdit regression tests from exhaustive Hidemaru feature parity.
 
 | Area | ✅ Complete | 🟡 Partial/native | ❌ Incomplete |
 |---|---:|---:|---:|
-| Menu rows | 9 | 4 | 0 |
+| Menu rows | 10 | 3 | 0 |
 | Toolbar/function-key rows | 9 | 3 | 0 |
 | Status-bar rows | 16 | 0 | 0 |
 | Acceptance gates | 1 | 2 | 2 |
@@ -42,12 +42,12 @@ native menu before the Hidemaru-compatible business menus.
 | Bookmark | Toggle, previous/next, clear, and a document list with jump/remove | ✅ Complete | No confirmed compatible gap in the scoped bookmark row; retain official-command regression coverage. |
 | Tools | Compare/difference, deterministic portable tags-file generation, tag navigation, dynamic external commands, and command-list access | 🟡 Partial | Native generation is bounded, skips dependency/hidden trees, writes atomically, and feeds Tag Jump directly; finish the official Tools-command inventory one by one. |
 | Window | Tab list, close-other/left/right, pane focus, tab cycling, native Minimize/Zoom, and session restoration | 🟡 Native substitute | Windows arrangement/process/desktop behavior is not identical; document each native replacement explicitly. |
-| Macro | Recording, stop, playback, save-to-JavaScript, registered macros, reload, enablement, and permissions | 🟡 Partial | Core behavior exists, but Hidemaru macro-menu slots and invocation behavior have not been exhaustively mapped and tested. |
+| Macro | Start/stop recording, single and bounded repeat playback, non-overwriting JavaScript save, run chooser, metadata-driven registered macros, reload, folder access, enablement, shortcuts, permissions, output/errors, and macro help | ✅ Complete | The official 9.57 Macro inventory is mapped. Hidemaru's “load key operations” is represented by loading/reloading saved JavaScript recordings into the registered-macro catalog; persistent named macros replace fixed Windows macro slots while retaining keyboard assignment and menu invocation. |
 | Other | Settings, file-type profiles, key assignments, command/menu editing, font entry points, categorized history clearing, free cursor, tags generation, and full/section settings transfer | 🟡 Native substitute | The Windows IME word-registration API has no macOS app-level equivalent. “Japanese User Dictionary…” opens Apple's supported Input-menu/Text Replacements workflow; see [Apple's Japanese input-method guide](https://support.apple.com/guide/japanese-input-method/edit-and-use-your-user-dictionaries-jpim10228/mac). |
 | Help | MaruEdit guide, macro guide, shortcut reference, configurable External Help 1–6, release check, support, and native About | ✅ Complete | All six external-help slots have persistent names/URL-or-file targets, dynamic enablement, a configuration window, and tested dispatch; About uses the native macOS panel. |
 
 The official pages contain roughly 297 command references, including repeated
-placements, dynamic entries, and Windows-only commands. MaruEdit registers 284
+placements, dynamic entries, and Windows-only commands. MaruEdit registers 289
 stable command IDs plus dynamic and native-responder entries, so the raw totals
 are not a parity measure. `ChromeParityAuditTests` only requires every existing
 stable ID to appear exactly once in the command reference; it is a documentation
@@ -108,7 +108,7 @@ consistency check, not proof that the external Hidemaru inventory is complete.
 Gate notes:
 
 - Gate 1 needs an external Hidemaru-command inventory. Auditing only MaruEdit's
-  existing 284 IDs cannot detect commands that MaruEdit never registered.
+  existing 289 IDs cannot detect commands that MaruEdit never registered.
 - Gate 2 is complete for the floating-toolbar decision but not for every Windows-
   specific menu/frame/window command.
 - Gate 3 covers persistence, layout operations, configurable F-key count, and
