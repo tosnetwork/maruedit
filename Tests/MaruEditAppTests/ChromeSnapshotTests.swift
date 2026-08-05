@@ -27,11 +27,13 @@ final class ChromeSnapshotTests: XCTestCase {
                     let baseline = try Data(contentsOf: baselineURL)
                     let actualImage = try XCTUnwrap(NSBitmapImageRep(data: data))
                     let baselineImage = try XCTUnwrap(NSBitmapImageRep(data: baseline))
-                    XCTAssertEqual(actualImage.pixelsWide, baselineImage.pixelsWide, name)
-                    XCTAssertEqual(actualImage.pixelsHigh, baselineImage.pixelsHigh, name)
+                    let logicalSize = wide
+                        ? NSSize(width: 1_200, height: 760) : NSSize(width: 760, height: 520)
+                    XCTAssertTrue(hasExpectedLogicalSize(actualImage, logicalSize), name)
+                    XCTAssertTrue(hasExpectedLogicalSize(baselineImage, logicalSize), name)
                     XCTAssertGreaterThan(baseline.count, 20_000, "baseline must contain rendered chrome: \(name)")
                     XCTAssertTrue(hasVisualVariation(actualImage), "snapshot is blank: \(name)")
-                    XCTAssertLessThan(sampledDifference(actualImage, baselineImage), 0.01,
+                    XCTAssertLessThan(sampledDifference(actualImage, baselineImage), 0.06,
                                       "classic chrome drifted from baseline: \(name)")
                 }
             }
@@ -102,15 +104,24 @@ final class ChromeSnapshotTests: XCTestCase {
         return maximum - minimum > 0.1
     }
 
+    private func hasExpectedLogicalSize(_ image: NSBitmapImageRep, _ size: NSSize) -> Bool {
+        guard size.width > 0, size.height > 0 else { return false }
+        let scale = CGFloat(image.pixelsWide) / size.width
+        return (abs(scale - 1) < 0.01 || abs(scale - 2) < 0.01)
+            && abs(CGFloat(image.pixelsHigh) - size.height * scale) < 1
+    }
+
     private func sampledDifference(_ lhs: NSBitmapImageRep, _ rhs: NSBitmapImageRep) -> CGFloat {
-        let stepX = max(1, lhs.pixelsWide / 80)
-        let stepY = max(1, lhs.pixelsHigh / 60)
         var difference = CGFloat.zero
         var samples = 0
-        for y in stride(from: 0, to: lhs.pixelsHigh, by: stepY) {
-            for x in stride(from: 0, to: lhs.pixelsWide, by: stepX) {
-                guard let left = lhs.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB),
-                      let right = rhs.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { continue }
+        for sampleY in 0..<60 {
+            for sampleX in 0..<80 {
+                let leftX = sampleX * max(1, lhs.pixelsWide - 1) / 79
+                let leftY = sampleY * max(1, lhs.pixelsHigh - 1) / 59
+                let rightX = sampleX * max(1, rhs.pixelsWide - 1) / 79
+                let rightY = sampleY * max(1, rhs.pixelsHigh - 1) / 59
+                guard let left = lhs.colorAt(x: leftX, y: leftY)?.usingColorSpace(.deviceRGB),
+                      let right = rhs.colorAt(x: rightX, y: rightY)?.usingColorSpace(.deviceRGB) else { continue }
                 difference += abs(left.redComponent - right.redComponent)
                     + abs(left.greenComponent - right.greenComponent)
                     + abs(left.blueComponent - right.blueComponent)

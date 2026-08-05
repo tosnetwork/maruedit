@@ -10,6 +10,7 @@ public struct CompletionCandidate: Equatable, Sendable {
 public enum WordCompletionEngine {
     public static let maximumInputLength = 5_000_000
     public static let maximumCandidates = 100
+    private static let collationLocale = Locale(identifier: "ja_JP")
 
     public static func candidates(
         prefix: String, document: String, dictionaries: [String] = [],
@@ -36,7 +37,9 @@ public enum WordCompletionEngine {
                 if $0.sourcePriority != $1.sourcePriority { return $0.sourcePriority < $1.sourcePriority }
             case .alphabetical: break
             }
-            return $0.word.localizedStandardCompare($1.word) == .orderedAscending
+            return $0.word.compare(
+                $1.word, options: [.caseInsensitive, .numeric], locale: collationLocale
+            ) == .orderedAscending
         }
         return Array(result.prefix(maximumCandidates))
     }
