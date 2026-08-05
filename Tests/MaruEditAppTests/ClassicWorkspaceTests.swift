@@ -233,6 +233,19 @@ final class ClassicWorkspaceTests: XCTestCase {
                           "a collapsed sidebar must not leave stale horizontal space before the ruler")
     }
 
+    func testRulerSupportsEightColumnMarksAndVisibleProfileTabStops() {
+        let controller = MainWindowController()
+        var preferences = Preferences.defaults
+        preferences.classicChrome.rulerInterval = 8
+        preferences.classicChrome.showTabStops = true
+        preferences.tabWidth = 8
+        controller.applyPreferences(preferences)
+
+        XCTAssertEqual(controller.classicRulerConfigurationForTesting.interval, 8)
+        XCTAssertTrue(controller.classicRulerConfigurationForTesting.showsTabStops)
+        XCTAssertEqual(controller.classicRulerConfigurationForTesting.tabWidth, 8)
+    }
+
     private func descendants(of view: NSView) -> [NSView] {
         view.subviews.flatMap { [$0] + descendants(of: $0) }
     }

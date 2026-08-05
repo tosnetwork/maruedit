@@ -68,11 +68,14 @@ final class ClassicWorkspaceChrome: NSView {
         isSingleDocument = count <= 1
         applyEffectiveVisibility()
     }
-    func updateRuler(editorOrigin: CGFloat, currentColumn: Int, cellWidth: CGFloat) {
+    func updateRuler(
+        editorOrigin: CGFloat, currentColumn: Int, cellWidth: CGFloat, tabWidth: Int
+    ) {
         rulerStartX = max(0, editorOrigin)
         ruler.editorOrigin = 0
         ruler.currentColumn = currentColumn
         ruler.cellWidth = max(1, cellWidth)
+        ruler.tabWidth = max(1, tabWidth)
         needsLayout = true
     }
 
@@ -102,6 +105,8 @@ final class ClassicWorkspaceChrome: NSView {
 
     func applyVisibility(_ options: ClassicChromeOptions) {
         configuredVisibility = options
+        ruler.majorInterval = options.rulerInterval
+        ruler.showsTabStops = options.showTabStops
         applyEffectiveVisibility()
     }
 
@@ -122,6 +127,9 @@ final class ClassicWorkspaceChrome: NSView {
         (rulerStartX, ruler.currentColumn)
     }
     var rulerMaximumColumnForTesting: Int { ruler.maximumColumn }
+    var rulerConfigurationForTesting: (interval: Int, showsTabStops: Bool, tabWidth: Int) {
+        (ruler.majorInterval, ruler.showsTabStops, ruler.tabWidth)
+    }
 }
 
 /// Original, compact icon bar modeled after the information density and
@@ -489,6 +497,9 @@ private final class CharacterRulerView: NSView {
     var editorOrigin: CGFloat = 46 { didSet { needsDisplay = true } }
     var currentColumn: Int = 1 { didSet { needsDisplay = true } }
     var cellWidth: CGFloat = 8 { didSet { needsDisplay = true } }
+    var majorInterval = 10 { didSet { needsDisplay = true } }
+    var tabWidth = 4 { didSet { needsDisplay = true } }
+    var showsTabStops = false { didSet { needsDisplay = true } }
     override var isFlipped: Bool { true }
 
     override init(frame: NSRect) {
@@ -517,13 +528,22 @@ private final class CharacterRulerView: NSView {
         var column = 1
         var x: CGFloat = editorOrigin
         while x < bounds.maxX && column <= maximumColumn {
-            let major = column.isMultiple(of: 10)
-            let middle = column.isMultiple(of: 5)
+            let interval = majorInterval == 8 ? 8 : 10
+            let major = column.isMultiple(of: interval)
+            let middle = column.isMultiple(of: max(1, interval / 2))
             let tick = NSBezierPath()
             tick.move(to: NSPoint(x: x + 0.5, y: bounds.maxY - (major ? 8 : middle ? 6 : 3)))
             tick.line(to: NSPoint(x: x + 0.5, y: bounds.maxY))
             tick.stroke()
             if major { String(column).draw(at: NSPoint(x: x + 2, y: 0), withAttributes: attributes) }
+            if showsTabStops, (column - 1).isMultiple(of: tabWidth) {
+                NSColor.systemBlue.setFill()
+                let tab = NSBezierPath()
+                tab.move(to: NSPoint(x: x - 3, y: bounds.maxY - 9))
+                tab.line(to: NSPoint(x: x + 3, y: bounds.maxY - 9))
+                tab.line(to: NSPoint(x: x, y: bounds.maxY - 5))
+                tab.close(); tab.fill()
+            }
             column += 1
             x += cellWidth
         }

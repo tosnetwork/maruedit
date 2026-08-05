@@ -217,6 +217,9 @@ final class MainWindowController: NSWindowController,
     var classicChromeVisibilityForTesting: ClassicChromeOptions { classicChrome.visibilityForTesting }
     var classicRulerStateForTesting: (origin: CGFloat, column: Int) { classicChrome.rulerStateForTesting }
     var classicRulerMaximumColumnForTesting: Int { classicChrome.rulerMaximumColumnForTesting }
+    var classicRulerConfigurationForTesting: (interval: Int, showsTabStops: Bool, tabWidth: Int) {
+        classicChrome.rulerConfigurationForTesting
+    }
     var isClassicHeadingVisibleForTesting: Bool { classicChrome.isHeadingActuallyVisibleForTesting }
     var classicToolbarIdentifiersForTesting: [String] {
         classicChrome.toolbarCommandIDs
@@ -349,7 +352,8 @@ final class MainWindowController: NSWindowController,
     private func updateClassicRuler(currentColumn: Int) {
         let cellWidth = ("0" as NSString).size(withAttributes: [.font: editorVC.currentEditorFont]).width
         classicChrome.updateRuler(
-            editorOrigin: rulerOrigin(), currentColumn: currentColumn, cellWidth: cellWidth)
+            editorOrigin: rulerOrigin(), currentColumn: currentColumn, cellWidth: cellWidth,
+            tabWidth: editorVC.effectiveTabWidth)
     }
 
     // MARK: - Cursor persistence across tab switches

@@ -305,6 +305,22 @@ final class AppCoordinator {
     func setTabWidth(_ width: Int)      { ensureWindowControllerReady().setTabWidth(width) }
     func showFontPanel()                { ensureWindowControllerReady().showFontPanel() }
     func showMenuCustomization()        { onShowMenuCustomization?() }
+    func toggleRuler() {
+        preferences.classicChrome.showRuler.toggle()
+        saveAndApplyPreferences()
+    }
+    func setRulerInterval(_ interval: Int) {
+        preferences.classicChrome.rulerInterval = interval == 8 ? 8 : 10
+        saveAndApplyPreferences()
+    }
+    func toggleRulerTabStops() {
+        preferences.classicChrome.showTabStops.toggle()
+        saveAndApplyPreferences()
+    }
+    private func saveAndApplyPreferences() {
+        preferencesStore.save(preferences)
+        windowController?.applyPreferences(preferences)
+    }
     func toggleInvisible(_ keyPath: WritableKeyPath<InvisibleCharacterOptions, Bool>) {
         preferences.invisibleCharacters[keyPath: keyPath].toggle()
         preferencesStore.save(preferences)
@@ -321,6 +337,10 @@ final class AppCoordinator {
         case .viewTabWidth2: ensureWindowControllerReady().effectiveTabWidth == 2
         case .viewTabWidth4: ensureWindowControllerReady().effectiveTabWidth == 4
         case .viewTabWidth8: ensureWindowControllerReady().effectiveTabWidth == 8
+        case .viewToggleRuler: preferences.classicChrome.showRuler
+        case .viewRulerInterval8: preferences.classicChrome.rulerInterval == 8
+        case .viewRulerInterval10: preferences.classicChrome.rulerInterval == 10
+        case .viewToggleTabStops: preferences.classicChrome.showTabStops
         default: false
         }
     }

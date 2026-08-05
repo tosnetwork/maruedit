@@ -87,7 +87,9 @@ final class CommandRegistryTests: XCTestCase {
             .searchToggleCaseSensitive, .searchToggleWholeWord, .searchToggleRegex,
             .viewToggleSpaces, .viewToggleTabs, .viewToggleLineEndings,
             .viewToggleFullWidthSpaces, .viewTabWidth2, .viewTabWidth4,
-            .viewTabWidth8, .viewShowFonts, .viewCustomizeMenus
+            .viewTabWidth8, .viewShowFonts, .viewCustomizeMenus,
+            .viewToggleRuler, .viewRulerInterval8, .viewRulerInterval10,
+            .viewToggleTabStops
             , .editAddCursorAbove, .editAddCursorBelow, .editSelectNextOccurrence,
             .editSelectWord, .editSelectLine, .editSelectParagraph,
             .editCopyQuoted, .editPasteQuoted,

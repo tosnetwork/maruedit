@@ -308,6 +308,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         viewMenu.addItem(commandItem(.viewToggleSidebar))
         viewMenu.addItem(commandItem(.viewToggleWrap))
         viewMenu.addItem(commandItem(.viewToggleTableMode))
+        let rulerItem = NSMenuItem(title: "Ruler", action: nil, keyEquivalent: "")
+        let rulerMenu = NSMenu(title: "Ruler")
+        rulerMenu.addItem(commandItem(.viewToggleRuler))
+        rulerMenu.addItem(commandItem(.viewRulerInterval8))
+        rulerMenu.addItem(commandItem(.viewRulerInterval10))
+        rulerMenu.addItem(commandItem(.viewToggleTabStops))
+        rulerItem.submenu = rulerMenu
+        viewMenu.addItem(rulerItem)
         let invisiblesItem = NSMenuItem(title: "Show Invisibles", action: nil, keyEquivalent: "")
         let invisiblesMenu = NSMenu(title: "Show Invisibles")
         invisiblesMenu.addItem(commandItem(.viewToggleSpaces))
@@ -546,6 +554,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .viewToggleWrap, .viewToggleSpaces, .viewToggleTabs,
             .viewToggleLineEndings, .viewToggleFullWidthSpaces,
             .viewTabWidth2, .viewTabWidth4, .viewTabWidth8,
+            .viewToggleRuler, .viewRulerInterval8, .viewRulerInterval10,
+            .viewToggleTabStops,
         ]
         if statefulViewCommands.contains(id) {
             menuItem.state = coordinator.isViewCommandActive(id) ? .on : .off

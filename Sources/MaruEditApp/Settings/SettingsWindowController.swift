@@ -257,7 +257,9 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
             preferences.classicChrome = ClassicChromeOptions(
                 showHeading: headingButton.state == .on,
                 showRuler: rulerButton.state == .on,
-                showCommandStrip: commandStripButton.state == .on)
+                showCommandStrip: commandStripButton.state == .on,
+                rulerInterval: preferences.classicChrome.rulerInterval,
+                showTabStops: preferences.classicChrome.showTabStops)
         default: break
         }
         onChange(preferences)

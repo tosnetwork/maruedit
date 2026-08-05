@@ -99,6 +99,10 @@ significantly, replace this with a small script that generates it from
 | `view.tabWidth8` | 8 Spaces | View > Tab Width | — | `AppCoordinator.setTabWidth(8)` |
 | `view.showFonts` | Show Fonts | View | — | `AppCoordinator.showFontPanel()` |
 | `view.customizeMenus` | Customize Menus... | View | — | `AppCoordinator.showMenuCustomization()` |
+| `view.toggleRuler` | Show Character Ruler | View › Ruler | — | Shows or hides the classic horizontal character ruler |
+| `view.rulerInterval8` | Ruler: 8-Column Units | View › Ruler | — | Uses source-oriented eight-column major ruler marks |
+| `view.rulerInterval10` | Ruler: 10-Column Units | View › Ruler | — | Uses document-oriented ten-column major ruler marks |
+| `view.toggleTabStops` | Show Tab Stops on Ruler | View › Ruler | — | Displays tab-stop markers using the active profile tab width |
 | `view.splitVertical` | Split Editor Vertically | View | — | `AppCoordinator.splitEditorVertical()` |
 | `view.splitHorizontal` | Split Editor Horizontally | View | — | `AppCoordinator.splitEditorHorizontal()` |
 | `view.closeSplit` | Close Editor Split | View | — | `AppCoordinator.closeEditorSplit()` |
