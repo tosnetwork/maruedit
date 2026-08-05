@@ -63,7 +63,8 @@ final class CommandRegistryTests: XCTestCase {
         AppCommands.registerAll(in: registry)
 
         let ids: [CommandID] = [
-            .appSettings, .appMacroMenu, .fileNew, .fileNewFromTemplate, .fileOpen, .fileOpenFolder, .fileSave, .fileSaveAs,
+            .appSettings, .appMacroMenu, .appHelp,
+            .fileNew, .fileNewFromTemplate, .fileOpen, .fileOpenFolder, .fileSave, .fileSaveAs,
             .fileCloseTab, .windowNextTab, .windowPreviousTab,
             .fileClearRecoveryData, .filePageSetup, .filePrint,
             .searchFind, .searchReplace, .searchReplaceAll, .searchFindNext,
@@ -82,7 +83,7 @@ final class CommandRegistryTests: XCTestCase {
             .editToggleInputMode,
             .editMoveWordLeft, .editMoveWordRight, .editMoveParagraphStart,
             .editMoveParagraphEnd, .editDeleteWordBackward, .editDeleteWordForward,
-            .editTitlecase, .editCompleteWord,
+            .editTitlecase, .editCompleteWord, .insertDateTime, .insertPageBreak,
             .navigateMarkerRed, .navigateMarkerYellow, .navigateMarkerBlue,
             .navigateNextMarker, .navigatePreviousMarker, .navigateClearMarkers,
             .viewSplitVertical, .viewSplitHorizontal, .viewCloseSplit,

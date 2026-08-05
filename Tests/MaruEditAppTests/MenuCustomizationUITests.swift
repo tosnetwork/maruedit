@@ -67,4 +67,14 @@ final class MenuCustomizationUITests: XCTestCase {
             XCTAssertTrue(allTitles.contains(required), "missing required menu item \(required)")
         }
     }
+
+    func testBusinessMenuOrderMatchesHidemaru() async {
+        _ = NSApplication.shared
+        let delegate = AppDelegate(); delegate.buildMenu()
+        let titles = NSApp.mainMenu?.items.compactMap { $0.submenu?.title } ?? []
+        XCTAssertEqual(Array(titles.dropFirst()), [
+            "File", "Edit", "Convert", "View", "Insert", "Search", "Highlight",
+            "Bookmark", "Tools", "Window", "Macro", "Other", "Help",
+        ])
+    }
 }

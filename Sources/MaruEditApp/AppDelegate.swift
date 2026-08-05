@@ -181,7 +181,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let linesMenu = NSMenu(title: "Lines")
         for id: CommandID in [
             .editDeleteLine, .editDuplicateLine, .editMoveLineUp, .editMoveLineDown,
-            .editJoinLines, .editTrimTrailingWhitespace, .editUppercase, .editLowercase,
+            .editJoinLines, .editTrimTrailingWhitespace,
             .editSortLines, .editReverseLines, .editIndent, .editOutdent, .editToggleComment,
         ] { linesMenu.addItem(commandItem(id)) }
         linesItem.submenu = linesMenu
@@ -191,17 +191,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         for id: CommandID in [
             .editMoveWordLeft, .editMoveWordRight, .editMoveParagraphStart,
             .editMoveParagraphEnd, .editDeleteWordBackward, .editDeleteWordForward,
-            .editTitlecase, .editCompleteWord,
+            .editCompleteWord,
         ] { editMenu.addItem(commandItem(id)) }
-        for id: CommandID in [
-            .navigateMarkerRed, .navigateMarkerYellow, .navigateMarkerBlue,
-            .navigateNextMarker, .navigatePreviousMarker, .navigateClearMarkers,
-        ] { editMenu.addItem(commandItem(id)) }
-        editMenu.addItem(.separator())
-        editMenu.addItem(commandItem(.navigateToggleBookmark))
-        editMenu.addItem(commandItem(.navigateNextBookmark))
-        editMenu.addItem(commandItem(.navigatePreviousBookmark))
-        editMenu.addItem(commandItem(.navigateClearBookmarks))
         editMenu.addItem(.separator())
         editMenu.addItem(commandItem(.navigateToggleFold))
         editMenu.addItem(commandItem(.navigateCollapseAllFolds))
@@ -211,9 +202,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         editItem.submenu = editMenu
         main.addItem(editItem)
 
-        // Find menu
+        // Search menu
         let findItem = NSMenuItem()
-        let findMenu = NSMenu(title: "Find")
+        let findMenu = NSMenu(title: "Search")
         findMenu.addItem(commandItem(.searchFind))
         findMenu.addItem(commandItem(.searchReplace))
         findMenu.addItem(commandItem(.searchReplaceAll))
@@ -289,8 +280,61 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let winMenu = NSMenu(title: "Window")
         winMenu.addItem(withTitle: "Minimize", action: #selector(NSWindow.miniaturize(_:)), keyEquivalent: "m")
         winMenu.addItem(withTitle: "Zoom", action: #selector(NSWindow.zoom(_:)), keyEquivalent: "")
+        winMenu.addItem(.separator())
+        winMenu.addItem(commandItem(.windowNextTab))
+        winMenu.addItem(commandItem(.windowPreviousTab))
         winItem.submenu = winMenu
         main.addItem(winItem)
+
+        // Hidemaru-compatible business-menu groups. macOS keeps its required
+        // application menu before this sequence.
+        let convertItem = NSMenuItem()
+        let convertMenu = NSMenu(title: "Convert")
+        for id: CommandID in [.editUppercase, .editLowercase, .editTitlecase] {
+            convertMenu.addItem(commandItem(id))
+        }
+        convertItem.submenu = convertMenu
+
+        let insertItem = NSMenuItem()
+        let insertMenu = NSMenu(title: "Insert")
+        insertMenu.addItem(commandItem(.insertDateTime))
+        insertMenu.addItem(commandItem(.insertPageBreak))
+        insertMenu.addItem(commandItem(.fileNewFromTemplate))
+        insertItem.submenu = insertMenu
+
+        let highlightItem = NSMenuItem()
+        let highlightMenu = NSMenu(title: "Highlight")
+        for id: CommandID in [
+            .navigateMarkerRed, .navigateMarkerYellow, .navigateMarkerBlue,
+            .navigateNextMarker, .navigatePreviousMarker, .navigateClearMarkers,
+        ] { highlightMenu.addItem(commandItem(id)) }
+        highlightItem.submenu = highlightMenu
+
+        let bookmarkItem = NSMenuItem()
+        let bookmarkMenu = NSMenu(title: "Bookmark")
+        for id: CommandID in [
+            .navigateToggleBookmark, .navigateNextBookmark,
+            .navigatePreviousBookmark, .navigateClearBookmarks,
+        ] { bookmarkMenu.addItem(commandItem(id)) }
+        bookmarkItem.submenu = bookmarkMenu
+
+        let otherItem = NSMenuItem()
+        let otherMenu = NSMenu(title: "Other")
+        otherMenu.addItem(commandItem(.appSettings))
+        otherMenu.addItem(commandItem(.viewShowFonts))
+        otherMenu.addItem(commandItem(.viewCustomizeMenus))
+        otherItem.submenu = otherMenu
+
+        let helpItem = NSMenuItem()
+        let helpMenu = NSMenu(title: "Help")
+        helpMenu.addItem(commandItem(.appHelp))
+        helpMenu.addItem(withTitle: "About MaruEdit", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        helpItem.submenu = helpMenu
+
+        main.removeAllItems()
+        [appItem, fileItem, editItem, convertItem, viewItem, insertItem, findItem,
+         highlightItem, bookmarkItem, toolsItem, winItem, macroItem, otherItem,
+         helpItem].forEach(main.addItem)
 
         NSApp.mainMenu = main
         NSApp.windowsMenu = winMenu

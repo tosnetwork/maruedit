@@ -795,6 +795,18 @@ final class MainWindowController: NSWindowController,
         tabBarDidSelectTab(at: destination)
     }
 
+    func insertDateTime(now: Date = Date()) {
+        let formatter = DateFormatter()
+        formatter.locale = Locale.current
+        formatter.dateStyle = .short; formatter.timeStyle = .medium
+        editorVC.textView.insertText(
+            formatter.string(from: now), replacementRange: editorVC.textView.selectedRange())
+    }
+
+    func insertPageBreak() {
+        editorVC.textView.insertText("\u{000C}", replacementRange: editorVC.textView.selectedRange())
+    }
+
     func openFolder() {
         let p = NSOpenPanel()
         p.canChooseDirectories = true
@@ -1674,6 +1686,7 @@ final class MainWindowController: NSWindowController,
 
     var selectedTabIndexForTesting: Int { curIdx }
     var tabCountForTesting: Int { documentController.documents.count }
+    var editorTextForTesting: String { editorVC.textView.string }
 
     // MARK: - SidebarDelegate
 

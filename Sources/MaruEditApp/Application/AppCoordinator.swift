@@ -72,6 +72,10 @@ final class AppCoordinator {
     }
 
     func showMacroMenu() { onShowMacroMenu?() }
+    func showHelp() {
+        guard let url = URL(string: "https://github.com/tosnetwork/maruedit/tree/main/docs") else { return }
+        NSWorkspace.shared.open(url)
+    }
 
     func saveActiveSession() {
         windowController?.saveSession()
@@ -90,6 +94,8 @@ final class AppCoordinator {
     func saveDocument()               { ensureWindowControllerReady().saveDocument() }
     func saveDocumentAs()             { ensureWindowControllerReady().saveDocumentAs() }
     func closeCurrentTab()            { ensureWindowControllerReady().closeCurrentTab() }
+    func insertDateTime()             { ensureWindowControllerReady().insertDateTime() }
+    func insertPageBreak()            { ensureWindowControllerReady().insertPageBreak() }
     func selectNextTab()              { ensureWindowControllerReady().selectRelativeTab(1) }
     func selectPreviousTab()          { ensureWindowControllerReady().selectRelativeTab(-1) }
     func showPageSetup()              { ensureWindowControllerReady().showPageSetup() }

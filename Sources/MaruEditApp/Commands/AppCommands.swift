@@ -6,6 +6,7 @@ import MaruEditCore
 extension CommandID {
     static let appSettings      = CommandID("app.settings")
     static let appMacroMenu     = CommandID("app.macroMenu")
+    static let appHelp          = CommandID("app.help")
     static let fileNew          = CommandID("file.new")
     static let fileNewFromTemplate = CommandID("file.newFromTemplate")
     static let fileOpen         = CommandID("file.open")
@@ -70,6 +71,8 @@ extension CommandID {
     static let editDeleteWordForward = CommandID("edit.deleteWordForward")
     static let editTitlecase = CommandID("edit.titlecase")
     static let editCompleteWord = CommandID("edit.completeWord")
+    static let insertDateTime = CommandID("insert.dateTime")
+    static let insertPageBreak = CommandID("insert.pageBreak")
     static let viewToggleTableMode = CommandID("view.toggleTableMode")
     static let navigateMarkerRed = CommandID("navigate.markerRed")
     static let navigateMarkerYellow = CommandID("navigate.markerYellow")
@@ -111,6 +114,9 @@ enum AppCommands {
         })
         registry.register(CommandDefinition(id: .appMacroMenu, title: "Macro Menu") { ctx in
             ctx.coordinator.showMacroMenu()
+        })
+        registry.register(CommandDefinition(id: .appHelp, title: "MaruEdit Help") {
+            $0.coordinator.showHelp()
         })
         registry.register(CommandDefinition(id: .fileNew, title: "New File") { ctx in
             ctx.coordinator.newDocument()
@@ -223,6 +229,12 @@ enum AppCommands {
         registry.register(CommandDefinition(id: .editDeleteWordForward, title: "Delete Word Forward") { $0.coordinator.deleteWordForward() })
         registry.register(CommandDefinition(id: .editTitlecase, title: "Convert to Title Case") { $0.coordinator.performLineCommand(.titlecase) })
         registry.register(CommandDefinition(id: .editCompleteWord, title: "Complete Word") { $0.coordinator.showCompletions() })
+        registry.register(CommandDefinition(id: .insertDateTime, title: "Date and Time") {
+            $0.coordinator.insertDateTime()
+        })
+        registry.register(CommandDefinition(id: .insertPageBreak, title: "Page Break") {
+            $0.coordinator.insertPageBreak()
+        })
         registry.register(CommandDefinition(id: .viewToggleTableMode, title: "CSV/TSV Table Mode") { $0.coordinator.toggleTableMode() })
         registry.register(CommandDefinition(id: .navigateMarkerRed, title: "Toggle Red Marker") { $0.coordinator.toggleMarker(.red) })
         registry.register(CommandDefinition(id: .navigateMarkerYellow, title: "Toggle Yellow Marker") { $0.coordinator.toggleMarker(.yellow) })

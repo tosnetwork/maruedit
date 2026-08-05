@@ -26,6 +26,9 @@ significantly, replace this with a small script that generates it from
 | `file.closeTab` | Close Tab | File | ⌘W | `AppCoordinator.closeCurrentTab()` |
 | `window.nextTab` | Next Tab | Window | ⌃Tab | `AppCoordinator.selectNextTab()` |
 | `window.previousTab` | Previous Tab | Window | ⌃⇧Tab | `AppCoordinator.selectPreviousTab()` |
+| `insert.dateTime` | Date and Time | Insert | — | `AppCoordinator.insertDateTime()` |
+| `insert.pageBreak` | Page Break | Insert | — | `AppCoordinator.insertPageBreak()` |
+| `app.help` | MaruEdit Help | Help | — | `AppCoordinator.showHelp()` |
 | `file.clearRecoveryData` | Clear Recovery Data... | File | — | `AppCoordinator.clearRecoveryData()` |
 | `file.pageSetup` | Page Setup… | File | — | `AppCoordinator.showPageSetup()` |
 | `file.print` | Print… | File | — | `AppCoordinator.printDocument()` |

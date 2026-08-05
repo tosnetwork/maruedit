@@ -125,6 +125,14 @@ final class ClassicWorkspaceTests: XCTestCase {
         XCTAssertFalse(controller.isClassicHeadingVisibleForTesting)
     }
 
+    func testInsertMenuCommandsMutateTextThroughEditor() async {
+        let controller = MainWindowController()
+        controller.insertPageBreak()
+        XCTAssertEqual(controller.editorTextForTesting, "\u{000C}")
+        controller.insertDateTime(now: Date(timeIntervalSince1970: 0))
+        XCTAssertGreaterThan(controller.editorTextForTesting.count, 1)
+    }
+
     func testRulerTracksEditorOriginAndCurrentDisplayColumn() async {
         let controller = MainWindowController()
         controller.applyPreferences(.defaults)
