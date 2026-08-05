@@ -175,6 +175,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         linesItem.submenu = linesMenu
         linesItem.identifier = NSUserInterfaceItemIdentifier("menu.group.lines")
         editMenu.addItem(linesItem)
+        editMenu.addItem(commandItem(.editToggleInputMode))
         editMenu.addItem(.separator())
         editMenu.addItem(commandItem(.navigateToggleBookmark))
         editMenu.addItem(commandItem(.navigateNextBookmark))

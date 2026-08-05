@@ -1396,6 +1396,7 @@ final class MainWindowController: NSWindowController,
     }
     func editorCursorMoved(_ vc: EditorViewController, state: EditorCursorState) {
         statusBar.updateCursor(state)
+        statusBar.updateInputMode(curDoc?.inputMode ?? .insert)
         if let title = sidebarVC.selectOutlineSymbol(containingLine: state.lineNumber - 1) {
             classicChrome.updateHeading(title)
         } else {
@@ -1512,6 +1513,7 @@ final class MainWindowController: NSWindowController,
     func nextBookmark() { editorVC.nextBookmark() }
     func previousBookmark() { editorVC.previousBookmark() }
     func clearBookmarks() { editorVC.clearBookmarks() }
+    func toggleInputMode() { editorVC.toggleInputMode() }
     func toggleFold() { editorVC.toggleFoldAtCursor() }
     func collapseAllFolds() { editorVC.collapseAllFolds() }
     func expandAllFolds() { editorVC.expandAllFolds() }

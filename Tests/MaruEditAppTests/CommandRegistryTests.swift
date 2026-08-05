@@ -75,6 +75,7 @@ final class CommandRegistryTests: XCTestCase {
             .editDeleteLine, .editDuplicateLine, .editMoveLineUp, .editMoveLineDown,
             .editJoinLines, .editTrimTrailingWhitespace, .editUppercase, .editLowercase,
             .editSortLines, .editReverseLines, .editIndent, .editOutdent, .editToggleComment,
+            .editToggleInputMode,
             .navigateToggleBookmark, .navigateNextBookmark,
             .navigatePreviousBookmark, .navigateClearBookmarks
             , .navigateToggleFold, .navigateCollapseAllFolds, .navigateExpandAllFolds

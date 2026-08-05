@@ -651,7 +651,8 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSLayout
     var hasMarkedTextComposition: Bool { markedTextSnapshot != nil }
 
     func beginMarkedTextComposition() {
-        guard markedTextSnapshot == nil, isMultiEditActive else { return }
+        guard markedTextSnapshot == nil,
+              isMultiEditActive || document?.inputMode == .overwrite else { return }
         markedTextSnapshot = (textView.string, selectionSet.ranges, selectionSet.primaryRange)
         pollMarkedTextUntilSettled()
     }
@@ -661,7 +662,38 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSLayout
         markedTextSnapshot = nil
         isCompositionCommitScheduled = false
         restoreCompositionBaseline(snapshot)
-        batchReplace(snapshot.ranges, with: text)
+        let ranges = snapshot.ranges.map { replacementRangeForInput(text, selection: $0) }
+        batchReplace(ranges, with: text)
+    }
+
+    func replacementRangeForInput(_ inserted: String, selection: NSRange) -> NSRange {
+        guard document?.inputMode == .overwrite, selection.length == 0,
+              !inserted.contains("\n"), !inserted.contains("\r") else { return selection }
+        let string = textView.string
+        let ns = string as NSString
+        guard selection.location < ns.length else { return selection }
+        let line = ns.lineRange(for: NSRange(location: selection.location, length: 0))
+        let hasLF = NSMaxRange(line) > line.location
+            && ns.character(at: NSMaxRange(line) - 1) == 0x0A
+        let contentEnd = NSMaxRange(line) - (hasLF ? 1 : 0)
+        guard selection.location < contentEnd else { return selection }
+        let start = String.Index(utf16Offset: selection.location, in: string)
+        var end = start
+        var remaining = inserted.count
+        while remaining > 0, end < string.endIndex,
+              string[end] != "\n", string[end] != "\r" {
+            end = string.index(after: end)
+            remaining -= 1
+        }
+        return NSRange(
+            location: selection.location,
+            length: end.utf16Offset(in: string) - selection.location)
+    }
+
+    func toggleInputMode() {
+        guard let document else { return }
+        document.inputMode = document.inputMode == .insert ? .overwrite : .insert
+        emitCursor()
     }
 
     func cancelMarkedTextComposition() {

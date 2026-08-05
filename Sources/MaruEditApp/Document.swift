@@ -1,6 +1,8 @@
 import AppKit
 import MaruEditCore
 
+enum EditorInputMode: String { case insert, overwrite }
+
 /// A newly opened document may be constructed on the file-I/O queue and then
 /// transferred exactly once to `MainActor`. After adoption by a window, all
 /// mutation and all `cachedTextStorage` access are main-actor confined.
@@ -46,6 +48,7 @@ final class Document: @unchecked Sendable {
     var cachedTextStorage: NSTextStorage?
     let bookmarks = BookmarkSet()
     var foldModel: FoldModel
+    var inputMode: EditorInputMode = .insert
     /// Stable for this document's lifetime, used to key its crash-
     /// recovery record while it's unnamed (ROADMAP.md M2-07). Kept even
     /// after the document gains a file — `MainWindowController` deletes

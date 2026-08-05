@@ -299,7 +299,7 @@ extension EditorViewController {
             insertIntoColumnSelection([text])
             return
         }
-        let cursors = multiEditCursorRanges
+        let cursors = multiEditCursorRanges.map { replacementRangeForInput(text, selection: $0) }
         guard !cursors.isEmpty else { exitMultiEdit(); return }
         batchReplace(cursors, with: text)
     }

@@ -63,6 +63,7 @@ significantly, replace this with a small script that generates it from
 | `edit.indent` | Indent | Edit > Lines | — | `performLineCommand(.indent)` |
 | `edit.outdent` | Outdent | Edit > Lines | — | `performLineCommand(.outdent)` |
 | `edit.toggleComment` | Toggle Comment | Edit > Lines | — | `performLineCommand(.toggleComment)` |
+| `edit.toggleInputMode` | Toggle Insert/Overwrite Mode | Edit | — | `AppCoordinator.toggleInputMode()` |
 | `navigate.toggleBookmark` | Toggle Bookmark | Edit | — | `AppCoordinator.toggleBookmark()` |
 | `navigate.nextBookmark` | Next Bookmark | Edit | — | `AppCoordinator.nextBookmark()` |
 | `navigate.previousBookmark` | Previous Bookmark | Edit | — | `AppCoordinator.previousBookmark()` |

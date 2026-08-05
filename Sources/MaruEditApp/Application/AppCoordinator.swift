@@ -114,6 +114,7 @@ final class AppCoordinator {
     func nextBookmark()                 { ensureWindowControllerReady().nextBookmark() }
     func previousBookmark()             { ensureWindowControllerReady().previousBookmark() }
     func clearBookmarks()               { ensureWindowControllerReady().clearBookmarks() }
+    func toggleInputMode()               { ensureWindowControllerReady().toggleInputMode() }
     func toggleFold()                    { ensureWindowControllerReady().toggleFold() }
     func collapseAllFolds()              { ensureWindowControllerReady().collapseAllFolds() }
     func expandAllFolds()                { ensureWindowControllerReady().expandAllFolds() }

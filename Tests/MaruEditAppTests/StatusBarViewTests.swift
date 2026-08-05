@@ -9,6 +9,8 @@ final class StatusBarViewTests: XCTestCase {
     func testClassicInputModeSegmentIsExplicit() async {
         let bar = StatusBarView()
         XCTAssertEqual(bar.displayedInputModeText, "INS")
+        bar.updateInputMode(.overwrite)
+        XCTAssertEqual(bar.displayedInputModeText, "OVR")
     }
     private final class Delegate: StatusBarViewDelegate {
         var controls: [StatusBarControl] = []

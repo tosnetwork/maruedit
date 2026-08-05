@@ -179,6 +179,13 @@ final class StatusBarView: NSView {
         needsLayout = true
     }
 
+    func updateInputMode(_ mode: EditorInputMode) {
+        inputModeLabel.stringValue = mode == .insert ? "INS" : "OVR"
+        let name = mode == .insert ? "insert" : "overwrite"
+        inputModeLabel.setAccessibilityLabel("Input mode: \(name)")
+        inputModeLabel.toolTip = "Current input mode: \(name)"
+    }
+
     func updateReadOnly(_ isReadOnly: Bool) {
         guard readOnlyLabel.isHidden == isReadOnly else { return }
         readOnlyLabel.isHidden = !isReadOnly

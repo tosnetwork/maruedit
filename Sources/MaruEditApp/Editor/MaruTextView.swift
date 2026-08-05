@@ -164,7 +164,9 @@ final class MaruTextView: NSTextView {
         } else if selectionOwner?.isMultiEditActive == true {
             selectionOwner?.multiEditInsert(text)
         } else {
-            super.insertText(insertString, replacementRange: replacementRange)
+            let effective = selectionOwner?.replacementRangeForInput(
+                text, selection: replacementRange) ?? replacementRange
+            super.insertText(insertString, replacementRange: effective)
         }
     }
 
