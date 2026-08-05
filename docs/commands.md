@@ -92,6 +92,9 @@ significantly, replace this with a small script that generates it from
 | `navigate.nextDifference` | Next Difference | Navigate | — | `AppCoordinator.nextDifference()` |
 | `navigate.previousDifference` | Previous Difference | Navigate | — | `AppCoordinator.previousDifference()` |
 | `navigate.mergeDifferenceFromRight` | Accept Difference from Right | Navigate | — | `AppCoordinator.mergeCurrentDifferenceFromRight()` |
+| `navigate.tagJump` | Jump to Tag… | Navigate | — | `AppCoordinator.showTagJump()` |
+| `navigate.directTagJump` | Direct Tag Jump | Navigate | — | `AppCoordinator.directTagJump()` |
+| `navigate.backTagJump` | Back from Tag | Navigate | — | `AppCoordinator.backTagJump()` |
 
 All of them are enabled unconditionally right now (`isEnabled` always
 returns `true`) — the app has no state yet where one of them shouldn't be

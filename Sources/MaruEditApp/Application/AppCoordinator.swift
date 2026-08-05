@@ -133,6 +133,9 @@ final class AppCoordinator {
     func nextDifference()                { ensureWindowControllerReady().nextDifference() }
     func previousDifference()            { ensureWindowControllerReady().previousDifference() }
     func mergeCurrentDifferenceFromRight() { ensureWindowControllerReady().mergeCurrentDifferenceFromRight() }
+    func showTagJump()                    { ensureWindowControllerReady().showTagJump() }
+    func directTagJump()                  { ensureWindowControllerReady().directTagJump() }
+    func backTagJump()                    { ensureWindowControllerReady().backTagJump() }
     func toggleFold()                    { ensureWindowControllerReady().toggleFold() }
     func collapseAllFolds()              { ensureWindowControllerReady().collapseAllFolds() }
     func expandAllFolds()                { ensureWindowControllerReady().expandAllFolds() }

@@ -41,7 +41,7 @@ that would weaken MaruEdit's security model.
 - [x] Horizontal/vertical editor split and independent selections.
 - [x] Optional linked scrolling.
 - [x] Native text diff, next/previous difference and merge-safe actions.
-- [ ] Tag jump, direct tag jump and back-tag stack.
+- [x] Tag jump, direct tag jump and back-tag stack.
 
 ## MC5 — Completion and spelling
 

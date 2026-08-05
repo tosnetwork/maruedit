@@ -23,6 +23,7 @@ final class MainWindowController: NSWindowController,
     private var diffTargetDocument: Document?
     private var diffHunks: [TextDiffHunk] = []
     private var currentDiffIndex = 0
+    private var tagBackStack: [(url: URL, offset: Int)] = []
     private var statusBar: StatusBarView!
     private var classicChrome: ClassicWorkspaceChrome!
     private var workspaceStyle: WorkspaceStyle = .classic
@@ -1630,6 +1631,91 @@ final class MainWindowController: NSWindowController,
     var diffHunkCountForTesting: Int { diffHunks.count }
     var currentDiffIndexForTesting: Int { currentDiffIndex }
     var isComparingDocumentsForTesting: Bool { diffTargetDocument != nil }
+
+    func showTagJump() {
+        let alert = NSAlert()
+        alert.messageText = "Jump to Tag"
+        alert.informativeText = "Enter an exact ctags symbol name."
+        let field = NSTextField(string: identifierAtCursor() ?? "")
+        field.frame = NSRect(x: 0, y: 0, width: 280, height: 24)
+        field.setAccessibilityLabel("Tag name")
+        alert.accessoryView = field
+        alert.addButton(withTitle: "Jump")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        jumpToTag(named: field.stringValue)
+    }
+
+    func directTagJump() {
+        guard let name = identifierAtCursor(), !name.isEmpty else {
+            showStatusMessage("No tag name at the cursor")
+            return
+        }
+        jumpToTag(named: name)
+    }
+
+    func jumpToTag(named name: String) {
+        guard let sourceURL = curDoc?.fileURL,
+              let (index, root) = loadNearestTagIndex(from: sourceURL.deletingLastPathComponent()),
+              let destination = index.matches(named: name).first,
+              let targetURL = TagIndex.fileURL(for: destination, relativeTo: root),
+              FileManager.default.fileExists(atPath: targetURL.path) else {
+            showStatusMessage("Tag not found: \(name)")
+            return
+        }
+        let origin = (sourceURL, editorVC.selectionSet.primaryRange.location)
+        openFile(targetURL)
+        guard let target = curDoc,
+              let offset = TagIndex.utf16Offset(for: destination, in: target.content) else {
+            showStatusMessage("Tag location is invalid: \(name)")
+            return
+        }
+        tagBackStack.append(origin)
+        let range = NSRange(location: offset, length: 0)
+        editorVC.setSelections([range], primaryRange: range)
+        editorVC.textView.scrollRangeToVisible(range)
+    }
+
+    func backTagJump() {
+        guard let destination = tagBackStack.popLast() else {
+            showStatusMessage("Tag back stack is empty")
+            return
+        }
+        openFile(destination.url)
+        let length = (curDoc?.content as NSString?)?.length ?? 0
+        let range = NSRange(location: min(destination.offset, length), length: 0)
+        editorVC.setSelections([range], primaryRange: range)
+        editorVC.textView.scrollRangeToVisible(range)
+    }
+
+    private func identifierAtCursor() -> String? {
+        let ns = editorVC.textView.string as NSString
+        let selection = editorVC.selectionSet.primaryRange
+        if selection.length > 0, NSMaxRange(selection) <= ns.length { return ns.substring(with: selection) }
+        guard ns.length > 0 else { return nil }
+        var start = min(selection.location, ns.length)
+        var end = start
+        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "_"))
+        while start > 0, let scalar = UnicodeScalar(ns.character(at: start - 1)), allowed.contains(scalar) { start -= 1 }
+        while end < ns.length, let scalar = UnicodeScalar(ns.character(at: end)), allowed.contains(scalar) { end += 1 }
+        return start < end ? ns.substring(with: NSRange(location: start, length: end - start)) : nil
+    }
+
+    private func loadNearestTagIndex(from directory: URL) -> (TagIndex, URL)? {
+        var candidate = directory.standardizedFileURL
+        for _ in 0..<32 {
+            let tagsURL = candidate.appendingPathComponent("tags")
+            if let data = try? Data(contentsOf: tagsURL, options: .mappedIfSafe),
+               data.count <= 32 * 1_024 * 1_024,
+               let contents = String(data: data, encoding: .utf8) {
+                return (TagIndex(contents: contents), candidate)
+            }
+            let parent = candidate.deletingLastPathComponent()
+            if parent.path == candidate.path { break }
+            candidate = parent
+        }
+        return nil
+    }
 
     private func refreshMarkerResults() {
         guard let doc = curDoc else { return }

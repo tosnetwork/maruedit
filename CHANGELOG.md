@@ -19,6 +19,8 @@ semantic version tags.
   explicit close-split behavior, and optional bidirectional linked scrolling.
 - Added two-document line diff with wrapped difference navigation and an undo-safe
   action for accepting the current hunk from the read-only right pane.
+- Added bounded, project-contained ctags navigation with prompt and cursor-word
+  jumps plus a LIFO return stack.
 - Added a Foundation-only incremental document-outline model with built-in
   symbol rules for source, markup, scripting, configuration, and SQL languages,
   plus bounded user-defined regex rules in versioned FileType Profiles. The

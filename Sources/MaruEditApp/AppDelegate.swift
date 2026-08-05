@@ -258,6 +258,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         viewMenu.addItem(commandItem(.navigateNextDifference))
         viewMenu.addItem(commandItem(.navigatePreviousDifference))
         viewMenu.addItem(commandItem(.navigateMergeDifferenceFromRight))
+        viewMenu.addItem(.separator())
+        viewMenu.addItem(commandItem(.navigateTagJump))
+        viewMenu.addItem(commandItem(.navigateDirectTagJump))
+        viewMenu.addItem(commandItem(.navigateBackTagJump))
         viewItem.submenu = viewMenu
         main.addItem(viewItem)
 
