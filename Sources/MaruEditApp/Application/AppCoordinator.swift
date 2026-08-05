@@ -281,6 +281,9 @@ final class AppCoordinator {
     func nextMarker()                    { ensureWindowControllerReady().nextMarker() }
     func previousMarker()                { ensureWindowControllerReady().previousMarker() }
     func clearMarkers()                  { ensureWindowControllerReady().clearMarkers() }
+    func nextEditMark()                  { ensureWindowControllerReady().nextEditMark() }
+    func previousEditMark()              { ensureWindowControllerReady().previousEditMark() }
+    func clearEditMarks()                { ensureWindowControllerReady().clearEditMarks() }
     func showHighlightList()             { ensureWindowControllerReady().showHighlightList() }
     func showCompletions()               { ensureWindowControllerReady().showCompletions() }
     func toggleTableMode()               { ensureWindowControllerReady().toggleTableMode() }

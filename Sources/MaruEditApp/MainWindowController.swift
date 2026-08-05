@@ -2184,6 +2184,9 @@ final class MainWindowController: NSWindowController,
     func nextMarker() { editorVC.nextMarker() }
     func previousMarker() { editorVC.previousMarker() }
     func clearMarkers() { editorVC.clearMarkers(); refreshMarkerResults() }
+    func nextEditMark() { editorVC.nextEditMark() }
+    func previousEditMark() { editorVC.previousEditMark() }
+    func clearEditMarks() { editorVC.clearEditMarks() }
 
     func showHighlightList() {
         guard let document = curDoc else { return }

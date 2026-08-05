@@ -415,6 +415,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
 
     func refreshBookmarkGutter() {
         lineNumbers?.bookmarkOffsets = document?.bookmarks.offsets ?? []
+        lineNumbers?.editMarkOffsets = document?.editMarks.offsets ?? []
         var colors = Dictionary(uniqueKeysWithValues: searchMarkerOffsets.map { ($0, MarkerColor.yellow) })
         for (offset, color) in document?.colorMarkers.markers ?? [:] { colors[offset] = color }
         lineNumbers?.markerColors = colors
@@ -802,6 +803,10 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         if suppressAutoIndent || replacement != "\n" {
             document?.bookmarks.applyEdit(range: range, replacement: replacement)
             document?.colorMarkers.applyEdit(range: range, replacement: replacement)
+            if let document {
+                document.editMarks.recordEdit(
+                    range: range, replacement: replacement, in: textView.string as NSString)
+            }
             lineIndex.applyEdit(range: range, replacement: replacement)
             return true
         }
@@ -817,6 +822,10 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         }
         guard !indent.isEmpty else {
             document?.bookmarks.applyEdit(range: range, replacement: replacement)
+            document?.colorMarkers.applyEdit(range: range, replacement: replacement)
+            if let document {
+                document.editMarks.recordEdit(range: range, replacement: replacement, in: ns)
+            }
             lineIndex.applyEdit(range: range, replacement: replacement)
             return true
         }
@@ -864,6 +873,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         }
         document?.bookmarks.normalize(in: content as NSString)
         document?.colorMarkers.normalize(in: content as NSString)
+        document?.editMarks.normalize(in: content as NSString)
         document?.content = content
         document?.markModified()
         refreshFolding()

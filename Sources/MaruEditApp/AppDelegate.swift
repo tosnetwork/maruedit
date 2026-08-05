@@ -256,6 +256,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         optionsMenu.addItem(commandItem(.searchToggleRegex))
         optionsItem.submenu = optionsMenu
         findMenu.addItem(optionsItem)
+        let editMarksItem = NSMenuItem(title: "Edit Marks", action: nil, keyEquivalent: "")
+        let editMarksMenu = NSMenu(title: "Edit Marks")
+        editMarksMenu.addItem(commandItem(.searchPreviousEditMark))
+        editMarksMenu.addItem(commandItem(.searchNextEditMark))
+        editMarksMenu.addItem(commandItem(.searchClearEditMarks))
+        editMarksItem.submenu = editMarksMenu
+        findMenu.addItem(editMarksItem)
         findMenu.addItem(.separator())
         // Go to Line moves off ⌘G, which macOS reserves for Find Next.
         findMenu.addItem(commandItem(.searchGoToLine))

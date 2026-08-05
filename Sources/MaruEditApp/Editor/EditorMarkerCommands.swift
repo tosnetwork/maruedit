@@ -19,4 +19,18 @@ extension EditorViewController {
         setSelections([range], primaryRange: range)
         textView.scrollRangeToVisible(range)
     }
+
+    func nextEditMark() { navigateEditMark(forward: true) }
+    func previousEditMark() { navigateEditMark(forward: false) }
+    func clearEditMarks() { document?.editMarks.clear(); refreshBookmarkGutter() }
+
+    private func navigateEditMark(forward: Bool) {
+        guard let marks = document?.editMarks else { return }
+        let current = selectionSet.primaryRange.location
+        let offset = forward ? marks.next(after: current) : marks.previous(before: current)
+        guard let offset else { return }
+        let range = NSRange(location: offset, length: 0)
+        setSelections([range], primaryRange: range)
+        textView.scrollRangeToVisible(range)
+    }
 }
