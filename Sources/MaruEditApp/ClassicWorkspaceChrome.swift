@@ -1,4 +1,5 @@
 import AppKit
+import MaruEditCore
 
 /// Compact, original macOS chrome inspired by high-density text-editor
 /// workflows. It contains no copied product art or bitmap assets.
@@ -6,15 +7,16 @@ final class ClassicWorkspaceChrome: NSView {
     static let headingHeight: CGFloat = 22
     static let rulerHeight: CGFloat = 20
     static let commandStripHeight: CGFloat = 24
-    static let topHeight = headingHeight + rulerHeight
 
     private let heading = NSTextField(labelWithString: "Untitled")
     private let ruler = CharacterRulerView()
     private let commandStrip = ClassicCommandStripView()
 
     var headingText: String { heading.stringValue }
-    var topChromeHeight: CGFloat { Self.topHeight }
-    var bottomChromeHeight: CGFloat { Self.commandStripHeight }
+    var topChromeHeight: CGFloat {
+        (heading.isHidden ? 0 : Self.headingHeight) + (ruler.isHidden ? 0 : Self.rulerHeight)
+    }
+    var bottomChromeHeight: CGFloat { commandStrip.isHidden ? 0 : Self.commandStripHeight }
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -31,19 +33,39 @@ final class ClassicWorkspaceChrome: NSView {
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError() }
 
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        let target = super.hitTest(point)
+        return target === self ? nil : target
+    }
+
     override func layout() {
         super.layout()
+        let top = bounds.height
         heading.frame = NSRect(
-            x: 8, y: bounds.height - Self.headingHeight + 3,
+            x: 8, y: top - Self.headingHeight + 3,
             width: max(0, bounds.width - 16), height: 16)
         ruler.frame = NSRect(
-            x: 0, y: bounds.height - Self.topHeight,
+            x: 0, y: top - (heading.isHidden ? 0 : Self.headingHeight) - Self.rulerHeight,
             width: bounds.width, height: Self.rulerHeight)
         commandStrip.frame = NSRect(
             x: 0, y: 0, width: bounds.width, height: Self.commandStripHeight)
     }
 
     func updateHeading(_ value: String) { heading.stringValue = value }
+
+    func applyVisibility(_ options: ClassicChromeOptions) {
+        heading.isHidden = !options.showHeading
+        ruler.isHidden = !options.showRuler
+        commandStrip.isHidden = !options.showCommandStrip
+        needsLayout = true
+    }
+
+    var visibilityForTesting: ClassicChromeOptions {
+        ClassicChromeOptions(
+            showHeading: !heading.isHidden,
+            showRuler: !ruler.isHidden,
+            showCommandStrip: !commandStrip.isHidden)
+    }
 }
 
 private final class CharacterRulerView: NSView {

@@ -97,9 +97,10 @@ final class PreferencesStoreTests: XCTestCase {
         """
         let decoded = try JSONDecoder().decode(Preferences.self, from: Data(json.utf8))
         let migrated = PreferencesStore.migrate(decoded)
-        XCTAssertEqual(migrated.schemaVersion, 3)
+        XCTAssertEqual(migrated.schemaVersion, 4)
         XCTAssertEqual(migrated.invisibleCharacters, .none)
         XCTAssertEqual(migrated.workspaceStyle, .modern)
+        XCTAssertEqual(migrated.classicChrome, .allVisible)
     }
 
     func testExportImportRestoreAndRejectFutureSchema() throws {

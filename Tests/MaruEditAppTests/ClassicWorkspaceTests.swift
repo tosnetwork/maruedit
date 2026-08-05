@@ -70,6 +70,15 @@ final class ClassicWorkspaceTests: XCTestCase {
         XCTAssertEqual(sidebar.selectedUtilityPane, .results)
     }
 
+    func testClassicChromeComponentsCanBeHiddenIndependently() async {
+        let controller = MainWindowController()
+        var preferences = Preferences.defaults
+        preferences.classicChrome = ClassicChromeOptions(
+            showHeading: false, showRuler: true, showCommandStrip: false)
+        controller.applyPreferences(preferences)
+        XCTAssertEqual(controller.classicChromeVisibilityForTesting, preferences.classicChrome)
+    }
+
     private func descendants(of view: NSView) -> [NSView] {
         view.subviews.flatMap { [$0] + descendants(of: $0) }
     }

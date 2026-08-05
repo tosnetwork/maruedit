@@ -11,7 +11,8 @@ semantic version tags.
 - Added the Maru Classic workspace foundation: a Classic Light palette, compact tabs,
   current-document heading and character ruler, favorite-command strip, explicit
   insert-mode status, a customizable command-registry toolbar, and Files / Outline /
-  Results utility-pane switching.
+  Results utility-pane switching. Heading, character ruler, and favorite-command
+  strip visibility can be configured independently and updates immediately.
 
 ### Changed
 

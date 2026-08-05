@@ -8,7 +8,7 @@ import Foundation
 /// Defaults preserve the original editor appearance, and decoding supplies
 /// defaults for fields introduced by later schema versions.
 public struct Preferences: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 3
+    public static let currentSchemaVersion = 4
 
     public var schemaVersion: Int
     public var fontName: String
@@ -19,6 +19,7 @@ public struct Preferences: Codable, Equatable, Sendable {
     public var tabWidth: Int
     public var invisibleCharacters: InvisibleCharacterOptions
     public var workspaceStyle: WorkspaceStyle
+    public var classicChrome: ClassicChromeOptions
 
     public init(
         schemaVersion: Int = Preferences.currentSchemaVersion,
@@ -29,7 +30,8 @@ public struct Preferences: Codable, Equatable, Sendable {
         wrapLines: Bool,
         tabWidth: Int,
         invisibleCharacters: InvisibleCharacterOptions = .none,
-        workspaceStyle: WorkspaceStyle = .classic
+        workspaceStyle: WorkspaceStyle = .classic,
+        classicChrome: ClassicChromeOptions = .allVisible
     ) {
         self.schemaVersion = schemaVersion
         self.fontName = fontName
@@ -40,6 +42,7 @@ public struct Preferences: Codable, Equatable, Sendable {
         self.tabWidth = tabWidth
         self.invisibleCharacters = invisibleCharacters
         self.workspaceStyle = workspaceStyle
+        self.classicChrome = classicChrome
     }
 
     /// Matches the values currently hardcoded in `Theme.swift` and
@@ -57,7 +60,7 @@ public struct Preferences: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, fontName, fontSize, theme, showLineNumbers, wrapLines, tabWidth
-        case invisibleCharacters, workspaceStyle
+        case invisibleCharacters, workspaceStyle, classicChrome
     }
 
     public init(from decoder: Decoder) throws {
@@ -74,7 +77,23 @@ public struct Preferences: Codable, Equatable, Sendable {
             InvisibleCharacterOptions.self, forKey: .invisibleCharacters) ?? .none
         workspaceStyle = try values.decodeIfPresent(
             WorkspaceStyle.self, forKey: .workspaceStyle) ?? .modern
+        classicChrome = try values.decodeIfPresent(
+            ClassicChromeOptions.self, forKey: .classicChrome) ?? .allVisible
     }
+}
+
+public struct ClassicChromeOptions: Codable, Equatable, Sendable {
+    public var showHeading: Bool
+    public var showRuler: Bool
+    public var showCommandStrip: Bool
+
+    public init(showHeading: Bool = true, showRuler: Bool = true, showCommandStrip: Bool = true) {
+        self.showHeading = showHeading
+        self.showRuler = showRuler
+        self.showCommandStrip = showCommandStrip
+    }
+
+    public static let allVisible = ClassicChromeOptions()
 }
 
 /// Selects the window information architecture without changing document

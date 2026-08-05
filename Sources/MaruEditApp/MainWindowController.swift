@@ -167,6 +167,7 @@ final class MainWindowController: NSWindowController,
         Theme.activeName = preferences.theme
         workspaceStyle = preferences.workspaceStyle
         classicChrome.isHidden = workspaceStyle != .classic
+        classicChrome.applyVisibility(preferences.classicChrome)
         tabBar.compactStyle = workspaceStyle == .classic
         configureWorkspaceToolbar()
         window?.backgroundColor = Theme.background
@@ -181,6 +182,7 @@ final class MainWindowController: NSWindowController,
     var isClassicWorkspace: Bool { workspaceStyle == .classic }
     var isClassicChromeVisibleForTesting: Bool { !classicChrome.isHidden }
     var classicHeadingForTesting: String { classicChrome.headingText }
+    var classicChromeVisibilityForTesting: ClassicChromeOptions { classicChrome.visibilityForTesting }
     var classicToolbarIdentifiersForTesting: [String] {
         window?.toolbar?.items.map(\.itemIdentifier.rawValue) ?? []
     }
@@ -239,8 +241,8 @@ final class MainWindowController: NSWindowController,
         let statusH: CGFloat = 24
         let findH: CGFloat = findBar.isHidden ? 0 : (findBar.isReplaceRowVisible ? 66 : 34)
         let paneH: CGFloat = (outputPane?.isHidden == false) ? Self.outputPaneHeight : 0
-        let classicTop = workspaceStyle == .classic ? ClassicWorkspaceChrome.topHeight : 0
-        let classicBottom = workspaceStyle == .classic ? ClassicWorkspaceChrome.commandStripHeight : 0
+        let classicTop = workspaceStyle == .classic ? classicChrome.topChromeHeight : 0
+        let classicBottom = workspaceStyle == .classic ? classicChrome.bottomChromeHeight : 0
 
         findBar.frame = NSRect(
             x: 0, y: cv.bounds.height - tabH - findH,

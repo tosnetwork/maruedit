@@ -50,6 +50,15 @@ final class SettingsWindowTests: XCTestCase {
         XCTAssertEqual(received?.fontSize, 22, "restoring Editor must not reset Appearance")
     }
 
+    func testClassicChromeVisibilityAppliesImmediately() async {
+        var received: Preferences?
+        let controller = SettingsWindowController(preferences: .defaults) { received = $0 }
+        let options = ClassicChromeOptions(
+            showHeading: false, showRuler: true, showCommandStrip: false)
+        controller.setClassicChromeForTesting(options)
+        XCTAssertEqual(received?.classicChrome, options)
+    }
+
     func testEditorPreferencesApplyImmediatelyWithoutChangingText() async {
         let editor = EditorViewController()
         _ = editor.view

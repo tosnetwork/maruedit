@@ -18,7 +18,7 @@ that would weaken MaruEdit's security model.
 - [x] Original Classic Light palette with live switching.
 - [x] Native customizable toolbar backed by Command Registry IDs.
 - [x] Files / Outline / Results pane switcher and single-file closed default.
-- [ ] User-configurable visibility for heading, ruler and command strip.
+- [x] User-configurable visibility for heading, ruler and command strip.
 - [ ] Real VoiceOver and visible screenshot verification.
 
 ## MC2 — Outline and folding

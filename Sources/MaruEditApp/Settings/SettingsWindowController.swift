@@ -22,6 +22,9 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
     private let lineNumbersButton = NSButton(checkboxWithTitle: "", target: nil, action: nil)
     private let wrapLinesButton = NSButton(checkboxWithTitle: "", target: nil, action: nil)
     private let workspacePopup = NSPopUpButton()
+    private let headingButton = NSButton(checkboxWithTitle: "Show document heading", target: nil, action: nil)
+    private let rulerButton = NSButton(checkboxWithTitle: "Show character ruler", target: nil, action: nil)
+    private let commandStripButton = NSButton(checkboxWithTitle: "Show favorite command strip", target: nil, action: nil)
 
     init(preferences: Preferences, onChange: @escaping (Preferences) -> Void) {
         self.preferences = preferences
@@ -143,6 +146,16 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
             workspacePopup.target = self; workspacePopup.action = #selector(controlChanged)
             workspacePopup.identifier = NSUserInterfaceItemIdentifier("settings.workspaceStyle")
             stack.addArrangedSubview(row(SettingsLocalization.text("workspace"), workspacePopup))
+            for (button, value, id) in [
+                (headingButton, preferences.classicChrome.showHeading, "settings.classicHeading"),
+                (rulerButton, preferences.classicChrome.showRuler, "settings.classicRuler"),
+                (commandStripButton, preferences.classicChrome.showCommandStrip, "settings.classicCommandStrip"),
+            ] {
+                button.state = value ? .on : .off
+                button.target = self; button.action = #selector(controlChanged)
+                button.identifier = NSUserInterfaceItemIdentifier(id)
+                stack.addArrangedSubview(button)
+            }
             stack.addArrangedSubview(NSTextField(wrappingLabelWithString: SettingsLocalization.text("immediate")))
         case .advanced:
             stack.addArrangedSubview(NSTextField(
@@ -196,6 +209,10 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
         case .general:
             preferences.workspaceStyle = workspacePopup.indexOfSelectedItem == 0 ? .classic : .modern
             preferences.theme = preferences.workspaceStyle == .classic ? .classicLight : .monokai
+            preferences.classicChrome = ClassicChromeOptions(
+                showHeading: headingButton.state == .on,
+                showRuler: rulerButton.state == .on,
+                showCommandStrip: commandStripButton.state == .on)
         default: break
         }
         onChange(preferences)
@@ -207,6 +224,7 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
         case .general:
             preferences.workspaceStyle = defaults.workspaceStyle
             preferences.theme = defaults.theme
+            preferences.classicChrome = defaults.classicChrome
         case .editor:
             preferences.tabWidth = defaults.tabWidth
             preferences.showLineNumbers = defaults.showLineNumbers
@@ -289,6 +307,13 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
     func setWorkspaceForTesting(_ style: WorkspaceStyle) {
         select(.general)
         workspacePopup.selectItem(at: style == .classic ? 0 : 1)
+        controlChanged()
+    }
+    func setClassicChromeForTesting(_ options: ClassicChromeOptions) {
+        select(.general)
+        headingButton.state = options.showHeading ? .on : .off
+        rulerButton.state = options.showRuler ? .on : .off
+        commandStripButton.state = options.showCommandStrip ? .on : .off
         controlChanged()
     }
 }
