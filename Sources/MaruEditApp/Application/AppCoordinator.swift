@@ -20,6 +20,7 @@ final class AppCoordinator {
     let commandRegistry = CommandRegistry()
     var onShowMenuCustomization: (() -> Void)?
     var onShowMacroMenu: (() -> Void)?
+    var openDocumentationURL: (URL) -> Void = { NSWorkspace.shared.open($0) }
 
     init(preferencesStore: PreferencesStore? = nil) {
         if let preferencesStore {
@@ -75,8 +76,20 @@ final class AppCoordinator {
 
     func showMacroMenu() { onShowMacroMenu?() }
     func showHelp() {
-        guard let url = URL(string: "https://github.com/tosnetwork/maruedit/tree/main/docs") else { return }
-        NSWorkspace.shared.open(url)
+        openHelpPath("docs/user-guide.md")
+    }
+    func showMacroHelp() { openHelpPath("docs/macros.md") }
+    func showShortcutReference() { openHelpPath("docs/key-bindings.md") }
+    func checkForUpdates() { openHelpURL("https://github.com/tosnetwork/maruedit/releases/latest") }
+    func showSupport() { openHelpURL("https://github.com/tosnetwork/maruedit/issues") }
+
+    private func openHelpPath(_ path: String) {
+        openHelpURL("https://github.com/tosnetwork/maruedit/blob/main/\(path)")
+    }
+
+    private func openHelpURL(_ value: String) {
+        guard let url = URL(string: value) else { return }
+        openDocumentationURL(url)
     }
 
     func saveActiveSession() {

@@ -26,10 +26,10 @@ native menu before the Hidemaru-compatible business menus.
 | Window | Native window controls plus tab cycling | Missing tab list, close-range entries in menu, pane focus and desktop/window arrangement equivalents |
 | Macro | Dynamic Macro menu | Recording/playback and registration management remain incomplete |
 | Other | Dedicated Other menu | Settings, font panel and menu editing are grouped; file-type profiles, key assignment and command list need direct entries |
-| Help | Dedicated Help menu plus native About | Documentation entry is present; missing macro help, shortcut reference and update/support entries |
+| Help | Dedicated Help menu plus native About | User guide, macro help, shortcut reference, latest-release check and support/reporting entries are present | No known compatible gap |
 
 Official menu pages contain roughly 297 command references across these
-menus. MaruEdit currently registers 113 stable command IDs. Duplicate menu
+menus. MaruEdit currently registers 117 stable command IDs. Duplicate menu
 placements mean this is not a one-to-one command count, but it establishes
 that functional parity is not complete.
 

@@ -349,6 +349,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let helpItem = NSMenuItem()
         let helpMenu = NSMenu(title: "Help")
         helpMenu.addItem(commandItem(.appHelp))
+        helpMenu.addItem(commandItem(.helpMacros))
+        helpMenu.addItem(commandItem(.helpShortcuts))
+        helpMenu.addItem(.separator())
+        helpMenu.addItem(commandItem(.helpCheckUpdates))
+        helpMenu.addItem(commandItem(.helpSupport))
+        helpMenu.addItem(.separator())
         helpMenu.addItem(withTitle: "About MaruEdit", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         helpItem.submenu = helpMenu
 

@@ -7,6 +7,10 @@ extension CommandID {
     static let appSettings      = CommandID("app.settings")
     static let appMacroMenu     = CommandID("app.macroMenu")
     static let appHelp          = CommandID("app.help")
+    static let helpMacros       = CommandID("help.macros")
+    static let helpShortcuts    = CommandID("help.shortcuts")
+    static let helpCheckUpdates = CommandID("help.checkUpdates")
+    static let helpSupport      = CommandID("help.support")
     static let fileNew          = CommandID("file.new")
     static let fileNewFromTemplate = CommandID("file.newFromTemplate")
     static let fileOpen         = CommandID("file.open")
@@ -134,6 +138,18 @@ enum AppCommands {
         })
         registry.register(CommandDefinition(id: .appHelp, title: "MaruEdit Help") {
             $0.coordinator.showHelp()
+        })
+        registry.register(CommandDefinition(id: .helpMacros, title: "Macro Help") {
+            $0.coordinator.showMacroHelp()
+        })
+        registry.register(CommandDefinition(id: .helpShortcuts, title: "Keyboard Shortcut Reference") {
+            $0.coordinator.showShortcutReference()
+        })
+        registry.register(CommandDefinition(id: .helpCheckUpdates, title: "Check for Updates…") {
+            $0.coordinator.checkForUpdates()
+        })
+        registry.register(CommandDefinition(id: .helpSupport, title: "Support and Report an Issue…") {
+            $0.coordinator.showSupport()
         })
         registry.register(CommandDefinition(id: .fileNew, title: "New File") { ctx in
             ctx.coordinator.newDocument()

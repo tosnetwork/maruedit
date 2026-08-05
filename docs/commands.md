@@ -32,6 +32,10 @@ significantly, replace this with a small script that generates it from
 | `insert.pageBreak` | Page Break | Insert | — | `AppCoordinator.insertPageBreak()` |
 | `insert.controlCode` | Control Code… | Insert | — | `AppCoordinator.insertControlCode()` |
 | `app.help` | MaruEdit Help | Help | — | `AppCoordinator.showHelp()` |
+| `help.macros` | Macro Help | Help | — | `AppCoordinator.showMacroHelp()` |
+| `help.shortcuts` | Keyboard Shortcut Reference | Help | — | `AppCoordinator.showShortcutReference()` |
+| `help.checkUpdates` | Check for Updates… | Help | — | Opens the latest GitHub release |
+| `help.support` | Support and Report an Issue… | Help | — | Opens the GitHub issue tracker |
 | `convert.halfWidth` | Convert to Half-Width | Convert | — | `LineEditCommand.halfWidth` |
 | `convert.fullWidth` | Convert to Full-Width | Convert | — | `LineEditCommand.fullWidth` |
 | `convert.hiragana` | Convert to Hiragana | Convert | — | `LineEditCommand.hiragana` |

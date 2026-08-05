@@ -63,7 +63,8 @@ final class CommandRegistryTests: XCTestCase {
         AppCommands.registerAll(in: registry)
 
         let ids: [CommandID] = [
-            .appSettings, .appMacroMenu, .appHelp,
+            .appSettings, .appMacroMenu, .appHelp, .helpMacros, .helpShortcuts,
+            .helpCheckUpdates, .helpSupport,
             .fileNew, .fileNewFromTemplate, .fileOpen, .fileOpenFolder, .fileOpenPartial,
             .fileSave, .fileSaveAs,
             .fileCloseAndOpen, .fileCloseTab, .windowNextTab, .windowPreviousTab,
@@ -107,6 +108,24 @@ final class CommandRegistryTests: XCTestCase {
             XCTAssertNotNil(registry.definition(for: id), "\(id.rawValue) should be registered")
         }
         XCTAssertEqual(registry.allDefinitions.count, ids.count)
+    }
+
+    func testHelpCommandsRouteToSpecificDocumentationAndSupportDestinations() async {
+        let coordinator = AppCoordinator()
+        var urls: [URL] = []
+        coordinator.openDocumentationURL = { urls.append($0) }
+        coordinator.showHelp()
+        coordinator.showMacroHelp()
+        coordinator.showShortcutReference()
+        coordinator.checkForUpdates()
+        coordinator.showSupport()
+        XCTAssertEqual(urls.map(\.absoluteString), [
+            "https://github.com/tosnetwork/maruedit/blob/main/docs/user-guide.md",
+            "https://github.com/tosnetwork/maruedit/blob/main/docs/macros.md",
+            "https://github.com/tosnetwork/maruedit/blob/main/docs/key-bindings.md",
+            "https://github.com/tosnetwork/maruedit/releases/latest",
+            "https://github.com/tosnetwork/maruedit/issues",
+        ])
     }
 
     func testAppCommandsAreEnabledByDefault() async {
