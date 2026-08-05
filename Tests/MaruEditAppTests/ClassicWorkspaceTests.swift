@@ -269,11 +269,14 @@ final class ClassicWorkspaceTests: XCTestCase {
     func testUtilityPaneSwitchesBetweenFilesOutlineAndResults() async {
         let sidebar = SidebarViewController()
         _ = sidebar.view
-        XCTAssertEqual(sidebar.utilityPaneLabelsForTesting, ["Files", "Outline", "Results"])
+        XCTAssertEqual(sidebar.utilityPaneLabelsForTesting, ["Files", "Outline", "Results", "Browser"])
         sidebar.showUtilityPane(.outline)
         XCTAssertEqual(sidebar.selectedUtilityPane, .outline)
         sidebar.showUtilityPane(.results)
         XCTAssertEqual(sidebar.selectedUtilityPane, .results)
+        sidebar.showBrowser(url: URL(string: "about:blank")!)
+        XCTAssertEqual(sidebar.selectedUtilityPane, .browser)
+        XCTAssertEqual(sidebar.browserAddressForTesting, "about:blank")
     }
 
     func testOutlinePaneListsSymbolsAndTracksCurrentHeading() async {

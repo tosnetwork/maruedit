@@ -126,4 +126,20 @@ final class TabBarParityTests: XCTestCase {
         XCTAssertEqual(source.tabCountForTesting, 1)
         NSApp.windows.filter { $0.windowController is MainWindowController }.forEach { $0.close() }
     }
+
+    func testCrossDocumentScrollLinkPropagatesWithoutFeedback() {
+        _ = NSApplication.shared
+        let coordinator = AppCoordinator()
+        let source = coordinator.ensureWindowControllerReady(restoreSession: false)
+        source.prepareUITestDocument(content: String(repeating: "line\n", count: 500), selections: [])
+        coordinator.detachCurrentTab()
+        let target = try! XCTUnwrap(coordinator.lastDetachedWindowControllerForTesting)
+        coordinator.toggleCrossDocumentScrollLink()
+
+        source.onCrossDocumentScroll?(NSPoint(x: 0, y: 120))
+
+        XCTAssertTrue(coordinator.crossDocumentScrollLinkEnabled)
+        XCTAssertEqual(target.lastCrossDocumentScrollRequestForTesting, NSPoint(x: 0, y: 120))
+        NSApp.windows.filter { $0.windowController is MainWindowController }.forEach { $0.close() }
+    }
 }

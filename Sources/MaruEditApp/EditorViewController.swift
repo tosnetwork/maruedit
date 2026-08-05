@@ -69,6 +69,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     private var suppressAutoIndent = false
     private var suppressScrollCallback = false
     var onScroll: ((NSPoint) -> Void)?
+    var onCrossDocumentScroll: ((NSPoint) -> Void)?
     private var isApplyingSelectionSet = false
     var cursorHistory: [Int] = []
     var isRestoringCursorHistory = false
@@ -419,7 +420,11 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     @objc private func boundsChanged(_ n: Notification) {
         lineNumbers?.needsDisplay = true
         scheduleScrollHighlight()
-        if !suppressScrollCallback { onScroll?(scrollView.contentView.bounds.origin) }
+        if !suppressScrollCallback {
+            let origin = scrollView.contentView.bounds.origin
+            onScroll?(origin)
+            onCrossDocumentScroll?(origin)
+        }
     }
 
     func setLinkedScrollOffset(_ origin: NSPoint) {

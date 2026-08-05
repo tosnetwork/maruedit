@@ -77,7 +77,9 @@ final class ChromeParityAuditTests: XCTestCase {
 
         // Menus listed here have completed row-for-row review. Adding a menu
         // is intentionally impossible until every official row is mapped.
-        let completedMenus = Set(["File", "Conv", "Insert", "Hilight", "Bookmark", "Macro", "Other", "Help"])
+        let completedMenus = Set([
+            "File", "Conv", "Insert", "Hilight", "Bookmark", "Tool", "Window", "Macro", "Other", "Help",
+        ])
         for menu in completedMenus {
             let official = inventory.filter { $0[0] == menu }.map { $0[2] }.sorted()
             let audited = mappings.filter { $0[0] == menu }.map { $0[1] }.sorted()

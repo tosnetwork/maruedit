@@ -66,6 +66,9 @@ final class MainWindowController: NSWindowController,
     private var sidebarManuallyCollapsed = false
     var onEditorFontChange: ((NSFont) -> Void)?
     var onClassicToolbarCommand: ((CommandID) -> Void)?
+    var onCrossDocumentScroll: ((NSPoint) -> Void)? {
+        didSet { editorVC.onCrossDocumentScroll = onCrossDocumentScroll }
+    }
     var onStatusMacroControl: (() -> Void)?
 
     /// Convenience shims onto `documentController` so the UI-orchestration
@@ -1440,6 +1443,28 @@ final class MainWindowController: NSWindowController,
 
     func showFilesPane() {
         sidebarVC.showUtilityPane(.files)
+        if sidebarVC.view.isHidden || splitView.isSubviewCollapsed(sidebarVC.view) { toggleSidebar() }
+        sidebarVC.focusCurrentPane(in: window)
+    }
+
+    func showBrowserPane(useDocumentURL: Bool) {
+        let url = useDocumentURL ? curDoc?.fileURL : nil
+        sidebarVC.showBrowser(url: url)
+        if sidebarVC.view.isHidden || splitView.isSubviewCollapsed(sidebarVC.view) { toggleSidebar() }
+        sidebarVC.focusCurrentPane(in: window)
+    }
+
+    func toggleBrowserPane() {
+        if sidebarVC.selectedUtilityPane == .browser,
+           !sidebarVC.view.isHidden, !splitView.isSubviewCollapsed(sidebarVC.view) {
+            toggleSidebar()
+        } else {
+            showBrowserPane(useDocumentURL: false)
+        }
+    }
+
+    func focusBrowserPane() {
+        if sidebarVC.selectedUtilityPane != .browser { sidebarVC.showBrowser() }
         if sidebarVC.view.isHidden || splitView.isSubviewCollapsed(sidebarVC.view) { toggleSidebar() }
         sidebarVC.focusCurrentPane(in: window)
     }
@@ -2928,6 +2953,11 @@ final class MainWindowController: NSWindowController,
     }
 
     func toggleLinkedEditorScrolling() { linkedEditorScrolling.toggle() }
+    private(set) var lastCrossDocumentScrollRequestForTesting: NSPoint?
+    func applyCrossDocumentScroll(_ origin: NSPoint) {
+        lastCrossDocumentScrollRequestForTesting = origin
+        editorVC.setLinkedScrollOffset(origin)
+    }
     var isEditorSplitForTesting: Bool { secondaryEditorVC != nil }
     var editorSplitIsVerticalForTesting: Bool { editorSplitView.isVertical }
     var isLinkedEditorScrollingForTesting: Bool { linkedEditorScrolling }

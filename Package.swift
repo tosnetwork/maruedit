@@ -13,7 +13,8 @@ let package = Package(
         .executableTarget(
             name: "MaruEditApp",
             dependencies: ["MaruEditCore"],
-            path: "Sources/MaruEditApp"
+            path: "Sources/MaruEditApp",
+            linkerSettings: [.linkedFramework("WebKit")]
         ),
         .target(
             name: "MaruEditTextKit2Spike",

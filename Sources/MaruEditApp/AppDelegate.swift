@@ -495,6 +495,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .fileSaveWorkspace, .fileOpenWorkspace,
             .windowAlwaysOnTop, .windowFullScreen,
             .windowShowOutlinePane, .windowShowFilesPane,
+            .windowShowDocumentBrowserPane, .windowShowSharedBrowserPane,
+            .windowToggleBrowserPane, .windowFocusBrowserPane,
+            .windowToggleCrossDocumentScrollLink,
             .viewToggleOutputPane, .windowFocusUtilityPane,
         ] { winMenu.addItem(commandItem(id)) }
         winMenu.addItem(.separator())

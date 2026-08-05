@@ -1,5 +1,6 @@
 import AppKit
 import MaruEditCore
+import WebKit
 
 @MainActor
 protocol SidebarDelegate: AnyObject {
@@ -79,7 +80,7 @@ private final class SidebarOutlineView: NSOutlineView {
 // MARK: - Sidebar
 
 final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NSOutlineViewDelegate {
-    enum UtilityPane: Int, CaseIterable { case files, outline, results }
+    enum UtilityPane: Int, CaseIterable { case files, outline, results, browser }
     weak var sidebarDelegate: SidebarDelegate?
 
     private var outlineView: SidebarOutlineView!
@@ -87,6 +88,9 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
     private var paneSelector: NSSegmentedControl!
     private var fileScrollView: NSScrollView!
     private var placeholderLabel: NSTextField!
+    private var browserContainer: NSView!
+    private var browserAddress: NSTextField!
+    private var browserView: WKWebView!
     private(set) var selectedUtilityPane: UtilityPane = .files
     private var rootItems: [FileItem] = []
     private(set) var rootFolderURL: URL?
@@ -97,12 +101,12 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
 
     func focusCurrentPane(in window: NSWindow?) {
         _ = view
-        window?.makeFirstResponder(outlineView)
+        window?.makeFirstResponder(selectedUtilityPane == .browser ? browserAddress : outlineView)
     }
 
     var keyboardFocusableViews: [NSView] {
         _ = view
-        return [paneSelector, outlineView]
+        return [paneSelector, outlineView, browserAddress, browserView]
     }
 
     override func loadView() {
@@ -116,7 +120,7 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
         headerLabel.translatesAutoresizingMaskIntoConstraints = false
         wrapper.addSubview(headerLabel)
 
-        paneSelector = NSSegmentedControl(labels: ["Files", "Outline", "Results"],
+        paneSelector = NSSegmentedControl(labels: ["Files", "Outline", "Results", "Browser"],
                                           trackingMode: .selectOne,
                                           target: self, action: #selector(selectUtilityPane(_:)))
         paneSelector.selectedSegment = UtilityPane.files.rawValue
@@ -168,6 +172,22 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
         placeholderLabel.isHidden = true
         wrapper.addSubview(placeholderLabel)
 
+        browserContainer = NSView()
+        browserContainer.translatesAutoresizingMaskIntoConstraints = false
+        browserContainer.isHidden = true
+        browserAddress = NSTextField(string: "about:blank")
+        browserAddress.placeholderString = "URL"
+        browserAddress.target = self
+        browserAddress.action = #selector(openBrowserAddress(_:))
+        browserAddress.translatesAutoresizingMaskIntoConstraints = false
+        browserAddress.setAccessibilityLabel("Browser address")
+        browserView = WKWebView()
+        browserView.translatesAutoresizingMaskIntoConstraints = false
+        browserView.setAccessibilityLabel("Browser content")
+        browserContainer.addSubview(browserAddress)
+        browserContainer.addSubview(browserView)
+        wrapper.addSubview(browserContainer)
+
         NSLayoutConstraint.activate([
             paneSelector.topAnchor.constraint(equalTo: wrapper.topAnchor, constant: 8),
             paneSelector.leadingAnchor.constraint(equalTo: wrapper.leadingAnchor, constant: 8),
@@ -183,6 +203,17 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
             placeholderLabel.centerYAnchor.constraint(equalTo: wrapper.centerYAnchor),
             placeholderLabel.leadingAnchor.constraint(greaterThanOrEqualTo: wrapper.leadingAnchor, constant: 16),
             placeholderLabel.trailingAnchor.constraint(lessThanOrEqualTo: wrapper.trailingAnchor, constant: -16),
+            browserContainer.topAnchor.constraint(equalTo: headerLabel.bottomAnchor, constant: 8),
+            browserContainer.leadingAnchor.constraint(equalTo: wrapper.leadingAnchor),
+            browserContainer.trailingAnchor.constraint(equalTo: wrapper.trailingAnchor),
+            browserContainer.bottomAnchor.constraint(equalTo: wrapper.bottomAnchor),
+            browserAddress.topAnchor.constraint(equalTo: browserContainer.topAnchor, constant: 4),
+            browserAddress.leadingAnchor.constraint(equalTo: browserContainer.leadingAnchor, constant: 6),
+            browserAddress.trailingAnchor.constraint(equalTo: browserContainer.trailingAnchor, constant: -6),
+            browserView.topAnchor.constraint(equalTo: browserAddress.bottomAnchor, constant: 4),
+            browserView.leadingAnchor.constraint(equalTo: browserContainer.leadingAnchor),
+            browserView.trailingAnchor.constraint(equalTo: browserContainer.trailingAnchor),
+            browserView.bottomAnchor.constraint(equalTo: browserContainer.bottomAnchor),
         ])
 
         view = wrapper
@@ -196,9 +227,10 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
     func showUtilityPane(_ pane: UtilityPane) {
         selectedUtilityPane = pane
         paneSelector.selectedSegment = pane.rawValue
-        let showsList = pane != .results
+        let showsList = pane == .files || pane == .outline
         fileScrollView.isHidden = !showsList
-        placeholderLabel.isHidden = showsList
+        placeholderLabel.isHidden = pane != .results
+        browserContainer.isHidden = pane != .browser
         switch pane {
         case .files:
             headerLabel.stringValue = rootFolderURL?.lastPathComponent.uppercased() ?? "FILES"
@@ -207,8 +239,34 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
         case .results:
             headerLabel.stringValue = "RESULTS"
             placeholderLabel.stringValue = searchResultText.isEmpty ? markerResultText : searchResultText
+        case .browser:
+            headerLabel.stringValue = "BROWSER"
         }
         outlineView.reloadData()
+    }
+
+    @objc private func openBrowserAddress(_ sender: NSTextField) {
+        var value = sender.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !value.contains(":") { value = "https://" + value }
+        guard let url = URL(string: value), ["http", "https", "file", "about"].contains(url.scheme?.lowercased() ?? "") else {
+            NSSound.beep(); return
+        }
+        sender.stringValue = url.absoluteString
+        browserView.load(URLRequest(url: url))
+    }
+
+    func showBrowser(url: URL? = nil) {
+        showUtilityPane(.browser)
+        if let url {
+            browserAddress.stringValue = url.absoluteString
+            browserView.load(URLRequest(url: url))
+        }
+    }
+
+    var browserAddressForTesting: String { browserAddress.stringValue }
+    func openBrowserAddressForTesting(_ value: String) {
+        browserAddress.stringValue = value
+        openBrowserAddress(browserAddress)
     }
 
     func updateOutline(text: String, language: Language, customRules: [OutlineRule] = []) {

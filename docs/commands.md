@@ -47,6 +47,11 @@ significantly, replace this with a small script that generates it from
 | `window.minimizeTab` | Minimize This Tab Window | Window | — | Maps Hidemaru tab minimization to native window minimization |
 | `window.showFilesPane` | File Manager Pane | Window | — | Reveals and focuses the Files utility pane |
 | `window.showOutlinePane` | Outline Analysis Pane | Window | — | Reveals the document Outline utility pane |
+| `window.showDocumentBrowserPane` | Document Browser Pane | Window | — | Opens an embedded WebKit pane at the active document URL |
+| `window.showSharedBrowserPane` | Browser Pane | Window | — | Reveals the shared embedded WebKit browser pane |
+| `window.toggleBrowserPane` | Show/Hide Browser Pane | Window | — | Toggles the embedded browser utility pane |
+| `window.focusBrowserPane` | Focus Browser Pane | Window | — | Reveals the browser and focuses its accessible address field |
+| `window.toggleCrossDocumentScrollLink` | Scroll Link with Other Windows | Window | — | Synchronizes editor scrolling across all managed MaruEdit windows |
 | `window.nextManaged` | Next MaruEdit Window | Window | — | Activates the next non-minimized managed document window |
 | `window.previousManaged` | Previous MaruEdit Window | Window | — | Activates the previous non-minimized managed document window |
 | `window.nextManagedIncludingMinimized` | Next Window Including Minimized | Window | — | Cycles forward and restores minimized managed windows |

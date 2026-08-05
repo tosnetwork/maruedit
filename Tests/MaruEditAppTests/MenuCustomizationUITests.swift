@@ -79,6 +79,7 @@ final class MenuCustomizationUITests: XCTestCase {
     }
 
     func testToolsMenuGroupsCompareTagsExternalCommandsAndCommandList() async {
+        _ = NSApplication.shared
         let app = AppDelegate()
         app.buildMenu()
         let tools = NSApp.mainMenu?.item(withTitle: "Tools")?.submenu

@@ -74,6 +74,12 @@ final class AppCoordinator {
     private func configureWindowController(
         _ wc: MainWindowController, restoreSession: Bool = false
     ) {
+        wc.onCrossDocumentScroll = { [weak self, weak wc] origin in
+            guard let self, self.crossDocumentScrollLinkEnabled else { return }
+            ([self.windowController].compactMap { $0 } + self.additionalWindowControllers)
+                .filter { $0 !== wc }
+                .forEach { $0.applyCrossDocumentScroll(origin) }
+        }
         wc.onEditorFontChange = { [weak self] font in
             guard let self else { return }
             self.preferences.fontName = font.fontName
@@ -151,6 +157,12 @@ final class AppCoordinator {
     }
     func showFilesPane() { ensureWindowControllerReady().showFilesPane() }
     func showOutlinePane() { ensureWindowControllerReady().showOutlineAnalysis() }
+    func showDocumentBrowserPane() { ensureWindowControllerReady().showBrowserPane(useDocumentURL: true) }
+    func showSharedBrowserPane() { ensureWindowControllerReady().showBrowserPane(useDocumentURL: false) }
+    func toggleBrowserPane() { ensureWindowControllerReady().toggleBrowserPane() }
+    func focusBrowserPane() { ensureWindowControllerReady().focusBrowserPane() }
+    private(set) var crossDocumentScrollLinkEnabled = false
+    func toggleCrossDocumentScrollLink() { crossDocumentScrollLinkEnabled.toggle() }
 
     private func tileManagedWindows(columns: Int) {
         let windows = managedWindows.filter { $0.isVisible && !$0.isMiniaturized }

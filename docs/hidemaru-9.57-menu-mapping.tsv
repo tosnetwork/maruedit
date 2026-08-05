@@ -117,3 +117,74 @@ Other	Version check...	stable	help.checkUpdates	Duplicate official placement of 
 Other	Help for Maruo Editor	stable	app.help	Duplicate official placement of user guide
 Other	Macro help	stable	help.macros	Duplicate official placement of macro guide
 Other	About Maruo Editor	native	NSApplication.orderFrontStandardAboutPanel	macOS requires About in the application menu
+Tool	User Menu 1	dynamic	userMenus.slot1	Persistent ordered CommandID menu slot 1
+Tool	User Menu 2	dynamic	userMenus.slot2	Persistent ordered CommandID menu slot 2
+Tool	User Menu 3	dynamic	userMenus.slot3	Persistent ordered CommandID menu slot 3
+Tool	User Menu 4	dynamic	userMenus.slot4	Persistent ordered CommandID menu slot 4
+Tool	User Menu 5	dynamic	userMenus.slot5	Persistent ordered CommandID menu slot 5
+Tool	User Menu 6	dynamic	userMenus.slot6	Persistent ordered CommandID menu slot 6
+Tool	User Menu 7	dynamic	userMenus.slot7	Persistent ordered CommandID menu slot 7
+Tool	User Menu 8	dynamic	userMenus.slot8	Persistent ordered CommandID menu slot 8
+Tool	External Help(1)	stable	help.external1	Persistent external-help slot 1
+Tool	External Help 2(2)	stable	help.external2	Persistent external-help slot 2
+Tool	External Help 3(3)	stable	help.external3	Persistent external-help slot 3
+Tool	External Help 4(4)	stable	help.external4	Persistent external-help slot 4
+Tool	External Help 5(5)	stable	help.external5	Persistent external-help slot 5
+Tool	External Help 6(6)	stable	help.external6	Persistent external-help slot 6
+Tool	Execute program...	dynamic	externalCommands.catalog	Permission-scoped external command catalog and runner
+Tool	Explorer	stable	tools.openFinder	Reveal the active file or project in Finder
+Tool	Macro folder	stable	macro.openFolder	Reveal the permission-scoped macro folder in Finder
+Tool	Tag jump	stable	navigate.tagJump	Resolve and jump using the project tags index
+Tool	Direct tag jump	stable	navigate.directTagJump	Jump directly from the symbol under the cursor
+Tool	Back tag jump	stable	navigate.backTagJump	Return through the tag-jump stack
+Tool	Make tags file...	stable	navigate.generateTags	Generate bounded portable tags atomically
+Tool	Backup/Restore environment...	group	other.settingsTransfer	Export import and restore-default settings commands
+Tool	Configure for each file type...	stable	other.fileTypeProfiles	Open the file-type profile editor
+Tool	Configure for each file type list...	stable	other.fileTypeProfiles	Profile list and editor are one native window
+Tool	Environment...	stable	app.settings	Open application environment settings
+Tool	Key assignment...	stable	other.keyAssignments	Edit portable key and chord assignments
+Tool	Edit user-menu...	stable	tools.configureUserMenus	Edit eight persistent ordered user menus
+Tool	Clear history...	group	other.clearHistory	Categorized find replace grep clipboard file folder workspace and encoding history commands
+Window	Vertical	stable	window.tileVertical	Tile managed document windows in columns
+Window	Horizontal	stable	window.tileHorizontal	Tile managed document windows in rows
+Window	Cascade	stable	window.cascade	Native AppKit cascading for managed windows
+Window	Tile	stable	window.tileGrid	Tile managed windows in a balanced grid
+Window	Minimize all	stable	window.minimizeAll	Minimize every managed document window
+Window	Divide window	stable	view.splitHorizontal	Create a top and bottom editor split
+Window	Divide window R-L(M)	stable	view.splitVertical	Create a left and right editor split
+Window	Switch divided window(J)	group	window.splitFocus	Forward and reverse focus traversal switches split editors
+Window	Scroll link of split	stable	view.toggleLinkedScrolling	Toggle synchronized scrolling between split editors
+Window	Scroll link...	stable	window.toggleCrossDocumentScrollLink	Synchronize editor scrolling across all managed MaruEdit windows
+Window	Compare file...	stable	navigate.compareNextDocument	Compare the active document with another open document
+Window	Next Compare	stable	navigate.nextDifference	Move to the next diff hunk
+Window	Previous Compare	stable	navigate.previousDifference	Move to the previous diff hunk
+Window	Save desktop	stable	file.saveWorkspace	Save the current desktop as a portable workspace
+Window	Restore desktop	stable	file.openWorkspace	Restore a portable saved desktop
+Window	Open desktop(Q)...	stable	file.openWorkspace	Choose and restore a portable saved desktop
+Window	Save as desktop(Y)...	stable	file.saveWorkspace	Choose a destination and save the desktop
+Window	Close desktop	stable	file.closeWorkspace	Close all workspace documents with normal confirmation
+Window	Always on top	stable	window.alwaysOnTop	Toggle native floating window level
+Window	Full screen(Z)	stable	window.fullScreen	Toggle native macOS full-screen
+Window	Outline pane	stable	window.showOutlinePane	Reveal and focus the outline pane
+Window	Each browser pane	stable	window.showDocumentBrowserPane	Open embedded WebKit at the active document URL
+Window	File maneger pane(X)	stable	window.showFilesPane	Reveal and focus the Files utility pane
+Window	Switch file maneger pane	stable	window.focusUtilityPane	Switch keyboard focus to the utility pane
+Window	Output pane	stable	view.toggleOutputPane	Show or hide the shared output pane
+Window	Switch output pane	stable	view.focusOutputPane	Reveal and focus the shared output pane
+Window	Browser pane	stable	window.showSharedBrowserPane	Reveal the shared embedded WebKit browser pane
+Window	Browser pane show/hide	stable	window.toggleBrowserPane	Show or collapse the embedded browser pane
+Window	Switch browser pane	stable	window.focusBrowserPane	Reveal the browser and focus its address field
+Window	Switch pane focus(G)	group	window.paneFocus	Explicit editor and utility focus commands plus full keyboard focus loop
+Window	Tab mode	group	window.nativeTabWorkspace	MaruEdit uses an always-available native document tab workspace
+Window	Separate/Move this tab(I)	stable	window.detachTab	Transfer the active Document into a new managed window
+Window	Separate/Move this tab (no dialog)(I)	stable	window.detachTab	Direct native detachment needs no destination dialog
+Window	Minimize current tab(K)	stable	window.minimizeTab	Map tab minimization to its native document window
+Window	Close other tab	stable	window.closeOtherTabs	Close all tabs except the active tab with confirmation
+Window	Close all left tab	stable	window.closeTabsLeft	Close tabs left of the active tab with confirmation
+Window	Close all right tab	stable	window.closeTabsRight	Close tabs right of the active tab with confirmation
+Window	Next Maruo Editor	stable	window.nextManaged	Activate the next non-minimized managed window
+Window	Previous Maruo Editor	stable	window.previousManaged	Activate the previous non-minimized managed window
+Window	Next Maruo Editor(with minimize)	stable	window.nextManagedIncludingMinimized	Cycle forward and restore minimized managed windows
+Window	Prev Maruo Editor(with minimize)	stable	window.previousManagedIncludingMinimized	Cycle backward and restore minimized managed windows
+Window	Just before active	stable	window.previousActive	Activate the previously active managed window
+Window	Window list...	stable	window.tabList	Select an open document from the complete tab list
