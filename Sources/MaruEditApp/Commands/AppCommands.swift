@@ -71,6 +71,12 @@ extension CommandID {
     static let editDeleteWordForward = CommandID("edit.deleteWordForward")
     static let editTitlecase = CommandID("edit.titlecase")
     static let editCompleteWord = CommandID("edit.completeWord")
+    static let convertHalfWidth = CommandID("convert.halfWidth")
+    static let convertFullWidth = CommandID("convert.fullWidth")
+    static let convertHiragana = CommandID("convert.hiragana")
+    static let convertKatakana = CommandID("convert.katakana")
+    static let convertTabsToSpaces = CommandID("convert.tabsToSpaces")
+    static let convertSpacesToTabs = CommandID("convert.spacesToTabs")
     static let insertDateTime = CommandID("insert.dateTime")
     static let insertPageBreak = CommandID("insert.pageBreak")
     static let viewToggleTableMode = CommandID("view.toggleTableMode")
@@ -229,6 +235,19 @@ enum AppCommands {
         registry.register(CommandDefinition(id: .editDeleteWordForward, title: "Delete Word Forward") { $0.coordinator.deleteWordForward() })
         registry.register(CommandDefinition(id: .editTitlecase, title: "Convert to Title Case") { $0.coordinator.performLineCommand(.titlecase) })
         registry.register(CommandDefinition(id: .editCompleteWord, title: "Complete Word") { $0.coordinator.showCompletions() })
+        let conversions: [(CommandID, String, LineEditCommand)] = [
+            (.convertHalfWidth, "Convert to Half-Width", .halfWidth),
+            (.convertFullWidth, "Convert to Full-Width", .fullWidth),
+            (.convertHiragana, "Convert to Hiragana", .hiragana),
+            (.convertKatakana, "Convert to Katakana", .katakana),
+            (.convertTabsToSpaces, "Convert Tabs to Spaces", .tabsToSpaces),
+            (.convertSpacesToTabs, "Convert Leading Spaces to Tabs", .spacesToTabs),
+        ]
+        for (id, title, command) in conversions {
+            registry.register(CommandDefinition(id: id, title: title) {
+                $0.coordinator.performLineCommand(command)
+            })
+        }
         registry.register(CommandDefinition(id: .insertDateTime, title: "Date and Time") {
             $0.coordinator.insertDateTime()
         })

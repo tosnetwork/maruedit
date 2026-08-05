@@ -76,6 +76,32 @@ final class LineEditingCommandsTests: XCTestCase {
         XCTAssertEqual(upper.textView.string, "Aa Bb")
     }
 
+    func testJapaneseWidthKanaAndWhitespaceConversions() async {
+        let width = EditorViewController(); _ = width.view
+        width.document = Document(content: "ＡＢＣ １２３ カタカナ")
+        width.setSelections([NSRange(location: 0, length: (width.textView.string as NSString).length)])
+        width.performLineCommand(.halfWidth)
+        XCTAssertEqual(width.textView.string, "ABC 123 ｶﾀｶﾅ")
+        width.performLineCommand(.fullWidth)
+        XCTAssertEqual(width.textView.string, "ＡＢＣ　１２３　カタカナ")
+
+        let kana = EditorViewController(); _ = kana.view
+        kana.document = Document(content: "カタカナ")
+        kana.setSelections([NSRange(location: 0, length: 4)])
+        kana.performLineCommand(.hiragana)
+        XCTAssertEqual(kana.textView.string, "かたかな")
+        kana.performLineCommand(.katakana)
+        XCTAssertEqual(kana.textView.string, "カタカナ")
+
+        let tabs = EditorViewController(); _ = tabs.view
+        tabs.document = Document(content: "\talpha\n        beta")
+        tabs.setSelections([NSRange(location: 0, length: (tabs.textView.string as NSString).length)])
+        tabs.performLineCommand(.tabsToSpaces)
+        XCTAssertEqual(tabs.textView.string, "    alpha\n        beta")
+        tabs.performLineCommand(.spacesToTabs)
+        XCTAssertEqual(tabs.textView.string, "\talpha\n\t\tbeta")
+    }
+
     func testSortAndReverseLines() async {
         let sort = editor("c\na\nb\n")
         sort.performLineCommand(.sort)

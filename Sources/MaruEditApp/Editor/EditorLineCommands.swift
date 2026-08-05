@@ -4,6 +4,7 @@ import MaruEditCore
 enum LineEditCommand {
     case delete, duplicate, moveUp, moveDown, join
     case trimTrailingWhitespace, uppercase, lowercase, titlecase, sort, reverse
+    case halfWidth, fullWidth, hiragana, katakana, tabsToSpaces, spacesToTabs
     case indent, outdent, toggleComment
 }
 
@@ -39,7 +40,7 @@ extension EditorViewController {
 
     private func commandRanges(for command: LineEditCommand, in text: NSString) -> [NSRange] {
         let hasSelection = selectionSet.ranges.contains { $0.length > 0 }
-        if [.uppercase, .lowercase, .titlecase].contains(command), hasSelection {
+        if command.isSelectionTransform, hasSelection {
             return SelectionSet.normalize(selectionSet.ranges.filter { $0.length > 0 })
         }
         if !hasSelection && [.trimTrailingWhitespace, .sort, .reverse].contains(command) {
@@ -112,6 +113,20 @@ extension EditorViewController {
         case .uppercase: return (range, original, original.uppercased())
         case .lowercase: return (range, original, original.lowercased())
         case .titlecase: return (range, original, original.capitalized)
+        case .halfWidth:
+            return (range, original, original.applyingTransform(.fullwidthToHalfwidth, reverse: false) ?? original)
+        case .fullWidth:
+            return (range, original, original.applyingTransform(.fullwidthToHalfwidth, reverse: true) ?? original)
+        case .hiragana:
+            return (range, original, original.applyingTransform(.hiraganaToKatakana, reverse: true) ?? original)
+        case .katakana:
+            return (range, original, original.applyingTransform(.hiraganaToKatakana, reverse: false) ?? original)
+        case .tabsToSpaces:
+            let width = max(1, document?.fileTypeProfile?.settings.tabWidth ?? effectiveTabWidth)
+            return (range, original, transformLines(original) { expandTabs($0, width: width) })
+        case .spacesToTabs:
+            let width = max(1, document?.fileTypeProfile?.settings.tabWidth ?? effectiveTabWidth)
+            return (range, original, transformLines(original) { compressLeadingSpaces($0, width: width) })
         case .sort: return (range, original, reorderLines(original) { $0.sorted() })
         case .reverse: return (range, original, reorderLines(original) { Array($0.reversed()) })
         case .indent:
@@ -169,6 +184,27 @@ extension EditorViewController {
         return reorder(logicalLines(text)).joined(separator: "\n") + (trailing ? "\n" : "")
     }
 
+    private func expandTabs(_ line: String, width: Int) -> String {
+        var column = 0
+        var result = ""
+        for character in line {
+            if character == "\t" {
+                let count = width - column % width
+                result += String(repeating: " ", count: count); column += count
+            } else {
+                result.append(character); column += 1
+            }
+        }
+        return result
+    }
+
+    private func compressLeadingSpaces(_ line: String, width: Int) -> String {
+        let count = line.prefix { $0 == " " }.count
+        guard count >= width else { return line }
+        return String(repeating: "\t", count: count / width)
+            + String(repeating: " ", count: count % width) + line.dropFirst(count)
+    }
+
     func goTo(line: Int, column: Int) {
         let ns = textView.string as NSString
         guard line > 0, column > 0 else { return }
@@ -185,5 +221,15 @@ extension EditorViewController {
         let position = min(lineRange.location + column - 1, contentEnd)
         setSelections([NSRange(location: position, length: 0)])
         textView.scrollRangeToVisible(NSRange(location: position, length: 0))
+    }
+}
+
+private extension LineEditCommand {
+    var isSelectionTransform: Bool {
+        switch self {
+        case .uppercase, .lowercase, .titlecase, .halfWidth, .fullWidth,
+             .hiragana, .katakana, .tabsToSpaces, .spacesToTabs: true
+        default: false
+        }
     }
 }

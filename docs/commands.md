@@ -29,6 +29,12 @@ significantly, replace this with a small script that generates it from
 | `insert.dateTime` | Date and Time | Insert | — | `AppCoordinator.insertDateTime()` |
 | `insert.pageBreak` | Page Break | Insert | — | `AppCoordinator.insertPageBreak()` |
 | `app.help` | MaruEdit Help | Help | — | `AppCoordinator.showHelp()` |
+| `convert.halfWidth` | Convert to Half-Width | Convert | — | `LineEditCommand.halfWidth` |
+| `convert.fullWidth` | Convert to Full-Width | Convert | — | `LineEditCommand.fullWidth` |
+| `convert.hiragana` | Convert to Hiragana | Convert | — | `LineEditCommand.hiragana` |
+| `convert.katakana` | Convert to Katakana | Convert | — | `LineEditCommand.katakana` |
+| `convert.tabsToSpaces` | Convert Tabs to Spaces | Convert | — | `LineEditCommand.tabsToSpaces` |
+| `convert.spacesToTabs` | Convert Leading Spaces to Tabs | Convert | — | `LineEditCommand.spacesToTabs` |
 | `file.clearRecoveryData` | Clear Recovery Data... | File | — | `AppCoordinator.clearRecoveryData()` |
 | `file.pageSetup` | Page Setup… | File | — | `AppCoordinator.showPageSetup()` |
 | `file.print` | Print… | File | — | `AppCoordinator.printDocument()` |

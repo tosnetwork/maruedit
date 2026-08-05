@@ -84,6 +84,8 @@ final class CommandRegistryTests: XCTestCase {
             .editMoveWordLeft, .editMoveWordRight, .editMoveParagraphStart,
             .editMoveParagraphEnd, .editDeleteWordBackward, .editDeleteWordForward,
             .editTitlecase, .editCompleteWord, .insertDateTime, .insertPageBreak,
+            .convertHalfWidth, .convertFullWidth, .convertHiragana, .convertKatakana,
+            .convertTabsToSpaces, .convertSpacesToTabs,
             .navigateMarkerRed, .navigateMarkerYellow, .navigateMarkerBlue,
             .navigateNextMarker, .navigatePreviousMarker, .navigateClearMarkers,
             .viewSplitVertical, .viewSplitHorizontal, .viewCloseSplit,

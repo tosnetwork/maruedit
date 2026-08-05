@@ -299,6 +299,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         for id: CommandID in [.editUppercase, .editLowercase, .editTitlecase] {
             convertMenu.addItem(commandItem(id))
         }
+        convertMenu.addItem(.separator())
+        for id: CommandID in [
+            .convertHalfWidth, .convertFullWidth, .convertHiragana, .convertKatakana,
+            .convertTabsToSpaces, .convertSpacesToTabs,
+        ] { convertMenu.addItem(commandItem(id)) }
         convertItem.submenu = convertMenu
 
         let insertItem = NSMenuItem()

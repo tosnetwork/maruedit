@@ -16,7 +16,7 @@ native menu before the Hidemaru-compatible business menus.
 |---|---|---|
 | File | File | Missing partial open, close-and-open, append save/read, save-and-exit variants, reload, properties/rename, project/desktop histories, read-only/view/binary modes |
 | Edit | Edit | Core clipboard/Undo and line editing exist; missing clipboard history, quote copy/paste, restore deletion, kana/CapsLock correction and several selection commands |
-| Convert | Dedicated Convert menu | Upper/lower/title-case are present; missing half/full-width, hiragana/katakana and Tab/space conversions |
+| Convert | Dedicated Convert menu | Case, half/full-width, hiragana/katakana and Tab/space conversions are present | No known compatible gap |
 | View | View | Wrapping, invisibles, splits exist; missing ruler modes, tab-stop display, vertical/column layouts and several pane commands |
 | Insert | Dedicated Insert menu | Date/time and page break are present; missing control-code and true file-content insertion |
 | Search | Dedicated Search menu | Search/replace/grep core exists; missing Hidemaru hierarchy, search flags, highlight/refine variants and edit-mark navigation |
@@ -29,7 +29,7 @@ native menu before the Hidemaru-compatible business menus.
 | Help | Dedicated Help menu plus native About | Documentation entry is present; missing macro help, shortcut reference and update/support entries |
 
 Official menu pages contain roughly 297 command references across these
-menus. MaruEdit currently registers 96 stable command IDs. Duplicate menu
+menus. MaruEdit currently registers 102 stable command IDs. Duplicate menu
 placements mean this is not a one-to-one command count, but it establishes
 that functional parity is not complete.
 
