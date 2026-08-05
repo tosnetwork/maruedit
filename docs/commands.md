@@ -115,6 +115,7 @@ significantly, replace this with a small script that generates it from
 | `highlight.previousLine` | Previous Highlighted Line | Highlight | — | Jumps to the previous syntax/profile-highlighted logical line with wraparound |
 | `highlight.selectLineArea` | Select Highlighted Line Area | Highlight | — | Selects the contiguous highlighted logical-line region at the cursor |
 | `insert.controlCode` | Control Code… | Insert | — | `AppCoordinator.insertControlCode()` |
+| `insert.template` | Template… | Insert | — | Inserts a selected file-type profile template at every active selection |
 | `app.help` | MaruEdit Help | Help | — | `AppCoordinator.showHelp()` |
 | `macro.startRecording` | Start Recording | Macro | — | Starts a fresh CommandRegistry recording |
 | `macro.stopRecording` | Stop Recording | Macro | — | Stops recording while retaining captured commands |

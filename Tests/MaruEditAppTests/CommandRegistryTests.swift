@@ -163,7 +163,7 @@ final class CommandRegistryTests: XCTestCase {
             .editMoveParagraphEnd, .editDeleteWordBackward, .editDeleteWordForward,
             .editTitlecase, .editCompleteWord, .insertDateTime, .insertNewline,
             .insertTab, .insertPageBreak, .insertBlankLine, .insertCurrentFileName,
-            .insertFileContents, .insertControlCode,
+            .insertFileContents, .insertControlCode, .insertTemplate,
             .convertHalfWidth, .convertFullWidth, .convertHiragana, .convertKatakana,
             .convertHalfWidthAlphanumeric, .convertFullWidthAlphanumeric,
             .convertHalfWidthKatakana, .convertFullWidthKatakana,

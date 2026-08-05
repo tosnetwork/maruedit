@@ -260,6 +260,7 @@ extension CommandID {
     static let insertCurrentFileName = CommandID("insert.currentFileName")
     static let insertFileContents = CommandID("insert.fileContents")
     static let insertControlCode = CommandID("insert.controlCode")
+    static let insertTemplate = CommandID("insert.template")
     static let viewToggleTableMode = CommandID("view.toggleTableMode")
     static let viewToggleVerticalLayout = CommandID("view.toggleVerticalLayout")
     static let viewToggleColumnLayout = CommandID("view.toggleColumnLayout")
@@ -681,6 +682,9 @@ enum AppCommands {
         })
         registry.register(CommandDefinition(id: .insertControlCode, title: "Control Code…") {
             $0.coordinator.insertControlCode()
+        })
+        registry.register(CommandDefinition(id: .insertTemplate, title: "Template…") {
+            $0.coordinator.insertTemplate()
         })
         registry.register(CommandDefinition(id: .viewToggleTableMode, title: "CSV/TSV Table Mode") { $0.coordinator.toggleTableMode() })
         registry.register(CommandDefinition(id: .viewToggleVerticalLayout, title: "Vertical Writing Mode") { $0.coordinator.toggleVerticalLayout() })

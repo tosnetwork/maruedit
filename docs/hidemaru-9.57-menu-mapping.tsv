@@ -80,3 +80,40 @@ Macro	Execute macro...	stable	macro.run	Choose and execute a registered macro
 Macro	Register macro...	dynamic	macro.registeredCatalog	Metadata-driven named catalog and shortcut assignments replace fixed Windows slots
 Macro	Macro folder	stable	macro.openFolder	Reveal the permission-scoped macro folder in Finder
 Macro	Macro help	stable	macro.help	Open macro documentation
+Insert	Date and Time	stable	insert.dateTime	Insert locale-formatted current date and time
+Insert	Return	stable	insert.newline	Insert a logical newline at every active selection
+Insert	Form feed	stable	insert.pageBreak	Insert the form-feed control character
+Insert	Insert tab	stable	insert.tab	Insert a literal tab according to Hidemaru tab behavior
+Insert	Duplicate line	stable	edit.duplicateLine	Duplicate current lines or selections in one Undo transaction
+Insert	Insert line	stable	insert.blankLine	Insert an indentation-preserving blank line
+Insert	Insert control code...	stable	insert.controlCode	Insert a validated C0 or DEL control code
+Insert	Insert file...	stable	insert.fileContents	Decode and insert file contents at the cursor
+Insert	Current file name	stable	insert.currentFileName	Insert current file basename
+Insert	Undelete	stable	edit.restoreDeletion	Restore the most recent deletion at active selections
+Insert		stable	insert.template	Official unlabeled Template submenu maps to file-type profile templates
+Other	Configure for each file type...	stable	other.fileTypeProfiles	Edit built-in and user file-type profiles
+Other	Configure for each file type list...	stable	other.fileTypeProfiles	Profile list and editor are one native window
+Other	Environment...	stable	app.settings	Open application environment settings
+Other	Key assignment...	stable	other.keyAssignments	Edit portable key and chord assignments
+Other	Edit user-menu...	stable	view.customizeMenus	Edit menu placement and visibility
+Other	Clear history...	group	other.clearHistory	Categorized find replace grep clipboard file folder workspace and encoding history commands
+Other	Tag jump	stable	navigate.tagJump	Resolve and jump using the project tags index
+Other	Direct tag jump	stable	navigate.directTagJump	Jump directly from the symbol under the cursor
+Other	Back tag jump	stable	navigate.backTagJump	Return through the tag-jump stack
+Other	Insert control code...	stable	insert.controlCode	Duplicate official placement of control-code insertion
+Other	Make tags file...	stable	navigate.generateTags	Generate bounded portable tags atomically
+Other	Execute program...	dynamic	externalCommands.catalog	Permission-scoped external programs stream through the shared Output pane
+Other	Edit spell miss(Z)...	stable	other.correctSpelling	Native AppKit spelling suggestions at the cursor
+Other	Command list...	stable	other.commandList	Searchable complete stable command list
+Other	Browse mode	stable	file.toggleViewMode	Duplicate official placement of document View Mode
+Other	Switch Read-only	stable	file.toggleOverwriteProtection	Duplicate official placement of overwrite prohibition
+Other	(kanji-key switch)	native	macOS.inputSourceMenu	Input-source switching is owned by the macOS Input menu and system shortcut
+Other	(kanji register)	stable	other.japaneseUserDictionary	Open Apple's supported Japanese user-dictionary workflow
+Other	Free cursor mode	stable	other.toggleFreeCursor	Persistent virtual caret columns beyond line endings
+Other	Tategaki mode(Q)	stable	view.toggleVerticalLayout	Native AppKit vertical glyph layout
+Other	Multi column mode(J)	stable	view.toggleColumnLayout	Continuous editable TextKit column flow
+Other	Backup/Restore environment...	group	other.settingsTransfer	Export import and restore-default settings commands
+Other	Version check...	stable	help.checkUpdates	Duplicate official placement of release check
+Other	Help for Maruo Editor	stable	app.help	Duplicate official placement of user guide
+Other	Macro help	stable	help.macros	Duplicate official placement of macro guide
+Other	About Maruo Editor	native	NSApplication.orderFrontStandardAboutPanel	macOS requires About in the application menu

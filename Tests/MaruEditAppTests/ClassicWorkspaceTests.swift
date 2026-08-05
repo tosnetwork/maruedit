@@ -320,6 +320,18 @@ final class ClassicWorkspaceTests: XCTestCase {
         XCTAssertEqual(controller.editorTextForTesting, "  \n  alpha\n")
     }
 
+    func testInsertTemplateUsesEverySelectionAndOneUndoTransaction() {
+        let controller = MainWindowController()
+        controller.prepareUITestDocument(
+            content: "ab", selections: [NSRange(location: 0, length: 0), NSRange(location: 2, length: 0)])
+
+        controller.insertTemplateContentsForTesting("<T>")
+        XCTAssertEqual(controller.editorTextForTesting, "<T>ab<T>")
+
+        controller.macroEditor.textView.undoManager?.undo()
+        XCTAssertEqual(controller.editorTextForTesting, "ab")
+    }
+
     func testControlCodeInsertionAcceptsC0AndDELOnly() async {
         let controller = MainWindowController()
         controller.macroEditor.textView.string = "AB"

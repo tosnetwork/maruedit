@@ -1098,6 +1098,27 @@ final class MainWindowController: NSWindowController,
     }
 
     func insertFileContents() { chooseAndInsertFile(atDocumentEnd: false) }
+    func insertTemplate() {
+        let profiles = documentController.templateProfiles
+        guard !profiles.isEmpty else {
+            showStatusMessage("No File Type Profile templates are configured"); return
+        }
+        let popup = NSPopUpButton(); popup.addItems(withTitles: profiles.map(\.name))
+        popup.frame.size.width = 260
+        let alert = NSAlert(); alert.messageText = "Insert Template"
+        alert.informativeText = "Choose a File Type Profile template to insert at every selection."
+        alert.accessoryView = popup; alert.addButton(withTitle: "Insert"); alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        do {
+            guard let path = profiles[popup.indexOfSelectedItem].settings.templatePath else { return }
+            insertTemplateContents(try ProfileFilePolicy.loadTemplate(path: path))
+        } catch { showStatusMessage(error.localizedDescription, duration: 4) }
+    }
+
+    private func insertTemplateContents(_ text: String) {
+        editorVC.textView.insertText(text, replacementRange: editorVC.textView.selectedRange())
+    }
+    func insertTemplateContentsForTesting(_ text: String) { insertTemplateContents(text) }
     func appendRead() { chooseAndInsertFile(atDocumentEnd: true) }
 
     private func chooseAndInsertFile(atDocumentEnd: Bool) {

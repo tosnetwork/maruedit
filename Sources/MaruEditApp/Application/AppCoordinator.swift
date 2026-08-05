@@ -392,6 +392,7 @@ final class AppCoordinator {
     func previousHighlightedLine()    { ensureWindowControllerReady().previousHighlightedLine() }
     func selectHighlightedLineArea()  { ensureWindowControllerReady().selectHighlightedLineArea() }
     func insertFileContents()         { ensureWindowControllerReady().insertFileContents() }
+    func insertTemplate()             { ensureWindowControllerReady().insertTemplate() }
     func insertControlCode()          { ensureWindowControllerReady().insertControlCode() }
     func selectNextTab()              { ensureWindowControllerReady().selectRelativeTab(1) }
     func selectPreviousTab()          { ensureWindowControllerReady().selectRelativeTab(-1) }

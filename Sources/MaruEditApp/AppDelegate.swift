@@ -548,7 +548,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         insertMenu.addItem(commandItem(.editRestoreDeletion))
         insertMenu.addItem(commandItem(.insertCurrentFileName))
         insertMenu.addItem(commandItem(.insertFileContents))
-        insertMenu.addItem(commandItem(.fileNewFromTemplate))
+        insertMenu.addItem(commandItem(.insertTemplate))
         insertItem.submenu = insertMenu
 
         let highlightItem = NSMenuItem()
