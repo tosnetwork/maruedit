@@ -3,6 +3,10 @@ import MaruEditCore
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+    override init() {
+        NSWindow.allowsAutomaticWindowTabbing = false
+        super.init()
+    }
     private let coordinator = AppCoordinator()
     private let keyBindings = KeyBindingManager(profile: .macOSStandard)
     private lazy var macroPermissionStore: MacroPermissionStore = {
@@ -45,6 +49,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         coordinator.onShowMenuCustomization = { [weak self] in self?.showMenuCustomization() }
+        coordinator.onShowMacroMenu = { [weak self] in
+            guard let self else { return }
+            self.macroManager.menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+        }
         EditorShortcuts.install(
             keyBindings: keyBindings,
             execute: { [coordinator] id in

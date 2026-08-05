@@ -18,6 +18,7 @@ final class AppCoordinator {
     private(set) var preferences: Preferences
     let commandRegistry = CommandRegistry()
     var onShowMenuCustomization: (() -> Void)?
+    var onShowMacroMenu: (() -> Void)?
 
     init(preferencesStore: PreferencesStore? = nil) {
         if let preferencesStore {
@@ -69,6 +70,8 @@ final class AppCoordinator {
         settingsWindowController?.window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
+
+    func showMacroMenu() { onShowMacroMenu?() }
 
     func saveActiveSession() {
         windowController?.saveSession()

@@ -63,7 +63,7 @@ final class CommandRegistryTests: XCTestCase {
         AppCommands.registerAll(in: registry)
 
         let ids: [CommandID] = [
-            .appSettings, .fileNew, .fileNewFromTemplate, .fileOpen, .fileOpenFolder, .fileSave, .fileSaveAs,
+            .appSettings, .appMacroMenu, .fileNew, .fileNewFromTemplate, .fileOpen, .fileOpenFolder, .fileSave, .fileSaveAs,
             .fileCloseTab, .fileClearRecoveryData, .filePageSetup, .filePrint,
             .searchFind, .searchReplace, .searchReplaceAll, .searchFindNext,
             .searchFindPrevious, .searchGoToLine, .searchQuickOpen, .searchGrep,

@@ -35,14 +35,23 @@ final class ClassicWorkspaceTests: XCTestCase {
         let controller = MainWindowController()
         controller.applyPreferences(.defaults)
         XCTAssertEqual(controller.classicToolbarIdentifiersForTesting, [
-            "file.new", "file.open", "file.save", "search.find",
-            "search.findNext", "search.grep", "navigate.toggleBookmark",
+            "file.new", "file.open", "file.save", "file.print",
+            "search.find", "search.replace", "search.findNext", "search.findPrevious",
+            "search.grep", "navigate.toggleBookmark", "navigate.nextBookmark",
+            "search.goToLine", "navigate.toggleFold", "app.macroMenu",
+            "view.toggleSidebar", "app.settings",
         ])
 
         var received: CommandID?
         controller.onClassicToolbarCommand = { received = $0 }
         controller.activateClassicToolbarCommandForTesting(.searchGrep)
         XCTAssertEqual(received, .searchGrep)
+        let labels = descendants(of: try! XCTUnwrap(controller.window?.contentView))
+            .compactMap { $0.accessibilityLabel() }
+        XCTAssertTrue(labels.contains("Maru Classic command toolbar"))
+        XCTAssertTrue(labels.contains("Undo"))
+        XCTAssertTrue(labels.contains("Replace"))
+        XCTAssertTrue(labels.contains("Print"))
     }
 
     func testClassicLightAndModernThemesSwitchWithoutChangingDocument() async {

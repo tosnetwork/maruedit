@@ -5,6 +5,7 @@ import MaruEditCore
 /// ROADMAP.md ADR-006 (`file.new`, `search.find`, ...).
 extension CommandID {
     static let appSettings      = CommandID("app.settings")
+    static let appMacroMenu     = CommandID("app.macroMenu")
     static let fileNew          = CommandID("file.new")
     static let fileNewFromTemplate = CommandID("file.newFromTemplate")
     static let fileOpen         = CommandID("file.open")
@@ -105,6 +106,9 @@ enum AppCommands {
     static func registerAll(in registry: CommandRegistry) {
         registry.register(CommandDefinition(id: .appSettings, title: "Settings...") { ctx in
             ctx.coordinator.showSettings()
+        })
+        registry.register(CommandDefinition(id: .appMacroMenu, title: "Macro Menu") { ctx in
+            ctx.coordinator.showMacroMenu()
         })
         registry.register(CommandDefinition(id: .fileNew, title: "New File") { ctx in
             ctx.coordinator.newDocument()

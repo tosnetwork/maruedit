@@ -77,6 +77,7 @@ final class MainWindowController: NSWindowController,
             backing: .buffered, defer: false
         )
         w.minSize = NSSize(width: 640, height: 420)
+        w.tabbingMode = .disallowed
         w.title = "MaruEdit"
         w.isReleasedWhenClosed = false
         if !w.setFrameUsingName("MainWindow") { w.center() }
@@ -126,6 +127,9 @@ final class MainWindowController: NSWindowController,
         cv.addSubview(statusBar)
 
         classicChrome = ClassicWorkspaceChrome()
+        classicChrome.onCommand = { [weak self] command in
+            self?.onClassicToolbarCommand?(command)
+        }
         classicChrome.autoresizingMask = [.width, .height]
         cv.addSubview(classicChrome)
 
@@ -198,33 +202,22 @@ final class MainWindowController: NSWindowController,
     var classicHeadingForTesting: String { classicChrome.headingText }
     var classicChromeVisibilityForTesting: ClassicChromeOptions { classicChrome.visibilityForTesting }
     var classicToolbarIdentifiersForTesting: [String] {
-        window?.toolbar?.items.map(\.itemIdentifier.rawValue) ?? []
+        classicChrome.toolbarCommandIDs
     }
 
     func activateClassicToolbarCommandForTesting(_ command: CommandID) {
-        onClassicToolbarCommand?(command)
+        classicChrome.activateToolbarCommand(command)
     }
 
     private func configureWorkspaceToolbar() {
         guard let window else { return }
+        // The Classic workspace owns its dense command bar inside the content
+        // area. Removing NSToolbar also clears autosaved oversized toolbar
+        // presentation from older builds.
+        window.toolbar = nil
         if workspaceStyle == .classic {
-            if window.toolbar == nil {
-                let toolbar = NSToolbar(identifier: "MaruClassicToolbar")
-                toolbar.delegate = self
-                toolbar.displayMode = .iconAndLabel
-                toolbar.sizeMode = .small
-                toolbar.allowsUserCustomization = true
-                toolbar.autosavesConfiguration = true
-                window.toolbar = toolbar
-            }
-            window.toolbar?.isVisible = true
-        } else {
-            window.toolbar?.isVisible = false
+            window.titleVisibility = .visible
         }
-    }
-
-    @objc private func runClassicToolbarCommand(_ sender: NSToolbarItem) {
-        onClassicToolbarCommand?(CommandID(sender.itemIdentifier.rawValue))
     }
 
     var effectiveWrapLines: Bool { editorVC.effectiveWrapLines }
@@ -258,25 +251,24 @@ final class MainWindowController: NSWindowController,
         let classicTop = workspaceStyle == .classic ? classicChrome.topChromeHeight : 0
         let classicBottom = workspaceStyle == .classic ? classicChrome.bottomChromeHeight : 0
 
+        classicChrome.externalTopGap = tabH + findH
         findBar.frame = NSRect(
-            x: 0, y: cv.bounds.height - tabH - findH,
+            x: 0, y: cv.bounds.height
+                - (workspaceStyle == .classic ? ClassicWorkspaceChrome.toolbarHeight : 0)
+                - tabH - findH,
             width: cv.bounds.width, height: findH
         )
         outputPane?.frame = NSRect(x: 0, y: statusH, width: cv.bounds.width, height: paneH)
         classicChrome.frame = NSRect(
-            x: editorXForChrome(), y: statusH + paneH,
-            width: max(0, cv.bounds.width - editorXForChrome()),
-            height: cv.bounds.height - statusH - paneH - tabH - findH)
+            x: 0, y: statusH + paneH,
+            width: cv.bounds.width,
+            height: cv.bounds.height - statusH - paneH)
         splitView.frame = NSRect(
             x: 0, y: statusH + paneH + classicBottom,
             width: cv.bounds.width,
             height: cv.bounds.height - tabH - findH - statusH - paneH - classicTop - classicBottom
         )
         updateTabBarFrame()
-    }
-
-    private func editorXForChrome() -> CGFloat {
-        sidebarVC.view.isHidden ? 0 : sidebarVC.view.frame.width + splitView.dividerThickness
     }
 
     private static let outputPaneHeight: CGFloat = 200
@@ -296,7 +288,8 @@ final class MainWindowController: NSWindowController,
         }
         tabBar.frame = NSRect(
             x: editorX,
-            y: cv.bounds.height - tabH,
+            y: cv.bounds.height - tabH
+                - (workspaceStyle == .classic ? ClassicWorkspaceChrome.toolbarHeight : 0),
             width: cv.bounds.width - editorX,
             height: tabH
         )
@@ -2044,53 +2037,3 @@ final class MainWindowController: NSWindowController,
 }
 
 extension MainWindowController: NSSplitViewDelegate {}
-
-extension MainWindowController: NSToolbarDelegate {
-    private static let classicToolbarCommands: [CommandID] = [
-        .fileNew, .fileOpen, .fileSave, .searchFind, .searchFindNext,
-        .searchGrep, .navigateToggleBookmark,
-    ]
-
-    nonisolated func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        MainActor.assumeIsolated {
-            Self.classicToolbarCommands.map { NSToolbarItem.Identifier($0.rawValue) }
-                + [.flexibleSpace, .space]
-        }
-    }
-
-    nonisolated func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        MainActor.assumeIsolated {
-            Self.classicToolbarCommands.map { NSToolbarItem.Identifier($0.rawValue) }
-        }
-    }
-
-    nonisolated func toolbar(
-        _ toolbar: NSToolbar,
-        itemForItemIdentifier identifier: NSToolbarItem.Identifier,
-        willBeInsertedIntoToolbar flag: Bool
-    ) -> NSToolbarItem? {
-        MainActor.assumeIsolated { () -> NSToolbarItem? in
-            guard let command = Self.classicToolbarCommands.first(where: {
-                $0.rawValue == identifier.rawValue
-            }) else { return nil }
-            let metadata: (String, String) = switch command {
-            case .fileNew: ("New", "doc.badge.plus")
-            case .fileOpen: ("Open", "folder")
-            case .fileSave: ("Save", "square.and.arrow.down")
-            case .searchFind: ("Find", "magnifyingglass")
-            case .searchFindNext: ("Next", "arrow.down")
-            case .searchGrep: ("Grep", "text.magnifyingglass")
-            case .navigateToggleBookmark: ("Bookmark", "bookmark")
-            default: (command.rawValue, "gearshape")
-            }
-            let item = NSToolbarItem(itemIdentifier: identifier)
-            item.label = metadata.0
-            item.paletteLabel = metadata.0
-            item.toolTip = metadata.0
-            item.image = NSImage(systemSymbolName: metadata.1, accessibilityDescription: metadata.0)
-            item.target = self
-            item.action = #selector(runClassicToolbarCommand(_:))
-            return item
-        }
-    }
-}

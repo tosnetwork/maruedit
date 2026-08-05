@@ -4,27 +4,32 @@ import MaruEditCore
 /// Compact, original macOS chrome inspired by high-density text-editor
 /// workflows. It contains no copied product art or bitmap assets.
 final class ClassicWorkspaceChrome: NSView {
+    static let toolbarHeight: CGFloat = 32
     static let headingHeight: CGFloat = 22
     static let rulerHeight: CGFloat = 20
     static let commandStripHeight: CGFloat = 24
 
     private let heading = NSTextField(labelWithString: "Untitled")
+    private let toolbar = ClassicToolbarView()
     private let ruler = CharacterRulerView()
     private let commandStrip = ClassicCommandStripView()
+    var externalTopGap: CGFloat = 0 { didSet { needsLayout = true } }
 
     var headingText: String { heading.stringValue }
     var topChromeHeight: CGFloat {
-        (heading.isHidden ? 0 : Self.headingHeight) + (ruler.isHidden ? 0 : Self.rulerHeight)
+        Self.toolbarHeight + (heading.isHidden ? 0 : Self.headingHeight)
+            + (ruler.isHidden ? 0 : Self.rulerHeight)
     }
     var bottomChromeHeight: CGFloat { commandStrip.isHidden ? 0 : Self.commandStripHeight }
 
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
-        layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        layer?.backgroundColor = NSColor.clear.cgColor
         heading.font = .systemFont(ofSize: 11, weight: .medium)
         heading.lineBreakMode = .byTruncatingMiddle
         heading.setAccessibilityLabel("Current document heading")
+        addSubview(toolbar)
         addSubview(heading)
         addSubview(ruler)
         addSubview(commandStrip)
@@ -41,17 +46,30 @@ final class ClassicWorkspaceChrome: NSView {
     override func layout() {
         super.layout()
         let top = bounds.height
+        toolbar.frame = NSRect(
+            x: 0, y: top - Self.toolbarHeight,
+            width: bounds.width, height: Self.toolbarHeight)
         heading.frame = NSRect(
-            x: 8, y: top - Self.headingHeight + 3,
+            x: 8, y: top - Self.toolbarHeight - externalTopGap - Self.headingHeight + 3,
             width: max(0, bounds.width - 16), height: 16)
         ruler.frame = NSRect(
-            x: 0, y: top - (heading.isHidden ? 0 : Self.headingHeight) - Self.rulerHeight,
+            x: 0, y: top - Self.toolbarHeight
+                - externalTopGap - (heading.isHidden ? 0 : Self.headingHeight) - Self.rulerHeight,
             width: bounds.width, height: Self.rulerHeight)
         commandStrip.frame = NSRect(
             x: 0, y: 0, width: bounds.width, height: Self.commandStripHeight)
     }
 
     func updateHeading(_ value: String) { heading.stringValue = value }
+
+    var onCommand: ((CommandID) -> Void)? {
+        get { toolbar.onCommand }
+        set { toolbar.onCommand = newValue; commandStrip.onCommand = newValue }
+    }
+
+    var toolbarCommandIDs: [String] { toolbar.commandIDs.map(\.rawValue) }
+
+    func activateToolbarCommand(_ command: CommandID) { toolbar.activate(command) }
 
     func applyVisibility(_ options: ClassicChromeOptions) {
         heading.isHidden = !options.showHeading
@@ -65,6 +83,181 @@ final class ClassicWorkspaceChrome: NSView {
             showHeading: !heading.isHidden,
             showRuler: !ruler.isHidden,
             showCommandStrip: !commandStrip.isHidden)
+    }
+}
+
+/// Original, compact icon bar modeled after the information density and
+/// command grouping of classic keyboard-oriented editors. It deliberately
+/// uses SF Symbols rather than copying third-party bitmap artwork.
+private final class ClassicToolbarView: NSView {
+    struct Item {
+        let command: CommandID?
+        let title: String
+        let symbol: String
+        let responderAction: Selector?
+    }
+
+    private static let groups: [[Item]] = [
+        [
+            Item(command: .fileNew, title: "New", symbol: "doc.badge.plus", responderAction: nil),
+            Item(command: .fileOpen, title: "Open", symbol: "folder", responderAction: nil),
+            Item(command: .fileSave, title: "Save", symbol: "square.and.arrow.down", responderAction: nil),
+            Item(command: .filePrint, title: "Print", symbol: "printer", responderAction: nil),
+        ],
+        [
+            Item(command: nil, title: "Undo", symbol: "arrow.uturn.backward", responderAction: Selector(("undo:"))),
+            Item(command: nil, title: "Redo", symbol: "arrow.uturn.forward", responderAction: Selector(("redo:"))),
+        ],
+        [
+            Item(command: nil, title: "Cut", symbol: "scissors", responderAction: #selector(NSText.cut(_:))),
+            Item(command: nil, title: "Copy", symbol: "doc.on.doc", responderAction: #selector(NSText.copy(_:))),
+            Item(command: nil, title: "Paste", symbol: "doc.on.clipboard", responderAction: #selector(NSText.paste(_:))),
+        ],
+        [
+            Item(command: .searchFind, title: "Find", symbol: "magnifyingglass", responderAction: nil),
+            Item(command: .searchReplace, title: "Replace", symbol: "arrow.left.arrow.right", responderAction: nil),
+            Item(command: .searchFindNext, title: "Find Next", symbol: "arrow.down", responderAction: nil),
+            Item(command: .searchFindPrevious, title: "Find Previous", symbol: "arrow.up", responderAction: nil),
+            Item(command: .searchGrep, title: "Grep", symbol: "text.magnifyingglass", responderAction: nil),
+        ],
+        [
+            Item(command: .navigateToggleBookmark, title: "Bookmark", symbol: "bookmark", responderAction: nil),
+            Item(command: .navigateNextBookmark, title: "Next Bookmark", symbol: "bookmark.fill", responderAction: nil),
+            Item(command: .searchGoToLine, title: "Go to Line", symbol: "number", responderAction: nil),
+            Item(command: .navigateToggleFold, title: "Toggle Fold", symbol: "chevron.left.forwardslash.chevron.right", responderAction: nil),
+        ],
+        [
+            Item(command: .appMacroMenu, title: "Macro", symbol: "play.rectangle", responderAction: nil),
+            Item(command: .viewToggleSidebar, title: "Utility Pane", symbol: "sidebar.left", responderAction: nil),
+            Item(command: .appSettings, title: "Settings", symbol: "gearshape", responderAction: nil),
+        ],
+    ]
+
+    var onCommand: ((CommandID) -> Void)?
+    private var buttons: [NSButton] = []
+    private var items: [Item] = []
+    private var separators: [NSView] = []
+    private var hiddenKeys: Set<String> = []
+    private static let hiddenDefaultsKey = "MaruClassicToolbarHiddenItems"
+    var commandIDs: [CommandID] { items.compactMap(\.command) }
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
+        hiddenKeys = Set(UserDefaults.standard.stringArray(forKey: Self.hiddenDefaultsKey) ?? [])
+        setAccessibilityRole(.toolbar)
+        setAccessibilityLabel("Maru Classic command toolbar")
+        for (groupIndex, group) in Self.groups.enumerated() {
+            if groupIndex > 0 {
+                let separator = NSView()
+                separator.wantsLayer = true
+                separator.layer?.backgroundColor = NSColor.separatorColor.cgColor
+                separators.append(separator)
+                addSubview(separator)
+            }
+            for item in group {
+                let button = NSButton()
+                button.bezelStyle = .inline
+                button.isBordered = false
+                button.imagePosition = .imageOnly
+                button.imageScaling = .scaleProportionallyDown
+                button.image = NSImage(
+                    systemSymbolName: item.symbol, accessibilityDescription: item.title)
+                button.toolTip = item.title
+                button.setAccessibilityLabel(item.title)
+                button.target = self
+                button.action = #selector(activateButton(_:))
+                button.tag = items.count
+                items.append(item)
+                buttons.append(button)
+                addSubview(button)
+                button.isHidden = hiddenKeys.contains(key(for: item))
+            }
+        }
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func layout() {
+        super.layout()
+        var x: CGFloat = 5
+        var separatorIndex = 0
+        var itemIndex = 0
+        for (groupIndex, group) in Self.groups.enumerated() {
+            if groupIndex > 0 {
+                separators[separatorIndex].frame = NSRect(x: x + 2, y: 6, width: 1, height: 20)
+                separatorIndex += 1
+                x += 8
+            }
+            for _ in group {
+                let button = buttons[itemIndex]
+                button.frame = NSRect(x: x, y: 3, width: 27, height: 26)
+                if !button.isHidden { x += 27 }
+                itemIndex += 1
+            }
+        }
+        let border = NSBezierPath()
+        NSColor.separatorColor.setStroke()
+        border.move(to: NSPoint(x: 0, y: 0.5))
+        border.line(to: NSPoint(x: bounds.maxX, y: 0.5))
+        border.stroke()
+    }
+
+    @objc private func activateButton(_ sender: NSButton) {
+        guard items.indices.contains(sender.tag) else { return }
+        let item = items[sender.tag]
+        if let command = item.command { onCommand?(command) }
+        else if let action = item.responderAction { NSApp.sendAction(action, to: nil, from: sender) }
+    }
+
+    func activate(_ command: CommandID) {
+        guard items.contains(where: { $0.command == command }) else { return }
+        onCommand?(command)
+    }
+
+    override func rightMouseDown(with event: NSEvent) {
+        let menu = NSMenu(title: "Customize Maru Classic Toolbar")
+        for item in items {
+            let key = key(for: item)
+            let menuItem = NSMenuItem(
+                title: item.title, action: #selector(toggleToolbarItem(_:)), keyEquivalent: "")
+            menuItem.target = self
+            menuItem.representedObject = key
+            menuItem.state = hiddenKeys.contains(key) ? .off : .on
+            menu.addItem(menuItem)
+        }
+        menu.addItem(.separator())
+        let restore = NSMenuItem(
+            title: "Restore Default Toolbar", action: #selector(restoreDefaultToolbar),
+            keyEquivalent: "")
+        restore.target = self
+        menu.addItem(restore)
+        NSMenu.popUpContextMenu(menu, with: event, for: self)
+    }
+
+    @objc private func toggleToolbarItem(_ sender: NSMenuItem) {
+        guard let key = sender.representedObject as? String else { return }
+        if hiddenKeys.contains(key) { hiddenKeys.remove(key) } else { hiddenKeys.insert(key) }
+        applyCustomization()
+    }
+
+    @objc private func restoreDefaultToolbar() {
+        hiddenKeys.removeAll()
+        applyCustomization()
+    }
+
+    private func applyCustomization() {
+        for (index, item) in items.enumerated() {
+            buttons[index].isHidden = hiddenKeys.contains(key(for: item))
+        }
+        UserDefaults.standard.set(Array(hiddenKeys).sorted(), forKey: Self.hiddenDefaultsKey)
+        needsLayout = true
+    }
+
+    private func key(for item: Item) -> String {
+        item.command?.rawValue ?? "responder.\(item.title.lowercased())"
     }
 }
 
@@ -113,20 +306,28 @@ private final class CharacterRulerView: NSView {
 }
 
 private final class ClassicCommandStripView: NSView {
-    private let titles = ["F1 Help", "F2 Save", "F3 Find", "F4 Next", "F5 Grep", "F6 Macro"]
-    private var labels: [NSTextField] = []
+    private let items: [(String, CommandID?)] = [
+        ("F1 Help", nil), ("F2 Save", .fileSave), ("F3 Find", .searchFind),
+        ("F4 Next", .searchFindNext), ("F5 Grep", .searchGrep), ("F6 Macro", .appMacroMenu),
+    ]
+    private var buttons: [NSButton] = []
+    var onCommand: ((CommandID) -> Void)?
 
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
         layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
-        for title in titles {
-            let label = NSTextField(labelWithString: title)
-            label.font = .systemFont(ofSize: 10)
-            label.alignment = .center
-            label.setAccessibilityLabel(title)
-            labels.append(label)
-            addSubview(label)
+        for (index, item) in items.enumerated() {
+            let button = NSButton(title: item.0, target: self, action: #selector(activate(_:)))
+            button.font = .systemFont(ofSize: 10)
+            button.alignment = .center
+            button.bezelStyle = .inline
+            button.isBordered = false
+            button.tag = index
+            button.setAccessibilityLabel(item.0)
+            button.isEnabled = item.1 != nil
+            buttons.append(button)
+            addSubview(button)
         }
         setAccessibilityRole(.group)
         setAccessibilityLabel("Favorite command strip")
@@ -137,9 +338,14 @@ private final class ClassicCommandStripView: NSView {
 
     override func layout() {
         super.layout()
-        let width = labels.isEmpty ? 0 : bounds.width / CGFloat(labels.count)
-        for (index, label) in labels.enumerated() {
-            label.frame = NSRect(x: CGFloat(index) * width, y: 4, width: width, height: 16)
+        let width = buttons.isEmpty ? 0 : bounds.width / CGFloat(buttons.count)
+        for (index, button) in buttons.enumerated() {
+            button.frame = NSRect(x: CGFloat(index) * width, y: 1, width: width, height: 22)
         }
+    }
+
+    @objc private func activate(_ sender: NSButton) {
+        guard items.indices.contains(sender.tag), let command = items[sender.tag].1 else { return }
+        onCommand?(command)
     }
 }

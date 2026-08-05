@@ -16,7 +16,7 @@ that would weaken MaruEdit's security model.
 - [x] Favorite/function command strip foundation.
 - [x] Explicit insert-mode status segment.
 - [x] Original Classic Light palette with live switching.
-- [x] Native customizable toolbar backed by Command Registry IDs.
+- [x] Compact customizable in-window toolbar backed by Command Registry IDs. *(Twenty-one small controls in six familiar command groups; right-click customization persists without using copied artwork.)*
 - [x] Files / Outline / Results pane switcher and single-file closed default.
 - [x] User-configurable visibility for heading, ruler and command strip.
 - [x] Visible screenshot verification. *(`screenshots/main-editor.png` was recaptured from the current Maru Classic build on 2026-08-05.)*
