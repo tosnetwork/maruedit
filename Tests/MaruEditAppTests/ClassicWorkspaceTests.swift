@@ -28,6 +28,8 @@ final class ClassicWorkspaceTests: XCTestCase {
             "navigate.tagJump", "highlight.outlineAnalysis", "view.toggleLineNumbers",
         ])
         XCTAssertGreaterThan(controller.statusBarFrameForTesting.minX, 0)
+        XCTAssertTrue(controller.classicFunctionKeyVisualStyleForTesting.flatButtons)
+        XCTAssertEqual(controller.classicFunctionKeyVisualStyleForTesting.separatorSlots, [3, 7])
     }
 
     func testFormerSeparateRowDefaultMigratesToMergedOnlyOnce() {
@@ -95,11 +97,19 @@ final class ClassicWorkspaceTests: XCTestCase {
 
         controller.window?.setContentSize(NSSize(width: 760, height: 520))
         let narrowStatus = controller.statusBarFrameForTesting
-        XCTAssertEqual(controller.statusBarEncodingFrameForTesting?.minX ?? -1, 0, accuracy: 1)
+        let narrowEncoding = try! XCTUnwrap(controller.statusBarEncodingFrameForTesting)
+        let narrowInput = try! XCTUnwrap(controller.statusBarInputModeFrameForTesting)
+        XCTAssertEqual(narrowEncoding.minX, 0, accuracy: 1)
+        XCTAssertGreaterThanOrEqual(narrowInput.minX, narrowEncoding.maxX)
+        XCTAssertLessThanOrEqual(narrowInput.maxX, narrowStatus.width)
 
         controller.window?.setContentSize(NSSize(width: 1_200, height: 760))
         let wideStatus = controller.statusBarFrameForTesting
-        XCTAssertEqual(controller.statusBarEncodingFrameForTesting?.minX ?? -1, 0, accuracy: 1)
+        let wideEncoding = try! XCTUnwrap(controller.statusBarEncodingFrameForTesting)
+        let wideInput = try! XCTUnwrap(controller.statusBarInputModeFrameForTesting)
+        XCTAssertEqual(wideEncoding.minX, 0, accuracy: 1)
+        XCTAssertGreaterThanOrEqual(wideInput.minX, wideEncoding.maxX)
+        XCTAssertLessThanOrEqual(wideInput.maxX, wideStatus.width)
         XCTAssertEqual(wideStatus.width, narrowStatus.width, accuracy: 2,
                        "status fields should retain their content width")
         XCTAssertEqual(wideStatus.minX - narrowStatus.minX, 440, accuracy: 2,

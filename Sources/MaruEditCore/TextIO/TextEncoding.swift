@@ -14,6 +14,7 @@ public struct TextEncoding: RawRepresentable, Codable, Sendable, Hashable {
 
 extension TextEncoding {
     public static let utf8 = TextEncoding(rawValue: "UTF-8")
+    public static let utf7 = TextEncoding(rawValue: "UTF-7")
     public static let utf16LittleEndian = TextEncoding(rawValue: "UTF-16LE")
     public static let utf16BigEndian = TextEncoding(rawValue: "UTF-16BE")
     /// Microsoft's Shift-JIS variant (CP932). This is the common
@@ -38,13 +39,14 @@ extension TextEncoding {
     /// Encodings offered to the user for "Reopen with Encoding" (M2-02),
     /// in menu display order.
     public static let userSelectable: [TextEncoding] = [
-        .utf8, .utf16LittleEndian, .utf16BigEndian,
+        .utf8, .utf7, .utf16LittleEndian, .utf16BigEndian,
         .windows31J, .shiftJISClassic, .eucJP, .iso2022JP
     ]
 
     public var displayName: String {
         switch self {
         case .utf8:             return "UTF-8"
+        case .utf7:             return "UTF-7"
         case .utf16LittleEndian: return "UTF-16 (Little Endian)"
         case .utf16BigEndian:    return "UTF-16 (Big Endian)"
         case .windows31J:        return "Windows-31J (Shift-JIS)"
@@ -63,6 +65,11 @@ extension TextEncoding {
     public var foundationEncoding: String.Encoding? {
         switch self {
         case .utf8:              return .utf8
+        case .utf7:
+            let nsEncoding = CFStringConvertEncodingToNSStringEncoding(
+                CFStringEncoding(0x04000100))
+            guard nsEncoding != kCFStringEncodingInvalidId else { return nil }
+            return String.Encoding(rawValue: nsEncoding)
         case .utf16LittleEndian: return .utf16LittleEndian
         case .utf16BigEndian:    return .utf16BigEndian
         case .eucJP:             return .japaneseEUC

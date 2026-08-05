@@ -22,6 +22,39 @@ final class StatusBarFormatMenuTests: XCTestCase {
         XCTAssertTrue(profileMenu.items.contains { $0.title == "Swift" && $0.action != nil })
     }
 
+    func testInputModeMenuOffersExplicitChoicesAndUpdatesTheDocument() throws {
+        let controller = MainWindowController()
+        var menu = controller.buildInputModeMenu()
+        XCTAssertEqual(menu.items.map(\.title), ["上書きモード", "挿入モード"])
+        XCTAssertEqual(menu.items.first { $0.title == "挿入モード" }?.state, .on)
+
+        let overwrite = try XCTUnwrap(menu.items.first { $0.title == "上書きモード" })
+        _ = overwrite.target?.perform(overwrite.action, with: overwrite)
+        menu = controller.buildInputModeMenu()
+        XCTAssertEqual(menu.items.first { $0.title == "上書きモード" }?.state, .on)
+        XCTAssertEqual(controller.macroEditor.document?.inputMode, .overwrite)
+    }
+
+    func testEncodingMenuIsRichAndCanSetAnUntitledDocumentEncoding() throws {
+        let controller = MainWindowController()
+        let menu = controller.buildEncodingMenu()
+        let encodingItems = menu.items + menu.items.compactMap(\.submenu).flatMap(\.items)
+        for encoding in TextEncoding.userSelectable {
+            XCTAssertTrue(encodingItems.contains { $0.representedObject as? TextEncoding == encoding })
+        }
+        let targetEncoding = try XCTUnwrap(TextEncoding.userSelectable.first {
+            $0 != controller.macroEditor.document?.encoding
+        })
+        let item = try XCTUnwrap(encodingItems.first {
+            $0.representedObject as? TextEncoding == targetEncoding
+        })
+        _ = item.target?.perform(item.action, with: item)
+        XCTAssertEqual(controller.macroEditor.document?.encoding, targetEncoding)
+        let refreshed = controller.buildEncodingMenu()
+        let refreshedItems = refreshed.items + refreshed.items.compactMap(\.submenu).flatMap(\.items)
+        XCTAssertEqual(refreshedItems.first { $0.representedObject as? TextEncoding == targetEncoding }?.state, .on)
+    }
+
     func testProfileMenuAppliesTheCompleteProfileRatherThanOnlySyntax() throws {
         let controller = MainWindowController()
         let swift = try XCTUnwrap(controller.buildLanguageProfileMenu().items.first {

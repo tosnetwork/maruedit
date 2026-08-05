@@ -118,6 +118,9 @@ final class ClassicWorkspaceChrome: NSView {
     var visibleToolbarHeight: CGFloat { toolbar.isHidden ? 0 : Self.toolbarHeight }
     var functionKeyCommandIDs: [String?] { commandStrip.commandIDs }
     var functionKeyCount: Int { commandStrip.visibleSlotCount }
+    var functionKeyVisualStyleForTesting: (flatButtons: Bool, separatorSlots: [Int]) {
+        commandStrip.visualStyleForTesting
+    }
     var keyboardFocusableViews: [NSView] {
         toolbar.keyboardFocusableViews + commandStrip.keyboardFocusableViews
     }
@@ -761,6 +764,7 @@ private final class ClassicCommandStripView: NSView {
     private static let countDefaultsKey = "MaruClassicFunctionKeyCount"
     private var functionKeyLayout = FunctionKeyLayout(assignments: defaultCommands)
     private var buttons: [NSButton] = []
+    private var separators: [NSBox] = []
     private var candidates: [(String, CommandID)] = ClassicCommandStripView.candidates
     var onCommand: ((CommandID) -> Void)?
     var onMergeChange: (() -> Void)?
@@ -804,6 +808,7 @@ private final class ClassicCommandStripView: NSView {
 
     private func rebuildButtons() {
         buttons.forEach { $0.removeFromSuperview() }; buttons.removeAll()
+        separators.forEach { $0.removeFromSuperview() }; separators.removeAll()
         for (index, command) in functionKeyLayout.assignments.prefix(visibleSlotCount).enumerated() {
             let title = command.flatMap(title(for:)) ?? "Unassigned"
             let button = NSButton(title: title, target: self, action: #selector(activate(_:)))
@@ -812,14 +817,19 @@ private final class ClassicCommandStripView: NSView {
             button.bezelStyle = .inline
             button.isBordered = false
             button.wantsLayer = true
-            button.layer?.backgroundColor = NSColor(calibratedWhite: 0.94, alpha: 1).cgColor
-            button.layer?.borderColor = NSColor(calibratedWhite: 0.68, alpha: 1).cgColor
-            button.layer?.borderWidth = 0.5
+            button.layer?.backgroundColor = NSColor.clear.cgColor
+            button.layer?.borderWidth = 0
             button.tag = index
             button.setAccessibilityLabel("F\(index + 1): \(title)")
             button.isEnabled = command != nil
             buttons.append(button)
             addSubview(button)
+            if index == 3 || index == 7 {
+                let separator = NSBox()
+                separator.boxType = .separator
+                separators.append(separator)
+                addSubview(separator)
+            }
         }
         refreshCommandPresentation()
     }
@@ -832,6 +842,10 @@ private final class ClassicCommandStripView: NSView {
         let width = buttons.isEmpty ? 0 : bounds.width / CGFloat(buttons.count)
         for (index, button) in buttons.enumerated() {
             button.frame = NSRect(x: CGFloat(index) * width, y: 1, width: width, height: 22)
+        }
+        for (separatorIndex, slot) in [3, 7].filter({ $0 < buttons.count }).enumerated() {
+            separators[separatorIndex].frame = NSRect(
+                x: buttons[slot].frame.minX, y: 3, width: 1, height: 18)
         }
     }
 
@@ -951,6 +965,11 @@ private final class ClassicCommandStripView: NSView {
             button.state = state.selected ? .on : .off
             button.alphaValue = state.enabled ? 1 : 0.42
         }
+    }
+
+    var visualStyleForTesting: (flatButtons: Bool, separatorSlots: [Int]) {
+        (buttons.allSatisfy { !$0.isBordered && ($0.layer?.borderWidth ?? 0) == 0 },
+         [3, 7].filter { $0 < buttons.count })
     }
 
     func presentation(at index: Int) -> (enabled: Bool, selected: Bool)? {

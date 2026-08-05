@@ -214,6 +214,12 @@ Gate notes:
   transitions, BOX/multi-selection, Unicode and legacy encodings, line endings,
   profile changes and large-file modes, the existing marked-text IME suite, and
   executable VoiceOver Press actions for all twelve interactive fields.
+- The merged bottom row uses flat, borderless command cells. Its only group
+  dividers are immediately before Copy Word and Paste; the encoding and input
+  mode fields remain recessed status selectors. Encoding opens the complete
+  classic grouped encoding menu: automatic re-detection, common Japanese and
+  Unicode encodings, an Other submenu, CR+LF/CR/LF and BOM controls. Input mode
+  opens explicit Overwrite/Insert choices with a checkmark on the active mode.
 - Gate 5 has all eight screenshot baselines, an explicit wrapping forward/reverse
   focus loop across toolbar, F-key strip, Find/Replace, tabs, editor, sidebar,
   output and status fields, first-responder verification for every member, and

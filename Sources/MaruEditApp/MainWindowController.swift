@@ -314,6 +314,9 @@ final class MainWindowController: NSWindowController,
     var isFunctionKeyStripMergedForTesting: Bool { classicChrome.isFunctionKeyStripMerged }
     var classicFunctionKeyCommandsForTesting: [String?] { classicChrome.functionKeyCommandIDs }
     var classicFunctionKeyCountForTesting: Int { classicChrome.functionKeyCount }
+    var classicFunctionKeyVisualStyleForTesting: (flatButtons: Bool, separatorSlots: [Int]) {
+        classicChrome.functionKeyVisualStyleForTesting
+    }
     func classicToolbarPresentationForTesting(
         _ command: CommandID
     ) -> (enabled: Bool, selected: Bool)? {
@@ -384,6 +387,7 @@ final class MainWindowController: NSWindowController,
     }
     var statusBarFrameForTesting: NSRect { statusBar.frame }
     var statusBarEncodingFrameForTesting: NSRect? { statusBar.frame(for: .encoding) }
+    var statusBarInputModeFrameForTesting: NSRect? { statusBar.frame(for: .inputMode) }
     var classicChromeFrameForTesting: NSRect { classicChrome.frame }
     func performClassicToolbarSearchForTesting(_ pattern: String) {
         classicChrome.performToolbarSearchForTesting(pattern)
@@ -2366,33 +2370,125 @@ final class MainWindowController: NSWindowController,
     /// see docs/commands.md.
     func buildEncodingMenu() -> NSMenu {
         let menu = NSMenu()
-        let recent = RecentEncodings.encodings
-        if !recent.isEmpty {
-            let header = NSMenuItem(title: "Recent", action: nil, keyEquivalent: "")
-            header.isEnabled = false
-            menu.addItem(header)
-            for encoding in recent {
-                menu.addItem(encodingMenuItem(for: encoding))
-            }
-            menu.addItem(.separator())
+        let automatic = NSMenuItem(
+            title: "自動判定で読み込みしなおし（A）",
+            action: #selector(didSelectAutomaticEncodingDetection(_:)), keyEquivalent: "")
+        automatic.target = self
+        automatic.isEnabled = curDoc?.fileURL != nil
+        menu.addItem(automatic)
+        menu.addItem(.separator())
+
+        let common: [(String, TextEncoding)] = [
+            ("日本語（Shift-JIS）", .windows31J),
+            ("日本語（EUC）", .eucJP),
+            ("日本語（JIS）", .iso2022JP),
+            ("Unicode（UTF-16）", .utf16LittleEndian),
+            ("Unicode（UTF-16, Big-Endian）", .utf16BigEndian),
+            ("Unicode（UTF-8）", .utf8),
+            ("Unicode（UTF-7）", .utf7),
+        ]
+        for (title, encoding) in common {
+            menu.addItem(encodingMenuItem(for: encoding, title: title))
         }
-        for encoding in TextEncoding.userSelectable {
-            menu.addItem(encodingMenuItem(for: encoding))
+
+        let other = NSMenuItem(title: "その他（D）", action: nil, keyEquivalent: "")
+        let otherMenu = NSMenu(title: other.title)
+        let commonEncodings = Set(common.map(\.1))
+        for encoding in TextEncoding.userSelectable where !commonEncodings.contains(encoding) {
+            otherMenu.addItem(encodingMenuItem(for: encoding))
         }
+        for encoding in RecentEncodings.encodings where !commonEncodings.contains(encoding)
+            && !otherMenu.items.contains(where: { $0.representedObject as? TextEncoding == encoding }) {
+            otherMenu.addItem(encodingMenuItem(for: encoding))
+        }
+        other.submenu = otherMenu
+        menu.addItem(other)
+        menu.addItem(.separator())
+
+        for (title, value) in [("改行=CR+LF", "crlf"), ("改行=CR", "cr"), ("改行=LF", "lf")] {
+            let item = NSMenuItem(
+                title: title, action: #selector(didSelectLineEnding(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = value
+            let active = curDoc?.lineEnding.displayName
+            item.state = active == (value == "crlf" ? "CRLF" : value.uppercased()) ? .on : .off
+            menu.addItem(item)
+        }
+        let bom = NSMenuItem(title: "BOM", action: #selector(didToggleEncodingMenuBOM(_:)), keyEquivalent: "")
+        bom.target = self
+        bom.state = curDoc?.hasByteOrderMark == true ? .on : .off
+        bom.isEnabled = curDoc?.encoding.byteOrderMark != nil
+        menu.addItem(bom)
         return menu
     }
 
-    private func encodingMenuItem(for encoding: TextEncoding) -> NSMenuItem {
-        let mi = NSMenuItem(title: encoding.displayName, action: #selector(didSelectEncodingMenuItem(_:)), keyEquivalent: "")
+    private func encodingMenuItem(for encoding: TextEncoding, title: String? = nil) -> NSMenuItem {
+        let mi = NSMenuItem(title: title ?? encoding.displayName, action: #selector(didSelectEncodingMenuItem(_:)), keyEquivalent: "")
         mi.target = self
         mi.representedObject = encoding
         mi.state = (curDoc?.encoding == encoding) ? .on : .off
         return mi
     }
 
+    @objc private func didToggleEncodingMenuBOM(_ sender: NSMenuItem) {
+        guard let doc = curDoc, doc.encoding.byteOrderMark != nil else { return }
+        let proxy = NSMenuItem()
+        proxy.representedObject = NSNumber(value: !doc.hasByteOrderMark)
+        didSelectByteOrderMark(proxy)
+    }
+
+    @objc private func didSelectAutomaticEncodingDetection(_ sender: NSMenuItem) {
+        guard let doc = curDoc, doc.fileURL != nil else { return }
+        if doc.isModified {
+            let alert = NSAlert()
+            alert.messageText = "Reload (doc.displayName)?"
+            alert.informativeText = "Automatic encoding detection reloads the file and discards unsaved changes."
+            alert.addButton(withTitle: "Reload")
+            alert.addButton(withTitle: "Cancel")
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+        }
+        do {
+            try doc.reopenWithAutomaticEncodingDetection()
+            editorVC.reloadCurrentDocument()
+            refreshTabs(); refreshStatus()
+            scheduleSessionSave()
+        } catch {
+            NSAlert(error: error).runModal()
+        }
+    }
+
     @objc private func didSelectEncodingMenuItem(_ sender: NSMenuItem) {
-        guard let encoding = sender.representedObject as? TextEncoding else { return }
-        reopenCurrentDocument(with: encoding)
+        guard let encoding = sender.representedObject as? TextEncoding,
+              let document = curDoc else { return }
+        if document.fileURL != nil {
+            reopenCurrentDocument(with: encoding)
+        } else {
+            document.encoding = encoding
+            RecentEncodings.add(encoding)
+            refreshStatus()
+            scheduleSessionSave()
+        }
+    }
+
+    func buildInputModeMenu() -> NSMenu {
+        let menu = NSMenu()
+        for (title, mode) in [("上書きモード", EditorInputMode.overwrite),
+                              ("挿入モード", EditorInputMode.insert)] {
+            let item = NSMenuItem(title: title, action: #selector(didSelectInputMode(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = mode.rawValue
+            item.state = curDoc?.inputMode == mode ? .on : .off
+            menu.addItem(item)
+        }
+        return menu
+    }
+
+    @objc private func didSelectInputMode(_ sender: NSMenuItem) {
+        guard let rawValue = sender.representedObject as? String,
+              let mode = EditorInputMode(rawValue: rawValue) else { return }
+        editorVC.setInputMode(mode)
+        refreshStatus()
+        scheduleSessionSave()
     }
 
     func statusBar(
@@ -2411,7 +2507,7 @@ final class MainWindowController: NSWindowController,
             alert.addButton(withTitle: "OK")
             alert.beginSheetModal(for: window!); return
         case .inputMode:
-            toggleInputMode(); return
+            menu = buildInputModeMenu()
         case .layoutMode:
             menu = buildLayoutModeMenu()
         case .fontSize:
@@ -2421,7 +2517,6 @@ final class MainWindowController: NSWindowController,
         case .largeFileMode:
             menu = buildLargeFileModeMenu()
         case .encoding:
-            guard curDoc?.fileURL != nil else { return }
             menu = buildEncodingMenu()
         case .byteOrderMark: menu = buildByteOrderMarkMenu()
         case .lineEnding: menu = buildLineEndingMenu()

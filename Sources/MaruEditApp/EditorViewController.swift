@@ -1197,7 +1197,12 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
 
     func toggleInputMode() {
         guard let document else { return }
-        document.inputMode = document.inputMode == .insert ? .overwrite : .insert
+        setInputMode(document.inputMode == .insert ? .overwrite : .insert)
+    }
+
+    func setInputMode(_ mode: EditorInputMode) {
+        guard let document else { return }
+        document.inputMode = mode
         emitCursor()
     }
 

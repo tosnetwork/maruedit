@@ -28,12 +28,28 @@ final class MainWindowControllerEncodingTests: XCTestCase {
 
         let menu = wc.buildEncodingMenu()
         let titles = menu.items.compactMap { $0.representedObject as? TextEncoding }
+            + menu.items.compactMap(\.submenu).flatMap(\.items)
+                .compactMap { $0.representedObject as? TextEncoding }
         for encoding in TextEncoding.userSelectable {
             XCTAssertTrue(titles.contains(encoding), "\(encoding.rawValue) missing from the menu")
         }
 
         let checkedItem = menu.items.first { ($0.representedObject as? TextEncoding) == .eucJP }
         XCTAssertEqual(checkedItem?.state, .on, "the currently-active encoding should be checked")
+    }
+
+    func testStatusEncodingMenuHasClassicGroupsAndFormatActions() {
+        let wc = MainWindowController()
+        let menu = wc.buildEncodingMenu()
+        XCTAssertEqual(menu.items.filter { !$0.isSeparatorItem }.map(\.title), [
+            "自動判定で読み込みしなおし（A）",
+            "日本語（Shift-JIS）", "日本語（EUC）", "日本語（JIS）",
+            "Unicode（UTF-16）", "Unicode（UTF-16, Big-Endian）",
+            "Unicode（UTF-8）", "Unicode（UTF-7）", "その他（D）",
+            "改行=CR+LF", "改行=CR", "改行=LF", "BOM",
+        ])
+        XCTAssertNotNil(menu.items.first { $0.title == "その他（D）" }?.submenu)
+        XCTAssertFalse(menu.items.first?.isEnabled ?? true, "automatic reload requires a file")
     }
 
     func testReopenCurrentDocumentWithEncodingUpdatesDocumentAndStatusBar() async throws {

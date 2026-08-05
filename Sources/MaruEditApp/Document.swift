@@ -237,6 +237,31 @@ final class Document: @unchecked Sendable {
         markSaved()
     }
 
+    /// Re-reads the file using the same automatic detection path as a
+    /// first open. Callers resolve unsaved changes before invoking this.
+    func reopenWithAutomaticEncodingDetection() throws {
+        guard let url = fileURL else { return }
+        let size = try LargeFilePolicy.fileSize(at: url)
+        guard LargeFilePolicy.recommendation(forByteCount: size) != .tooLarge else {
+            throw DocumentOpenError.fileTooLarge(
+                size: size, maximum: LargeFilePolicy.maximumMaterializedSize)
+        }
+        let loaded = try TextFileLoader.load(contentsOf: url)
+        content = LineEndingDetector.normalize(loaded.content)
+        encoding = loaded.encoding
+        hasByteOrderMark = loaded.hasByteOrderMark
+        lineEnding = LineEndingDetector.detect(loaded.content)
+        fileIdentity = loaded.fileIdentity
+        lastKnownModificationDate = loaded.modificationDate
+        posixPermissions = loaded.posixPermissions
+        isReadOnly = largeFileMode == .readOnly
+            || !FileManager.default.isWritableFile(atPath: url.path)
+        cursorPosition = 0
+        scrollOffset = .zero
+        cachedTextStorage = nil
+        markSaved()
+    }
+
     /// Checks whether `content` can be losslessly saved in `encoding`
     /// without writing anything (ROADMAP.md M2-04). `save()` calls this
     /// itself, but `MainWindowController` also calls it directly to show

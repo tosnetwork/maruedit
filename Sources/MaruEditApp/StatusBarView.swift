@@ -143,7 +143,8 @@ final class StatusBarView: NSView {
         applyConfiguredVisibility()
         let visibleRight = rightFields.filter { !$0.1.isHidden }
         let rightWidth = visibleRight.reduce(CGFloat.zero) { result, item in
-            result + max(0, item.1.intrinsicContentSize.width)
+            item.1.sizeToFit()
+            return result + max(0, item.1.frame.width)
         } + CGFloat(visibleRight.count * 14)
         let visibleLeft = leftFields.filter { !$0.1.isHidden }
         let leftWidth = visibleLeft.reduce(CGFloat.zero) { $0 + $1.2 }
@@ -182,6 +183,11 @@ final class StatusBarView: NSView {
         super.layout()
         applyConfiguredVisibility()
         let midY = (bounds.height - 16) / 2
+        if isMergedMode {
+            layoutMergedFields(midY: midY)
+            window?.invalidateCursorRects(for: self)
+            return
+        }
         var right = bounds.width - 14
         for (field, label) in rightFields.reversed() where !label.isHidden {
             guard configuredFields.contains(field) else { continue }
@@ -212,6 +218,23 @@ final class StatusBarView: NSView {
             }
         }
         window?.invalidateCursorRects(for: self)
+    }
+
+    private func layoutMergedFields(midY: CGFloat) {
+        messageLabel.isHidden = true
+        var x = CGFloat.zero
+        for (_, label, width) in leftFields where !label.isHidden {
+            guard x + width <= bounds.width else { label.isHidden = true; continue }
+            label.frame = NSRect(x: x, y: midY, width: width, height: 16)
+            x += width + 4
+        }
+        for (_, label) in rightFields where !label.isHidden {
+            label.sizeToFit()
+            let width = ceil(label.frame.width)
+            guard x + width <= bounds.width else { label.isHidden = true; continue }
+            label.frame = NSRect(x: x, y: midY, width: width, height: 16)
+            x += width + 14
+        }
     }
 
     private func setup() {
