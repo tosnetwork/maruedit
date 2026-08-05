@@ -61,6 +61,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             showStatus: { [coordinator] message, duration in
                 coordinator.showStatusMessage(message, duration: duration)
             })
+        macroManager.executionDidStart = { [coordinator] _ in
+            coordinator.updateMacroActivity(isRunning: true)
+        }
+        macroManager.executionDidFinish = { [coordinator] _, _ in
+            coordinator.updateMacroActivity(isRunning: false)
+        }
         macroManager.reload()
         externalCommandManager.reload()
         buildMenu()

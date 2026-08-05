@@ -8,7 +8,7 @@ enum StatusBarControl: CaseIterable {
 
 enum StatusBarField: String, CaseIterable {
     case cursorPosition, selection, indentation, inputMode, totals, characterCode, fontSize
-    case capsLock, readOnly, largeFileMode, lineEnding, byteOrderMark, encoding, languageProfile
+    case macroActivity, capsLock, readOnly, largeFileMode, lineEnding, byteOrderMark, encoding, languageProfile
 
     var title: String {
         switch self {
@@ -19,6 +19,7 @@ enum StatusBarField: String, CaseIterable {
         case .totals: "Total Lines and Characters"
         case .characterCode: "Character Code"
         case .fontSize: "Font Size"
+        case .macroActivity: "Macro Activity"
         case .capsLock: "Caps Lock"
         case .readOnly: "Read-Only State"
         case .largeFileMode: "Large File Mode"
@@ -46,6 +47,7 @@ final class StatusBarView: NSView {
     private let totalsLabel = NSTextField(labelWithString: "1 lines · 0 chars")
     private let characterCodeLabel = NSTextField(labelWithString: "")
     private let fontSizeLabel = NSTextField(labelWithString: "13 pt")
+    private let macroActivityLabel = NSTextField(labelWithString: "MACRO")
     private let capsLockLabel = NSTextField(labelWithString: "CAPS")
     private let langLabel = NSTextField(labelWithString: "Plain Text")
     private let encLabel = NSTextField(labelWithString: "UTF-8")
@@ -59,6 +61,7 @@ final class StatusBarView: NSView {
     private var configuredFields = Set(StatusBarField.allCases)
     private var isReadOnly = false
     private var isCapsLockEnabled = false
+    private var isMacroRunning = false
     private var largeFileMode: LargeFileMode = .normal
     private static let fieldsDefaultsKey = "MaruClassicStatusBarFields"
 
@@ -78,6 +81,9 @@ final class StatusBarView: NSView {
     }
     var configuredFieldIDs: Set<String> { Set(configuredFields.map(\.rawValue)) }
     var displayedCapsLockText: String? { capsLockLabel.isHidden ? nil : capsLockLabel.stringValue }
+    var displayedMacroActivityText: String? {
+        macroActivityLabel.isHidden ? nil : macroActivityLabel.stringValue
+    }
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -121,7 +127,8 @@ final class StatusBarView: NSView {
     private func setup() {
         let labels = [lineColLabel, selectionLabel, indentLabel, inputModeLabel,
                       totalsLabel, characterCodeLabel, fontSizeLabel, langLabel, encLabel,
-                      bomLabel, lineEndingLabel, capsLockLabel, readOnlyLabel, largeFileModeLabel]
+                      bomLabel, lineEndingLabel, macroActivityLabel, capsLockLabel,
+                      readOnlyLabel, largeFileModeLabel]
         for label in labels {
             label.font = Theme.uiFontSmall
             label.textColor = Theme.statusText
@@ -157,6 +164,10 @@ final class StatusBarView: NSView {
         capsLockLabel.setAccessibilityLabel("Caps Lock enabled")
         capsLockLabel.toolTip = "Caps Lock is enabled"
         capsLockLabel.isHidden = true
+        macroActivityLabel.textColor = .systemRed
+        macroActivityLabel.setAccessibilityLabel("Macro running")
+        macroActivityLabel.toolTip = "A macro is currently running"
+        macroActivityLabel.isHidden = true
         largeFileModeLabel.textColor = .systemOrange
         largeFileModeLabel.setAccessibilityRole(.button)
         largeFileModeLabel.setAccessibilityLabel(SettingsLocalization.text("largeFileMode"))
@@ -281,6 +292,11 @@ final class StatusBarView: NSView {
         applyConfiguredVisibility(); needsLayout = true
     }
 
+    func updateMacroActivity(isRunning: Bool) {
+        self.isMacroRunning = isRunning
+        applyConfiguredVisibility(); needsLayout = true
+    }
+
     func updateLargeFileMode(_ mode: LargeFileMode) {
         largeFileMode = mode
         largeFileModeLabel.stringValue = SettingsLocalization.text(
@@ -371,7 +387,8 @@ final class StatusBarView: NSView {
     ]}
 
     private var rightFields: [(StatusBarField, NSTextField)] {[
-        (.capsLock, capsLockLabel), (.readOnly, readOnlyLabel),
+        (.macroActivity, macroActivityLabel), (.capsLock, capsLockLabel),
+        (.readOnly, readOnlyLabel),
         (.largeFileMode, largeFileModeLabel),
         (.lineEnding, lineEndingLabel), (.byteOrderMark, bomLabel),
         (.encoding, encLabel), (.languageProfile, langLabel),
@@ -380,7 +397,8 @@ final class StatusBarView: NSView {
     private func applyConfiguredVisibility() {
         for (field, label, _) in leftFields { label.isHidden = !configuredFields.contains(field) }
         for (field, label) in rightFields {
-            let stateAllowsVisibility = field == .capsLock ? isCapsLockEnabled
+            let stateAllowsVisibility = field == .macroActivity ? isMacroRunning
+                : field == .capsLock ? isCapsLockEnabled
                 : field == .readOnly ? isReadOnly
                 : field == .largeFileMode ? largeFileMode != .normal : true
             label.isHidden = !configuredFields.contains(field) || !stateAllowsVisibility

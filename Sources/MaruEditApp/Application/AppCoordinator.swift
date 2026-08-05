@@ -16,6 +16,7 @@ final class AppCoordinator {
     private let preferencesStore: PreferencesStore
     private let fileTypeProfileStore = FileTypeProfileStore()
     private(set) var preferences: Preferences
+    private var activeMacroCount = 0
     let commandRegistry = CommandRegistry()
     var onShowMenuCustomization: (() -> Void)?
     var onShowMacroMenu: (() -> Void)?
@@ -115,6 +116,10 @@ final class AppCoordinator {
     func clearSearchHistory()          { ensureWindowControllerReady().clearSearchHistory() }
     func showStatusMessage(_ message: String, duration: TimeInterval = 1.5) {
         ensureWindowControllerReady().showStatusMessage(message, duration: duration)
+    }
+    func updateMacroActivity(isRunning: Bool) {
+        activeMacroCount = max(0, activeMacroCount + (isRunning ? 1 : -1))
+        ensureWindowControllerReady().updateMacroActivity(isRunning: activeMacroCount > 0)
     }
     func showMacroError(name: String, message: String, timestamp: Date = Date()) {
         ensureWindowControllerReady().appendMacroError(name: name, message: message, timestamp: timestamp)

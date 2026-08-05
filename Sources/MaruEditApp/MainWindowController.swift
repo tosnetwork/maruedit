@@ -187,6 +187,10 @@ final class MainWindowController: NSWindowController,
         statusBar.showTransientMessage(message, duration: duration)
     }
 
+    func updateMacroActivity(isRunning: Bool) {
+        statusBar.updateMacroActivity(isRunning: isRunning)
+    }
+
     func applyPreferences(_ preferences: Preferences) {
         Theme.activeName = preferences.theme
         workspaceStyle = preferences.workspaceStyle

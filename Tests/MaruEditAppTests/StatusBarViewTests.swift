@@ -146,6 +146,19 @@ final class StatusBarViewTests: XCTestCase {
         status.updateCapsLock(true)
         XCTAssertNil(status.displayedCapsLockText)
     }
+
+    func testMacroActivityReflectsRealExecutionLifecycleAndConfiguration() async {
+        let status = StatusBarView(frame: NSRect(x: 0, y: 0, width: 1100, height: 24))
+        status.updateMacroActivity(isRunning: true)
+        status.layoutSubtreeIfNeeded()
+        XCTAssertEqual(status.displayedMacroActivityText, "MACRO")
+        status.updateMacroActivity(isRunning: false)
+        XCTAssertNil(status.displayedMacroActivityText)
+
+        status.setConfiguredFieldsForTesting([.cursorPosition])
+        status.updateMacroActivity(isRunning: true)
+        XCTAssertNil(status.displayedMacroActivityText)
+    }
 }
 
 

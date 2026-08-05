@@ -65,7 +65,7 @@ that functional parity is not complete.
 | File-type profile | Display; click list | Display; click language/profile menu | Partial |
 | CapsLock | Optional field | Conditional configurable CAPS indicator | Present |
 | Vertical/horizontal and column count | Display/click | Missing; vertical mode is not production-ready | Missing |
-| Macro recording | Conditional state/click | Missing | Missing |
+| Macro recording | Conditional state/click | Macro execution activity is shown; command recording is not implemented | Partial |
 | Large-file mode | No direct equivalent | MaruEdit-specific safety field | Native addition |
 | Configurable fields/clickability | Supported | Right-click field selection; interactive fields remain clickable | Present |
 | Merge with function-key strip | Supported | Separate rows | Missing |

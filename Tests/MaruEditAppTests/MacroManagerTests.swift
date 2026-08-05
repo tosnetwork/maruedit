@@ -28,12 +28,15 @@ final class MacroManagerTests: XCTestCase {
         XCTAssertTrue(manager.menu.items.contains { $0.title == "Upper Selection" })
 
         let finished = expectation(description: "macro executed")
+        var startedID: CommandID?
+        manager.executionDidStart = { startedID = $0 }
         manager.executionDidFinish = { _, result in
             if case .failure(let error) = result { XCTFail("Unexpected macro failure: \(error)") }
             finished.fulfill()
         }
         manager.runForTesting(macro.id)
         await fulfillment(of: [finished], timeout: 2)
+        XCTAssertEqual(startedID, macro.id)
         XCTAssertEqual(coordinator.ensureWindowControllerReady().macroEditor.textView.string, "UP")
 
         manager.toggleForTesting(macro.id)

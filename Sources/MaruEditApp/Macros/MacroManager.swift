@@ -19,6 +19,7 @@ final class MacroManager: NSObject {
     private(set) var catalog = MacroCatalog(macros: [], issues: [])
     private(set) var errors: [MacroErrorEntry] = []
     var executionDidFinish: ((CommandID, Result<MacroRunResult, MacroExecutionError>) -> Void)?
+    var executionDidStart: ((CommandID) -> Void)?
     private var registeredIDs: Set<CommandID> = []
     private(set) lazy var menu = NSMenu(title: "Macro")
     private var permissionWindow: MacroPermissionWindowController?
@@ -75,6 +76,7 @@ final class MacroManager: NSObject {
                 message: message, stack: nil, line: nil, column: nil))))
             return
         }
+        executionDidStart?(macro.id)
         engine.run(macro.source, host: coordinator.makeMacroHost(
             permissions: authorization.permissions)) { [self] result in
             Task { @MainActor in
