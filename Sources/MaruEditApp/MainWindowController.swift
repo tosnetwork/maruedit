@@ -224,6 +224,7 @@ final class MainWindowController: NSWindowController,
 
     var isClassicWorkspace: Bool { workspaceStyle == .classic }
     var isClassicChromeVisibleForTesting: Bool { !classicChrome.isHidden }
+    var isClassicToolbarVisibleForTesting: Bool { classicChrome.isToolbarVisible }
     var classicHeadingForTesting: String { classicChrome.headingText }
     var classicChromeVisibilityForTesting: ClassicChromeOptions { classicChrome.visibilityForTesting }
     var classicRulerStateForTesting: (origin: CGFloat, column: Int) { classicChrome.rulerStateForTesting }
@@ -351,7 +352,7 @@ final class MainWindowController: NSWindowController,
         classicChrome.externalTopGap = topTabH + findH
         findBar.frame = NSRect(
             x: 0, y: cv.bounds.height
-                - (workspaceStyle == .classic ? ClassicWorkspaceChrome.toolbarHeight : 0)
+                - (workspaceStyle == .classic ? classicChrome.visibleToolbarHeight : 0)
                 - topTabH - findH,
             width: cv.bounds.width, height: findH
         )
@@ -388,7 +389,7 @@ final class MainWindowController: NSWindowController,
         tabBar.frame = NSRect(
             x: editorX,
             y: tabBar.position == .top
-                ? cv.bounds.height - tabH - (workspaceStyle == .classic ? ClassicWorkspaceChrome.toolbarHeight : 0)
+                ? cv.bounds.height - tabH - (workspaceStyle == .classic ? classicChrome.visibleToolbarHeight : 0)
                 : (isStatusBarVisible ? 24 : 0),
             width: cv.bounds.width - editorX,
             height: tabH
@@ -1916,6 +1917,31 @@ final class MainWindowController: NSWindowController,
         statusBar.isHidden = !isStatusBarVisible
         layoutContentViews()
     }
+
+    func toggleSpellChecking() {
+        let enabled = !editorVC.textView.isContinuousSpellCheckingEnabled
+        curDoc?.spellCheckingOverride = enabled
+        editorVC.textView.isContinuousSpellCheckingEnabled = enabled
+        showStatusMessage(enabled ? "Automatic spell checking on" : "Automatic spell checking off")
+    }
+
+    func showCharacterCode() {
+        let alert = NSAlert()
+        alert.messageText = "Character Code"
+        alert.informativeText = statusBar.characterCodeDetail
+        alert.addButton(withTitle: "OK")
+        if let window { alert.beginSheetModal(for: window) }
+    }
+
+    func showCharacterCount() { showCharacterCountConfiguration() }
+
+    func redrawEditor() {
+        editorVC.redraw()
+        classicChrome.needsDisplay = true
+        statusBar.needsDisplay = true
+    }
+
+    func toggleFullScreen() { window?.toggleFullScreen(nil) }
 
     var isStatusBarVisibleForTesting: Bool { isStatusBarVisible }
     var isOutputPaneVisibleForTesting: Bool { outputPane?.isHidden == false }

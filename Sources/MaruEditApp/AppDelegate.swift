@@ -388,6 +388,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // View menu
         let viewItem = NSMenuItem()
         let viewMenu = NSMenu(title: "View")
+        viewMenu.addItem(commandItem(.viewToggleToolbar))
         viewMenu.addItem(commandItem(.viewToggleSidebar))
         viewMenu.addItem(commandItem(.viewToggleWrap))
         viewMenu.addItem(commandItem(.viewToggleTableMode))
@@ -414,6 +415,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         invisiblesItem.submenu = invisiblesMenu
         invisiblesItem.identifier = NSUserInterfaceItemIdentifier("menu.group.invisibles")
         viewMenu.addItem(invisiblesItem)
+        viewMenu.addItem(commandItem(.viewToggleSpellChecking))
         let tabWidthItem = NSMenuItem(title: "Tab Width", action: nil, keyEquivalent: "")
         let tabWidthMenu = NSMenu(title: "Tab Width")
         tabWidthMenu.addItem(commandItem(.viewTabWidth2))
@@ -424,6 +426,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         viewMenu.addItem(tabWidthItem)
         viewMenu.addItem(.separator())
         viewMenu.addItem(commandItem(.viewShowFonts))
+        viewMenu.addItem(commandItem(.viewShowCharacterCode))
+        viewMenu.addItem(commandItem(.viewShowCharacterCount))
+        viewMenu.addItem(commandItem(.viewRedraw))
+        viewMenu.addItem(commandItem(.viewToggleFullScreen))
         viewMenu.addItem(.separator())
         viewMenu.addItem(commandItem(.viewCustomizeMenus))
         viewMenu.addItem(commandItem(.viewSplitVertical))

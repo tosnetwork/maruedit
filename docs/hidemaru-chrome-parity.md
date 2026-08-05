@@ -18,7 +18,7 @@ passing MaruEdit regression tests from exhaustive Hidemaru feature parity.
 
 | Area | ✅ Complete | 🟡 Partial/native | ❌ Incomplete |
 |---|---:|---:|---:|
-| Menu rows | 7 | 6 | 0 |
+| Menu rows | 8 | 5 | 0 |
 | Toolbar/function-key rows | 9 | 3 | 0 |
 | Status-bar rows | 16 | 0 | 0 |
 | Acceptance gates | 1 | 2 | 2 |
@@ -35,7 +35,7 @@ native menu before the Hidemaru-compatible business menus.
 | File | Reload, properties, rename, View Mode, append save/read, bounded partial open, editable hexadecimal binary mode, save/close variants, recent projects, and workspace history | 🟡 Partial | Build an official File-command inventory and verify every encoding, history, desktop/workspace, and platform-specific entry one by one. |
 | Edit | Undo/clipboard, repeat-last-edit, append cut/copy, line-boundary and word deletion, histories, quoted/BOX/history paste, deletion restore, inverted/reserved/multiple selections, Caps Lock correction, and native IME reconversion | ✅ Complete | Every confirmed compatible edit gap is implemented through stable commands and multi-selection-aware undo transactions. Physical Caps Lock state remains macOS-owned; text correction and IME reconversion use native AppKit paths. |
 | Convert | Case, generic and selective half/full-width, hiragana/katakana, Tab/space conversions, and ordered conversion pipelines | ✅ Complete | “Conversion Pipeline…” provides built-in and persistent named presets, ordered add/remove/reorder controls, parameterized literal/regex/whitespace modules, one-step multi-selection Undo, and a tested registration API for external conversion modules. |
-| View | Wrapping, invisibles, ruler marks, profile tab stops, editable vertical writing, continuous column flow, splits, chrome visibility, and output-pane focus | 🟡 Partial | Complete the official view/frame inventory and native mappings; browser/file-manager frame variants and all display configuration have not been audited one by one. |
+| View | Independent toolbar/function-key/status/heading/ruler/gutter visibility, wrapping, invisibles, ruler marks and profile tab stops, native automatic spelling, character code/count entry points, redraw, editable vertical writing, continuous column flow, splits, partial editing/folding, full screen, sidebar, outline, and output-pane focus | ✅ Complete | Every compatible official 9.57 View entry is mapped. File Manager Frame maps to the Files sidebar; Outline Analysis Frame maps to Outline; Output Frame maps to Output. Hidemaru's embedded IE/WebView browser frames and Web Browse mode are Windows-specific and intentionally have no in-editor macOS substitute; URLs use the user's default browser. Folding margin is integrated with the line-number gutter. |
 | Insert | Date/time, newline, tab, page break, duplicate line, indentation-preserving blank line, C0/DEL control codes, deletion restore, current filename, and encoding-aware file-content insertion | ✅ Complete | Every compatible command in the official 9.57 insertion-command inventory is placed in the Insert menu and covered by executable tests; MaruEdit additionally exposes templates and file-content insertion. |
 | Search | Search/replace/Grep Replace, case/word/regex/fuzzy flags, return to search start, the complete cursor-navigation inventory, edit marks, all-match selection/list/outline/color operations, document-local persistent color layers, line marks, temporary color markers, search ranges, and unified/dedicated Grep-result navigation | ✅ Complete | Every compatible entry on the official 9.57 Search menu has a stable command, menu placement, documentation, and direct registry or behavior test. Unified result navigation follows Hidemaru's difference → search color → Grep priority. |
 | Highlight | Outline analysis, highlighted-line navigation/area selection, persistent line markers, and temporary selection-range color markers | ✅ Complete | The official Highlight submenu and Temporary Color Marker submenu are mapped: configure/apply, selection-intersection removal, clear all, convert markers to multiple selections, bidirectional wrap navigation, edit tracking, and profile-aware highlighted-line commands have direct tests. |
@@ -47,7 +47,7 @@ native menu before the Hidemaru-compatible business menus.
 | Help | MaruEdit guide, macro guide, shortcut reference, configurable External Help 1–6, release check, support, and native About | ✅ Complete | All six external-help slots have persistent names/URL-or-file targets, dynamic enablement, a configuration window, and tested dispatch; About uses the native macOS panel. |
 
 The official pages contain roughly 297 command references, including repeated
-placements, dynamic entries, and Windows-only commands. MaruEdit registers 276
+placements, dynamic entries, and Windows-only commands. MaruEdit registers 282
 stable command IDs plus dynamic and native-responder entries, so the raw totals
 are not a parity measure. `ChromeParityAuditTests` only requires every existing
 stable ID to appear exactly once in the command reference; it is a documentation
@@ -108,7 +108,7 @@ consistency check, not proof that the external Hidemaru inventory is complete.
 Gate notes:
 
 - Gate 1 needs an external Hidemaru-command inventory. Auditing only MaruEdit's
-  existing 276 IDs cannot detect commands that MaruEdit never registered.
+  existing 282 IDs cannot detect commands that MaruEdit never registered.
 - Gate 2 is complete for the floating-toolbar decision but not for every Windows-
   specific menu/frame/window command.
 - Gate 3 covers persistence, layout operations, configurable F-key count, and

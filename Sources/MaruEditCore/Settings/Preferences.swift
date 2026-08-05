@@ -103,6 +103,7 @@ public enum WrapMode: String, Codable, Sendable, CaseIterable {
 }
 
 public struct ClassicChromeOptions: Codable, Equatable, Sendable {
+    public var showToolbar: Bool
     public var showHeading: Bool
     public var showRuler: Bool
     public var showCommandStrip: Bool
@@ -110,9 +111,10 @@ public struct ClassicChromeOptions: Codable, Equatable, Sendable {
     public var showTabStops: Bool
 
     public init(
-        showHeading: Bool = true, showRuler: Bool = true, showCommandStrip: Bool = true,
+        showToolbar: Bool = true, showHeading: Bool = true, showRuler: Bool = true, showCommandStrip: Bool = true,
         rulerInterval: Int = 10, showTabStops: Bool = false
     ) {
+        self.showToolbar = showToolbar
         self.showHeading = showHeading
         self.showRuler = showRuler
         self.showCommandStrip = showCommandStrip
@@ -121,12 +123,13 @@ public struct ClassicChromeOptions: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case showHeading, showRuler, showCommandStrip, rulerInterval, showTabStops
+        case showToolbar, showHeading, showRuler, showCommandStrip, rulerInterval, showTabStops
     }
 
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         self.init(
+            showToolbar: try values.decodeIfPresent(Bool.self, forKey: .showToolbar) ?? true,
             showHeading: try values.decodeIfPresent(Bool.self, forKey: .showHeading) ?? true,
             showRuler: try values.decodeIfPresent(Bool.self, forKey: .showRuler) ?? true,
             showCommandStrip: try values.decodeIfPresent(Bool.self, forKey: .showCommandStrip) ?? true,

@@ -511,6 +511,11 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         refreshFolding()
     }
 
+    func redraw() {
+        textView.needsDisplay = true
+        lineNumbers?.needsDisplay = true
+    }
+
     func showSearchMarkers(_ ranges: [NSRange]) {
         let ns = textView.string as NSString
         searchMarkerOffsets = Set(ranges.map {
@@ -578,7 +583,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
             scrollView.hasHorizontalScroller = wrapMode != .window
         }
         let spelling = document?.fileTypeProfile?.settings.spelling ?? SpellingSettings()
-        textView.isContinuousSpellCheckingEnabled = spelling.enabled
+        textView.isContinuousSpellCheckingEnabled = document?.spellCheckingOverride ?? spelling.enabled
         textView.isAutomaticSpellingCorrectionEnabled = spelling.enabled && spelling.automaticCorrection
         if !isColumnLayout {
             switch wrapMode {

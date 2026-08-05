@@ -22,7 +22,7 @@ final class ClassicWorkspaceChrome: NSView {
 
     var headingText: String { heading.stringValue }
     var topChromeHeight: CGFloat {
-        Self.toolbarHeight + (heading.isHidden ? 0 : Self.headingHeight)
+        (toolbar.isHidden ? 0 : Self.toolbarHeight) + (heading.isHidden ? 0 : Self.headingHeight)
             + (ruler.isHidden ? 0 : Self.rulerHeight)
     }
     var bottomChromeHeight: CGFloat {
@@ -63,14 +63,15 @@ final class ClassicWorkspaceChrome: NSView {
     override func layout() {
         super.layout()
         let top = bounds.height
+        let toolbarHeight = toolbar.isHidden ? 0 : Self.toolbarHeight
         toolbar.frame = NSRect(
             x: 0, y: top - Self.toolbarHeight,
             width: bounds.width, height: Self.toolbarHeight)
         heading.frame = NSRect(
-            x: 8, y: top - Self.toolbarHeight - externalTopGap - Self.headingHeight + 3,
+            x: 8, y: top - toolbarHeight - externalTopGap - Self.headingHeight + 3,
             width: max(0, bounds.width - 16), height: 16)
         ruler.frame = NSRect(
-            x: rulerStartX, y: top - Self.toolbarHeight
+            x: rulerStartX, y: top - toolbarHeight
                 - externalTopGap - (heading.isHidden ? 0 : Self.headingHeight) - Self.rulerHeight,
             width: max(0, bounds.width - rulerStartX), height: Self.rulerHeight)
         commandStrip.frame = NSRect(
@@ -110,6 +111,8 @@ final class ClassicWorkspaceChrome: NSView {
     var toolbarDisplayMode: ToolbarDisplayMode { toolbar.displayMode }
     var toolbarIconSize: ToolbarIconSize { toolbar.iconSize }
     var isToolbarSearchVisible: Bool { toolbar.showsSearchField }
+    var isToolbarVisible: Bool { !toolbar.isHidden }
+    var visibleToolbarHeight: CGFloat { toolbar.isHidden ? 0 : Self.toolbarHeight }
     var functionKeyCommandIDs: [String?] { commandStrip.commandIDs }
     var functionKeyCount: Int { commandStrip.visibleSlotCount }
     func toolbarPresentation(for command: CommandID) -> (enabled: Bool, selected: Bool)? {
@@ -173,6 +176,7 @@ final class ClassicWorkspaceChrome: NSView {
         // With one document Hidemaru does not repeat its filename in a
         // separate strip above the line-number gutter.
         heading.isHidden = !configuredVisibility.showHeading || isSingleDocument
+        toolbar.isHidden = !configuredVisibility.showToolbar
         ruler.isHidden = !configuredVisibility.showRuler
         commandStrip.isHidden = !configuredVisibility.showCommandStrip
         needsLayout = true

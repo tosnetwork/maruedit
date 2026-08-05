@@ -193,6 +193,12 @@ significantly, replace this with a small script that generates it from
 | `search.selectRange` | Select Search Range | Search › Search Range | — | Reselects the active explicit search scope |
 | `search.clearRange` | Clear Search Range | Search › Search Range | — | Restores document-wide searching |
 | `view.toggleSidebar` | Toggle Sidebar | View | ⌘B | `AppCoordinator.toggleSidebar()` |
+| `view.toggleToolbar` | Toolbar | View | — | Persistently toggles the Maru Classic command toolbar |
+| `view.toggleSpellChecking` | Automatic Spell Checking | View | — | Toggles native continuous spelling for the active document |
+| `view.showCharacterCode` | Character Code | View | — | Shows encoding-aware code details for the cursor character |
+| `view.showCharacterCount` | Character Count | View | — | Opens the configurable weighted character-count panel |
+| `view.redraw` | Redraw | View | — | Invalidates editor gutter and classic chrome rendering |
+| `view.toggleFullScreen` | Toggle Full Screen | View | — | Uses the native macOS full-screen window mode |
 | `view.toggleWrap` | Wrap Lines | View | — | `AppCoordinator.toggleWrapLines()` |
 | `view.toggleSpaces` | Show Spaces | View > Show Invisibles | — | `AppCoordinator.toggleInvisible(\.spaces)` |
 | `view.toggleTabs` | Show Tabs | View > Show Invisibles | — | `AppCoordinator.toggleInvisible(\.tabs)` |

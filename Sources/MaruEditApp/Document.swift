@@ -63,6 +63,7 @@ final class Document: @unchecked Sendable {
     var searchColorLayers: [SearchColorLayer] = []
     var foldModel: FoldModel
     var inputMode: EditorInputMode = .insert
+    var spellCheckingOverride: Bool?
     /// Stable for this document's lifetime, used to key its crash-
     /// recovery record while it's unnamed (ROADMAP.md M2-07). Kept even
     /// after the document gains a file — `MainWindowController` deletes

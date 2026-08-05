@@ -540,6 +540,10 @@ final class AppCoordinator {
         preferences.classicChrome.showRuler.toggle()
         saveAndApplyPreferences()
     }
+    func toggleClassicToolbar() {
+        preferences.classicChrome.showToolbar.toggle()
+        saveAndApplyPreferences()
+    }
     func setRulerInterval(_ interval: Int) {
         preferences.classicChrome.rulerInterval = interval == 8 ? 8 : 10
         saveAndApplyPreferences()
@@ -563,6 +567,11 @@ final class AppCoordinator {
     func toggleStatusBar() { ensureWindowControllerReady().toggleStatusBar() }
     func toggleOutputPane() { ensureWindowControllerReady().toggleOutputPane() }
     func focusOutputPane() { ensureWindowControllerReady().focusOutputPane() }
+    func toggleSpellChecking() { ensureWindowControllerReady().toggleSpellChecking() }
+    func showCharacterCode() { ensureWindowControllerReady().showCharacterCode() }
+    func showCharacterCount() { ensureWindowControllerReady().showCharacterCount() }
+    func redrawEditor() { ensureWindowControllerReady().redrawEditor() }
+    func toggleFullScreen() { ensureWindowControllerReady().toggleFullScreen() }
     private func saveAndApplyPreferences() {
         preferencesStore.save(preferences)
         windowController?.applyPreferences(preferences)

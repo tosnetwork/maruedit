@@ -345,6 +345,18 @@ final class ClassicWorkspaceTests: XCTestCase {
         XCTAssertEqual(controller.classicRulerConfigurationForTesting.tabWidth, 8)
     }
 
+    func testToolbarVisibilityIsIndependentAndPersistentInPreferences() {
+        let controller = MainWindowController()
+        var preferences = Preferences.defaults
+        preferences.classicChrome.showToolbar = false
+        controller.applyPreferences(preferences)
+        XCTAssertFalse(controller.isClassicToolbarVisibleForTesting)
+
+        let encoded = try! JSONEncoder().encode(preferences)
+        let decoded = try! JSONDecoder().decode(Preferences.self, from: encoded)
+        XCTAssertFalse(decoded.classicChrome.showToolbar)
+    }
+
     private func descendants(of view: NSView) -> [NSView] {
         view.subviews.flatMap { [$0] + descendants(of: $0) }
     }
