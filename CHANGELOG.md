@@ -63,8 +63,10 @@ semantic version tags.
 
 ### Changed
 
+- Existing pre-schema-5 settings now migrate to the Maru Classic workspace so
+  its Hidemaru-style command toolbar is visible by default; Modern remains selectable.
 - Maru Classic is now the new-user default, while existing settings migrate to the
-  Maru Modern workspace without changing documents or overriding their saved theme.
+  Maru Classic workspace without changing documents or overriding their saved theme.
 
 ### Documentation
 

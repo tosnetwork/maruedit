@@ -80,7 +80,7 @@ final class PreferencesStoreTests: XCTestCase {
         let loaded = store.load()
         XCTAssertEqual(loaded.fontName, "SF Mono")
         XCTAssertEqual(loaded.theme, .monokai)
-        XCTAssertEqual(loaded.workspaceStyle, .modern)
+        XCTAssertEqual(loaded.workspaceStyle, .classic)
     }
 
     func testMigrateStampsCurrentSchemaVersion() {
@@ -97,9 +97,9 @@ final class PreferencesStoreTests: XCTestCase {
         """
         let decoded = try JSONDecoder().decode(Preferences.self, from: Data(json.utf8))
         let migrated = PreferencesStore.migrate(decoded)
-        XCTAssertEqual(migrated.schemaVersion, 4)
+        XCTAssertEqual(migrated.schemaVersion, 5)
         XCTAssertEqual(migrated.invisibleCharacters, .none)
-        XCTAssertEqual(migrated.workspaceStyle, .modern)
+        XCTAssertEqual(migrated.workspaceStyle, .classic)
         XCTAssertEqual(migrated.classicChrome, .allVisible)
     }
 

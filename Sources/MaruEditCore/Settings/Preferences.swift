@@ -8,7 +8,7 @@ import Foundation
 /// Defaults preserve the original editor appearance, and decoding supplies
 /// defaults for fields introduced by later schema versions.
 public struct Preferences: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 4
+    public static let currentSchemaVersion = 5
 
     public var schemaVersion: Int
     public var fontName: String
@@ -76,7 +76,7 @@ public struct Preferences: Codable, Equatable, Sendable {
         invisibleCharacters = try values.decodeIfPresent(
             InvisibleCharacterOptions.self, forKey: .invisibleCharacters) ?? .none
         workspaceStyle = try values.decodeIfPresent(
-            WorkspaceStyle.self, forKey: .workspaceStyle) ?? .modern
+            WorkspaceStyle.self, forKey: .workspaceStyle) ?? .classic
         classicChrome = try values.decodeIfPresent(
             ClassicChromeOptions.self, forKey: .classicChrome) ?? .allVisible
     }
@@ -98,8 +98,8 @@ public struct ClassicChromeOptions: Codable, Equatable, Sendable {
 
 /// Selects the window information architecture without changing document
 /// contents or file-format behavior. Classic is the migration-oriented,
-/// high-density editor workspace; Modern preserves the original project-editor
-/// layout for existing users who prefer it.
+/// high-density editor workspace and the product default; Modern remains an
+/// explicit option for users who prefer the original project-editor layout.
 public enum WorkspaceStyle: String, Codable, Sendable, CaseIterable {
     case classic
     case modern

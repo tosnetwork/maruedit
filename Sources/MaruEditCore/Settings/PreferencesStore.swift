@@ -62,6 +62,13 @@ public final class PreferencesStore {
     /// records the current version and remains the home for future migrations.
     public static func migrate(_ preferences: Preferences) -> Preferences {
         var migrated = preferences
+        // Schema 5 makes the Hidemaru-oriented Classic workspace (including
+        // its command toolbar) the upgrade default as well as the fresh-install
+        // default. Users can still explicitly select Modern in Settings.
+        if migrated.schemaVersion < 5 {
+            migrated.workspaceStyle = .classic
+            migrated.classicChrome = .allVisible
+        }
         migrated.schemaVersion = Preferences.currentSchemaVersion
         return migrated
     }
