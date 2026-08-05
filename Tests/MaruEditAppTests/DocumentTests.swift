@@ -55,6 +55,29 @@ final class DocumentTests: XCTestCase {
         XCTAssertEqual(reopened.displayName, url.lastPathComponent)
     }
 
+    func testAppendSavePreservesDocumentIdentityAndUsesItsEncodingAndLineEndings() async throws {
+        let target = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MaruEditAppend-\(UUID().uuidString).txt")
+        defer { try? FileManager.default.removeItem(at: target) }
+        try Data("prefix\r\n".utf8).write(to: target)
+        let document = Document(content: "日本語\n")
+        document.encoding = .utf8
+        document.lineEnding = .crlf
+        document.markFormatModified()
+        try document.appendContent(to: target)
+        XCTAssertEqual(try String(contentsOf: target, encoding: .utf8), "prefix\r\n日本語\r\n")
+        XCTAssertNil(document.fileURL)
+        XCTAssertTrue(document.isModified)
+    }
+
+    func testFileContentInsertionLoaderDetectsEncodingAndNormalizesLineEndings() async throws {
+        let target = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MaruEditInsert-\(UUID().uuidString).txt")
+        defer { try? FileManager.default.removeItem(at: target) }
+        try Data("one\r\ntwo\r".utf8).write(to: target)
+        XCTAssertEqual(try Document.normalizedText(contentsOf: target), "one\ntwo\n")
+    }
+
     func testOpenAppliesFileTypeProfileEncodingAndSyntax() async throws {
         let sample = "日本語"
         let url = FileManager.default.temporaryDirectory

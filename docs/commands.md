@@ -41,6 +41,9 @@ significantly, replace this with a small script that generates it from
 | `file.reload` | Reload from Disk | File | — | `AppCoordinator.reloadDocument()` |
 | `file.toggleViewMode` | View Mode | File | — | `AppCoordinator.toggleViewMode()` |
 | `file.properties` | File Properties… | File | — | `AppCoordinator.showFileProperties()` |
+| `file.appendRead` | Append Read… | File | — | `AppCoordinator.appendRead()` |
+| `file.appendSave` | Append Save… | File | — | `AppCoordinator.appendSave()` |
+| `insert.fileContents` | File Contents… | Insert | — | `AppCoordinator.insertFileContents()` |
 | `search.find` | Find... | Find | ⌘F | `AppCoordinator.showFind()` |
 | `search.replace` | Find and Replace... | Find | ⌥⌘F | `AppCoordinator.showReplace()` |
 | `search.replaceAll` | Replace All | Find | — | `AppCoordinator.replaceAll()` |

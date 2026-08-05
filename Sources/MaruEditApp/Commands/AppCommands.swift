@@ -22,6 +22,8 @@ extension CommandID {
     static let fileReload = CommandID("file.reload")
     static let fileToggleViewMode = CommandID("file.toggleViewMode")
     static let fileProperties = CommandID("file.properties")
+    static let fileAppendRead = CommandID("file.appendRead")
+    static let fileAppendSave = CommandID("file.appendSave")
     static let searchFind       = CommandID("search.find")
     static let searchFindNext   = CommandID("search.findNext")
     static let searchReplace    = CommandID("search.replace")
@@ -82,6 +84,7 @@ extension CommandID {
     static let convertSpacesToTabs = CommandID("convert.spacesToTabs")
     static let insertDateTime = CommandID("insert.dateTime")
     static let insertPageBreak = CommandID("insert.pageBreak")
+    static let insertFileContents = CommandID("insert.fileContents")
     static let viewToggleTableMode = CommandID("view.toggleTableMode")
     static let navigateMarkerRed = CommandID("navigate.markerRed")
     static let navigateMarkerYellow = CommandID("navigate.markerYellow")
@@ -160,6 +163,8 @@ enum AppCommands {
         registry.register(CommandDefinition(id: .fileReload, title: "Reload from Disk") { $0.coordinator.reloadDocument() })
         registry.register(CommandDefinition(id: .fileToggleViewMode, title: "View Mode") { $0.coordinator.toggleViewMode() })
         registry.register(CommandDefinition(id: .fileProperties, title: "File Properties…") { $0.coordinator.showFileProperties() })
+        registry.register(CommandDefinition(id: .fileAppendRead, title: "Append Read…") { $0.coordinator.appendRead() })
+        registry.register(CommandDefinition(id: .fileAppendSave, title: "Append Save…") { $0.coordinator.appendSave() })
         registry.register(CommandDefinition(id: .searchFind, title: "Find...") { ctx in
             ctx.coordinator.showFind()
         })
@@ -259,6 +264,9 @@ enum AppCommands {
         })
         registry.register(CommandDefinition(id: .insertPageBreak, title: "Page Break") {
             $0.coordinator.insertPageBreak()
+        })
+        registry.register(CommandDefinition(id: .insertFileContents, title: "File Contents…") {
+            $0.coordinator.insertFileContents()
         })
         registry.register(CommandDefinition(id: .viewToggleTableMode, title: "CSV/TSV Table Mode") { $0.coordinator.toggleTableMode() })
         registry.register(CommandDefinition(id: .navigateMarkerRed, title: "Toggle Red Marker") { $0.coordinator.toggleMarker(.red) })

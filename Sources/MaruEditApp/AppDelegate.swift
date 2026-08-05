@@ -158,6 +158,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         fileMenu.addItem(.separator())
         fileMenu.addItem(commandItem(.fileSave))
         fileMenu.addItem(commandItem(.fileSaveAs))
+        fileMenu.addItem(commandItem(.fileAppendSave))
+        fileMenu.addItem(commandItem(.fileAppendRead))
         fileMenu.addItem(.separator())
         fileMenu.addItem(commandItem(.fileCloseTab))
         fileMenu.addItem(.separator())
@@ -313,6 +315,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let insertMenu = NSMenu(title: "Insert")
         insertMenu.addItem(commandItem(.insertDateTime))
         insertMenu.addItem(commandItem(.insertPageBreak))
+        insertMenu.addItem(commandItem(.insertFileContents))
         insertMenu.addItem(commandItem(.fileNewFromTemplate))
         insertItem.submenu = insertMenu
 

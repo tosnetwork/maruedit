@@ -276,12 +276,49 @@ final class Document: @unchecked Sendable {
         }
         try save()
     }
+
+    static func normalizedText(contentsOf url: URL) throws -> String {
+        LineEndingDetector.normalize(try TextFileLoader.load(contentsOf: url).content)
+    }
+
+    /// Appends encoded text without changing this document's identity or
+    /// saved/modified state.
+    func appendContent(to url: URL) throws {
+        guard let foundationEncoding = encoding.foundationEncoding else {
+            throw DocumentSaveError.unrepresentable(encoding: encoding, characters: [])
+        }
+        let targetKind: LineEndingKind
+        switch lineEnding {
+        case .crlf: targetKind = .crlf
+        case .cr: targetKind = .cr
+        default: targetKind = .lf
+        }
+        let output = LineEndingDetector.applying(targetKind, to: content)
+        guard let data = output.data(using: foundationEncoding) else {
+            throw DocumentSaveError.unrepresentable(
+                encoding: encoding,
+                characters: SavePreflight.check(content, encoding: encoding).unrepresentableCharacters)
+        }
+        if !FileManager.default.fileExists(atPath: url.path),
+           !FileManager.default.createFile(atPath: url.path, contents: nil) {
+            throw DocumentSaveError.appendFailed(path: url.path)
+        }
+        do {
+            let handle = try FileHandle(forWritingTo: url)
+            defer { try? handle.close() }
+            try handle.seekToEnd()
+            try handle.write(contentsOf: data)
+        } catch {
+            throw DocumentSaveError.appendFailed(path: url.path)
+        }
+    }
 }
 
 enum DocumentSaveError: Error {
     case unrepresentable(encoding: TextEncoding, characters: [UnrepresentableCharacter])
     case writeFailed(underlying: TextFileSaverError)
     case policyFailed(String)
+    case appendFailed(path: String)
 }
 
 enum DocumentOpenError: LocalizedError, Equatable {
@@ -308,6 +345,7 @@ extension DocumentSaveError: LocalizedError {
         case .writeFailed(let underlying):
             return underlying.errorDescription
         case .policyFailed(let message): return message
+        case .appendFailed(let path): return "Could not append text to \(path)."
         }
     }
 }

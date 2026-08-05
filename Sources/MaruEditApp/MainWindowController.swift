@@ -810,6 +810,40 @@ final class MainWindowController: NSWindowController,
         alert.beginSheetModal(for: window)
     }
 
+    func insertFileContents() { chooseAndInsertFile(atDocumentEnd: false) }
+    func appendRead() { chooseAndInsertFile(atDocumentEnd: true) }
+
+    private func chooseAndInsertFile(atDocumentEnd: Bool) {
+        guard let window else { return }
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.beginSheetModal(for: window) { [weak self] response in
+            guard let self, response == .OK, let url = panel.url else { return }
+            do {
+                let text = try Document.normalizedText(contentsOf: url)
+                let range = atDocumentEnd
+                    ? NSRange(location: (self.editorVC.textView.string as NSString).length, length: 0)
+                    : self.editorVC.textView.selectedRange()
+                self.editorVC.textView.insertText(text, replacementRange: range)
+            } catch {
+                NSAlert(error: error).beginSheetModal(for: window)
+            }
+        }
+    }
+
+    func appendSave() {
+        guard let doc = curDoc, let window else { return }
+        let panel = NSSavePanel()
+        panel.title = "Append Save"
+        panel.prompt = "Append"
+        panel.beginSheetModal(for: window) { response in
+            guard response == .OK, let url = panel.url else { return }
+            do { try doc.appendContent(to: url) }
+            catch { NSAlert(error: error).beginSheetModal(for: window) }
+        }
+    }
+
     @discardableResult
     func closeCurrentTab() -> Bool {
         guard let doc = curDoc else { return false }

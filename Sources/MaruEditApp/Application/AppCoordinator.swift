@@ -97,6 +97,7 @@ final class AppCoordinator {
     func closeCurrentTab()            { ensureWindowControllerReady().closeCurrentTab() }
     func insertDateTime()             { ensureWindowControllerReady().insertDateTime() }
     func insertPageBreak()            { ensureWindowControllerReady().insertPageBreak() }
+    func insertFileContents()         { ensureWindowControllerReady().insertFileContents() }
     func selectNextTab()              { ensureWindowControllerReady().selectRelativeTab(1) }
     func selectPreviousTab()          { ensureWindowControllerReady().selectRelativeTab(-1) }
     func showPageSetup()              { ensureWindowControllerReady().showPageSetup() }
@@ -104,6 +105,8 @@ final class AppCoordinator {
     func reloadDocument()             { ensureWindowControllerReady().reloadDocument() }
     func toggleViewMode()             { ensureWindowControllerReady().toggleViewMode() }
     func showFileProperties()         { ensureWindowControllerReady().showFileProperties() }
+    func appendRead()                 { ensureWindowControllerReady().appendRead() }
+    func appendSave()                 { ensureWindowControllerReady().appendSave() }
     func showFind()                   { ensureWindowControllerReady().showFind() }
     func showReplace()                { ensureWindowControllerReady().showFind(showingReplace: true) }
     func replaceAll()                 { ensureWindowControllerReady().replaceAllFromFindBar() }
