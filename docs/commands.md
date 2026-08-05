@@ -73,6 +73,11 @@ significantly, replace this with a small script that generates it from
 | `other.clearHistory.recentWorkspaces` | Clear Recent Workspaces | Other › Clear History | — | Clears only recent workspaces |
 | `other.clearHistory.recentEncodings` | Clear Recent Encodings | Other › Clear History | — | Clears only recent reopen encodings |
 | `other.clearHistory.all` | Clear All Histories | Other › Clear History | — | Clears every preceding category |
+| `other.toggleFreeCursor` | Free Cursor | Other | — | Allows a persistent caret column beyond line endings and materializes spaces on input |
+| `other.exportSettings` | Export Settings… | Other › Settings Transfer | — | Exports the complete versioned settings schema as JSON |
+| `other.importSettings` | Import Settings… | Other › Settings Transfer | — | Validates, migrates, persists, and applies a settings JSON file |
+| `other.restoreSettings` | Restore Default Settings… | Other › Settings Transfer | — | Confirms and restores every settings group to defaults |
+| `other.japaneseUserDictionary` | Japanese User Dictionary… | Other | — | Opens Apple's official Japanese input-method user-dictionary workflow (native substitute) |
 | `convert.halfWidth` | Convert to Half-Width | Convert | — | `LineEditCommand.halfWidth` |
 | `convert.fullWidth` | Convert to Full-Width | Convert | — | `LineEditCommand.fullWidth` |
 | `convert.hiragana` | Convert to Hiragana | Convert | — | `LineEditCommand.hiragana` |

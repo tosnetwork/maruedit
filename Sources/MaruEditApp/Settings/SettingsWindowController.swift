@@ -24,6 +24,7 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
     private let fontSizeField = NSTextField()
     private let tabWidthField = NSTextField()
     private let lineNumbersButton = NSButton(checkboxWithTitle: "", target: nil, action: nil)
+    private let freeCursorButton = NSButton(checkboxWithTitle: "Free cursor beyond line endings", target: nil, action: nil)
     private let wrapModePopup = NSPopUpButton()
     private let wrapColumnField = NSTextField()
     private let workspacePopup = NSPopUpButton()
@@ -163,6 +164,10 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
             wrapModePopup.identifier = NSUserInterfaceItemIdentifier("settings.wrapMode")
             configureNumeric(wrapColumnField, value: preferences.wrapColumn, id: "settings.wrapColumn")
             stack.addArrangedSubview(lineNumbersButton)
+            freeCursorButton.state = preferences.freeCursorEnabled ? .on : .off
+            freeCursorButton.target = self; freeCursorButton.action = #selector(controlChanged)
+            freeCursorButton.identifier = NSUserInterfaceItemIdentifier("settings.freeCursor")
+            stack.addArrangedSubview(freeCursorButton)
             stack.addArrangedSubview(row(SettingsLocalization.text("wrapMode"), wrapModePopup))
             stack.addArrangedSubview(row(SettingsLocalization.text("wrapColumn"), wrapColumnField))
         case .appearance:
@@ -244,6 +249,7 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
         case .editor:
             preferences.tabWidth = max(1, min(16, tabWidthField.integerValue))
             preferences.showLineNumbers = lineNumbersButton.state == .on
+            preferences.freeCursorEnabled = freeCursorButton.state == .on
             preferences.wrapMode = WrapMode.allCases[wrapModePopup.indexOfSelectedItem]
             preferences.wrapLines = preferences.wrapMode != .none
             preferences.wrapColumn = max(20, min(8_000, wrapColumnField.integerValue))
@@ -278,6 +284,7 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
             preferences.wrapLines = defaults.wrapLines
             preferences.wrapMode = defaults.wrapMode
             preferences.wrapColumn = defaults.wrapColumn
+            preferences.freeCursorEnabled = defaults.freeCursorEnabled
         case .appearance:
             preferences.fontName = defaults.fontName
             preferences.fontSize = defaults.fontSize
@@ -384,6 +391,7 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
             preferences.wrapMode = imported.wrapMode
             preferences.wrapColumn = imported.wrapColumn
             preferences.invisibleCharacters = imported.invisibleCharacters
+            preferences.freeCursorEnabled = imported.freeCursorEnabled
         case .appearance:
             preferences.fontName = imported.fontName
             preferences.fontSize = imported.fontSize

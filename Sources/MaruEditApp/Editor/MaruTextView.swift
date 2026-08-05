@@ -13,6 +13,10 @@ final class MaruTextView: NSTextView {
     var usesHighContrastMarkers = false {
         didSet { needsDisplay = true }
     }
+    var freeCursorEnabled = false {
+        didSet { if !freeCursorEnabled { virtualSpaceColumns = 0 }; needsDisplay = true }
+    }
+    private(set) var virtualSpaceColumns = 0
     var isInvisibleRenderingSuppressedForLargeFile: Bool {
         (textStorage?.length ?? 0) > Self.invisibleMarkerLargeFileThreshold
     }
@@ -83,6 +87,7 @@ final class MaruTextView: NSTextView {
     }
 
     override func mouseDown(with event: NSEvent) {
+        virtualSpaceColumns = 0
         if event.modifierFlags.contains(.option) {
             isDraggingColumn = true
             selectionOwner?.beginColumnSelection(atUTF16Offset: characterIndexForInsertion(at: convert(event.locationInWindow, from: nil)))
@@ -90,6 +95,50 @@ final class MaruTextView: NSTextView {
         }
         selectionOwner?.cancelColumnSelection()
         super.mouseDown(with: event)
+    }
+
+    override func moveRight(_ sender: Any?) {
+        guard freeCursorEnabled, selectedRange().length == 0,
+              isAtContentEndOfLine(selectedRange().location) else {
+            virtualSpaceColumns = 0; super.moveRight(sender); return
+        }
+        virtualSpaceColumns += 1
+        updateInsertionPointStateAndRestartTimer(true)
+        needsDisplay = true
+    }
+
+    override func moveLeft(_ sender: Any?) {
+        guard freeCursorEnabled, virtualSpaceColumns > 0 else {
+            virtualSpaceColumns = 0; super.moveLeft(sender); return
+        }
+        virtualSpaceColumns -= 1
+        updateInsertionPointStateAndRestartTimer(true)
+        needsDisplay = true
+    }
+
+    override func moveUp(_ sender: Any?) {
+        guard freeCursorEnabled, moveVertically(delta: -1) else { super.moveUp(sender); return }
+    }
+
+    override func moveDown(_ sender: Any?) {
+        guard freeCursorEnabled, moveVertically(delta: 1) else { super.moveDown(sender); return }
+    }
+
+    override func deleteBackward(_ sender: Any?) {
+        guard freeCursorEnabled, virtualSpaceColumns > 0 else { super.deleteBackward(sender); return }
+        virtualSpaceColumns -= 1
+        updateInsertionPointStateAndRestartTimer(true)
+        needsDisplay = true
+    }
+
+    override func drawInsertionPoint(in rect: NSRect, color: NSColor, turnedOn flag: Bool) {
+        guard freeCursorEnabled, virtualSpaceColumns > 0 else {
+            super.drawInsertionPoint(in: rect, color: color, turnedOn: flag); return
+        }
+        let advance = " ".size(withAttributes: [.font: font ?? Theme.editorFont]).width
+        super.drawInsertionPoint(
+            in: rect.offsetBy(dx: advance * CGFloat(virtualSpaceColumns), dy: 0),
+            color: color, turnedOn: flag)
     }
 
     override func mouseDragged(with event: NSEvent) {
@@ -148,7 +197,12 @@ final class MaruTextView: NSTextView {
     }
 
     override func insertText(_ insertString: Any, replacementRange: NSRange) {
-        let text = committedString(from: insertString)
+        var text = committedString(from: insertString)
+        if freeCursorEnabled, virtualSpaceColumns > 0,
+           replacementRange.length == 0, replacementRange.location == selectedRange().location {
+            text = String(repeating: " ", count: virtualSpaceColumns) + text
+            virtualSpaceColumns = 0
+        }
 
         if selectionOwner?.hasMarkedTextComposition == true {
             // Let AppKit close its marked-text session, but keep that
@@ -166,8 +220,49 @@ final class MaruTextView: NSTextView {
         } else {
             let effective = selectionOwner?.replacementRangeForInput(
                 text, selection: replacementRange) ?? replacementRange
-            super.insertText(insertString, replacementRange: effective)
+            super.insertText(text, replacementRange: effective)
         }
+    }
+
+    private func isAtContentEndOfLine(_ location: Int) -> Bool {
+        let ns = string as NSString
+        guard location <= ns.length else { return false }
+        let line = ns.lineRange(for: NSRange(location: location, length: 0))
+        var end = NSMaxRange(line)
+        while end > line.location, CharacterSet.newlines.contains(UnicodeScalar(ns.character(at: end - 1))!) { end -= 1 }
+        return location == end
+    }
+
+    @discardableResult
+    private func moveVertically(delta: Int) -> Bool {
+        let ns = string as NSString
+        let location = selectedRange().location
+        guard selectedRange().length == 0, location <= ns.length else { return false }
+        let line = ns.lineRange(for: NSRange(location: location, length: 0))
+        var contentEnd = NSMaxRange(line)
+        while contentEnd > line.location,
+              let scalar = UnicodeScalar(ns.character(at: contentEnd - 1)),
+              CharacterSet.newlines.contains(scalar) { contentEnd -= 1 }
+        let column = max(0, location - line.location) + virtualSpaceColumns
+        let targetLocation: Int
+        if delta < 0 {
+            guard line.location > 0 else { return false }
+            targetLocation = line.location - 1
+        } else {
+            guard NSMaxRange(line) < ns.length else { return false }
+            targetLocation = NSMaxRange(line)
+        }
+        let target = ns.lineRange(for: NSRange(location: targetLocation, length: 0))
+        var targetEnd = NSMaxRange(target)
+        while targetEnd > target.location,
+              let scalar = UnicodeScalar(ns.character(at: targetEnd - 1)),
+              CharacterSet.newlines.contains(scalar) { targetEnd -= 1 }
+        let length = targetEnd - target.location
+        setSelectedRange(NSRange(location: target.location + min(column, length), length: 0))
+        virtualSpaceColumns = max(0, column - length)
+        scrollRangeToVisible(selectedRange())
+        needsDisplay = true
+        return true
     }
 
     private func committedString(from value: Any) -> String {

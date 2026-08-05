@@ -18,7 +18,7 @@ passing MaruEdit regression tests from exhaustive Hidemaru feature parity.
 
 | Area | ✅ Complete | 🟡 Partial/native | ❌ Incomplete |
 |---|---:|---:|---:|
-| Menu rows | 2 | 9 | 2 |
+| Menu rows | 2 | 10 | 1 |
 | Toolbar/function-key rows | 9 | 3 | 0 |
 | Status-bar rows | 16 | 0 | 0 |
 | Acceptance gates | 1 | 2 | 2 |
@@ -43,7 +43,7 @@ native menu before the Hidemaru-compatible business menus.
 | Tools | Compare/difference, deterministic portable tags-file generation, tag navigation, dynamic external commands, and command-list access | 🟡 Partial | Native generation is bounded, skips dependency/hidden trees, writes atomically, and feeds Tag Jump directly; finish the official Tools-command inventory one by one. |
 | Window | Tab list, close-other/left/right, pane focus, tab cycling, native Minimize/Zoom, and session restoration | 🟡 Native substitute | Windows arrangement/process/desktop behavior is not identical; document each native replacement explicitly. |
 | Macro | Recording, stop, playback, save-to-JavaScript, registered macros, reload, enablement, and permissions | 🟡 Partial | Core behavior exists, but Hidemaru macro-menu slots and invocation behavior have not been exhaustively mapped and tested. |
-| Other | Settings, file-type profiles, key assignments, command list/menu editing, font entry points, and tags generation through Tools | ❌ Incomplete | Add categorized history clearing, free-cursor mode, settings save/restore, kana-kanji word registration or explicit native substitutes. |
+| Other | Settings, file-type profiles, key assignments, command/menu editing, font entry points, categorized history clearing, free cursor, tags generation, and full/section settings transfer | 🟡 Native substitute | The Windows IME word-registration API has no macOS app-level equivalent. “Japanese User Dictionary…” opens Apple's supported Input-menu/Text Replacements workflow; see [Apple's Japanese input-method guide](https://support.apple.com/guide/japanese-input-method/edit-and-use-your-user-dictionaries-jpim10228/mac). |
 | Help | MaruEdit guide, macro guide, shortcut reference, configurable External Help 1–6, release check, support, and native About | ✅ Complete | All six external-help slots have persistent names/URL-or-file targets, dynamic enablement, a configuration window, and tested dispatch; About uses the native macOS panel. |
 
 The official pages contain roughly 297 command references, including repeated

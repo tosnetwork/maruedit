@@ -493,6 +493,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
             hex: document?.fileTypeProfile?.settings.appearance?.selectionHex) ?? Theme.selection
         (textView as? MaruTextView)?.invisibleCharacters = document?.largeFileMode.usesReducedFeatures == true
             ? .none : preferences.invisibleCharacters
+        (textView as? MaruTextView)?.freeCursorEnabled = preferences.freeCursorEnabled
         textView.defaultParagraphStyle = paragraph
         textView.typingAttributes[.font] = font
         textView.typingAttributes[.paragraphStyle] = paragraph

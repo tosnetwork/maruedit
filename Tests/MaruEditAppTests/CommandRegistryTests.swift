@@ -131,6 +131,8 @@ final class CommandRegistryTests: XCTestCase {
             .otherClearFindHistory, .otherClearReplaceHistory, .otherClearGrepHistory,
             .otherClearClipboardHistory, .otherClearRecentFiles, .otherClearRecentFolders,
             .otherClearRecentWorkspaces, .otherClearRecentEncodings, .otherClearAllHistories
+            , .otherToggleFreeCursor, .otherExportSettings, .otherImportSettings, .otherRestoreSettings,
+            .otherJapaneseUserDictionary
         ]
         for id in ids {
             XCTAssertNotNil(registry.definition(for: id), "\(id.rawValue) should be registered")

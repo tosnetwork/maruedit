@@ -191,6 +191,34 @@ final class SettingsWindowTests: XCTestCase {
         XCTAssertThrowsError(try importer.importSection(.appearance, from: url))
     }
 
+    func testCoordinatorSettingsTransferRoundTripsPersistsAndRestores() throws {
+        let suite = "CoordinatorSettingsTransfer-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = PreferencesStore(defaults: defaults)
+        let coordinator = AppCoordinator(preferencesStore: store)
+        _ = coordinator.commandRegistry.execute(.otherToggleFreeCursor, context: CommandContext(coordinator: coordinator))
+        XCTAssertTrue(coordinator.preferences.freeCursorEnabled)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(suite).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try coordinator.exportSettings(to: url)
+        coordinator.restoreDefaultSettings()
+        XCTAssertFalse(coordinator.preferences.freeCursorEnabled)
+        try coordinator.importSettings(from: url)
+        XCTAssertTrue(coordinator.preferences.freeCursorEnabled)
+        XCTAssertTrue(store.load().freeCursorEnabled)
+    }
+
+    func testJapaneseDictionaryCommandUsesOfficialMacOSNativeWorkflow() {
+        let coordinator = AppCoordinator()
+        var opened: URL?
+        coordinator.openDocumentationURL = { opened = $0 }
+        XCTAssertTrue(coordinator.commandRegistry.execute(
+            .otherJapaneseUserDictionary, context: CommandContext(coordinator: coordinator)))
+        XCTAssertEqual(opened?.host, "support.apple.com")
+        XCTAssertTrue(opened?.path.contains("japanese-input-method") == true)
+    }
+
     private func descendants(of view: NSView) -> [NSView] {
         view.subviews.flatMap { [$0] + descendants(of: $0) }
     }

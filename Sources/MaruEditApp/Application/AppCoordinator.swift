@@ -339,6 +339,43 @@ final class AppCoordinator {
         RecentEncodings.clearAll()
         showStatusMessage("All histories cleared")
     }
+    func toggleFreeCursor() {
+        preferences.freeCursorEnabled.toggle()
+        saveAndApplyPreferences()
+    }
+    func exportSettings(to url: URL) throws { try preferencesStore.export(preferences, to: url) }
+    func importSettings(from url: URL) throws {
+        preferences = try preferencesStore.importSettings(from: url)
+        preferencesStore.save(preferences)
+        windowController?.applyPreferences(preferences)
+    }
+    func restoreDefaultSettings() {
+        preferencesStore.resetToDefaults()
+        preferences = .defaults
+        windowController?.applyPreferences(preferences)
+    }
+    func showSettingsExportPanel() {
+        let panel = NSSavePanel(); panel.nameFieldStringValue = "MaruEdit-settings.json"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do { try exportSettings(to: url); showStatusMessage("Settings exported") }
+        catch { NSAlert(error: error).runModal() }
+    }
+    func showSettingsImportPanel() {
+        let panel = NSOpenPanel(); panel.canChooseDirectories = false; panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do { try importSettings(from: url); showStatusMessage("Settings imported") }
+        catch { NSAlert(error: error).runModal() }
+    }
+    func confirmRestoreDefaultSettings() {
+        let alert = NSAlert(); alert.messageText = "Restore Default Settings?"
+        alert.informativeText = "All MaruEdit appearance, editing, file, search, keyboard, macro, and advanced settings will return to their defaults."
+        alert.addButton(withTitle: "Restore"); alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        restoreDefaultSettings(); showStatusMessage("Default settings restored")
+    }
+    func showJapaneseUserDictionaryHelp() {
+        openDocumentationURL(URL(string: "https://support.apple.com/guide/japanese-input-method/edit-and-use-your-user-dictionaries-jpim10228/mac")!)
+    }
     func performLineCommand(_ command: LineEditCommand) { ensureWindowControllerReady().performLineCommand(command) }
     func toggleBookmark()               { ensureWindowControllerReady().toggleBookmark() }
     func nextBookmark()                 { ensureWindowControllerReady().nextBookmark() }
@@ -453,6 +490,7 @@ final class AppCoordinator {
         case .viewToggleFunctionKeys: preferences.classicChrome.showCommandStrip
         case .viewToggleStatusBar: ensureWindowControllerReady().isStatusBarVisibleForTesting
         case .viewToggleOutputPane: ensureWindowControllerReady().isOutputPaneVisibleForTesting
+        case .otherToggleFreeCursor: preferences.freeCursorEnabled
         default: false
         }
     }
