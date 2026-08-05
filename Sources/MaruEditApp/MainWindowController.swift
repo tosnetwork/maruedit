@@ -962,6 +962,34 @@ final class MainWindowController: NSWindowController,
         editorVC.textView.insertText("\u{000C}", replacementRange: editorVC.textView.selectedRange())
     }
 
+    func insertControlCode() {
+        let names = [
+            "NUL  00", "SOH  01", "STX  02", "ETX  03", "EOT  04", "ENQ  05", "ACK  06", "BEL  07",
+            "BS   08", "TAB  09", "LF   0A", "VT   0B", "FF   0C", "CR   0D", "SO   0E", "SI   0F",
+            "DLE  10", "DC1  11", "DC2  12", "DC3  13", "DC4  14", "NAK  15", "SYN  16", "ETB  17",
+            "CAN  18", "EM   19", "SUB  1A", "ESC  1B", "FS   1C", "GS   1D", "RS   1E", "US   1F",
+            "DEL  7F",
+        ]
+        let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 180, height: 26))
+        popup.addItems(withTitles: names)
+        let alert = NSAlert()
+        alert.messageText = "Insert Control Code"
+        alert.informativeText = "Choose an ASCII control character to insert at every active selection."
+        alert.accessoryView = popup
+        alert.addButton(withTitle: "Insert"); alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        let value = popup.indexOfSelectedItem == 32 ? UInt8(0x7F) : UInt8(popup.indexOfSelectedItem)
+        _ = insertControlCode(value)
+    }
+
+    @discardableResult
+    func insertControlCode(_ value: UInt8) -> Bool {
+        guard value <= 0x1F || value == 0x7F, editorVC.textView.isEditable else { return false }
+        guard let scalar = UnicodeScalar(Int(value)) else { return false }
+        editorVC.textView.insertText(String(Character(scalar)), replacementRange: editorVC.textView.selectedRange())
+        return true
+    }
+
     func openFolder() {
         let p = NSOpenPanel()
         p.canChooseDirectories = true

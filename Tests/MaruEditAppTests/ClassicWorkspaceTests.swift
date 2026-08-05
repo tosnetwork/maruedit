@@ -200,6 +200,15 @@ final class ClassicWorkspaceTests: XCTestCase {
         XCTAssertGreaterThan(controller.editorTextForTesting.count, 1)
     }
 
+    func testControlCodeInsertionAcceptsC0AndDELOnly() async {
+        let controller = MainWindowController()
+        controller.macroEditor.textView.string = "AB"
+        controller.macroEditor.textView.setSelectedRange(NSRange(location: 1, length: 0))
+        XCTAssertTrue(controller.insertControlCode(0x1B))
+        XCTAssertEqual(controller.macroEditor.textView.string, "A\u{001B}B")
+        XCTAssertFalse(controller.insertControlCode(0x20))
+    }
+
     func testViewModeImmediatelyLocksAndUnlocksTheEditor() async {
         let controller = MainWindowController()
         XCTAssertTrue(controller.macroEditor.textView.isEditable)

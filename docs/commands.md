@@ -30,6 +30,7 @@ significantly, replace this with a small script that generates it from
 | `window.previousTab` | Previous Tab | Window | ⌃⇧Tab | `AppCoordinator.selectPreviousTab()` |
 | `insert.dateTime` | Date and Time | Insert | — | `AppCoordinator.insertDateTime()` |
 | `insert.pageBreak` | Page Break | Insert | — | `AppCoordinator.insertPageBreak()` |
+| `insert.controlCode` | Control Code… | Insert | — | `AppCoordinator.insertControlCode()` |
 | `app.help` | MaruEdit Help | Help | — | `AppCoordinator.showHelp()` |
 | `convert.halfWidth` | Convert to Half-Width | Convert | — | `LineEditCommand.halfWidth` |
 | `convert.fullWidth` | Convert to Full-Width | Convert | — | `LineEditCommand.fullWidth` |

@@ -99,6 +99,7 @@ final class AppCoordinator {
     func insertDateTime()             { ensureWindowControllerReady().insertDateTime() }
     func insertPageBreak()            { ensureWindowControllerReady().insertPageBreak() }
     func insertFileContents()         { ensureWindowControllerReady().insertFileContents() }
+    func insertControlCode()          { ensureWindowControllerReady().insertControlCode() }
     func selectNextTab()              { ensureWindowControllerReady().selectRelativeTab(1) }
     func selectPreviousTab()          { ensureWindowControllerReady().selectRelativeTab(-1) }
     func showPageSetup()              { ensureWindowControllerReady().showPageSetup() }

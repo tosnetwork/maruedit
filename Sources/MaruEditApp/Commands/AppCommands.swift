@@ -88,6 +88,7 @@ extension CommandID {
     static let insertDateTime = CommandID("insert.dateTime")
     static let insertPageBreak = CommandID("insert.pageBreak")
     static let insertFileContents = CommandID("insert.fileContents")
+    static let insertControlCode = CommandID("insert.controlCode")
     static let viewToggleTableMode = CommandID("view.toggleTableMode")
     static let navigateMarkerRed = CommandID("navigate.markerRed")
     static let navigateMarkerYellow = CommandID("navigate.markerYellow")
@@ -273,6 +274,9 @@ enum AppCommands {
         })
         registry.register(CommandDefinition(id: .insertFileContents, title: "File Contents…") {
             $0.coordinator.insertFileContents()
+        })
+        registry.register(CommandDefinition(id: .insertControlCode, title: "Control Code…") {
+            $0.coordinator.insertControlCode()
         })
         registry.register(CommandDefinition(id: .viewToggleTableMode, title: "CSV/TSV Table Mode") { $0.coordinator.toggleTableMode() })
         registry.register(CommandDefinition(id: .navigateMarkerRed, title: "Toggle Red Marker") { $0.coordinator.toggleMarker(.red) })

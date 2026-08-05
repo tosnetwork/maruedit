@@ -318,6 +318,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let insertMenu = NSMenu(title: "Insert")
         insertMenu.addItem(commandItem(.insertDateTime))
         insertMenu.addItem(commandItem(.insertPageBreak))
+        insertMenu.addItem(commandItem(.insertControlCode))
         insertMenu.addItem(commandItem(.insertFileContents))
         insertMenu.addItem(commandItem(.fileNewFromTemplate))
         insertItem.submenu = insertMenu

@@ -88,7 +88,7 @@ final class CommandRegistryTests: XCTestCase {
             .editMoveWordLeft, .editMoveWordRight, .editMoveParagraphStart,
             .editMoveParagraphEnd, .editDeleteWordBackward, .editDeleteWordForward,
             .editTitlecase, .editCompleteWord, .insertDateTime, .insertPageBreak,
-            .insertFileContents,
+            .insertFileContents, .insertControlCode,
             .convertHalfWidth, .convertFullWidth, .convertHiragana, .convertKatakana,
             .convertTabsToSpaces, .convertSpacesToTabs,
             .navigateMarkerRed, .navigateMarkerYellow, .navigateMarkerBlue,
