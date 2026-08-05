@@ -51,6 +51,40 @@ final class ChromeParityAuditTests: XCTestCase {
         XCTAssertTrue(rows.contains { $0[0] == "Help" && $0[2] == "External Help 6(6)" })
     }
 
+    func testAuditedOfficialMappingsResolveToRegisteredOrExplainedTargets() throws {
+        let inventory = try tsv(named: "docs/hidemaru-9.57-menu-inventory.tsv", columns: 4)
+        let mappings = try tsv(named: "docs/hidemaru-9.57-menu-mapping.tsv", columns: 5)
+        let appCommands = try String(contentsOf: repositoryRoot
+            .appendingPathComponent("Sources/MaruEditApp/Commands/AppCommands.swift"))
+        let registeredIDs = Set(captures(#"CommandID\("([^"]+)"\)"#, in: appCommands))
+        let documented = try String(contentsOf: repositoryRoot.appendingPathComponent("docs/commands.md"))
+
+        let inventoryKeys = Set(inventory.map { "\($0[0])\u{1f}\($0[2])" })
+        let mappingKeys = mappings.map { "\($0[0])\u{1f}\($0[1])" }
+        XCTAssertEqual(mappingKeys.count, Set(mappingKeys).count)
+        XCTAssertTrue(mappingKeys.allSatisfy(inventoryKeys.contains), "mapping contains a non-official row")
+
+        let allowed = Set(["stable", "native", "dynamic", "group", "unsupported"])
+        for row in mappings {
+            XCTAssertTrue(allowed.contains(row[2]), "unknown disposition for \(row[1])")
+            XCTAssertFalse(row[3].isEmpty, "missing target for \(row[1])")
+            XCTAssertFalse(row[4].isEmpty, "missing evidence for \(row[1])")
+            if row[2] == "stable" {
+                XCTAssertTrue(registeredIDs.contains(row[3]), "unregistered target \(row[3])")
+                XCTAssertTrue(documented.contains("| `\(row[3])` |"), "undocumented target \(row[3])")
+            }
+        }
+
+        // Menus listed here have completed row-for-row review. Adding a menu
+        // is intentionally impossible until every official row is mapped.
+        let completedMenus = Set(["File"])
+        for menu in completedMenus {
+            let official = inventory.filter { $0[0] == menu }.map { $0[2] }.sorted()
+            let audited = mappings.filter { $0[0] == menu }.map { $0[1] }.sorted()
+            XCTAssertEqual(audited, official, "\(menu) mapping is not exhaustive")
+        }
+    }
+
     func testPublishedParityMatrixHasNoUnresolvedCompatibleStatus() throws {
         let matrix = try String(contentsOf: repositoryRoot
             .appendingPathComponent("docs/hidemaru-chrome-parity.md"))
@@ -64,6 +98,18 @@ final class ChromeParityAuditTests: XCTestCase {
         let ns = text as NSString
         return regex.matches(in: text, range: NSRange(location: 0, length: ns.length)).map {
             ns.substring(with: $0.range(at: 1))
+        }
+    }
+
+    private func tsv(named path: String, columns: Int) throws -> [[String]] {
+        let text = try String(contentsOf: repositoryRoot.appendingPathComponent(path))
+        return try text.split(separator: "\n").dropFirst().map { line in
+            let values = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
+            guard values.count == columns else {
+                throw NSError(domain: "ChromeParityAudit", code: 2,
+                              userInfo: [NSLocalizedDescriptionKey: "Malformed TSV row: \(line)"])
+            }
+            return values
         }
     }
 }

@@ -367,6 +367,7 @@ final class AppCoordinator {
     func saveAllAndClose()            { ensureWindowControllerReady().saveAllAndClose() }
     func discardAndCloseCurrentTab()  { ensureWindowControllerReady().discardAndCloseCurrentTab() }
     func discardAllAndClose()         { ensureWindowControllerReady().discardAllAndClose() }
+    func closeWorkspace()             { ensureWindowControllerReady().closeWorkspace() }
     func openCursorTargetWithAssociatedApplication() { ensureWindowControllerReady().openCursorTargetWithAssociatedApplication() }
     func openCursorTargetInMaruEdit() { ensureWindowControllerReady().openCursorTargetInMaruEdit() }
     func closeCurrentTab()            { ensureWindowControllerReady().closeCurrentTab() }

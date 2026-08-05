@@ -1,0 +1,43 @@
+menu	official_label_en	disposition	target	note
+File	New	stable	file.new	New unnamed document
+File	Open	stable	file.open	Native open panel
+File	Open part of file...	stable	file.openPartial	Byte-range partial open
+File	Load...	stable	file.closeAndOpen	Close current file and open another
+File	Close file	stable	file.closeTab	Close current document tab
+File	Save	stable	file.save	Save in original encoding and line endings
+File	save(line separated by LF only)([)	stable	file.saveLF	Save with LF line endings
+File	Save as...	stable	file.saveAs	Native save panel
+File	Append save to other file(])	stable	file.appendSave	Append current contents to another file
+File	Insert file...	stable	insert.fileContents	Insert decoded file contents at selections
+File	Print...	stable	file.print	Native AppKit printing
+File	Open project...	stable	file.openFolder	Folder-backed project
+File	Save as project...	stable	file.saveWorkspace	Portable workspace captures project documents
+File	Open desktop...	stable	file.openWorkspace	Open .maruedit-workspace desktop
+File	Save as desktop...	stable	file.saveWorkspace	Save .maruedit-workspace desktop
+File	Close desktop	stable	file.closeWorkspace	Close the workspace document set with normal save/discard/cancel confirmation
+File	New web browse mode(H)	unsupported	windows.webBrowseMode	Embedded IE/WebView browse mode has no macOS editor-shell equivalent; URLs open in the default browser
+File	FTP Open(G)...	unsupported	windows.ftpModule	Hidemarnet/FTP module is Windows-only; mounted remote files use the normal Open command
+File	FTP Save as...	unsupported	windows.ftpModule	Hidemarnet/FTP module is Windows-only; mounted remote files use the normal Save As command
+File	Encoding	group	file.encodingAndBinary	Encoding choices are dynamic; binary mode is file.openBinary
+File	Browse mode	stable	file.toggleViewMode	Document-local View Mode
+File	Switch Read-only	stable	file.toggleOverwriteProtection	Edit-preserving same-path overwrite prohibition
+File	Web	group	windows.webCommands	Windows Web submenu; browser destinations use the default browser
+File	Save and Exit all	stable	file.saveAllAndClose	Save and close all documents
+File	Exit	native	NSApplication.terminate	macOS application lifecycle command
+File	Quit all	stable	file.discardAllAndClose	Close all documents with normal unsaved-change handling
+File	Save all(Z)	stable	file.saveAll	Save all documents
+File	save all(updated file only)	stable	file.saveAllModified	Save modified documents only
+File	Quit without saving(K)	stable	file.discardAndClose	Discard and close current document
+File	Quit all without saving	stable	file.discardAllAndClose	Discard and close all documents
+File	Close window	native	NSWindow.performClose	Native macOS window close
+File	Property of file	stable	file.properties	Current file metadata
+File	Rename current file(-)...	stable	file.rename	Filesystem rename with document update
+File	Open it(J)	stable	file.openCursorTargetAssociated	Open cursor target with associated application
+File	Open it by Maruo Editor	stable	file.openCursorTargetInEditor	Open cursor target in MaruEdit
+File	Open by shell	stable	file.openCursorTargetAssociated	Open cursor target through NSWorkspace association
+File	Reload(/)	stable	file.reload	Reload current file from disk
+File	Stop file history(^)	stable	file.toggleHistoryRecording	Suspend/resume recent history recording
+File	File history	dynamic	NSDocumentController.recentDocumentURLs	Native recent-file list
+File	Folder history	stable	file.projectHistory	Recent folder projects
+File	Desktop history(@)	stable	file.workspaceHistory	Recent .maruedit-workspace desktops
+File	Project history(:)	stable	file.projectHistory	Recent folder projects

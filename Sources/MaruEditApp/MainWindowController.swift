@@ -1216,6 +1216,17 @@ final class MainWindowController: NSWindowController,
         for _ in 0..<count { _ = discardAndCloseCurrentTab() }
     }
 
+    func closeWorkspace() {
+        let documents = documentController.documents
+        for document in documents {
+            guard let index = documentController.documents.firstIndex(where: { $0 === document }) else {
+                continue
+            }
+            tabBarDidSelectTab(at: index)
+            guard closeCurrentTab() else { return }
+        }
+    }
+
     func openCursorTargetWithAssociatedApplication() {
         guard let target = cursorTarget(), let url = resolvedTargetURL(target) else {
             showStatusMessage("No URL or file target at the cursor"); return

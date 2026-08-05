@@ -105,6 +105,7 @@ extension CommandID {
     static let fileOpenWorkspace = CommandID("file.openWorkspace")
     static let fileWorkspaceHistory = CommandID("file.workspaceHistory")
     static let fileCloseAndOpen = CommandID("file.closeAndOpen")
+    static let fileCloseWorkspace = CommandID("file.closeWorkspace")
     static let searchFind       = CommandID("search.find")
     static let searchFindUpward = CommandID("search.findUpward")
     static let searchFindWord = CommandID("search.findWord")
@@ -466,6 +467,7 @@ enum AppCommands {
         registry.register(CommandDefinition(id: .fileOpenWorkspace, title: "Open Workspace…") { $0.coordinator.openWorkspace() })
         registry.register(CommandDefinition(id: .fileWorkspaceHistory, title: "Workspace History…") { $0.coordinator.showWorkspaceHistory() })
         registry.register(CommandDefinition(id: .fileCloseAndOpen, title: "Close and Open…") { $0.coordinator.closeAndOpen() })
+        registry.register(CommandDefinition(id: .fileCloseWorkspace, title: "Close Workspace") { $0.coordinator.closeWorkspace() })
         registry.register(CommandDefinition(id: .searchFind, title: "Find...") { ctx in
             ctx.coordinator.showFind()
         })

@@ -81,7 +81,7 @@ final class CommandRegistryTests: XCTestCase {
             .fileSaveAndClose, .fileSaveAllAndClose, .fileDiscardAndClose,
             .fileDiscardAllAndClose, .fileOpenCursorTargetAssociated,
             .fileOpenCursorTargetInEditor,
-            .fileCloseAndOpen, .fileCloseTab, .windowNextTab, .windowPreviousTab,
+            .fileCloseAndOpen, .fileCloseWorkspace, .fileCloseTab, .windowNextTab, .windowPreviousTab,
             .windowTabList, .windowCloseOtherTabs, .windowCloseTabsLeft,
             .windowCloseTabsRight, .windowFocusEditor, .windowFocusUtilityPane,
             .windowTileVertical, .windowTileHorizontal, .windowCascade, .windowTileGrid,

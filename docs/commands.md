@@ -29,6 +29,7 @@ significantly, replace this with a small script that generates it from
 | `file.openWorkspace` | Open Workspace… | File | — | Restores a `.marudesk` desktop/workspace without discarding currently open unsaved tabs |
 | `file.workspaceHistory` | Workspace History… | File | — | Restores a recently used `.marudesk` workspace |
 | `file.closeAndOpen` | Close and Open… | File | — | `AppCoordinator.closeAndOpen()` |
+| `file.closeWorkspace` | Close Workspace | File | — | Closes every workspace document with normal save/discard/cancel confirmation |
 | `window.tabList` | Tab List… | Window | — | Selects an open document from a complete list |
 | `window.closeOtherTabs` | Close Other Tabs | Window | — | Closes all tabs except the active tab with save confirmation |
 | `window.closeTabsLeft` | Close Tabs to the Left | Window | — | Closes tabs left of the active tab with save confirmation |

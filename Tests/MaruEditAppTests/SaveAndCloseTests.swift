@@ -4,6 +4,17 @@ import XCTest
 
 @MainActor
 final class SaveAndCloseTests: XCTestCase {
+    func testCloseWorkspaceClosesEveryUnmodifiedDocumentAndLeavesFreshUntitledTab() {
+        let controller = MainWindowController()
+        controller.newDocument()
+        controller.newDocument()
+        XCTAssertEqual(controller.tabCountForTesting, 3)
+
+        controller.closeWorkspace()
+
+        XCTAssertEqual(controller.tabCountForTesting, 1)
+        XCTAssertEqual(controller.currentDocumentTextForTesting, "")
+    }
     override func tearDown() {
         RecentItems.isRecordingSuspended = false
         super.tearDown()
