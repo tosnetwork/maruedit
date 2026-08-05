@@ -69,6 +69,8 @@ final class CommandRegistryTests: XCTestCase {
             .otherFileTypeProfiles, .otherKeyAssignments, .otherCommandList,
             .fileNew, .fileNewFromTemplate, .fileOpen, .fileOpenFolder, .fileOpenPartial,
             .fileOpenBinary,
+            .fileProjectHistory, .fileSaveWorkspace, .fileOpenWorkspace,
+            .fileWorkspaceHistory,
             .fileSave, .fileSaveAs, .fileSaveAndClose, .fileSaveAllAndClose,
             .fileCloseAndOpen, .fileCloseTab, .windowNextTab, .windowPreviousTab,
             .windowTabList, .windowCloseOtherTabs, .windowCloseTabsLeft,

@@ -2366,6 +2366,10 @@ final class MainWindowController: NSWindowController,
     }
 
     func saveSession() {
+        sessionStore.save(currentSessionState())
+    }
+
+    private func currentSessionState() -> SessionState {
         saveCursorPosition()
         let openFiles: [OpenFileState] = documentController.documents.compactMap { doc in
             guard let path = doc.fileURL?.path else { return nil }
@@ -2377,20 +2381,27 @@ final class MainWindowController: NSWindowController,
                 collapsedFoldIDs: doc.foldModel.collapsedRegionIDs.sorted()
             )
         }
-        let state = SessionState(
+        let activePath = curDoc?.fileURL?.path
+        let savedActiveIndex = activePath.flatMap { path in
+            openFiles.firstIndex(where: { $0.path == path })
+        } ?? max(0, min(curIdx, max(0, openFiles.count - 1)))
+        return SessionState(
             rootFolderPath: sidebarVC.rootFolderURL?.path,
             openFiles: openFiles,
-            activeIndex: curIdx,
+            activeIndex: savedActiveIndex,
             windowZoomed: window?.isZoomed ?? false,
             sidebarCollapsed: sidebarManuallyCollapsed
         )
-        sessionStore.save(state)
     }
 
     func restoreSession() {
         let state = sessionStore.load()
-        let existingFiles = state.openFiles.filter { FileManager.default.fileExists(atPath: $0.path) }
         let recoveredCount = restoreUnnamedDocumentRecovery()
+        applySessionState(state, recoveredCount: recoveredCount)
+    }
+
+    private func applySessionState(_ state: SessionState, recoveredCount: Int = 0) {
+        let existingFiles = state.openFiles.filter { FileManager.default.fileExists(atPath: $0.path) }
 
         // Recovery can have something to restore even when the normal
         // file-based session doesn't (e.g. a crash with only unnamed
@@ -2420,9 +2431,17 @@ final class MainWindowController: NSWindowController,
                 collapsedRegionIDs: Set(fileState.collapsedFoldIDs ?? []))
         }
 
-        documentController.selectDocumentClamped(to: state.activeIndex)
+        if state.openFiles.indices.contains(state.activeIndex),
+           let activeDocumentIndex = documentController.documents.firstIndex(where: {
+               $0.fileURL?.path == state.openFiles[state.activeIndex].path
+           }) {
+            documentController.selectDocument(at: activeDocumentIndex)
+        } else {
+            documentController.selectDocumentClamped(to: state.activeIndex)
+        }
         if let doc = curDoc {
             editorVC.document = doc
+            editorVC.reloadCurrentDocument()
         }
         refreshTabs()
         refreshStatus()
@@ -2450,6 +2469,74 @@ final class MainWindowController: NSWindowController,
                 self.updateTabBarFrame()
             }
         }
+    }
+
+    func saveWorkspaceAs() {
+        guard let window else { return }
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "Workspace.\(WorkspaceFile.pathExtension)"
+        panel.beginSheetModal(for: window) { [weak self] response in
+            guard let self, response == .OK, var url = panel.url else { return }
+            if url.pathExtension.lowercased() != WorkspaceFile.pathExtension {
+                url.appendPathExtension(WorkspaceFile.pathExtension)
+            }
+            do {
+                try WorkspaceFile.save(self.currentSessionState(), to: url)
+                RecentItems.addWorkspace(url)
+                self.showStatusMessage("Workspace saved")
+            } catch { NSAlert(error: error).beginSheetModal(for: window) }
+        }
+    }
+
+    func openWorkspace() {
+        guard let window else { return }
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.beginSheetModal(for: window) { [weak self] response in
+            guard response == .OK, let url = panel.url else { return }
+            self?.openWorkspace(url)
+        }
+    }
+
+    func openWorkspace(_ url: URL) {
+        do {
+            let state = try WorkspaceFile.load(from: url)
+            applySessionState(state)
+            RecentItems.addWorkspace(url)
+            showStatusMessage("Workspace restored")
+        } catch { NSAlert(error: error).runModal() }
+    }
+
+    func showProjectHistory() {
+        let folders = RecentItems.folders
+        guard !folders.isEmpty else { showStatusMessage("Project history is empty"); return }
+        let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 420, height: 26))
+        popup.addItems(withTitles: folders.map(\.path))
+        let alert = NSAlert()
+        alert.messageText = "Project History"
+        alert.informativeText = "Choose a recent project folder to reopen in the sidebar."
+        alert.accessoryView = popup
+        alert.addButton(withTitle: "Open")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn,
+              folders.indices.contains(popup.indexOfSelectedItem) else { return }
+        openFolderDirect(folders[popup.indexOfSelectedItem])
+    }
+
+    func showWorkspaceHistory() {
+        let workspaces = RecentItems.workspaces
+        guard !workspaces.isEmpty else { showStatusMessage("Workspace history is empty"); return }
+        let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 420, height: 26))
+        popup.addItems(withTitles: workspaces.map(\.lastPathComponent))
+        let alert = NSAlert()
+        alert.messageText = "Workspace History"
+        alert.informativeText = "Choose a saved MaruEdit desktop/workspace to restore."
+        alert.accessoryView = popup
+        alert.addButton(withTitle: "Restore")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn,
+              workspaces.indices.contains(popup.indexOfSelectedItem) else { return }
+        openWorkspace(workspaces[popup.indexOfSelectedItem])
     }
 
     // MARK: - Autosave and crash recovery (M2-07)

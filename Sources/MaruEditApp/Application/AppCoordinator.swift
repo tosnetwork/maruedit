@@ -181,6 +181,10 @@ final class AppCoordinator {
     func renameFile()                 { ensureWindowControllerReady().renameFile() }
     func openPartialFile()            { ensureWindowControllerReady().openPartialFile() }
     func openBinaryFile()             { ensureWindowControllerReady().openBinaryFile() }
+    func showProjectHistory()         { ensureWindowControllerReady().showProjectHistory() }
+    func saveWorkspaceAs()            { ensureWindowControllerReady().saveWorkspaceAs() }
+    func openWorkspace()              { ensureWindowControllerReady().openWorkspace() }
+    func showWorkspaceHistory()       { ensureWindowControllerReady().showWorkspaceHistory() }
     func closeAndOpen()               { ensureWindowControllerReady().closeAndOpen() }
     func showFind()                   { ensureWindowControllerReady().showFind() }
     func showReplace()                { ensureWindowControllerReady().showFind(showingReplace: true) }

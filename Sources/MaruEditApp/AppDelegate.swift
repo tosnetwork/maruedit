@@ -148,6 +148,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         fileMenu.addItem(commandItem(.fileOpenFolder))
         fileMenu.addItem(commandItem(.fileOpenPartial))
         fileMenu.addItem(commandItem(.fileOpenBinary))
+        fileMenu.addItem(commandItem(.fileProjectHistory))
+        fileMenu.addItem(commandItem(.fileOpenWorkspace))
+        fileMenu.addItem(commandItem(.fileSaveWorkspace))
+        fileMenu.addItem(commandItem(.fileWorkspaceHistory))
 
         recentMenu = NSMenu(title: "Open Recent")
         recentMenu.delegate = self

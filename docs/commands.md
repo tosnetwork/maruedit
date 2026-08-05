@@ -23,6 +23,10 @@ significantly, replace this with a small script that generates it from
 | `file.openFolder` | Open Folder... | File | ⌘⇧O | `AppCoordinator.openFolderPanel()` |
 | `file.openPartial` | Open Partial File… | File | — | `AppCoordinator.openPartialFile()` |
 | `file.openBinary` | Open in Binary Mode… | File | — | Opens editable comma-separated hexadecimal bytes, 16 per line |
+| `file.projectHistory` | Project History… | File | — | Reopens a recently used project folder in the sidebar |
+| `file.saveWorkspace` | Save Workspace As… | File | — | Exports open files, project root, active tab, cursor/fold/scroll and window state to `.marudesk` |
+| `file.openWorkspace` | Open Workspace… | File | — | Restores a `.marudesk` desktop/workspace without discarding currently open unsaved tabs |
+| `file.workspaceHistory` | Workspace History… | File | — | Restores a recently used `.marudesk` workspace |
 | `file.closeAndOpen` | Close and Open… | File | — | `AppCoordinator.closeAndOpen()` |
 | `window.tabList` | Tab List… | Window | — | Selects an open document from a complete list |
 | `window.closeOtherTabs` | Close Other Tabs | Window | — | Closes all tabs except the active tab with save confirmation |
