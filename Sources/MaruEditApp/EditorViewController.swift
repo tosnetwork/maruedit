@@ -72,6 +72,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     private var isCompositionCommitScheduled = false
     private var completionDictionaries: [String] = []
     private var searchMarkerOffsets: Set<Int> = []
+    private(set) var deletedTextHistory: [String] = []
     private(set) var isTableMode = false
     private(set) var partialEditRange: NSRange?
     var inputLatencySignpostID: OSSignpostID?
@@ -671,6 +672,10 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
                   replacementString text: String?) -> Bool {
         beginInputLatencySignpost()
         let replacement = text ?? ""
+        if replacement.isEmpty, range.length > 0,
+           NSMaxRange(range) <= (textView.string as NSString).length {
+            rememberDeletedText((textView.string as NSString).substring(with: range))
+        }
         if lineIndex.utf16Length != (textView.string as NSString).length {
             lineIndex = LineIndex(textView.string)
         }
@@ -700,6 +705,22 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         textView.insertText("\n" + indent, replacementRange: range)
         suppressAutoIndent = false
         return false
+    }
+
+    func rememberDeletedText(_ text: String) {
+        guard !text.isEmpty else { return }
+        deletedTextHistory.removeAll { $0 == text }
+        deletedTextHistory.insert(text, at: 0)
+        if deletedTextHistory.count > 30 {
+            deletedTextHistory.removeLast(deletedTextHistory.count - 30)
+        }
+    }
+
+    @discardableResult
+    func restoreLastDeletedText() -> Bool {
+        guard let text = deletedTextHistory.first else { return false }
+        batchReplace(selectionSet.ranges, with: text)
+        return true
     }
 
     func textView(

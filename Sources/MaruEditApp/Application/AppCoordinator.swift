@@ -219,6 +219,11 @@ final class AppCoordinator {
     func selectCurrentParagraph()       { ensureWindowControllerReady().macroEditor.selectCurrentParagraph() }
     func copyWithQuotePrefix()          { _ = ensureWindowControllerReady().macroEditor.copyWithQuotePrefix() }
     func pasteRemovingQuotePrefix()     { _ = ensureWindowControllerReady().macroEditor.pasteRemovingQuotePrefix() }
+    func restoreLastDeletedText() {
+        if !ensureWindowControllerReady().macroEditor.restoreLastDeletedText() {
+            showStatusMessage("No deleted text to restore")
+        }
+    }
     func pollClipboard() { clipboardHistory.poll() }
     func showClipboardHistory() {
         clipboardHistory.poll()

@@ -88,7 +88,7 @@ final class CommandRegistryTests: XCTestCase {
             , .editAddCursorAbove, .editAddCursorBelow, .editSelectNextOccurrence,
             .editSelectWord, .editSelectLine, .editSelectParagraph,
             .editCopyQuoted, .editPasteQuoted,
-            .editClipboardHistory,
+            .editClipboardHistory, .editRestoreDeletion,
             .editSelectAllOccurrences, .editUndoLastAddedCursor, .editBeginColumnSelection,
             .editDeleteLine, .editDuplicateLine, .editMoveLineUp, .editMoveLineDown,
             .editJoinLines, .editTrimTrailingWhitespace, .editUppercase, .editLowercase,

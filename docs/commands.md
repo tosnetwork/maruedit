@@ -131,6 +131,7 @@ significantly, replace this with a small script that generates it from
 | `edit.copyQuoted` | Copy with Quote Prefix | Edit | — | Copies selected lines with `> ` prefixes |
 | `edit.pasteQuoted` | Paste Removing Quote Prefix | Edit | — | Removes `>` quote prefixes while pasting |
 | `edit.clipboardHistory` | Clipboard History… | Edit | — | Selects, pastes or clears recently observed text clipboard values |
+| `edit.restoreDeletion` | Restore Last Deleted Text | Edit | — | Reinserts the most recently deleted text at every active selection |
 | `navigate.toggleBookmark` | Toggle Bookmark | Edit | — | `AppCoordinator.toggleBookmark()` |
 | `navigate.nextBookmark` | Next Bookmark | Edit | — | `AppCoordinator.nextBookmark()` |
 | `navigate.previousBookmark` | Previous Bookmark | Edit | — | `AppCoordinator.previousBookmark()` |

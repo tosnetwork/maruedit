@@ -195,6 +195,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         editMenu.addItem(commandItem(.editCopyQuoted))
         editMenu.addItem(commandItem(.editPasteQuoted))
         editMenu.addItem(commandItem(.editClipboardHistory))
+        editMenu.addItem(commandItem(.editRestoreDeletion))
         editMenu.addItem(.separator())
         editMenu.addItem(commandItem(.editSelectWord))
         editMenu.addItem(commandItem(.editSelectLine))

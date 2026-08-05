@@ -409,6 +409,12 @@ extension EditorViewController {
         }
         guard !merged.isEmpty else { return }
 
+        let deleted = merged.compactMap { operation -> String? in
+            guard operation.replacement.isEmpty, operation.range.length > 0 else { return nil }
+            return (textView.string as NSString).substring(with: operation.range)
+        }.joined()
+        rememberDeletedText(deleted)
+
         var positions: [Int] = []
         var offset = 0
         for operation in merged {
