@@ -25,10 +25,10 @@ final class GrepPanel: NSObject, NSTextFieldDelegate {
     private let folderField = NSTextField()
     private let includeField = NSTextField()
     private let excludeField = NSTextField()
-    private let caseButton = NSButton(checkboxWithTitle: "Case sensitive", target: nil, action: nil)
-    private let wordButton = NSButton(checkboxWithTitle: "Whole word", target: nil, action: nil)
-    private let regexButton = NSButton(checkboxWithTitle: "Regular expression", target: nil, action: nil)
-    private let hiddenButton = NSButton(checkboxWithTitle: "Include hidden files", target: nil, action: nil)
+    private let caseButton = NSButton(checkboxWithTitle: AppLocalization.string("grep.caseSensitive"), target: nil, action: nil)
+    private let wordButton = NSButton(checkboxWithTitle: AppLocalization.string("grep.wholeWord"), target: nil, action: nil)
+    private let regexButton = NSButton(checkboxWithTitle: AppLocalization.string("grep.regex"), target: nil, action: nil)
+    private let hiddenButton = NSButton(checkboxWithTitle: AppLocalization.string("grep.hiddenFiles"), target: nil, action: nil)
     var searchHistory: [String] = []
     private var searchHistoryIndex: Int?
 
@@ -38,7 +38,7 @@ final class GrepPanel: NSObject, NSTextFieldDelegate {
             styleMask: [.titled, .resizable], backing: .buffered, defer: true
         )
         super.init()
-        window.title = "Find in Folder"
+        window.title = AppLocalization.string("grep.title")
         window.minSize = NSSize(width: 520, height: 340)
         buildUI()
     }
@@ -61,16 +61,16 @@ final class GrepPanel: NSObject, NSTextFieldDelegate {
             return field
         }
 
-        let chooseButton = NSButton(title: "Choose…", target: self, action: #selector(chooseFolder))
-        chooseButton.setAccessibilityLabel("Choose search folder")
-        let searchButton = NSButton(title: "Search", target: self, action: #selector(submit))
+        let chooseButton = NSButton(title: AppLocalization.string("grep.choose"), target: self, action: #selector(chooseFolder))
+        chooseButton.setAccessibilityLabel(AppLocalization.string("grep.choose"))
+        let searchButton = NSButton(title: AppLocalization.string("grep.search"), target: self, action: #selector(submit))
         searchButton.keyEquivalent = "\r"
-        let replaceButton = NSButton(title: "Preview Replace…", target: self, action: #selector(previewReplace))
-        let cancelButton = NSButton(title: "Cancel", target: self, action: #selector(cancel))
+        let replaceButton = NSButton(title: AppLocalization.string("grep.previewReplace"), target: self, action: #selector(previewReplace))
+        let cancelButton = NSButton(title: AppLocalization.string(.commonCancel), target: self, action: #selector(cancel))
         cancelButton.keyEquivalent = "\u{1b}"
 
         let folderRow = NSStackView(views: [
-            input(folderField, "Folder to search", "Search folder"), chooseButton,
+            input(folderField, AppLocalization.string("grep.folder"), AppLocalization.string("grep.folder")), chooseButton,
         ])
         folderRow.orientation = .horizontal
 
@@ -80,12 +80,12 @@ final class GrepPanel: NSObject, NSTextFieldDelegate {
         options.spacing = 4
 
         let grid = NSGridView(views: [
-            [label("Find:"), input(patternField, "Text or pattern", "Search pattern")],
-            [label("Replace:"), input(replacementField, "Replacement text", "Replacement text")],
-            [label("In:"), folderRow],
-            [label("Include:"), input(includeField, "*.swift, *.txt (optional)", "Include file patterns")],
-            [label("Exclude:"), input(excludeField, ".build, node_modules (optional)", "Exclude file patterns")],
-            [label("Options:"), options],
+            [label(AppLocalization.string("grep.findLabel")), input(patternField, AppLocalization.string("grep.pattern"), AppLocalization.string("grep.pattern"))],
+            [label(AppLocalization.string("grep.replaceLabel")), input(replacementField, AppLocalization.string("grep.replacement"), AppLocalization.string("grep.replacement"))],
+            [label(AppLocalization.string("grep.inLabel")), folderRow],
+            [label(AppLocalization.string("grep.includeLabel")), input(includeField, AppLocalization.string("grep.includeHint"), AppLocalization.string("grep.includeLabel"))],
+            [label(AppLocalization.string("grep.excludeLabel")), input(excludeField, AppLocalization.string("grep.excludeHint"), AppLocalization.string("grep.excludeLabel"))],
+            [label(AppLocalization.string("grep.optionsLabel")), options],
         ])
         grid.translatesAutoresizingMaskIntoConstraints = false
         grid.column(at: 1).width = 380

@@ -52,7 +52,9 @@ final class ConversionDialogTests: XCTestCase {
 
     func testConvertMenuExposesPipelineBeforeDirectConversions() {
         let app = AppDelegate(); app.buildMenu()
-        let menu = NSApp.mainMenu?.items.compactMap(\.submenu).first { $0.title == "Convert" }
-        XCTAssertEqual(menu?.items.first?.title, "Conversion Pipeline…")
+        let menu = NSApp.mainMenu?.items.compactMap(\.submenu).first {
+            $0.title == AppLocalization.string("menu.edit.convert")
+        }
+        XCTAssertEqual(menu?.items.first?.title, "変換ダイアログ...")
     }
 }

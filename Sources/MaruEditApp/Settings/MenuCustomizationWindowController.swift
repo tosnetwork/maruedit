@@ -23,7 +23,7 @@ final class MenuCustomizationWindowController: NSWindowController {
             contentRect: NSRect(x: 0, y: 0, width: 560, height: 560),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered, defer: false)
-        window.title = "Customize Menus"
+        window.title = AppLocalization.string("settings.menuEditor.title")
         window.minSize = NSSize(width: 460, height: 360)
         window.center()
         super.init(window: window)
@@ -36,7 +36,7 @@ final class MenuCustomizationWindowController: NSWindowController {
     private func buildUI() {
         guard let root = window?.contentView else { return }
         let explanation = NSTextField(wrappingLabelWithString:
-            "Maru's seven-menu default is shown first. Enable extended top-level menus or choose individual commands below. Required macOS items are always shown.")
+            AppLocalization.string("settings.menuEditor.explanation"))
         explanation.translatesAutoresizingMaskIntoConstraints = false
         root.addSubview(explanation)
 
@@ -50,7 +50,7 @@ final class MenuCustomizationWindowController: NSWindowController {
         stack.alignment = .leading
         stack.spacing = 6
         stack.edgeInsets = NSEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
-        let menuHeading = NSTextField(labelWithString: "Extended Top-Level Menus")
+        let menuHeading = NSTextField(labelWithString: AppLocalization.string("settings.menuEditor.extended"))
         menuHeading.font = .systemFont(ofSize: 13, weight: .semibold)
         stack.addArrangedSubview(menuHeading)
         for menu in MenuCustomization.optionalTopLevelMenus {
@@ -58,18 +58,19 @@ final class MenuCustomizationWindowController: NSWindowController {
                 checkboxWithTitle: menu, target: self, action: #selector(menuVisibilityChanged(_:)))
             checkbox.identifier = NSUserInterfaceItemIdentifier("menu.\(menu)")
             checkbox.state = customization.hiddenMenus.contains(menu) ? .off : .on
-            checkbox.setAccessibilityLabel("Show \(menu) top-level menu")
+            checkbox.setAccessibilityLabel(AppLocalization.string("settings.menuEditor.showMenu", [menu]))
             stack.addArrangedSubview(checkbox)
             menuCheckboxes[menu] = checkbox
         }
-        let commandHeading = NSTextField(labelWithString: "Commands")
+        let commandHeading = NSTextField(labelWithString: AppLocalization.string("settings.menuEditor.commands"))
         commandHeading.font = .systemFont(ofSize: 13, weight: .semibold)
         stack.addArrangedSubview(commandHeading)
         for definition in definitions {
             let protected = protectedCommandIDs.contains(definition.id)
-            let suffix = protected ? " — Required" : ""
+            let suffix = protected ? AppLocalization.string("settings.menuEditor.requiredSuffix") : ""
+            let title = AppLocalization.commandTitle(id: definition.id.rawValue, english: definition.title)
             let checkbox = NSButton(
-                checkboxWithTitle: "\(definition.title)  [\(definition.id.rawValue)]\(suffix)",
+                checkboxWithTitle: "\(title)  [\(definition.id.rawValue)]\(suffix)",
                 target: self, action: #selector(visibilityChanged(_:)))
             checkbox.identifier = NSUserInterfaceItemIdentifier(definition.id.rawValue)
             checkbox.state = customization.isCommandVisible(
@@ -77,7 +78,7 @@ final class MenuCustomizationWindowController: NSWindowController {
                 defaultVisible: AppDelegate.classicDefaultVisibleCommandIDs.contains(definition.id)
             ) ? .on : .off
             checkbox.isEnabled = !protected
-            checkbox.setAccessibilityLabel("Show \(definition.title) in menus")
+            checkbox.setAccessibilityLabel(AppLocalization.string("settings.menuEditor.showCommand", [title]))
             stack.addArrangedSubview(checkbox)
             checkboxes[definition.id] = checkbox
         }
@@ -90,9 +91,9 @@ final class MenuCustomizationWindowController: NSWindowController {
         root.addSubview(scroll)
 
         let restore = NSButton(
-            title: "Restore Default Menus", target: self, action: #selector(restoreDefaults))
+            title: AppLocalization.string("settings.menuEditor.restore"), target: self, action: #selector(restoreDefaults))
         restore.translatesAutoresizingMaskIntoConstraints = false
-        restore.setAccessibilityLabel("Restore default menus")
+        restore.setAccessibilityLabel(AppLocalization.string("settings.menuEditor.restore"))
         root.addSubview(restore)
         NSLayoutConstraint.activate([
             explanation.topAnchor.constraint(equalTo: root.topAnchor, constant: 16),

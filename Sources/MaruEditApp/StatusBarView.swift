@@ -22,25 +22,7 @@ enum StatusBarField: String, CaseIterable {
     case macroActivity, capsLock, readOnly, viewMode, largeFileMode, lineEnding, byteOrderMark, encoding, languageProfile
 
     var title: String {
-        switch self {
-        case .cursorPosition: "Cursor Position"
-        case .selection: "Selection"
-        case .indentation: "Indentation"
-        case .inputMode: "Insert/Overwrite"
-        case .layoutMode: "Writing/Column Layout"
-        case .totals: "Total Lines and Characters"
-        case .characterCode: "Character Code"
-        case .fontSize: "Font Size"
-        case .macroActivity: "Macro Activity"
-        case .capsLock: "Caps Lock"
-        case .readOnly: "Read-Only State"
-        case .viewMode: "View Mode State"
-        case .largeFileMode: "Large File Mode"
-        case .lineEnding: "Line Ending"
-        case .byteOrderMark: "Byte Order Mark"
-        case .encoding: "Encoding"
-        case .languageProfile: "File-Type Profile"
-        }
+        AppLocalization.string("status.field.\(rawValue)")
     }
 }
 
@@ -87,8 +69,8 @@ final class StatusBarView: NSView {
     private let encLabel = ActionableStatusLabel(labelWithString: "UTF-8")
     private let bomLabel = ActionableStatusLabel(labelWithString: "No BOM")
     private let lineEndingLabel = ActionableStatusLabel(labelWithString: "LF")
-    private let readOnlyLabel = NSTextField(labelWithString: "Read-Only")
-    private let viewModeLabel = NSTextField(labelWithString: "View Mode")
+    private let readOnlyLabel = NSTextField(labelWithString: AppLocalization.string("status.readOnly"))
+    private let viewModeLabel = NSTextField(labelWithString: AppLocalization.string("status.viewMode"))
     private let largeFileModeLabel = ActionableStatusLabel(labelWithString: "Reduced Features")
     private var cursorText = "Ln 1, Col 1"
     private var documentText = ""
@@ -101,6 +83,7 @@ final class StatusBarView: NSView {
     private var isCapsLockEnabled = false
     private var isMacroRunning = false
     private var isMacroRecording = false
+    private var currentInputMode: EditorInputMode = .insert
     private var largeFileMode: LargeFileMode = .normal
     private var showsCursorPosition = true
     private static let fieldsDefaultsKey = "MaruClassicStatusBarFields"
@@ -251,10 +234,10 @@ final class StatusBarView: NSView {
             addSubview(label)
         }
         let controls: [(NSTextField, String, String)] = [
-            (encLabel, "Encoding", "Choose or reopen with a text encoding"),
-            (bomLabel, "Byte order mark", "Choose whether to save a byte order mark"),
-            (lineEndingLabel, "Line ending", "Choose the saved line-ending style"),
-            (langLabel, "Language and file-type profile", "Choose syntax language or inspect the active profile"),
+            (encLabel, AppLocalization.string("status.accessibility.encoding"), AppLocalization.string("status.tooltip.encoding")),
+            (bomLabel, AppLocalization.string("status.accessibility.bom"), AppLocalization.string("status.tooltip.bom")),
+            (lineEndingLabel, AppLocalization.string("status.accessibility.lineEnding"), AppLocalization.string("status.tooltip.lineEnding")),
+            (langLabel, AppLocalization.string("status.accessibility.language"), AppLocalization.string("status.tooltip.language")),
         ]
         for (label, accessibilityLabel, toolTip) in controls {
             label.textColor = Theme.accent
@@ -262,36 +245,36 @@ final class StatusBarView: NSView {
             label.setAccessibilityLabel(accessibilityLabel)
             label.toolTip = toolTip
         }
-        lineColLabel.setAccessibilityLabel("Cursor line and display column")
-        totalsLabel.setAccessibilityLabel("Total lines and configured character count")
-        totalsLabel.toolTip = "Click to configure how characters are counted"
-        characterCodeLabel.setAccessibilityLabel("Character code at cursor")
-        characterCodeLabel.toolTip = "Click for Unicode and encoded byte details"
-        fontSizeLabel.setAccessibilityLabel("Editor font size")
-        fontSizeLabel.toolTip = "Click to adjust the editor font size"
-        selectionLabel.setAccessibilityLabel("Selection count")
-        inputModeLabel.setAccessibilityLabel("Input mode: insert")
-        inputModeLabel.toolTip = "Insert mode; overwrite mode is not enabled"
-        layoutModeLabel.setAccessibilityLabel("Writing layout: horizontal")
-        layoutModeLabel.toolTip = "Horizontal writing; click to choose writing or column layout"
+        lineColLabel.setAccessibilityLabel(AppLocalization.string("status.accessibility.cursor"))
+        totalsLabel.setAccessibilityLabel(AppLocalization.string("status.accessibility.totals"))
+        totalsLabel.toolTip = AppLocalization.string("status.tooltip.totals")
+        characterCodeLabel.setAccessibilityLabel(AppLocalization.string("status.accessibility.characterCode"))
+        characterCodeLabel.toolTip = AppLocalization.string("status.tooltip.characterCode")
+        fontSizeLabel.setAccessibilityLabel(AppLocalization.string("status.accessibility.fontSize"))
+        fontSizeLabel.toolTip = AppLocalization.string("status.tooltip.fontSize")
+        selectionLabel.setAccessibilityLabel(AppLocalization.string("status.accessibility.selection"))
+        inputModeLabel.setAccessibilityLabel(AppLocalization.string("status.accessibility.inputInsert"))
+        inputModeLabel.toolTip = AppLocalization.string("status.tooltip.inputInsert")
+        layoutModeLabel.setAccessibilityLabel(AppLocalization.string("status.accessibility.layoutHorizontal"))
+        layoutModeLabel.toolTip = AppLocalization.string("status.tooltip.layoutHorizontal")
         for label in [lineColLabel, totalsLabel, inputModeLabel, layoutModeLabel, characterCodeLabel, fontSizeLabel] {
             label.textColor = Theme.accent
             label.setAccessibilityRole(.button)
         }
         readOnlyLabel.textColor = .systemOrange
-        readOnlyLabel.toolTip = "This file is read-only on disk; use Save As to save changes"
+        readOnlyLabel.toolTip = AppLocalization.string("status.tooltip.readOnly")
         readOnlyLabel.isHidden = true
         viewModeLabel.textColor = .systemOrange
-        viewModeLabel.toolTip = "View Mode prevents editing without changing file permissions"
+        viewModeLabel.toolTip = AppLocalization.string("status.tooltip.viewMode")
         viewModeLabel.isHidden = true
         capsLockLabel.textColor = .systemOrange
-        capsLockLabel.setAccessibilityLabel("Caps Lock enabled")
-        capsLockLabel.toolTip = "Caps Lock is enabled"
+        capsLockLabel.setAccessibilityLabel(AppLocalization.string("status.accessibility.capsLock"))
+        capsLockLabel.toolTip = AppLocalization.string("status.tooltip.capsLock")
         capsLockLabel.isHidden = true
         macroActivityLabel.textColor = .systemRed
         macroActivityLabel.setAccessibilityRole(.button)
-        macroActivityLabel.setAccessibilityLabel("Macro running")
-        macroActivityLabel.toolTip = "A macro is currently running"
+        macroActivityLabel.setAccessibilityLabel(AppLocalization.string("status.accessibility.macroRunning"))
+        macroActivityLabel.toolTip = AppLocalization.string("status.tooltip.macroRunning")
         macroActivityLabel.isHidden = true
         largeFileModeLabel.textColor = .systemOrange
         largeFileModeLabel.setAccessibilityRole(.button)
@@ -339,12 +322,24 @@ final class StatusBarView: NSView {
         applyAppearance()
     }
 
+    func refreshLocalization() {
+        readOnlyLabel.stringValue = AppLocalization.string("status.readOnly")
+        viewModeLabel.stringValue = AppLocalization.string("status.viewMode")
+        largeFileModeLabel.stringValue = SettingsLocalization.text(
+            largeFileMode == .readOnly ? "largeReadOnly" : "reducedFeatures")
+        refreshClassicFieldText()
+        needsLayout = true
+        if isMergedMode { onPreferredWidthChange?() }
+    }
+
     private func refreshClassicFieldText() {
         encLabel.stringValue = usesClassicAppearance && isMergedMode && documentEncoding == .utf8
             ? "Unicode (UTF-8)" : documentEncoding.displayName
-        let isOverwrite = inputModeLabel.toolTip?.contains("overwrite") == true
+        let isOverwrite = currentInputMode == .overwrite
         if usesClassicAppearance && isMergedMode {
-            inputModeLabel.stringValue = isOverwrite ? "上書きモード" : "挿入モード"
+            inputModeLabel.stringValue = isOverwrite
+                ? AppLocalization.string(.inputOverwrite)
+                : AppLocalization.string(.inputInsert)
         } else {
             inputModeLabel.stringValue = isOverwrite ? "OVR" : "INS"
         }
@@ -382,7 +377,7 @@ final class StatusBarView: NSView {
         } else {
             selectionLabel.stringValue = "Sel \(state.selectedCharacterCount)"
         }
-        lineColLabel.toolTip = "UTF-16 offset: \(state.utf16Offset)"
+        lineColLabel.toolTip = AppLocalization.string("status.tooltip.utf16Offset", [state.utf16Offset])
         updateCharacterCode(at: state.utf16Offset)
         if state.selectedLineCount > 0 {
             selectionLabel.stringValue += " · \(state.selectedLineCount) lines"
@@ -391,7 +386,7 @@ final class StatusBarView: NSView {
             let displayWidth = state.boxWidthIsPixels ? "\(width)px" : "\(width)"
             selectionLabel.stringValue += " · BOX \(displayWidth)×\(height)"
         }
-        selectionLabel.toolTip = "Selected UTF-16 units: \(state.selectedUTF16Length)"
+        selectionLabel.toolTip = AppLocalization.string("status.tooltip.selectedUTF16", [state.selectedUTF16Length])
         needsLayout = true
     }
 
@@ -520,29 +515,34 @@ final class StatusBarView: NSView {
     }
 
     func updateInputMode(_ mode: EditorInputMode) {
+        currentInputMode = mode
         inputModeLabel.stringValue = usesClassicAppearance && isMergedMode
-            ? (mode == .insert ? "挿入モード" : "上書きモード")
+            ? (mode == .insert
+                ? AppLocalization.string(.inputInsert)
+                : AppLocalization.string(.inputOverwrite))
             : (mode == .insert ? "INS" : "OVR")
-        let name = mode == .insert ? "insert" : "overwrite"
-        inputModeLabel.setAccessibilityLabel("Input mode: \(name)")
-        inputModeLabel.toolTip = "Current input mode: \(name)"
+        inputModeLabel.setAccessibilityLabel(AppLocalization.string(
+            mode == .insert ? "status.accessibility.inputInsert" : "status.accessibility.inputOverwrite"))
+        inputModeLabel.toolTip = AppLocalization.string(
+            mode == .insert ? "status.tooltip.currentInputInsert" : "status.tooltip.currentInputOverwrite")
         needsLayout = true
         if isMergedMode { onPreferredWidthChange?() }
     }
 
     func updateLayoutMode(isVertical: Bool, isColumn: Bool, columnCount: Int) {
         let text: String
-        let description: String
+        let descriptionKey: String
         if isColumn {
-            text = "COL×\(max(2, columnCount))"; description = "continuous column"
+            text = "COL×\(max(2, columnCount))"; descriptionKey = "status.layout.column"
         } else if isVertical {
-            text = "VERT"; description = "vertical writing"
+            text = "VERT"; descriptionKey = "status.layout.vertical"
         } else {
-            text = "HORZ"; description = "horizontal writing"
+            text = "HORZ"; descriptionKey = "status.layout.horizontal"
         }
+        let description = AppLocalization.string(descriptionKey)
         layoutModeLabel.stringValue = text
-        layoutModeLabel.setAccessibilityLabel("Writing layout: \(description)")
-        layoutModeLabel.toolTip = "Current layout: \(description); click to choose"
+        layoutModeLabel.setAccessibilityLabel(AppLocalization.string("status.accessibility.layout", [description]))
+        layoutModeLabel.toolTip = AppLocalization.string("status.tooltip.currentLayout", [description])
         needsLayout = true
     }
 
@@ -571,8 +571,10 @@ final class StatusBarView: NSView {
     func updateMacroRecording(isRecording: Bool) {
         isMacroRecording = isRecording
         macroActivityLabel.stringValue = isRecording ? "REC" : "MACRO"
-        macroActivityLabel.setAccessibilityLabel(isRecording ? "Macro recording" : "Macro running")
-        macroActivityLabel.toolTip = isRecording ? "Commands are being recorded" : "A macro is currently running"
+        macroActivityLabel.setAccessibilityLabel(AppLocalization.string(
+            isRecording ? "status.accessibility.macroRecording" : "status.accessibility.macroRunning"))
+        macroActivityLabel.toolTip = AppLocalization.string(
+            isRecording ? "status.tooltip.macroRecording" : "status.tooltip.macroRunning")
         applyConfiguredVisibility(); needsLayout = true
     }
 
@@ -585,7 +587,7 @@ final class StatusBarView: NSView {
     }
 
     override func rightMouseDown(with event: NSEvent) {
-        let menu = NSMenu(title: "Customize Status Bar")
+        let menu = NSMenu(title: AppLocalization.string("status.customize"))
         for field in StatusBarField.allCases {
             let item = NSMenuItem(title: field.title, action: #selector(toggleStatusField(_:)), keyEquivalent: "")
             item.target = self; item.representedObject = field.rawValue
@@ -595,11 +597,11 @@ final class StatusBarView: NSView {
         }
         menu.addItem(.separator())
         let clicks = NSMenuItem(
-            title: "Enable Status Bar Click Actions", action: #selector(toggleClickActions),
+            title: AppLocalization.string("status.enableClicks"), action: #selector(toggleClickActions),
             keyEquivalent: "")
         clicks.target = self; clicks.state = areClicksEnabled ? .on : .off
         menu.addItem(clicks)
-        let restore = NSMenuItem(title: "Restore Default Status Bar", action: #selector(restoreStatusFields), keyEquivalent: "")
+        let restore = NSMenuItem(title: AppLocalization.string("status.restore"), action: #selector(restoreStatusFields), keyEquivalent: "")
         restore.target = self; menu.addItem(restore)
         NSMenu.popUpContextMenu(menu, with: event, for: self)
     }

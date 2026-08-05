@@ -341,7 +341,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         scrollView.documentView = maruTextView
         scrollView.hasHorizontalScroller = true
         textView = maruTextView
-        textView.setAccessibilityLabel("Editor")
+        textView.setAccessibilityLabel(AppLocalization.string("editor.accessibility"))
         // Force TextKit 1 so layout manager APIs work reliably
         textView.layoutManager?.delegate = foldLayoutDelegate
 
@@ -802,7 +802,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         column.defaultParagraphStyle = textView.defaultParagraphStyle
         column.typingAttributes = textView.typingAttributes
         column.delegate = self
-        column.setAccessibilityLabel("Editor column \(number)")
+        column.setAccessibilityLabel(AppLocalization.string("editor.columnAccessibility", [number]))
     }
 
     private func applyTextLayoutOrientation() {

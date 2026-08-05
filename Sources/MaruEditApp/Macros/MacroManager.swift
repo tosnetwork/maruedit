@@ -21,7 +21,7 @@ final class MacroManager: NSObject {
     var executionDidFinish: ((CommandID, Result<MacroRunResult, MacroExecutionError>) -> Void)?
     var executionDidStart: ((CommandID) -> Void)?
     private var registeredIDs: Set<CommandID> = []
-    private(set) lazy var menu = NSMenu(title: "Macro")
+    private(set) lazy var menu = NSMenu(title: AppLocalization.string("menu.group.macro"))
     private var permissionWindow: MacroPermissionWindowController?
 
     init(directory: URL = MacroManager.defaultDirectory,
@@ -84,8 +84,8 @@ final class MacroManager: NSObject {
                 if case .failure(let error) = result {
                     let message: String
                     switch error {
-                    case .cancelled: message = "Macro cancelled."
-                    case .timedOut: message = "Macro timed out."
+                    case .cancelled: message = AppLocalization.string("macro.cancelled")
+                    case .timedOut: message = AppLocalization.string("macro.timedOut")
                     case .javascript(let js):
                         message = [js.message, js.stack].compactMap { $0 }.joined(separator: "\n")
                     }
@@ -110,13 +110,13 @@ final class MacroManager: NSObject {
             menu.addItem(item)
         }
         if catalog.macros.filter({ $0.isEnabled }).isEmpty {
-            let empty = NSMenuItem(title: "No Enabled Macros", action: nil, keyEquivalent: "")
+            let empty = NSMenuItem(title: AppLocalization.string("macro.noneEnabled"), action: nil, keyEquivalent: "")
             empty.isEnabled = false
             menu.addItem(empty)
         }
         menu.addItem(.separator())
-        let manage = NSMenuItem(title: "Enable Macros", action: nil, keyEquivalent: "")
-        let manageMenu = NSMenu(title: "Enable Macros")
+        let manage = NSMenuItem(title: AppLocalization.string("macro.enable"), action: nil, keyEquivalent: "")
+        let manageMenu = NSMenu(title: AppLocalization.string("macro.enable"))
         for macro in catalog.macros {
             let item = NSMenuItem(title: macro.metadata.name, action: #selector(toggleMacro(_:)), keyEquivalent: "")
             item.target = self; item.representedObject = macro.id
@@ -125,13 +125,13 @@ final class MacroManager: NSObject {
         }
         manage.submenu = manageMenu
         menu.addItem(manage)
-        menu.addItem(NSMenuItem(title: "Reload Macros", action: #selector(reloadAction), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: AppLocalization.string("macro.reload"), action: #selector(reloadAction), keyEquivalent: ""))
         menu.items.last?.target = self
-        menu.addItem(NSMenuItem(title: "Open Macro Folder", action: #selector(openFolder), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: AppLocalization.string("macro.openFolder"), action: #selector(openFolder), keyEquivalent: ""))
         menu.items.last?.target = self
-        menu.addItem(NSMenuItem(title: "Show Macro Output", action: #selector(showErrorConsole), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: AppLocalization.string("macro.showOutput"), action: #selector(showErrorConsole), keyEquivalent: ""))
         menu.items.last?.target = self
-        menu.addItem(NSMenuItem(title: "Manage Permissions", action: #selector(showPermissions), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: AppLocalization.string("macro.managePermissions"), action: #selector(showPermissions), keyEquivalent: ""))
         menu.items.last?.target = self
     }
 

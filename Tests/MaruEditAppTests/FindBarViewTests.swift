@@ -9,6 +9,15 @@ import MaruEditCore
 
 @preconcurrency @MainActor
 final class FindBarViewTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        UserDefaults.standard.set(AppLanguage.english.rawValue, forKey: AppLocalization.defaultsKey)
+    }
+
+    override func tearDown() {
+        UserDefaults.standard.removeObject(forKey: AppLocalization.defaultsKey)
+        super.tearDown()
+    }
     func testMenuFacingOptionAPIUsesTheSameQueryState() async {
         let bar = FindBarView()
         XCTAssertFalse(bar.isOptionEnabled(.caseSensitive))

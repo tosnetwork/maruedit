@@ -3,6 +3,15 @@ import XCTest
 
 @preconcurrency @MainActor
 final class ColorMarkerTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        UserDefaults.standard.set(AppLanguage.english.rawValue, forKey: AppLocalization.defaultsKey)
+    }
+
+    override func tearDown() {
+        UserDefaults.standard.removeObject(forKey: AppLocalization.defaultsKey)
+        super.tearDown()
+    }
     func testColorsToggleNavigateWrapAndMoveWithEdits() {
         let text = "a\nb\nc\n" as NSString
         let markers = ColorMarkerSet()

@@ -31,8 +31,8 @@ final class MacroCommandBridge: @unchecked Sendable {
         promptHandler = prompt ?? { message, initial in
             let alert = NSAlert()
             alert.messageText = message
-            alert.addButton(withTitle: "OK")
-            alert.addButton(withTitle: "Cancel")
+            alert.addButton(withTitle: AppLocalization.string(.commonOK))
+            alert.addButton(withTitle: AppLocalization.string(.commonCancel))
             let field = NSTextField(string: initial)
             field.frame.size = NSSize(width: 320, height: 24)
             alert.accessoryView = field

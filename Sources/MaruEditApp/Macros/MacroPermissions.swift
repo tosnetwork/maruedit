@@ -20,8 +20,8 @@ final class MacroPermissionAuthorizer {
         self.store = store
         self.chooseDirectory = chooseDirectory ?? { macro in
             let panel = NSOpenPanel()
-            panel.title = "Allow \(macro.metadata.name) to Access a Folder"
-            panel.message = "The macro can access only the folder you select."
+            panel.title = AppLocalization.string("macro.permission.folderTitle", [macro.metadata.name])
+            panel.message = AppLocalization.string("macro.permission.folderExplanation")
             panel.canChooseDirectories = true
             panel.canChooseFiles = false
             panel.allowsMultipleSelection = false
@@ -30,10 +30,10 @@ final class MacroPermissionAuthorizer {
         self.confirmExternalCommands = confirmExternalCommands ?? { macro in
             let alert = NSAlert()
             alert.alertStyle = .warning
-            alert.messageText = "Allow External Commands?"
-            alert.informativeText = "\(macro.metadata.name) requests permission to launch external programs."
-            alert.addButton(withTitle: "Allow")
-            alert.addButton(withTitle: "Deny")
+            alert.messageText = AppLocalization.string("macro.permission.externalTitle")
+            alert.informativeText = AppLocalization.string("macro.permission.externalExplanation", [macro.metadata.name])
+            alert.addButton(withTitle: AppLocalization.string(.commonAllow))
+            alert.addButton(withTitle: AppLocalization.string(.commonDeny))
             return alert.runModal() == .alertFirstButtonReturn
         }
     }
@@ -114,7 +114,7 @@ final class MacroPermissionWindowController: NSWindowController {
         self.store = store
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 620, height: 360),
                               styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
-        window.title = "Macro Permissions"
+        window.title = AppLocalization.string("macro.permission.windowTitle")
         super.init(window: window)
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 8
@@ -130,13 +130,15 @@ final class MacroPermissionWindowController: NSWindowController {
     func reload() {
         for view in stack.arrangedSubviews { stack.removeArrangedSubview(view); view.removeFromSuperview() }
         let grants = store.load().grants
-        if grants.isEmpty { stack.addArrangedSubview(NSTextField(labelWithString: "No remembered macro permissions.")) }
+        if grants.isEmpty {
+            stack.addArrangedSubview(NSTextField(labelWithString: AppLocalization.string("macro.permission.none")))
+        }
         for grant in grants {
             let row = NSStackView(); row.orientation = .horizontal; row.spacing = 10
             let detail = grant.directoryDisplayPath.map { " — \($0)" } ?? ""
             row.addArrangedSubview(NSTextField(labelWithString:
                 "\(grant.macroID.rawValue): \(grant.permission.rawValue) = \(grant.decision.rawValue)\(detail)"))
-            let button = NSButton(title: "Revoke", target: self, action: #selector(revoke(_:)))
+            let button = NSButton(title: AppLocalization.string("macro.permission.revoke"), target: self, action: #selector(revoke(_:)))
             button.representedGrant = grant
             row.addArrangedSubview(button); stack.addArrangedSubview(row)
         }

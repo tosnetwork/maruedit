@@ -96,38 +96,38 @@ final class FindBarView: NSView, NSTextFieldDelegate {
             button.setAccessibilityLabel(accessibility)
         }
 
-        searchField.placeholderString = "Find"
+        searchField.placeholderString = AppLocalization.string("find.placeholder")
         searchField.font = Theme.uiFontSmall
         searchField.focusRingType = .none
         searchField.delegate = self
         searchField.translatesAutoresizingMaskIntoConstraints = false
-        searchField.setAccessibilityLabel("Find")
-        searchField.setAccessibilityHelp("Type to search. Return finds the next match, Shift-Return the previous one, Escape closes the find bar. Up and Down recall earlier searches.")
+        searchField.setAccessibilityLabel(AppLocalization.string("find.accessibility.search"))
+        searchField.setAccessibilityHelp(AppLocalization.string("find.help.search"))
 
-        replaceField.placeholderString = "Replace"
+        replaceField.placeholderString = AppLocalization.string("find.replacePlaceholder")
         replaceField.font = Theme.uiFontSmall
         replaceField.focusRingType = .none
         replaceField.delegate = self
         replaceField.translatesAutoresizingMaskIntoConstraints = false
-        replaceField.setAccessibilityLabel("Replace with")
-        replaceField.setAccessibilityHelp("Replacement text. Return replaces the current match; Replace All is in the Find menu. Up and Down recall earlier replacements.")
+        replaceField.setAccessibilityLabel(AppLocalization.string("find.accessibility.replace"))
+        replaceField.setAccessibilityHelp(AppLocalization.string("find.help.replace"))
 
         matchLabel.font = Theme.uiFontSmall
         matchLabel.textColor = Theme.statusText
         matchLabel.translatesAutoresizingMaskIntoConstraints = false
-        matchLabel.setAccessibilityLabel("Search status")
+        matchLabel.setAccessibilityLabel(AppLocalization.string("find.accessibility.status"))
 
-        style(expandBtn, title: "⇅", tip: "Toggle Replace", action: #selector(toggleReplace), accessibility: "Toggle replace row")
-        style(resizeBtn, title: "↕", tip: "Expand multiline fields", action: #selector(toggleInputSize), accessibility: "Resize search fields")
-        style(caseBtn, title: "Aa", tip: "Case Sensitive (⌥⌘C)", action: #selector(toggleCase), accessibility: "Case sensitive")
-        style(wordBtn, title: "W", tip: "Whole Word (⌥⌘W)", action: #selector(toggleWholeWord), accessibility: "Whole word")
-        style(regexBtn, title: ".*", tip: "Regular Expression (⌥⌘R)", action: #selector(toggleRegex), accessibility: "Regular expression")
-        style(fuzzyBtn, title: "≋", tip: "Fuzzy Width Search (⌥⌘Z)", action: #selector(toggleFuzzy), accessibility: "Fuzzy width search")
-        style(prevBtn, title: "▲", tip: "Previous (⇧⌘G)", action: #selector(doPrev), accessibility: "Find previous")
-        style(nextBtn, title: "▼", tip: "Next (⌘G)", action: #selector(doNext), accessibility: "Find next")
-        style(closeBtn, title: "✕", tip: "Close (Esc)", action: #selector(doClose), accessibility: "Close find bar")
-        style(replBtn, title: "Replace", tip: "Replace", action: #selector(doReplace), accessibility: "Replace this match")
-        style(replAllBtn, title: "All", tip: "Replace All", action: #selector(doReplaceAll), accessibility: "Replace all matches")
+        style(expandBtn, title: "⇅", tip: AppLocalization.string("find.tip.toggleReplace"), action: #selector(toggleReplace), accessibility: AppLocalization.string("find.tip.toggleReplace"))
+        style(resizeBtn, title: "↕", tip: AppLocalization.string("find.tip.expand"), action: #selector(toggleInputSize), accessibility: AppLocalization.string("find.tip.expand"))
+        style(caseBtn, title: "Aa", tip: AppLocalization.string("find.tip.case"), action: #selector(toggleCase), accessibility: AppLocalization.string("find.tip.case"))
+        style(wordBtn, title: "W", tip: AppLocalization.string("find.tip.word"), action: #selector(toggleWholeWord), accessibility: AppLocalization.string("find.tip.word"))
+        style(regexBtn, title: ".*", tip: AppLocalization.string("find.tip.regex"), action: #selector(toggleRegex), accessibility: AppLocalization.string("find.tip.regex"))
+        style(fuzzyBtn, title: "≋", tip: AppLocalization.string("find.tip.fuzzy"), action: #selector(toggleFuzzy), accessibility: AppLocalization.string("find.tip.fuzzy"))
+        style(prevBtn, title: "▲", tip: AppLocalization.string("find.tip.previous"), action: #selector(doPrev), accessibility: AppLocalization.string("find.tip.previous"))
+        style(nextBtn, title: "▼", tip: AppLocalization.string("find.tip.next"), action: #selector(doNext), accessibility: AppLocalization.string("find.tip.next"))
+        style(closeBtn, title: "✕", tip: AppLocalization.string("find.tip.close"), action: #selector(doClose), accessibility: AppLocalization.string("find.tip.close"))
+        style(replBtn, title: AppLocalization.string("find.replace"), tip: AppLocalization.string("find.replace"), action: #selector(doReplace), accessibility: AppLocalization.string("find.replace"))
+        style(replAllBtn, title: AppLocalization.string("find.allShort"), tip: AppLocalization.string("find.replaceAll"), action: #selector(doReplaceAll), accessibility: AppLocalization.string("find.replaceAll"))
 
         // The option toggles are momentary buttons whose `state` the
         // action methods flip by hand. A `.pushOnPushOff` button toggles
@@ -210,7 +210,7 @@ final class FindBarView: NSView, NSTextFieldDelegate {
             replAllBtn.centerYAnchor.constraint(equalTo: replaceRow.centerYAnchor),
         ])
 
-        setAccessibilityLabel("Find bar")
+        setAccessibilityLabel(AppLocalization.string("find.accessibility.bar"))
     }
 
     @objc private func toggleInputSize() {
@@ -382,7 +382,7 @@ final class FindBarView: NSView, NSTextFieldDelegate {
         if action == .replaceAll {
             let n = outcome.replacementCount
             matchLabel.stringValue = "Replaced \(n)"
-            matchLabel.setAccessibilityValue("Replaced \(n) \(n == 1 ? "match" : "matches")")
+            matchLabel.setAccessibilityValue(AppLocalization.string("find.replacedMatches", [n]))
             return
         }
         if searchField.stringValue.isEmpty {
@@ -391,8 +391,8 @@ final class FindBarView: NSView, NSTextFieldDelegate {
             return
         }
         if outcome.totalMatches == 0 {
-            matchLabel.stringValue = "No results"
-            matchLabel.setAccessibilityValue("No results")
+            matchLabel.stringValue = AppLocalization.string("find.noResults")
+            matchLabel.setAccessibilityValue(AppLocalization.string("find.noResults"))
             return
         }
         if let index = outcome.currentIndex {
@@ -401,7 +401,7 @@ final class FindBarView: NSView, NSTextFieldDelegate {
         } else {
             let n = outcome.totalMatches
             matchLabel.stringValue = "\(n) match\(n == 1 ? "" : "es")"
-            matchLabel.setAccessibilityValue("\(n) \(n == 1 ? "match" : "matches")")
+            matchLabel.setAccessibilityValue(AppLocalization.string("find.matches", [n]))
         }
     }
 

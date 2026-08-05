@@ -79,7 +79,7 @@ final class QuickOpenPanel: NSPanel, NSTextFieldDelegate, NSTableViewDataSource,
         cv.layer?.borderColor = Theme.border.cgColor
         cv.layer?.borderWidth = 1
 
-        searchField.placeholderString = "Search files by name..."
+        searchField.placeholderString = AppLocalization.string("quickOpen.placeholder")
         searchField.font = NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
         searchField.focusRingType = .none
         searchField.isBordered = false

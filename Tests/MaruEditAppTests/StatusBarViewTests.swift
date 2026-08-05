@@ -6,6 +6,15 @@ import XCTest
 
 @preconcurrency @MainActor
 final class StatusBarViewTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        UserDefaults.standard.set(AppLanguage.english.rawValue, forKey: AppLocalization.defaultsKey)
+    }
+
+    override func tearDown() {
+        UserDefaults.standard.removeObject(forKey: AppLocalization.defaultsKey)
+        super.tearDown()
+    }
     func testWritingAndColumnLayoutFieldIsExplicitAndAccessible() {
         let bar = StatusBarView(frame: NSRect(x: 0, y: 0, width: 1_200, height: 24))
         bar.updateLayoutMode(isVertical: false, isColumn: false, columnCount: 1)
@@ -18,6 +27,8 @@ final class StatusBarViewTests: XCTestCase {
         XCTAssertNotNil(bar.frame(for: .layoutMode))
     }
     func testClassicInputModeSegmentIsExplicit() async {
+        AppLocalization.language = .japanese
+        defer { AppLocalization.language = .english }
         let bar = StatusBarView()
         XCTAssertEqual(bar.displayedInputModeText, "INS")
         bar.updateInputMode(.overwrite)
@@ -27,6 +38,20 @@ final class StatusBarViewTests: XCTestCase {
         bar.updateInputMode(.insert)
         XCTAssertEqual(bar.displayedInputModeText, "挿入モード")
         XCTAssertEqual(bar.displayedEncodingText, "Unicode (UTF-8)")
+    }
+    func testClassicInputModeRefreshesWhenApplicationLanguageChanges() {
+        UserDefaults.standard.set(AppLanguage.japanese.rawValue, forKey: AppLocalization.defaultsKey)
+        defer { UserDefaults.standard.removeObject(forKey: AppLocalization.defaultsKey) }
+        let bar = StatusBarView()
+        bar.setMergedMode(true)
+        bar.updateInputMode(.insert)
+        XCTAssertEqual(bar.displayedInputModeText, "挿入モード")
+
+        AppLocalization.language = .english
+        bar.refreshLocalization()
+        XCTAssertEqual(bar.displayedInputModeText, "Insert Mode")
+        bar.updateInputMode(.overwrite)
+        XCTAssertEqual(bar.displayedInputModeText, "Overwrite Mode")
     }
     func testAccessModeDistinguishesViewModeFromDiskReadOnly() async {
         let bar = StatusBarView(frame: NSRect(x: 0, y: 0, width: 900, height: 24))

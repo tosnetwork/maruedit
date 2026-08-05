@@ -10,6 +10,55 @@ final class MenuCustomizationUITests: XCTestCase {
     private let find = CommandDefinition(id: .searchFind, title: "Find") { _ in }
     private let partialOpen = CommandDefinition(id: .fileOpenPartial, title: "Open Part") { _ in }
 
+    private func menu(named name: String, in root: NSMenu) -> NSMenu? {
+        let localized: [String: String] = [
+            "File": "ファイル(F)", "Edit": "編集(E)", "View": "表示(V)",
+            "Search": "検索(S)", "Window": "ウィンドウ(W)",
+            "Macro": "マクロ(M)", "Other": "その他(O)",
+        ]
+        return root.items.compactMap(\.submenu).first {
+            $0.title == name || $0.title == localized[name]
+        }
+    }
+
+    override func setUp() {
+        super.setUp()
+        UserDefaults.standard.set(AppLanguage.japanese.rawValue, forKey: AppLocalization.defaultsKey)
+    }
+
+    override func tearDown() {
+        UserDefaults.standard.removeObject(forKey: AppLocalization.defaultsKey)
+        super.tearDown()
+    }
+
+    func testOtherMenuLanguageChoicePersistsAndRebuildsAllVisibleMenusInEnglish() {
+        _ = NSApplication.shared
+        let delegate = AppDelegate()
+        delegate.buildMenu()
+        let root = try! XCTUnwrap(NSApp.mainMenu)
+        let other = try! XCTUnwrap(menu(named: "Other", in: root))
+        let language = try! XCTUnwrap(other.item(withTitle: "言語")?.submenu)
+        XCTAssertEqual(language.items.map(\.title), ["Japanese", "English"])
+        XCTAssertEqual(language.item(withTitle: "Japanese")?.state, .on)
+
+        let english = try! XCTUnwrap(language.item(withTitle: "English"))
+        XCTAssertTrue(NSApp.sendAction(english.action!, to: english.target, from: english))
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
+        XCTAssertEqual(AppLocalization.language, .english)
+        XCTAssertEqual(
+            NSApp.mainMenu?.items.filter { !$0.isHidden }.dropFirst().map(\.title),
+            ["File", "Edit", "View", "Search", "Window", "Macro", "Other"]
+        )
+        let englishView = try! XCTUnwrap(menu(named: "View", in: NSApp.mainMenu!))
+        for title in ["Line Wrapping", "Ruler Display", "Tab Stops", "Folding"] {
+            XCTAssertNotNil(englishView.item(withTitle: title)?.submenu, "missing English View group \(title)")
+        }
+        XCTAssertFalse(englishView.items.map(\.title).contains { $0.range(of: "[ぁ-んァ-ヶ一-龯]", options: .regularExpression) != nil })
+        let englishOther = try! XCTUnwrap(menu(named: "Other", in: NSApp.mainMenu!))
+        XCTAssertEqual(englishOther.item(withTitle: "Language")?.submenu?.item(withTitle: "English")?.state, .on)
+        XCTAssertEqual(SettingsLocalization.text("settings"), "Settings")
+    }
+
     func testWindowHidesOptionalCommandsButProtectsRequiredCommandsAndRestores() async throws {
         var changes: [MenuCustomization] = []
         let controller = MenuCustomizationWindowController(
@@ -36,7 +85,7 @@ final class MenuCustomizationUITests: XCTestCase {
         let main = try! XCTUnwrap(NSApp.mainMenu)
 
         func visibleIDs(in title: String) -> Set<CommandID> {
-            let menu = main.items.compactMap(\.submenu).first { $0.title == title }
+            let menu = self.menu(named: title, in: main)
             return Set(menu?.items.compactMap { item in
                 guard !item.isHidden else { return nil }
                 return item.representedObject as? CommandID
@@ -60,7 +109,7 @@ final class MenuCustomizationUITests: XCTestCase {
             .highlightOutlineAnalysis, .searchListMarks, .searchListColorLayers,
             .searchGrep, .searchGrepReplace,
         ]))
-        let fileMenu = try! XCTUnwrap(main.items.compactMap(\.submenu).first { $0.title == "File" })
+        let fileMenu = try! XCTUnwrap(menu(named: "File", in: main))
         let encodingItem = try! XCTUnwrap(fileMenu.items.first {
             $0.identifier?.rawValue == "menu.dynamic.reopenEncoding"
         })
@@ -129,8 +178,8 @@ final class MenuCustomizationUITests: XCTestCase {
         delegate.buildMenu()
         let menus = NSApp.mainMenu?.items.compactMap(\.submenu) ?? []
         let allTitles = Set(menus.flatMap { $0.items.map(\.title) })
-        for required in ["About MaruEdit", "Services", "Hide MaruEdit", "Hide Others",
-                         "Show All", "Quit MaruEdit", "やり直し(U)",
+        for required in ["MaruEditについて", "サービス", "MaruEditを隠す", "ほかを隠す",
+                         "すべてを表示", "MaruEditを終了", "やり直し(U)",
                          "やり直しのやり直し(R)"] {
             XCTAssertTrue(allTitles.contains(required), "missing required menu item \(required)")
         }
@@ -141,7 +190,8 @@ final class MenuCustomizationUITests: XCTestCase {
         let delegate = AppDelegate(); delegate.buildMenu()
         let titles = NSApp.mainMenu?.items.filter { !$0.isHidden }.compactMap { $0.submenu?.title } ?? []
         XCTAssertEqual(Array(titles.dropFirst()), [
-            "File", "Edit", "View", "Search", "Window", "Macro", "Other",
+            "ファイル(F)", "編集(E)", "表示(V)", "検索(S)",
+            "ウィンドウ(W)", "マクロ(M)", "その他(O)",
         ])
 
         AppDelegate.applyMenuCustomization(
@@ -151,8 +201,8 @@ final class MenuCustomizationUITests: XCTestCase {
             to: NSApp.mainMenu!)
         let expanded = NSApp.mainMenu?.items.filter { !$0.isHidden }.compactMap { $0.submenu?.title } ?? []
         XCTAssertEqual(Array(expanded.dropFirst()), [
-            "File", "Edit", "Convert", "View", "Insert", "Search", "Highlight",
-            "Bookmark", "Tools", "Window", "Macro", "Other", "Help",
+            "ファイル(F)", "編集(E)", "変換(V)", "表示(V)", "挿入", "検索(S)", "強調",
+            "ブックマーク", "ツール", "ウィンドウ(W)", "マクロ(M)", "その他(O)", "ヘルプ",
         ])
     }
 
@@ -166,7 +216,7 @@ final class MenuCustomizationUITests: XCTestCase {
              "ウィンドウ(W)", "マクロ(M)", "その他(O)"]
         )
         func titles(_ menuTitle: String) -> [String] {
-            let menu = root.items.compactMap(\.submenu).first { $0.title == menuTitle }
+            let menu = self.menu(named: menuTitle, in: root)
             return menu?.items.filter { !$0.isHidden && !$0.isSeparatorItem }.map(\.title) ?? []
         }
         XCTAssertEqual(titles("File"), [
@@ -211,10 +261,10 @@ final class MenuCustomizationUITests: XCTestCase {
             "タグジャンプ(T)", "ダイレクトタグジャンプ(D)", "バックタグジャンプ(B)",
             "制御コード入力(I)...", "tagsファイルの作成(G)...", "プログラム実行(X)...",
             "スペルミスの修正(Z)...", "コマンド一覧(O)...", "閲覧モード(R)",
-            "設定内容の保存/復元(U)...", "最新バージョンの確認(V)...", "MaruEditヘルプ(P)", "MaruEditについて(A)...",
+            "設定内容の保存/復元(U)...", "最新バージョンの確認(V)...", "MaruEditヘルプ(P)", "MaruEditについて(A)...", "言語",
         ])
 
-        let search = try! XCTUnwrap(root.items.compactMap(\.submenu).first { $0.title == "Search" })
+        let search = try! XCTUnwrap(menu(named: "Search", in: root))
         let highlight = try! XCTUnwrap(search.item(withTitle: "強調(H)")?.submenu)
         XCTAssertEqual(highlight.items.compactMap { $0.representedObject as? CommandID }, [
             .highlightOutlineAnalysis, .highlightNextLine,
@@ -248,16 +298,16 @@ final class MenuCustomizationUITests: XCTestCase {
         _ = NSApplication.shared
         let app = AppDelegate()
         app.buildMenu()
-        let tools = NSApp.mainMenu?.item(withTitle: "Tools")?.submenu
+        let tools = NSApp.mainMenu?.item(withTitle: AppLocalization.string("menu.other.tools"))?.submenu
         let titles = tools?.items.map(\.title) ?? []
         XCTAssertTrue(titles.contains("Compare with Next Document"))
         XCTAssertTrue(titles.contains("Generate Tags File…"))
-        XCTAssertTrue(titles.contains("Jump to Tag…"))
-        XCTAssertTrue(titles.contains("External Commands"))
+        XCTAssertTrue(titles.contains("タグジャンプ"))
+        XCTAssertTrue(titles.contains(AppLocalization.string("menu.other.externalCommands")))
         XCTAssertTrue(titles.contains("Command List…"))
-        XCTAssertNotNil(tools?.item(withTitle: "External Commands")?.submenu)
+        XCTAssertNotNil(tools?.item(withTitle: AppLocalization.string("menu.other.externalCommands"))?.submenu)
         for slot in 1...8 {
-            XCTAssertNotNil(tools?.item(withTitle: "User Menu \(slot)")?.submenu)
+            XCTAssertNotNil(tools?.item(withTitle: AppLocalization.string("settings.userMenus.number", [slot]))?.submenu)
         }
         XCTAssertTrue(titles.contains("Configure User Menus…"))
         XCTAssertTrue(titles.contains("Show in Finder"))
@@ -266,7 +316,9 @@ final class MenuCustomizationUITests: XCTestCase {
 
     func testHelpMenuContainsSixConfigurableExternalHelpSlots() async {
         let app = AppDelegate(); app.buildMenu()
-        let helpMenu = NSApp.mainMenu?.items.compactMap(\.submenu).first { $0.title == "Help" }
+        let helpMenu = NSApp.mainMenu?.items.compactMap(\.submenu).first {
+            $0.title == AppLocalization.string("menu.group.help")
+        }
         let titles = helpMenu?.items.map(\.title) ?? []
         for slot in 1...6 { XCTAssertTrue(titles.contains("External Help \(slot)")) }
         XCTAssertTrue(titles.contains("Configure External Help…"))
@@ -274,17 +326,17 @@ final class MenuCustomizationUITests: XCTestCase {
 
     func testOtherMenuProvidesCategorizedHistoryClearing() async {
         let app = AppDelegate(); app.buildMenu()
-        let other = NSApp.mainMenu?.items.compactMap(\.submenu).first { $0.title == "Other" }
-        XCTAssertEqual(other?.item(withTitle: "Clear History")?.isHidden, true,
+        let other = NSApp.mainMenu.flatMap { menu(named: "Other", in: $0) }
+        XCTAssertEqual(other?.item(withTitle: AppLocalization.string("menu.other.clearHistory"))?.isHidden, true,
                        "history maintenance is an extended, non-default group")
     }
 
     func testOtherMenuProvidesSettingsTransferCommands() async {
         let app = AppDelegate(); app.buildMenu()
-        let other = NSApp.mainMenu?.items.compactMap(\.submenu).first { $0.title == "Other" }
+        let other = NSApp.mainMenu.flatMap { menu(named: "Other", in: $0) }
         let transfer = other?.item(withTitle: "設定内容の保存/復元(U)...")?.submenu
         XCTAssertEqual(transfer?.items.filter { !$0.isSeparatorItem }.map(\.title), [
-            "Export Settings…", "Import Settings…", "Restore Default Settings…",
+            "設定を書き出す...", "設定を読み込む...", "設定を初期状態に戻す...",
         ])
         XCTAssertNotNil(other?.item(withTitle: "Free Cursor"))
     }

@@ -5,10 +5,15 @@ import XCTest
 
 @preconcurrency @MainActor
 final class BoxSelectionTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        UserDefaults.standard.set(AppLanguage.english.rawValue, forKey: AppLocalization.defaultsKey)
+    }
     private var windows: [NSWindow] = []
 
     override func tearDown() {
         windows.removeAll()
+        UserDefaults.standard.removeObject(forKey: AppLocalization.defaultsKey)
         super.tearDown()
     }
 

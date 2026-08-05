@@ -14,8 +14,8 @@ private final class TitlebarCursorPositionLabel: NSTextField {
         drawsBackground = false
         textColor = .secondaryLabelColor
         setAccessibilityRole(.button)
-        setAccessibilityLabel("Cursor line and display column")
-        toolTip = "Line 1, column 1"
+        setAccessibilityLabel(AppLocalization.string("status.accessibility.cursor"))
+        toolTip = AppLocalization.string("titlebar.cursorTooltip", [1, 1])
     }
 
     @available(*, unavailable)
@@ -24,7 +24,7 @@ private final class TitlebarCursorPositionLabel: NSTextField {
     func update(line: Int, column: Int) {
         let line = max(1, line), column = max(1, column)
         stringValue = "\(line):\(column)"
-        toolTip = "Line \(line), column \(column)"
+        toolTip = AppLocalization.string("titlebar.cursorTooltip", [line, column])
     }
 
     override var acceptsFirstResponder: Bool { true }
@@ -134,7 +134,7 @@ final class MainWindowController: NSWindowController,
         )
         w.minSize = NSSize(width: 640, height: 420)
         w.tabbingMode = .disallowed
-        w.title = "MaruEdit"
+        w.title = AppLocalization.string("window.document.untitledTitle")
         w.isReleasedWhenClosed = false
         if !w.setFrameUsingName("MainWindow") { w.center() }
         w.setFrameAutosaveName("MainWindow")
@@ -262,6 +262,29 @@ final class MainWindowController: NSWindowController,
         statusBar.showTransientMessage(message, duration: duration)
     }
 
+    func showLocalizedStatus(
+        _ key: String, _ arguments: [CVarArg] = [], duration: TimeInterval = 1.5
+    ) {
+        showStatusMessage(AppLocalization.string(key, arguments), duration: duration)
+    }
+
+    func refreshLocalizedInterface() {
+        if let quickOpen {
+            window?.removeChildWindow(quickOpen)
+            quickOpen.close()
+            self.quickOpen = nil
+        }
+        grepPanel?.window.close()
+        grepPanel = nil
+        grepReplacePreview?.close()
+        grepReplacePreview = nil
+        classicChrome.refreshLocalization()
+        statusBar.refreshLocalization()
+        sidebarVC.refreshLocalization()
+        layoutContentViews()
+        showStatusMessage(AppLocalization.string(.languageChanged))
+    }
+
     func updateMacroActivity(isRunning: Bool) {
         statusBar.updateMacroActivity(isRunning: isRunning)
     }
@@ -314,6 +337,7 @@ final class MainWindowController: NSWindowController,
     var isFunctionKeyStripMergedForTesting: Bool { classicChrome.isFunctionKeyStripMerged }
     var classicFunctionKeyCommandsForTesting: [String?] { classicChrome.functionKeyCommandIDs }
     var classicFunctionKeyCountForTesting: Int { classicChrome.functionKeyCount }
+    var classicFunctionKeyTitlesForTesting: [String] { classicChrome.functionKeyTitlesForTesting }
     var classicFunctionKeyVisualStyleForTesting: (flatButtons: Bool, separatorSlots: [Int]) {
         classicChrome.functionKeyVisualStyleForTesting
     }
@@ -359,7 +383,7 @@ final class MainWindowController: NSWindowController,
             let panel = NSPanel(
                 contentRect: NSRect(x: 0, y: 0, width: 760, height: ClassicWorkspaceChrome.toolbarHeight),
                 styleMask: [.titled, .utilityWindow, .resizable], backing: .buffered, defer: false)
-            panel.title = "Maru Classic Toolbar"
+            panel.title = AppLocalization.string("classic.toolbarWindowTitle")
             panel.isFloatingPanel = true
             panel.level = .floating
             panel.hidesOnDeactivate = false
@@ -632,7 +656,10 @@ final class MainWindowController: NSWindowController,
             let alert = NSAlert()
             alert.alertStyle = .warning
             alert.messageText = SettingsLocalization.text("openLargeFile")
-            alert.informativeText = "\(ByteCountFormatter.string(fromByteCount: size, countStyle: .file)). \(SettingsLocalization.text("largeFileExplanation"))"
+            alert.informativeText = AppLocalization.string("settings.largeFileInfo", [
+                ByteCountFormatter.string(fromByteCount: size, countStyle: .file),
+                SettingsLocalization.text("largeFileExplanation"),
+            ])
             alert.addButton(withTitle: SettingsLocalization.text("continueReduced"))
             alert.addButton(withTitle: SettingsLocalization.text("openReadOnly"))
             alert.addButton(withTitle: SettingsLocalization.text("cancel"))
@@ -654,11 +681,12 @@ final class MainWindowController: NSWindowController,
 
     func newDocumentFromTemplate() {
         let profiles = documentController.templateProfiles
-        guard !profiles.isEmpty else { showStatusMessage("No File Type Profile templates are configured"); return }
+        guard !profiles.isEmpty else { showLocalizedStatus("status.noProfileTemplates"); return }
         let popup = NSPopUpButton(); popup.addItems(withTitles: profiles.map(\.name)); popup.frame.size.width = 260
-        let alert = NSAlert(); alert.messageText = "New from Template"
-        alert.informativeText = "Choose a File Type Profile template."
-        alert.accessoryView = popup; alert.addButton(withTitle: "Create"); alert.addButton(withTitle: "Cancel")
+        let alert = NSAlert(); alert.messageText = AppLocalization.string("dialog.template.newTitle")
+        alert.informativeText = AppLocalization.string("dialog.template.choose")
+        alert.accessoryView = popup; alert.addButton(withTitle: AppLocalization.string("common.create"))
+        alert.addButton(withTitle: AppLocalization.string(.commonCancel))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         do {
             let document = try Document.fromTemplate(profile: profiles[popup.indexOfSelectedItem])
@@ -715,15 +743,16 @@ final class MainWindowController: NSWindowController,
             let lengthField = NSTextField(string: String(defaultLength))
             for field in [offsetField, lengthField] { field.widthAnchor.constraint(equalToConstant: 180).isActive = true }
             let stack = NSStackView(views: [
-                NSTextField(labelWithString: "Start byte offset"), offsetField,
-                NSTextField(labelWithString: "Number of bytes"), lengthField,
+                NSTextField(labelWithString: AppLocalization.string("dialog.partial.startOffset")), offsetField,
+                NSTextField(labelWithString: AppLocalization.string("dialog.partial.byteCount")), lengthField,
             ])
             stack.orientation = .vertical; stack.spacing = 5
             let alert = NSAlert()
-            alert.messageText = "Open Partial File"
-            alert.informativeText = "The selected bytes open as a new document. The source file is never overwritten."
+            alert.messageText = AppLocalization.string("dialog.partial.title")
+            alert.informativeText = AppLocalization.string("dialog.partial.explanation")
             alert.accessoryView = stack
-            alert.addButton(withTitle: "Open"); alert.addButton(withTitle: "Cancel")
+            alert.addButton(withTitle: AppLocalization.string(.commonOpen))
+            alert.addButton(withTitle: AppLocalization.string(.commonCancel))
             alert.beginSheetModal(for: window) { result in
                 guard result == .alertFirstButtonReturn,
                       let offset = Int64(offsetField.stringValue),
@@ -824,7 +853,7 @@ final class MainWindowController: NSWindowController,
     ) {
         editorVC.document = result.document
         refreshTabs(); refreshStatus()
-        window?.title = "MaruEdit — \(result.document.displayName)"
+        window?.title = AppLocalization.string("window.document.title", [result.document.displayName])
         RecentItems.addFile(url)
         sidebarVC.revealFile(url)
         if result.wasAlreadyOpen { deferredRestoreCursor() }
@@ -856,7 +885,7 @@ final class MainWindowController: NSWindowController,
     }
 
     private func saveDocuments(_ documents: [Document]) {
-        guard let document = documents.first else { showStatusMessage("All documents saved"); return }
+        guard let document = documents.first else { showLocalizedStatus("status.allDocumentsSaved"); return }
         guard let index = documentController.documents.firstIndex(where: { $0 === document }) else {
             saveDocuments(Array(documents.dropFirst())); return
         }
@@ -900,12 +929,12 @@ final class MainWindowController: NSWindowController,
     private func presentReadOnlySaveBlocked(_ doc: Document) {
         let a = NSAlert()
         a.alertStyle = .warning
-        a.messageText = "\(doc.displayName) Cannot Be Overwritten"
+        a.messageText = AppLocalization.string("dialog.readOnly.title", [doc.displayName])
         a.informativeText = doc.isOverwriteProhibited
-            ? "Overwrite protection is enabled for this document. Use Save As to save to a new location."
-            : "This file can't be overwritten because it's read-only on disk. Use Save As to save your changes to a new location."
-        a.addButton(withTitle: "Save As…")
-        a.addButton(withTitle: "Cancel")
+            ? AppLocalization.string("dialog.readOnly.protected")
+            : AppLocalization.string("dialog.readOnly.disk")
+        a.addButton(withTitle: AppLocalization.string("common.saveAs"))
+        a.addButton(withTitle: AppLocalization.string(.commonCancel))
         if a.runModal() == .alertFirstButtonReturn {
             saveDocumentAs()
         }
@@ -915,13 +944,14 @@ final class MainWindowController: NSWindowController,
         guard let doc = curDoc else { return }
         doc.isOverwriteProhibited.toggle()
         refreshStatus()
-        showStatusMessage(doc.isOverwriteProhibited ? "Overwrite protection on" : "Overwrite protection off")
+        showLocalizedStatus(doc.isOverwriteProhibited
+            ? "status.overwriteProtectionOn" : "status.overwriteProtectionOff")
     }
 
     func toggleHistoryRecording() {
         RecentItems.isRecordingSuspended.toggle()
-        showStatusMessage(RecentItems.isRecordingSuspended
-            ? "History recording suspended" : "History recording resumed")
+        showLocalizedStatus(RecentItems.isRecordingSuspended
+            ? "status.historyRecordingSuspended" : "status.historyRecordingResumed")
     }
 
     func saveDocumentAs() {
@@ -976,7 +1006,7 @@ final class MainWindowController: NSWindowController,
         do {
             try doc.save(to: url)
             refreshTabs(); refreshStatus()
-            window?.title = "MaruEdit — \(doc.displayName)"
+            window?.title = AppLocalization.string("window.document.title", [doc.displayName])
             RecentItems.addFile(url)
             if wasUnnamed {
                 // This document now has a real file, which is its own
@@ -1063,16 +1093,17 @@ final class MainWindowController: NSWindowController,
     ) {
         let a = NSAlert()
         a.alertStyle = .warning
-        a.messageText = "Cannot Save in \(encoding.displayName)"
+        a.messageText = AppLocalization.string("dialog.encoding.cannotSave", [encoding.displayName])
         let shown = characters.prefix(5)
-            .map { "Line \($0.line), Col \($0.column): \u{201C}\($0.character)\u{201D}" }
+            .map { AppLocalization.string("dialog.encoding.characterLocation", [$0.line, $0.column, $0.character]) }
             .joined(separator: "\n")
-        let remainder = characters.count > 5 ? "\n…and \(characters.count - 5) more" : ""
+        let remainder = characters.count > 5
+            ? "\n" + AppLocalization.string("dialog.encoding.more", [characters.count - 5]) : ""
         a.informativeText = characters.isEmpty
-            ? "This document contains characters that cannot be represented in \(encoding.displayName)."
-            : "\(characters.count) character\(characters.count == 1 ? "" : "s") cannot be represented in \(encoding.displayName):\n\n\(shown)\(remainder)"
-        a.addButton(withTitle: "Save as UTF-8")
-        a.addButton(withTitle: "Cancel")
+            ? AppLocalization.string("dialog.encoding.unrepresentableUnknown", [encoding.displayName])
+            : AppLocalization.string("dialog.encoding.unrepresentable", [characters.count, encoding.displayName, shown, remainder])
+        a.addButton(withTitle: AppLocalization.string("dialog.encoding.saveUTF8"))
+        a.addButton(withTitle: AppLocalization.string(.commonCancel))
         guard a.runModal() == .alertFirstButtonReturn else { return }
         doc.encoding = .utf8
         doc.hasByteOrderMark = false
@@ -1089,12 +1120,12 @@ final class MainWindowController: NSWindowController,
         guard case .mixed = doc.lineEnding else { return true }
 
         let a = NSAlert()
-        a.messageText = "Mixed Line Endings"
-        a.informativeText = "\(doc.displayName) mixes line-ending styles (LF, CRLF, CR). Choose one to use consistently when saving."
-        a.addButton(withTitle: "LF (Unix)")
-        a.addButton(withTitle: "CRLF (Windows)")
-        a.addButton(withTitle: "CR (Classic Mac)")
-        a.addButton(withTitle: "Cancel")
+        a.messageText = AppLocalization.string("dialog.lineEndings.title")
+        a.informativeText = AppLocalization.string("dialog.lineEndings.explanation", [doc.displayName])
+        a.addButton(withTitle: AppLocalization.string("lineEnding.lfLong"))
+        a.addButton(withTitle: AppLocalization.string("lineEnding.crlfLong"))
+        a.addButton(withTitle: AppLocalization.string("lineEnding.crLong"))
+        a.addButton(withTitle: AppLocalization.string(.commonCancel))
         switch a.runModal() {
         case .alertFirstButtonReturn: doc.lineEnding = .lf
         case .alertSecondButtonReturn: doc.lineEnding = .crlf
@@ -1137,29 +1168,29 @@ final class MainWindowController: NSWindowController,
         case .deletedOrMoved:
             let a = NSAlert()
             a.alertStyle = .warning
-            a.messageText = "\(doc.displayName) Can't Be Found"
-            a.informativeText = "The file at its original location has been deleted or moved. Your content here is unaffected — use Save As to write it somewhere."
-            a.addButton(withTitle: "OK")
+            a.messageText = AppLocalization.string("dialog.externalChange.missingTitle", [doc.displayName])
+            a.informativeText = AppLocalization.string("dialog.externalChange.missingExplanation")
+            a.addButton(withTitle: AppLocalization.string(.commonOK))
             a.runModal()
 
         case .modified:
             let a = NSAlert()
             a.alertStyle = .warning
-            a.messageText = "\(doc.displayName) Changed on Disk"
+            a.messageText = AppLocalization.string("dialog.externalChange.changedTitle", [doc.displayName])
             if doc.isModified {
-                a.informativeText = "This file has unsaved changes here and has also been modified outside MaruEdit. Reloading will discard your changes here."
-                a.addButton(withTitle: "Reload from Disk")
-                a.addButton(withTitle: "Save As…")
-                a.addButton(withTitle: "Cancel")
+                a.informativeText = AppLocalization.string("dialog.externalChange.conflictExplanation")
+                a.addButton(withTitle: AppLocalization.string("common.reloadFromDisk"))
+                a.addButton(withTitle: AppLocalization.string("common.saveAs"))
+                a.addButton(withTitle: AppLocalization.string(.commonCancel))
                 switch a.runModal() {
                 case .alertFirstButtonReturn: reloadFromDisk(doc)
                 case .alertSecondButtonReturn: saveDocumentAs()
                 default: break
                 }
             } else {
-                a.informativeText = "This file has been modified outside MaruEdit."
-                a.addButton(withTitle: "Reload from Disk")
-                a.addButton(withTitle: "Cancel")
+                a.informativeText = AppLocalization.string("dialog.externalChange.changedExplanation")
+                a.addButton(withTitle: AppLocalization.string("common.reloadFromDisk"))
+                a.addButton(withTitle: AppLocalization.string(.commonCancel))
                 if a.runModal() == .alertFirstButtonReturn {
                     reloadFromDisk(doc)
                 }
@@ -1185,9 +1216,10 @@ final class MainWindowController: NSWindowController,
         if doc.isModified {
             let alert = NSAlert()
             alert.alertStyle = .warning
-            alert.messageText = "Reload \(doc.displayName)?"
-            alert.informativeText = "Reloading from disk discards unsaved changes."
-            alert.addButton(withTitle: "Reload"); alert.addButton(withTitle: "Cancel")
+            alert.messageText = AppLocalization.string("dialog.reload.title", [doc.displayName])
+            alert.informativeText = AppLocalization.string("dialog.reload.explanation")
+            alert.addButton(withTitle: AppLocalization.string(.commonReload))
+            alert.addButton(withTitle: AppLocalization.string(.commonCancel))
             guard alert.runModal() == .alertFirstButtonReturn else { return }
         }
         _ = reloadFromDisk(doc)
@@ -1204,7 +1236,7 @@ final class MainWindowController: NSWindowController,
         let alert = NSAlert()
         alert.messageText = doc.displayName
         alert.informativeText = doc.propertiesSummary
-        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: AppLocalization.string(.commonOK))
         alert.beginSheetModal(for: window)
     }
 
@@ -1212,13 +1244,14 @@ final class MainWindowController: NSWindowController,
     func insertTemplate() {
         let profiles = documentController.templateProfiles
         guard !profiles.isEmpty else {
-            showStatusMessage("No File Type Profile templates are configured"); return
+            showLocalizedStatus("status.noProfileTemplates"); return
         }
         let popup = NSPopUpButton(); popup.addItems(withTitles: profiles.map(\.name))
         popup.frame.size.width = 260
-        let alert = NSAlert(); alert.messageText = "Insert Template"
-        alert.informativeText = "Choose a File Type Profile template to insert at every selection."
-        alert.accessoryView = popup; alert.addButton(withTitle: "Insert"); alert.addButton(withTitle: "Cancel")
+        let alert = NSAlert(); alert.messageText = AppLocalization.string("dialog.template.insertTitle")
+        alert.informativeText = AppLocalization.string("dialog.template.insertExplanation")
+        alert.accessoryView = popup; alert.addButton(withTitle: AppLocalization.string(.commonInsert))
+        alert.addButton(withTitle: AppLocalization.string(.commonCancel))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         do {
             guard let path = profiles[popup.indexOfSelectedItem].settings.templatePath else { return }
@@ -1254,8 +1287,8 @@ final class MainWindowController: NSWindowController,
     func appendSave() {
         guard let doc = curDoc, let window else { return }
         let panel = NSSavePanel()
-        panel.title = "Append Save"
-        panel.prompt = "Append"
+        panel.title = AppLocalization.string("dialog.appendSave.title")
+        panel.prompt = AppLocalization.string("common.append")
         panel.beginSheetModal(for: window) { response in
             guard response == .OK, let url = panel.url else { return }
             do { try doc.appendContent(to: url) }
@@ -1266,8 +1299,8 @@ final class MainWindowController: NSWindowController,
     func renameFile() {
         guard let doc = curDoc, let source = doc.fileURL, let window else { return }
         let panel = NSSavePanel()
-        panel.title = "Rename File"
-        panel.prompt = "Rename"
+        panel.title = AppLocalization.string("dialog.rename.title")
+        panel.prompt = AppLocalization.string("common.rename")
         panel.directoryURL = source.deletingLastPathComponent()
         panel.nameFieldStringValue = source.lastPathComponent
         panel.beginSheetModal(for: window) { [weak self] response in
@@ -1275,7 +1308,7 @@ final class MainWindowController: NSWindowController,
             do {
                 try doc.rename(to: destination)
                 self.refreshTabs(); self.refreshStatus()
-                self.window?.title = "MaruEdit — \(doc.displayName)"
+                self.window?.title = AppLocalization.string("window.document.title", [doc.displayName])
                 RecentItems.addFile(destination)
                 self.scheduleSessionSave()
             } catch { NSAlert(error: error).beginSheetModal(for: window) }
@@ -1288,11 +1321,11 @@ final class MainWindowController: NSWindowController,
         let indexToClose = curIdx
         if doc.isModified {
             let a = NSAlert()
-            a.messageText = "Save changes to \(doc.displayName)?"
-            a.informativeText = "Your changes will be lost if you don't save them."
-            a.addButton(withTitle: "Save")
-            a.addButton(withTitle: "Don't Save")
-            a.addButton(withTitle: "Cancel")
+            a.messageText = AppLocalization.string("dialog.close.saveTitle", [doc.displayName])
+            a.informativeText = AppLocalization.string("dialog.close.explanation")
+            a.addButton(withTitle: AppLocalization.string(.commonSave))
+            a.addButton(withTitle: AppLocalization.string(.commonDontSave))
+            a.addButton(withTitle: AppLocalization.string(.commonCancel))
             let resp = a.runModal()
             if resp == .alertFirstButtonReturn {
                 saveDocument()
@@ -1328,7 +1361,7 @@ final class MainWindowController: NSWindowController,
         documentController.replaceCurrentDocument(with: document)
         editorVC.document = document
         refreshTabs(); refreshStatus(); layoutContentViews()
-        window?.title = "MaruEdit — \(document.displayName)"
+        window?.title = AppLocalization.string("window.document.title", [document.displayName])
     }
 
     @discardableResult
@@ -1361,7 +1394,7 @@ final class MainWindowController: NSWindowController,
 
     func openCursorTargetWithAssociatedApplication() {
         guard let target = cursorTarget(), let url = resolvedTargetURL(target) else {
-            showStatusMessage("No URL or file target at the cursor"); return
+            showLocalizedStatus("status.noURLTarget"); return
         }
         openAssociatedURL(url)
     }
@@ -1369,7 +1402,7 @@ final class MainWindowController: NSWindowController,
     func openCursorTargetInMaruEdit() {
         guard let target = cursorTarget(), let url = resolvedTargetURL(target), url.isFileURL,
               FileManager.default.fileExists(atPath: url.path) else {
-            showStatusMessage("No file target at the cursor"); return
+            showLocalizedStatus("status.noFileTarget"); return
         }
         openFile(url)
     }
@@ -1412,17 +1445,20 @@ final class MainWindowController: NSWindowController,
 
     func showTabList() {
         let documents = documentController.documents
-        guard documents.count > 1 else { showStatusMessage(curDoc?.displayName ?? "No open document"); return }
+        guard documents.count > 1 else {
+            showStatusMessage(curDoc?.displayName ?? AppLocalization.string("status.noOpenDocument")); return
+        }
         let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 420, height: 26))
         popup.addItems(withTitles: documents.enumerated().map { index, document in
             "\(index + 1). \(document.isModified ? "● " : "")\(document.displayName)"
         })
         popup.selectItem(at: curIdx)
         let alert = NSAlert()
-        alert.messageText = "Tab List"
-        alert.informativeText = "Select an open document."
+        alert.messageText = AppLocalization.string("dialog.tabs.title")
+        alert.informativeText = AppLocalization.string("dialog.tabs.explanation")
         alert.accessoryView = popup
-        alert.addButton(withTitle: "Select"); alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: AppLocalization.string(.commonSelect))
+        alert.addButton(withTitle: AppLocalization.string(.commonCancel))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         tabBarDidSelectTab(at: popup.indexOfSelectedItem)
     }
@@ -1470,7 +1506,7 @@ final class MainWindowController: NSWindowController,
 
     func insertCurrentFileName() {
         guard let name = curDoc?.fileURL?.lastPathComponent else {
-            showStatusMessage("The current document has no file name"); return
+            showLocalizedStatus("status.currentDocumentNoFileName"); return
         }
         editorVC.textView.insertText(name, replacementRange: editorVC.textView.selectedRange())
     }
@@ -1486,10 +1522,11 @@ final class MainWindowController: NSWindowController,
         let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 180, height: 26))
         popup.addItems(withTitles: names)
         let alert = NSAlert()
-        alert.messageText = "Insert Control Code"
-        alert.informativeText = "Choose an ASCII control character to insert at every active selection."
+        alert.messageText = AppLocalization.string("dialog.controlCode.title")
+        alert.informativeText = AppLocalization.string("dialog.controlCode.explanation")
         alert.accessoryView = popup
-        alert.addButton(withTitle: "Insert"); alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: AppLocalization.string(.commonInsert))
+        alert.addButton(withTitle: AppLocalization.string(.commonCancel))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         let value = popup.indexOfSelectedItem == 32 ? UInt8(0x7F) : UInt8(popup.indexOfSelectedItem)
         _ = insertControlCode(value)
@@ -1606,11 +1643,11 @@ final class MainWindowController: NSWindowController,
 
     func captureSearchStringAtCursor() {
         guard let pattern = searchTextAtCursor(), !pattern.isEmpty else {
-            showStatusMessage("No search text at the cursor"); return
+            showLocalizedStatus("status.noSearchTextAtCursor"); return
         }
         lastQuery = SearchQuery(pattern: pattern)
         findBar.setSearchPattern(pattern)
-        showStatusMessage("Captured search text: \(pattern)")
+        showLocalizedStatus("status.capturedSearchText", [pattern])
     }
 
     private func searchTextAtCursor() -> String? {
@@ -1691,7 +1728,8 @@ final class MainWindowController: NSWindowController,
         editorVC.showSearchMarkers(ranges)
         sidebarVC.updateSearchResults(ranges, text: curDoc?.content ?? "")
         let outcome = editorVC.find(query, direction: .next)
-        showStatusMessage(outcome.totalMatches == 0 ? "No results" : "1 of \(outcome.totalMatches)")
+        if outcome.totalMatches == 0 { showLocalizedStatus("find.noResults") }
+        else { showLocalizedStatus("status.matchPosition", [1, outcome.totalMatches]) }
         recordSearchHistory(query)
     }
 
@@ -1703,7 +1741,7 @@ final class MainWindowController: NSWindowController,
             query.scope = .selection(scope)
         }
         guard let matches = try? SearchEngine.matches(for: query, in: curDoc?.content ?? "") else {
-            showStatusMessage("Invalid search pattern"); return nil
+            showLocalizedStatus("status.invalidSearchPattern"); return nil
         }
         return (query, matches.map(\.range))
     }
@@ -1715,13 +1753,13 @@ final class MainWindowController: NSWindowController,
         guard let (_, ranges) = currentSearchMatches() else { return }
         editorVC.showSearchHighlights(ranges)
         editorVC.showSearchMarkers(ranges)
-        showStatusMessage("Highlighted \(ranges.count) matches")
+        showLocalizedStatus("status.highlightedMatches", [ranges.count])
     }
 
     func selectAllSearchMatches() {
         guard let (query, _) = currentSearchMatches() else { return }
         let outcome = editorVC.selectAllMatches(for: query)
-        showStatusMessage("Selected \(outcome.totalMatches) matches")
+        showLocalizedStatus("status.selectedMatches", [outcome.totalMatches])
     }
 
     func colorAllSearchMatches() {
@@ -1731,7 +1769,7 @@ final class MainWindowController: NSWindowController,
             query: query.pattern, ranges: ranges, color: colors[searchColorIndex % colors.count])
         editorVC.showSearchMarkers(ranges)
         searchColorIndex += 1
-        showStatusMessage("Colored \(ranges.count) matches")
+        showLocalizedStatus("status.coloredMatches", [ranges.count])
     }
 
     func clearSearchColors() {
@@ -1782,13 +1820,13 @@ final class MainWindowController: NSWindowController,
         }
         if !grepOnly, editorVC.navigateSearchResult(forward: forward) { return }
         guard outputPane?.activateAdjacentGrepResult(forward: forward) == true else {
-            showStatusMessage(grepOnly ? "No Grep results" : "No results")
+            showLocalizedStatus(grepOnly ? "status.noGrepResults" : "find.noResults")
             return
         }
     }
 
     func returnToSearchStart() {
-        guard let offset = searchStartOffset else { showStatusMessage("No search start position"); return }
+        guard let offset = searchStartOffset else { showLocalizedStatus("status.noSearchStart"); return }
         let safe = min(offset, (editorVC.textView.string as NSString).length)
         let range = NSRange(location: safe, length: 0)
         editorVC.setSelections([range], primaryRange: range)
@@ -1797,14 +1835,14 @@ final class MainWindowController: NSWindowController,
 
     func setSearchRangeFromSelection() {
         let selection = editorVC.selectionSet.primaryRange
-        guard selection.length > 0 else { showStatusMessage("Select a search range first"); return }
+        guard selection.length > 0 else { showLocalizedStatus("status.selectSearchRangeFirst"); return }
         editorVC.searchScopeSelection = selection
         editorVC.hasExplicitSearchScope = true
-        showStatusMessage("Search range set")
+        showLocalizedStatus("status.searchRangeSet")
     }
 
     func selectSearchRange() {
-        guard let range = editorVC.searchScopeSelection else { showStatusMessage("No search range"); return }
+        guard let range = editorVC.searchScopeSelection else { showLocalizedStatus("status.noSearchRange"); return }
         editorVC.setSelections([range], primaryRange: range)
         editorVC.textView.scrollRangeToVisible(range)
     }
@@ -1812,16 +1850,16 @@ final class MainWindowController: NSWindowController,
     func clearSearchRange() {
         editorVC.searchScopeSelection = nil
         editorVC.hasExplicitSearchScope = false
-        showStatusMessage("Search range cleared")
+        showLocalizedStatus("status.searchRangeCleared")
     }
 
     func showGoToLine() {
         let a = NSAlert()
-        a.messageText = "Go to Line"
-        a.addButton(withTitle: "Go")
-        a.addButton(withTitle: "Cancel")
+        a.messageText = AppLocalization.string("dialog.goToLine.title")
+        a.addButton(withTitle: AppLocalization.string(.commonGo))
+        a.addButton(withTitle: AppLocalization.string(.commonCancel))
         let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
-        input.placeholderString = "Line:Column (for example 42:8)"
+        input.placeholderString = AppLocalization.string("dialog.goToLine.placeholder")
         a.accessoryView = input
         a.beginSheetModal(for: window!) { [weak self] r in
             guard r == .alertFirstButtonReturn else { return }
@@ -1836,9 +1874,9 @@ final class MainWindowController: NSWindowController,
         guard let w = window else { return }
         guard let rootURL = sidebarVC.rootFolderURL else {
             let a = NSAlert()
-            a.messageText = "No Folder Open"
-            a.informativeText = "Open a folder first (Cmd+Shift+O) to use Quick Open."
-            a.addButton(withTitle: "OK")
+            a.messageText = AppLocalization.string("dialog.quickOpen.noFolderTitle")
+            a.informativeText = AppLocalization.string("dialog.quickOpen.noFolderExplanation")
+            a.addButton(withTitle: AppLocalization.string(.commonOK))
             a.beginSheetModal(for: w, completionHandler: nil)
             return
         }
@@ -1957,7 +1995,7 @@ final class MainWindowController: NSWindowController,
     func refineGrepResults() {
         guard let query = activeSearchQuery(), !query.pattern.isEmpty,
               let pane = outputPane, !pane.matches.isEmpty else {
-            showStatusMessage("Run Grep and enter a refinement pattern first")
+            showLocalizedStatus("status.refineGrepFirst")
             return
         }
         let existing = pane.matches
@@ -1975,7 +2013,7 @@ final class MainWindowController: NSWindowController,
 
     func outputGrepResultsAsDocument() {
         guard let pane = outputPane, !pane.matches.isEmpty else {
-            showStatusMessage("There are no Grep results to output")
+            showLocalizedStatus("status.noGrepOutput")
             return
         }
         let summary = GrepSummary(
@@ -1994,7 +2032,7 @@ final class MainWindowController: NSWindowController,
 
     private func runInMemoryGrep(documents: [InMemorySearchDocument]) {
         guard let query = activeSearchQuery(), !query.pattern.isEmpty else {
-            showFind(); showStatusMessage("Enter a search pattern first"); return
+            showFind(); showLocalizedStatus("status.enterSearchPattern"); return
         }
         let pane = ensureOutputPane()
         pane.beginRun(pattern: query.pattern)
@@ -2156,7 +2194,7 @@ final class MainWindowController: NSWindowController,
         let enabled = !editorVC.textView.isContinuousSpellCheckingEnabled
         curDoc?.spellCheckingOverride = enabled
         editorVC.textView.isContinuousSpellCheckingEnabled = enabled
-        showStatusMessage(enabled ? "Automatic spell checking on" : "Automatic spell checking off")
+        showLocalizedStatus(enabled ? "status.spellCheckingOn" : "status.spellCheckingOff")
     }
     func showSpellingCorrections() {
         window?.makeFirstResponder(editorVC.textView)
@@ -2174,9 +2212,9 @@ final class MainWindowController: NSWindowController,
 
     func showCharacterCode() {
         let alert = NSAlert()
-        alert.messageText = "Character Code"
+        alert.messageText = AppLocalization.string("dialog.characterCode.title")
         alert.informativeText = statusBar.characterCodeDetail
-        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: AppLocalization.string(.commonOK))
         if let window { alert.beginSheetModal(for: window) }
     }
 
@@ -2303,9 +2341,9 @@ final class MainWindowController: NSWindowController,
             } catch {
                 let alert = NSAlert()
                 alert.alertStyle = .critical
-                alert.messageText = "Output Could Not Be Saved"
-                alert.informativeText = "The results remain open and unchanged. Choose another location or check that the destination is writable."
-                alert.addButton(withTitle: "OK")
+                alert.messageText = AppLocalization.string("dialog.outputSave.title")
+                alert.informativeText = AppLocalization.string("dialog.outputSave.explanation")
+                alert.addButton(withTitle: AppLocalization.string(.commonOK))
                 alert.beginSheetModal(for: window)
             }
         }
@@ -2371,7 +2409,7 @@ final class MainWindowController: NSWindowController,
     func buildEncodingMenu() -> NSMenu {
         let menu = NSMenu()
         let automatic = NSMenuItem(
-            title: "自動判定で読み込みしなおし（A）",
+            title: AppLocalization.string("encoding.reloadAutomatic"),
             action: #selector(didSelectAutomaticEncodingDetection(_:)), keyEquivalent: "")
         automatic.target = self
         automatic.isEnabled = curDoc?.fileURL != nil
@@ -2379,19 +2417,19 @@ final class MainWindowController: NSWindowController,
         menu.addItem(.separator())
 
         let common: [(String, TextEncoding)] = [
-            ("日本語（Shift-JIS）", .windows31J),
-            ("日本語（EUC）", .eucJP),
-            ("日本語（JIS）", .iso2022JP),
-            ("Unicode（UTF-16）", .utf16LittleEndian),
-            ("Unicode（UTF-16, Big-Endian）", .utf16BigEndian),
-            ("Unicode（UTF-8）", .utf8),
-            ("Unicode（UTF-7）", .utf7),
+            (AppLocalization.string("encoding.shiftJIS"), .windows31J),
+            (AppLocalization.string("encoding.eucJP"), .eucJP),
+            (AppLocalization.string("encoding.jis"), .iso2022JP),
+            (AppLocalization.string("encoding.utf16"), .utf16LittleEndian),
+            (AppLocalization.string("encoding.utf16BE"), .utf16BigEndian),
+            (AppLocalization.string("encoding.utf8"), .utf8),
+            (AppLocalization.string("encoding.utf7"), .utf7),
         ]
         for (title, encoding) in common {
             menu.addItem(encodingMenuItem(for: encoding, title: title))
         }
 
-        let other = NSMenuItem(title: "その他（D）", action: nil, keyEquivalent: "")
+        let other = NSMenuItem(title: AppLocalization.string("encoding.other"), action: nil, keyEquivalent: "")
         let otherMenu = NSMenu(title: other.title)
         let commonEncodings = Set(common.map(\.1))
         for encoding in TextEncoding.userSelectable where !commonEncodings.contains(encoding) {
@@ -2405,7 +2443,11 @@ final class MainWindowController: NSWindowController,
         menu.addItem(other)
         menu.addItem(.separator())
 
-        for (title, value) in [("改行=CR+LF", "crlf"), ("改行=CR", "cr"), ("改行=LF", "lf")] {
+        for (title, value) in [
+            (AppLocalization.string("encoding.lineEndingCRLF"), "crlf"),
+            (AppLocalization.string("encoding.lineEndingCR"), "cr"),
+            (AppLocalization.string("encoding.lineEndingLF"), "lf"),
+        ] {
             let item = NSMenuItem(
                 title: title, action: #selector(didSelectLineEnding(_:)), keyEquivalent: "")
             item.target = self
@@ -2414,7 +2456,7 @@ final class MainWindowController: NSWindowController,
             item.state = active == (value == "crlf" ? "CRLF" : value.uppercased()) ? .on : .off
             menu.addItem(item)
         }
-        let bom = NSMenuItem(title: "BOM", action: #selector(didToggleEncodingMenuBOM(_:)), keyEquivalent: "")
+        let bom = NSMenuItem(title: AppLocalization.string("encoding.bom"), action: #selector(didToggleEncodingMenuBOM(_:)), keyEquivalent: "")
         bom.target = self
         bom.state = curDoc?.hasByteOrderMark == true ? .on : .off
         bom.isEnabled = curDoc?.encoding.byteOrderMark != nil
@@ -2441,10 +2483,10 @@ final class MainWindowController: NSWindowController,
         guard let doc = curDoc, doc.fileURL != nil else { return }
         if doc.isModified {
             let alert = NSAlert()
-            alert.messageText = "Reload (doc.displayName)?"
-            alert.informativeText = "Automatic encoding detection reloads the file and discards unsaved changes."
-            alert.addButton(withTitle: "Reload")
-            alert.addButton(withTitle: "Cancel")
+            alert.messageText = AppLocalization.string("dialog.reload.title", [doc.displayName])
+            alert.informativeText = AppLocalization.string("dialog.encoding.autoReloadExplanation")
+            alert.addButton(withTitle: AppLocalization.string(.commonReload))
+            alert.addButton(withTitle: AppLocalization.string(.commonCancel))
             guard alert.runModal() == .alertFirstButtonReturn else { return }
         }
         do {
@@ -2472,8 +2514,8 @@ final class MainWindowController: NSWindowController,
 
     func buildInputModeMenu() -> NSMenu {
         let menu = NSMenu()
-        for (title, mode) in [("上書きモード", EditorInputMode.overwrite),
-                              ("挿入モード", EditorInputMode.insert)] {
+        for (title, mode) in [(AppLocalization.string(.inputOverwrite), EditorInputMode.overwrite),
+                              (AppLocalization.string(.inputInsert), EditorInputMode.insert)] {
             let item = NSMenuItem(title: title, action: #selector(didSelectInputMode(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = mode.rawValue
@@ -2502,9 +2544,9 @@ final class MainWindowController: NSWindowController,
             showCharacterCountConfiguration(); return
         case .characterCode:
             let alert = NSAlert()
-            alert.messageText = "Character Code"
+            alert.messageText = AppLocalization.string("dialog.characterCode.title")
             alert.informativeText = statusBar.characterCodeDetail
-            alert.addButton(withTitle: "OK")
+            alert.addButton(withTitle: AppLocalization.string(.commonOK))
             alert.beginSheetModal(for: window!); return
         case .inputMode:
             menu = buildInputModeMenu()
@@ -2527,15 +2569,16 @@ final class MainWindowController: NSWindowController,
 
     private func showCharacterCountConfiguration() {
         let alert = NSAlert()
-        alert.messageText = "Character Count Calculation"
-        alert.informativeText = "Set the contribution of each character category. Fractional totals are rounded up."
+        alert.messageText = AppLocalization.string("dialog.characterCount.title")
+        alert.informativeText = AppLocalization.string("dialog.characterCount.explanation")
         let configuration = statusBar.characterCountConfiguration
         let entries: [(String, Double)] = [
-            ("Full-width characters", configuration.fullWidth),
-            ("Half-width characters", configuration.halfWidth),
-            ("Full-width spaces", configuration.fullWidthSpace),
-            ("Half-width spaces", configuration.halfWidthSpace),
-            ("Tabs", configuration.tab), ("Line breaks", configuration.lineBreak),
+            (AppLocalization.string("dialog.characterCount.fullWidth"), configuration.fullWidth),
+            (AppLocalization.string("dialog.characterCount.halfWidth"), configuration.halfWidth),
+            (AppLocalization.string("dialog.characterCount.fullWidthSpaces"), configuration.fullWidthSpace),
+            (AppLocalization.string("dialog.characterCount.halfWidthSpaces"), configuration.halfWidthSpace),
+            (AppLocalization.string("dialog.characterCount.tabs"), configuration.tab),
+            (AppLocalization.string("dialog.characterCount.lineBreaks"), configuration.lineBreak),
         ]
         let grid = NSGridView()
         var fields: [NSTextField] = []
@@ -2548,9 +2591,9 @@ final class MainWindowController: NSWindowController,
         grid.column(at: 0).xPlacement = .trailing
         grid.column(at: 1).width = 72
         alert.accessoryView = grid
-        alert.addButton(withTitle: "Apply")
-        alert.addButton(withTitle: "Cancel")
-        alert.addButton(withTitle: "Reset")
+        alert.addButton(withTitle: AppLocalization.string(.commonApply))
+        alert.addButton(withTitle: AppLocalization.string(.commonCancel))
+        alert.addButton(withTitle: AppLocalization.string(.commonReset))
         alert.beginSheetModal(for: window!) { [weak self] response in
             guard let self else { return }
             if response == .alertThirdButtonReturn {
@@ -2703,7 +2746,8 @@ final class MainWindowController: NSWindowController,
             let profiles = documentController.availableFileTypeProfiles.filter { $0.source == source }
             guard !profiles.isEmpty else { continue }
             let heading = NSMenuItem(
-                title: source == .user ? "User Profiles" : "Built-in Profiles",
+                title: AppLocalization.string(source == .user
+                    ? "profile.userProfiles" : "profile.builtInProfiles"),
                 action: nil, keyEquivalent: "")
             heading.isEnabled = false; menu.addItem(heading)
             for sourced in profiles.sorted(by: { $0.profile.name < $1.profile.name }) {
@@ -2716,7 +2760,7 @@ final class MainWindowController: NSWindowController,
             }
             menu.addItem(.separator())
         }
-        let languageHeading = NSMenuItem(title: "Syntax Only", action: nil, keyEquivalent: "")
+        let languageHeading = NSMenuItem(title: AppLocalization.string("profile.syntaxOnly"), action: nil, keyEquivalent: "")
         languageHeading.isEnabled = false; menu.addItem(languageHeading)
         for language in Language.allCases where language != .plainText {
             menu.addItem(languageMenuItem(language))
@@ -2759,11 +2803,11 @@ final class MainWindowController: NSWindowController,
 
         if doc.isModified {
             let a = NSAlert()
-            a.messageText = "Save changes to \(doc.displayName) before reopening?"
-            a.informativeText = "Reopening with a different encoding will discard unsaved changes unless you save first."
-            a.addButton(withTitle: "Save")
-            a.addButton(withTitle: "Don't Save")
-            a.addButton(withTitle: "Cancel")
+            a.messageText = AppLocalization.string("dialog.encoding.saveBeforeReopen", [doc.displayName])
+            a.informativeText = AppLocalization.string("dialog.encoding.reopenExplanation")
+            a.addButton(withTitle: AppLocalization.string(.commonSave))
+            a.addButton(withTitle: AppLocalization.string(.commonDontSave))
+            a.addButton(withTitle: AppLocalization.string(.commonCancel))
             let resp = a.runModal()
             if resp == .alertFirstButtonReturn { saveDocument() }
             else if resp == .alertThirdButtonReturn { return }
@@ -2852,7 +2896,7 @@ final class MainWindowController: NSWindowController,
         editorVC.document = doc
         tabBar.selectTab(at: index)
         refreshStatus()
-        window?.title = "MaruEdit — \(doc.displayName)"
+        window?.title = AppLocalization.string("window.document.title", [doc.displayName])
         if let url = doc.fileURL { sidebarVC.revealFile(url) }
         deferredRestoreCursor()
         scheduleSessionSave()
@@ -2986,7 +3030,12 @@ final class MainWindowController: NSWindowController,
     func clearSearchHistory(_ kind: SearchHistoryStore.Kind) {
         searchHistoryStore.clear(kind, state: &searchHistory)
         syncSearchHistoryUI()
-        showStatusMessage("\(kind.displayName) history cleared")
+        let key: String = switch kind {
+        case .find: "status.findHistoryCleared"
+        case .replace: "status.replaceHistoryCleared"
+        case .grep: "status.grepHistoryCleared"
+        }
+        showLocalizedStatus(key)
     }
 
     func addCursorAbove() { editorVC.addCursorAbove() }
@@ -3004,7 +3053,7 @@ final class MainWindowController: NSWindowController,
     func showBookmarkList() {
         guard let document = curDoc else { return }
         let offsets = document.bookmarks.sortedOffsets
-        guard !offsets.isEmpty else { showStatusMessage("No bookmarks"); return }
+        guard !offsets.isEmpty else { showLocalizedStatus("status.noBookmarks"); return }
         let text = editorVC.textView.string as NSString
         let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 420, height: 26))
         for (index, offset) in offsets.enumerated() {
@@ -3012,14 +3061,15 @@ final class MainWindowController: NSWindowController,
             let line = text.substring(to: safe).reduce(1) { $1 == "\n" ? $0 + 1 : $0 }
             let range = text.lineRange(for: NSRange(location: safe, length: 0))
             let preview = text.substring(with: range).trimmingCharacters(in: .whitespacesAndNewlines)
-            popup.addItem(withTitle: "\(index + 1). Line \(line)  \(preview)")
+            popup.addItem(withTitle: AppLocalization.string("dialog.list.line", [index + 1, line, preview]))
         }
         let alert = NSAlert()
-        alert.messageText = "Bookmark List"
-        alert.informativeText = "Go to a bookmark or remove it from this document."
+        alert.messageText = AppLocalization.string("dialog.bookmarks.title")
+        alert.informativeText = AppLocalization.string("dialog.bookmarks.explanation")
         alert.accessoryView = popup
-        alert.addButton(withTitle: "Go To"); alert.addButton(withTitle: "Remove")
-        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: AppLocalization.string("common.goTo"))
+        alert.addButton(withTitle: AppLocalization.string(.commonRemove))
+        alert.addButton(withTitle: AppLocalization.string(.commonCancel))
         let response = alert.runModal()
         guard offsets.indices.contains(popup.indexOfSelectedItem) else { return }
         let offset = offsets[popup.indexOfSelectedItem]
@@ -3050,10 +3100,11 @@ final class MainWindowController: NSWindowController,
             popup.selectItem(at: index)
         }
         let alert = NSAlert()
-        alert.messageText = "Temporary Color Marker"
-        alert.informativeText = "Choose a color to apply to every active selection."
+        alert.messageText = AppLocalization.string("dialog.marker.title")
+        alert.informativeText = AppLocalization.string("dialog.marker.explanation")
         alert.accessoryView = popup
-        alert.addButton(withTitle: "Apply"); alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: AppLocalization.string(.commonApply))
+        alert.addButton(withTitle: AppLocalization.string(.commonCancel))
         guard alert.runModal() == .alertFirstButtonReturn,
               MarkerColor.allCases.indices.contains(popup.indexOfSelectedItem) else { return }
         editorVC.addTemporaryColorMarkers(MarkerColor.allCases[popup.indexOfSelectedItem])
@@ -3080,7 +3131,7 @@ final class MainWindowController: NSWindowController,
     func showHighlightList() {
         guard let document = curDoc else { return }
         let markers = document.colorMarkers.sortedMarkers
-        guard !markers.isEmpty else { showStatusMessage("No highlights"); return }
+        guard !markers.isEmpty else { showLocalizedStatus("status.noHighlights"); return }
         let text = editorVC.textView.string as NSString
         let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 440, height: 26))
         for marker in markers {
@@ -3088,14 +3139,16 @@ final class MainWindowController: NSWindowController,
             let line = text.substring(to: safe).reduce(1) { $1 == "\n" ? $0 + 1 : $0 }
             let preview = text.substring(with: text.lineRange(for: NSRange(location: safe, length: 0)))
                 .trimmingCharacters(in: .whitespacesAndNewlines)
-            popup.addItem(withTitle: "\(marker.color.rawValue.capitalized) · Line \(line)  \(preview)")
+            popup.addItem(withTitle: AppLocalization.string(
+                "dialog.highlight.line", [marker.color.rawValue.capitalized, line, preview]))
         }
         let alert = NSAlert()
-        alert.messageText = "Highlight List"
-        alert.informativeText = "Go to a highlighted line or remove its marker."
+        alert.messageText = AppLocalization.string("dialog.highlights.title")
+        alert.informativeText = AppLocalization.string("dialog.highlights.explanation")
         alert.accessoryView = popup
-        alert.addButton(withTitle: "Go To"); alert.addButton(withTitle: "Remove")
-        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: AppLocalization.string("common.goTo"))
+        alert.addButton(withTitle: AppLocalization.string(.commonRemove))
+        alert.addButton(withTitle: AppLocalization.string(.commonCancel))
         let response = alert.runModal()
         guard markers.indices.contains(popup.indexOfSelectedItem) else { return }
         let marker = markers[popup.indexOfSelectedItem]
@@ -3214,9 +3267,9 @@ final class MainWindowController: NSWindowController,
 
     func generateTagsFile() {
         let panel = NSOpenPanel()
-        panel.title = "Generate Tags File"
-        panel.prompt = "Generate"
-        panel.message = "Choose the project folder where MaruEdit should create or replace the tags file."
+        panel.title = AppLocalization.string("dialog.tags.generateTitle")
+        panel.prompt = AppLocalization.string("common.generate")
+        panel.message = AppLocalization.string("dialog.tags.generateExplanation")
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
@@ -3224,10 +3277,10 @@ final class MainWindowController: NSWindowController,
         guard panel.runModal() == .OK, let root = panel.url else { return }
         do {
             let summary = try TagFileGenerator().generate(in: root)
-            showStatusMessage("Generated \(summary.tagCount) tags from \(summary.fileCount) files")
+            showLocalizedStatus("status.generatedTags", [summary.tagCount, summary.fileCount])
         } catch {
             let alert = NSAlert(error: error)
-            alert.messageText = "Could Not Generate Tags File"
+            alert.messageText = AppLocalization.string("dialog.tags.generateFailed")
             alert.informativeText = error.localizedDescription
             alert.runModal()
         }
@@ -3235,21 +3288,21 @@ final class MainWindowController: NSWindowController,
 
     func showTagJump() {
         let alert = NSAlert()
-        alert.messageText = "Jump to Tag"
-        alert.informativeText = "Enter an exact ctags symbol name."
+        alert.messageText = AppLocalization.string("dialog.tags.jumpTitle")
+        alert.informativeText = AppLocalization.string("dialog.tags.jumpExplanation")
         let field = NSTextField(string: identifierAtCursor() ?? "")
         field.frame = NSRect(x: 0, y: 0, width: 280, height: 24)
-        field.setAccessibilityLabel("Tag name")
+        field.setAccessibilityLabel(AppLocalization.string("dialog.tags.nameAccessibility"))
         alert.accessoryView = field
-        alert.addButton(withTitle: "Jump")
-        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: AppLocalization.string(.commonJump))
+        alert.addButton(withTitle: AppLocalization.string(.commonCancel))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         jumpToTag(named: field.stringValue)
     }
 
     func directTagJump() {
         guard let name = identifierAtCursor(), !name.isEmpty else {
-            showStatusMessage("No tag name at the cursor")
+            showLocalizedStatus("status.noTagName")
             return
         }
         jumpToTag(named: name)
@@ -3261,14 +3314,14 @@ final class MainWindowController: NSWindowController,
               let destination = index.matches(named: name).first,
               let targetURL = TagIndex.fileURL(for: destination, relativeTo: root),
               FileManager.default.fileExists(atPath: targetURL.path) else {
-            showStatusMessage("Tag not found: \(name)")
+            showLocalizedStatus("status.tagNotFound", [name])
             return
         }
         let origin = (sourceURL, editorVC.selectionSet.primaryRange.location)
         openFile(targetURL)
         guard let target = curDoc,
               let offset = TagIndex.utf16Offset(for: destination, in: target.content) else {
-            showStatusMessage("Tag location is invalid: \(name)")
+            showLocalizedStatus("status.tagLocationInvalid", [name])
             return
         }
         tagBackStack.append(origin)
@@ -3279,7 +3332,7 @@ final class MainWindowController: NSWindowController,
 
     func backTagJump() {
         guard let destination = tagBackStack.popLast() else {
-            showStatusMessage("Tag back stack is empty")
+            showLocalizedStatus("status.tagBackStackEmpty")
             return
         }
         openFile(destination.url)
@@ -3448,7 +3501,7 @@ final class MainWindowController: NSWindowController,
         refreshTabs()
         refreshStatus()
         if let name = curDoc?.displayName {
-            window?.title = "MaruEdit — \(name)"
+            window?.title = AppLocalization.string("window.document.title", [name])
         }
 
         DispatchQueue.main.async { [weak self] in
@@ -3485,7 +3538,7 @@ final class MainWindowController: NSWindowController,
             do {
                 try WorkspaceFile.save(self.currentSessionState(), to: url)
                 RecentItems.addWorkspace(url)
-                self.showStatusMessage("Workspace saved")
+                self.showLocalizedStatus("status.workspaceSaved")
             } catch { NSAlert(error: error).beginSheetModal(for: window) }
         }
     }
@@ -3505,21 +3558,21 @@ final class MainWindowController: NSWindowController,
             let state = try WorkspaceFile.load(from: url)
             applySessionState(state)
             RecentItems.addWorkspace(url)
-            showStatusMessage("Workspace restored")
+            showLocalizedStatus("status.workspaceRestored")
         } catch { NSAlert(error: error).runModal() }
     }
 
     func showProjectHistory() {
         let folders = RecentItems.folders
-        guard !folders.isEmpty else { showStatusMessage("Project history is empty"); return }
+        guard !folders.isEmpty else { showLocalizedStatus("status.projectHistoryEmpty"); return }
         let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 420, height: 26))
         popup.addItems(withTitles: folders.map(\.path))
         let alert = NSAlert()
-        alert.messageText = "Project History"
-        alert.informativeText = "Choose a recent project folder to reopen in the sidebar."
+        alert.messageText = AppLocalization.string("dialog.projectHistory.title")
+        alert.informativeText = AppLocalization.string("dialog.projectHistory.explanation")
         alert.accessoryView = popup
-        alert.addButton(withTitle: "Open")
-        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: AppLocalization.string(.commonOpen))
+        alert.addButton(withTitle: AppLocalization.string(.commonCancel))
         guard alert.runModal() == .alertFirstButtonReturn,
               folders.indices.contains(popup.indexOfSelectedItem) else { return }
         openFolderDirect(folders[popup.indexOfSelectedItem])
@@ -3527,15 +3580,15 @@ final class MainWindowController: NSWindowController,
 
     func showWorkspaceHistory() {
         let workspaces = RecentItems.workspaces
-        guard !workspaces.isEmpty else { showStatusMessage("Workspace history is empty"); return }
+        guard !workspaces.isEmpty else { showLocalizedStatus("status.workspaceHistoryEmpty"); return }
         let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 420, height: 26))
         popup.addItems(withTitles: workspaces.map(\.lastPathComponent))
         let alert = NSAlert()
-        alert.messageText = "Workspace History"
-        alert.informativeText = "Choose a saved MaruEdit desktop/workspace to restore."
+        alert.messageText = AppLocalization.string("dialog.workspaceHistory.title")
+        alert.informativeText = AppLocalization.string("dialog.workspaceHistory.explanation")
         alert.accessoryView = popup
-        alert.addButton(withTitle: "Restore")
-        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: AppLocalization.string(.commonRestore))
+        alert.addButton(withTitle: AppLocalization.string(.commonCancel))
         guard alert.runModal() == .alertFirstButtonReturn,
               workspaces.indices.contains(popup.indexOfSelectedItem) else { return }
         openWorkspace(workspaces[popup.indexOfSelectedItem])
@@ -3586,10 +3639,10 @@ final class MainWindowController: NSWindowController,
     func clearRecoveryData() {
         let a = NSAlert()
         a.alertStyle = .informational
-        a.messageText = "Clear Recovery Data?"
-        a.informativeText = "This removes saved recovery snapshots for unsaved, unnamed documents from previous crashes or forced quits. Currently open documents are not affected."
-        a.addButton(withTitle: "Clear")
-        a.addButton(withTitle: "Cancel")
+        a.messageText = AppLocalization.string("dialog.recovery.clearTitle")
+        a.informativeText = AppLocalization.string("dialog.recovery.clearExplanation")
+        a.addButton(withTitle: AppLocalization.string(.commonClear))
+        a.addButton(withTitle: AppLocalization.string(.commonCancel))
         guard a.runModal() == .alertFirstButtonReturn else { return }
         recoveryStore.clearAll()
     }
@@ -3617,14 +3670,14 @@ private final class StatusFontSizePopoverController: NSViewController {
         slider.frame = NSRect(x: 16, y: 42, width: 190, height: 24)
         slider.numberOfTickMarks = 17
         slider.allowsTickMarkValuesOnly = false
-        slider.setAccessibilityLabel("Editor font size")
+        slider.setAccessibilityLabel(AppLocalization.string("status.accessibility.fontSize"))
         valueLabel.frame = NSRect(x: 212, y: 44, width: 46, height: 20)
         valueLabel.alignment = .right
         updateLabel(initialSize)
-        let reset = NSButton(title: "Reset", target: self, action: #selector(resetSize))
+        let reset = NSButton(title: AppLocalization.string(.commonReset), target: self, action: #selector(resetSize))
         reset.bezelStyle = .rounded
         reset.frame = NSRect(x: 16, y: 10, width: 76, height: 26)
-        reset.setAccessibilityLabel("Reset font size")
+        reset.setAccessibilityLabel(AppLocalization.string("dialog.fontSize.resetAccessibility"))
         root.addSubview(slider); root.addSubview(valueLabel); root.addSubview(reset)
         view = root
     }

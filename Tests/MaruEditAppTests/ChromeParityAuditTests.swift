@@ -127,10 +127,19 @@ final class ChromeParityAuditTests: XCTestCase {
         let displayedMenu = [
             "Conv": "Convert", "Disp": "View", "Hilight": "Highlight", "Tool": "Tools",
         ]
+        let localizedMenu = [
+            "File": "ファイル(F)", "Edit": "編集(E)", "View": "表示(V)",
+            "Search": "検索(S)", "Window": "ウィンドウ(W)",
+            "Macro": "マクロ(M)", "Other": "その他(O)",
+            "Convert": "変換(V)", "Insert": "挿入", "Highlight": "強調",
+            "Bookmark": "ブックマーク", "Tools": "ツール", "Help": "ヘルプ",
+        ]
         var missing: [String] = []
         for row in mappings where row[2] == "stable" {
             let title = displayedMenu[row[0]] ?? row[0]
-            guard let menu = NSApp.mainMenu?.items.compactMap(\.submenu).first(where: { $0.title == title }) else {
+            guard let menu = NSApp.mainMenu?.items.compactMap(\.submenu).first(where: {
+                $0.title == title || $0.title == localizedMenu[title]
+            }) else {
                 missing.append("\(row[0])/\(row[1]) -> missing menu \(title)"); continue
             }
             let ids = commandIDs(in: menu)

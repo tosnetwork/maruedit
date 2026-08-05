@@ -10,7 +10,7 @@ final class ExternalCommandManager: NSObject {
     private var runningControllers: [ObjectIdentifier: ExternalCommandController] = [:]
     private(set) var configurations: [ExternalCommandConfiguration] = []
     private(set) var lastError: String?
-    private(set) lazy var menu = NSMenu(title: "Tools")
+    private(set) lazy var menu = NSMenu(title: AppLocalization.string("menu.other.tools"))
 
     init(configurationURL: URL = ExternalCommandManager.defaultConfigurationURL,
          coordinator: AppCoordinator,
@@ -20,10 +20,10 @@ final class ExternalCommandManager: NSObject {
         self.confirmShell = confirmShell ?? { command in
             let alert = NSAlert()
             alert.alertStyle = .warning
-            alert.messageText = "Run High-Risk Shell Command?"
-            alert.informativeText = "\(command.name) uses shell mode. Shell text can interpret substitutions, redirects, and multiple commands."
-            alert.addButton(withTitle: "Run")
-            alert.addButton(withTitle: "Cancel")
+            alert.messageText = AppLocalization.string("external.shell.title")
+            alert.informativeText = AppLocalization.string("external.shell.explanation", [command.name])
+            alert.addButton(withTitle: AppLocalization.string(.commonRun))
+            alert.addButton(withTitle: AppLocalization.string(.commonCancel))
             return alert.runModal() == .alertFirstButtonReturn
         }
     }
@@ -69,20 +69,22 @@ final class ExternalCommandManager: NSObject {
     private func rebuildMenu() {
         menu.removeAllItems()
         for configuration in configurations {
-            let title = configuration.shellMode ? "⚠︎ \(configuration.name) (Shell)" : configuration.name
+            let title = configuration.shellMode
+                ? AppLocalization.string("external.shell.menuTitle", [configuration.name]) : configuration.name
             let item = NSMenuItem(title: title, action: #selector(runCommand(_:)), keyEquivalent: "")
             item.target = self; item.representedObject = configuration.commandID
             item.toolTip = configuration.riskDescription
             menu.addItem(item)
         }
         if configurations.isEmpty {
-            let item = NSMenuItem(title: lastError == nil ? "No External Commands" : "Configuration Error", action: nil, keyEquivalent: "")
+            let item = NSMenuItem(title: AppLocalization.string(
+                lastError == nil ? "external.none" : "external.configurationError"), action: nil, keyEquivalent: "")
             item.isEnabled = false; menu.addItem(item)
         }
         menu.addItem(.separator())
-        let reload = NSMenuItem(title: "Reload External Commands", action: #selector(reloadAction), keyEquivalent: "")
+        let reload = NSMenuItem(title: AppLocalization.string("external.reload"), action: #selector(reloadAction), keyEquivalent: "")
         reload.target = self; menu.addItem(reload)
-        let open = NSMenuItem(title: "Open External Commands Configuration", action: #selector(openConfiguration), keyEquivalent: "")
+        let open = NSMenuItem(title: AppLocalization.string("external.openConfiguration"), action: #selector(openConfiguration), keyEquivalent: "")
         open.target = self; menu.addItem(open)
     }
 

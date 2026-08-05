@@ -71,7 +71,7 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
         levelPopup.selectItem(at: Level.basic.rawValue)
         levelPopup.target = self; levelPopup.action = #selector(levelChanged)
         levelPopup.translatesAutoresizingMaskIntoConstraints = false
-        levelPopup.setAccessibilityLabel("Settings detail level")
+        levelPopup.setAccessibilityLabel(AppLocalization.string("settings.detailLevel"))
         root.addSubview(levelPopup)
 
         sidebar.orientation = .vertical
@@ -218,8 +218,8 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
             stack.addArrangedSubview(NSTextField(wrappingLabelWithString: SettingsLocalization.text("comingSoon")))
         }
         if group != .advanced {
-            let exportSection = NSButton(title: "Export This Section…", target: self, action: #selector(showSectionExportPanel))
-            let importSection = NSButton(title: "Import This Section…", target: self, action: #selector(showSectionImportPanel))
+            let exportSection = NSButton(title: AppLocalization.string("settings.exportSection"), target: self, action: #selector(showSectionExportPanel))
+            let importSection = NSButton(title: AppLocalization.string("settings.importSection"), target: self, action: #selector(showSectionImportPanel))
             exportSection.setAccessibilityLabel(exportSection.title)
             importSection.setAccessibilityLabel(importSection.title)
             stack.addArrangedSubview(NSStackView(views: [exportSection, importSection]))

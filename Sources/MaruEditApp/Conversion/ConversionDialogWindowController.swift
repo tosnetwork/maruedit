@@ -28,7 +28,7 @@ final class ConversionDialogWindowController: NSWindowController, NSTableViewDat
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 640, height: 480),
             styleMask: [.titled, .closable], backing: .buffered, defer: false)
-        window.title = "Conversion Pipeline"
+        window.title = AppLocalization.string("conversion.title")
         super.init(window: window)
         buildUI()
         reloadPresets()
@@ -49,44 +49,44 @@ final class ConversionDialogWindowController: NSWindowController, NSTableViewDat
         ])
 
         presetPopup.target = self; presetPopup.action = #selector(presetChanged)
-        presetPopup.setAccessibilityLabel("Conversion preset")
-        root.addArrangedSubview(row("Preset", presetPopup))
+        presetPopup.setAccessibilityLabel(AppLocalization.string("conversion.preset"))
+        root.addArrangedSubview(row(AppLocalization.string("conversion.preset"), presetPopup))
 
         let modules = registry.availableModules
         modulePopup.addItems(withTitles: modules.map(\.title))
         for (index, module) in modules.enumerated() { modulePopup.item(at: index)?.representedObject = module.id }
-        modulePopup.setAccessibilityLabel("Conversion module")
-        root.addArrangedSubview(row("Add module", modulePopup))
-        parameterField.placeholderString = "Search text or regular expression"
-        replacementField.placeholderString = "Replacement text"
+        modulePopup.setAccessibilityLabel(AppLocalization.string("conversion.addModule"))
+        root.addArrangedSubview(row(AppLocalization.string("conversion.addModule"), modulePopup))
+        parameterField.placeholderString = AppLocalization.string("grep.pattern")
+        replacementField.placeholderString = AppLocalization.string("grep.replacement")
         widthField.formatter = NumberFormatter()
-        for (label, field) in [("Search/Pattern", parameterField), ("Replacement", replacementField), ("Tab width", widthField)] {
+        for (label, field) in [(AppLocalization.string("conversion.searchPattern"), parameterField), (AppLocalization.string("conversion.replacement"), replacementField), (AppLocalization.string("conversion.tabWidth"), widthField)] {
             field.setAccessibilityLabel(label); root.addArrangedSubview(row(label, field))
         }
-        let add = NSButton(title: "Add to Pipeline", target: self, action: #selector(addModule))
-        add.setAccessibilityLabel("Add conversion module")
+        let add = NSButton(title: AppLocalization.string("conversion.add"), target: self, action: #selector(addModule))
+        add.setAccessibilityLabel(AppLocalization.string("conversion.add"))
         root.addArrangedSubview(add)
 
-        let column = NSTableColumn(identifier: .init("module")); column.title = "Ordered conversion modules"; column.width = 560
+        let column = NSTableColumn(identifier: .init("module")); column.title = AppLocalization.string("conversion.orderedModules"); column.width = 560
         table.addTableColumn(column); table.headerView = nil; table.delegate = self; table.dataSource = self
-        table.setAccessibilityLabel("Conversion module pipeline")
+        table.setAccessibilityLabel(AppLocalization.string("conversion.pipelineAccessibility"))
         let scroll = NSScrollView(); scroll.documentView = table; scroll.hasVerticalScroller = true
         scroll.translatesAutoresizingMaskIntoConstraints = false
         scroll.heightAnchor.constraint(equalToConstant: 150).isActive = true
         root.addArrangedSubview(scroll)
         scroll.widthAnchor.constraint(equalTo: root.widthAnchor).isActive = true
-        let remove = NSButton(title: "Remove", target: self, action: #selector(removeModule))
-        let up = NSButton(title: "Move Up", target: self, action: #selector(moveModuleUp))
-        let down = NSButton(title: "Move Down", target: self, action: #selector(moveModuleDown))
+        let remove = NSButton(title: AppLocalization.string("conversion.remove"), target: self, action: #selector(removeModule))
+        let up = NSButton(title: AppLocalization.string("conversion.moveUp"), target: self, action: #selector(moveModuleUp))
+        let down = NSButton(title: AppLocalization.string("conversion.moveDown"), target: self, action: #selector(moveModuleDown))
         root.addArrangedSubview(NSStackView(views: [remove, up, down]))
 
-        presetNameField.placeholderString = "Custom preset name"
-        presetNameField.setAccessibilityLabel("Custom preset name")
-        let save = NSButton(title: "Save Preset", target: self, action: #selector(savePreset))
-        let delete = NSButton(title: "Delete Preset", target: self, action: #selector(deletePreset))
+        presetNameField.placeholderString = AppLocalization.string("conversion.customPreset")
+        presetNameField.setAccessibilityLabel(AppLocalization.string("conversion.customPreset"))
+        let save = NSButton(title: AppLocalization.string("conversion.savePreset"), target: self, action: #selector(savePreset))
+        let delete = NSButton(title: AppLocalization.string("conversion.deletePreset"), target: self, action: #selector(deletePreset))
         root.addArrangedSubview(NSStackView(views: [presetNameField, save, delete]))
-        let apply = NSButton(title: "Apply", target: self, action: #selector(applyPipeline))
-        apply.keyEquivalent = "\r"; apply.setAccessibilityLabel("Apply conversion pipeline")
+        let apply = NSButton(title: AppLocalization.string("conversion.apply"), target: self, action: #selector(applyPipeline))
+        apply.keyEquivalent = "\r"; apply.setAccessibilityLabel(AppLocalization.string("conversion.apply"))
         root.addArrangedSubview(apply)
     }
 

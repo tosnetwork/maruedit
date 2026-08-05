@@ -5,6 +5,15 @@ import XCTest
 
 @MainActor
 final class ExternalHelpTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        UserDefaults.standard.set(AppLanguage.english.rawValue, forKey: AppLocalization.defaultsKey)
+    }
+
+    override func tearDown() {
+        UserDefaults.standard.removeObject(forKey: AppLocalization.defaultsKey)
+        super.tearDown()
+    }
     func testStoreAlwaysPersistsExactlySixNamedSlots() {
         let defaults = UserDefaults(suiteName: "ExternalHelp.\(UUID().uuidString)")!
         let store = ExternalHelpStore(defaults: defaults)

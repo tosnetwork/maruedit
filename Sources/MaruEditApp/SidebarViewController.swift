@@ -96,7 +96,7 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
     private(set) var rootFolderURL: URL?
     private var suppressSelectionCallback = false
     private var outlineSymbols: [OutlineSymbol] = []
-    private var markerResultText = "No color markers."
+    private var markerResultText = AppLocalization.string("sidebar.noColorMarkers")
     private var searchResultText = ""
 
     func focusCurrentPane(in window: NSWindow?) {
@@ -114,19 +114,22 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
         wrapper.wantsLayer = true
         wrapper.layer?.backgroundColor = Theme.sidebarBg.cgColor
 
-        headerLabel = NSTextField(labelWithString: "EXPLORER")
+        headerLabel = NSTextField(labelWithString: AppLocalization.string("sidebar.explorer"))
         headerLabel.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
         headerLabel.textColor = Theme.sidebarText.withAlphaComponent(0.5)
         headerLabel.translatesAutoresizingMaskIntoConstraints = false
         wrapper.addSubview(headerLabel)
 
-        paneSelector = NSSegmentedControl(labels: ["Files", "Outline", "Results", "Browser"],
+        paneSelector = NSSegmentedControl(labels: [
+            AppLocalization.string("sidebar.filesTab"), AppLocalization.string("sidebar.outlineTab"),
+            AppLocalization.string("sidebar.resultsTab"), AppLocalization.string("sidebar.browserTab"),
+        ],
                                           trackingMode: .selectOne,
                                           target: self, action: #selector(selectUtilityPane(_:)))
         paneSelector.selectedSegment = UtilityPane.files.rawValue
         paneSelector.segmentStyle = .texturedRounded
         paneSelector.translatesAutoresizingMaskIntoConstraints = false
-        paneSelector.setAccessibilityLabel("Utility pane")
+        paneSelector.setAccessibilityLabel(AppLocalization.string("sidebar.utilityPane"))
         wrapper.addSubview(paneSelector)
 
         let sv = NSScrollView()
@@ -176,14 +179,14 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
         browserContainer.translatesAutoresizingMaskIntoConstraints = false
         browserContainer.isHidden = true
         browserAddress = NSTextField(string: "about:blank")
-        browserAddress.placeholderString = "URL"
+        browserAddress.placeholderString = AppLocalization.string("sidebar.browserURL")
         browserAddress.target = self
         browserAddress.action = #selector(openBrowserAddress(_:))
         browserAddress.translatesAutoresizingMaskIntoConstraints = false
-        browserAddress.setAccessibilityLabel("Browser address")
+        browserAddress.setAccessibilityLabel(AppLocalization.string("sidebar.browserAddress"))
         browserView = WKWebView()
         browserView.translatesAutoresizingMaskIntoConstraints = false
-        browserView.setAccessibilityLabel("Browser content")
+        browserView.setAccessibilityLabel(AppLocalization.string("sidebar.browserContent"))
         browserContainer.addSubview(browserAddress)
         browserContainer.addSubview(browserView)
         wrapper.addSubview(browserContainer)
@@ -233,14 +236,14 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
         browserContainer.isHidden = pane != .browser
         switch pane {
         case .files:
-            headerLabel.stringValue = rootFolderURL?.lastPathComponent.uppercased() ?? "FILES"
+            headerLabel.stringValue = rootFolderURL?.lastPathComponent.uppercased() ?? AppLocalization.string("sidebar.files")
         case .outline:
-            headerLabel.stringValue = "OUTLINE"
+            headerLabel.stringValue = AppLocalization.string("sidebar.outline")
         case .results:
-            headerLabel.stringValue = "RESULTS"
+            headerLabel.stringValue = AppLocalization.string("sidebar.results")
             placeholderLabel.stringValue = searchResultText.isEmpty ? markerResultText : searchResultText
         case .browser:
-            headerLabel.stringValue = "BROWSER"
+            headerLabel.stringValue = AppLocalization.string("sidebar.browser")
         }
         outlineView.reloadData()
     }
@@ -311,9 +314,9 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
             let line = LineIndex(text).line(atUTF16Offset: safe) + 1
             let range = ns.lineRange(for: NSRange(location: safe, length: 0))
             let preview = ns.substring(with: range).trimmingCharacters(in: .whitespacesAndNewlines)
-            return "\(color.rawValue.capitalized) · Ln \(line): \(preview)"
+            return AppLocalization.string("sidebar.markerLine", [color.rawValue.capitalized, line, preview])
         }.joined(separator: "\n")
-        if markerResultText.isEmpty { markerResultText = "No color markers." }
+        if markerResultText.isEmpty { markerResultText = AppLocalization.string("sidebar.noColorMarkers") }
         if selectedUtilityPane == .results, searchResultText.isEmpty { placeholderLabel.stringValue = markerResultText }
     }
 
@@ -326,16 +329,18 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
             let line = index.line(atUTF16Offset: safe) + 1
             let lineRange = ns.lineRange(for: NSRange(location: safe, length: 0))
             let preview = ns.substring(with: lineRange).trimmingCharacters(in: .whitespacesAndNewlines)
-            return "Search · Ln \(line): \(preview)"
+            return AppLocalization.string("sidebar.searchLine", [line, preview])
         }.joined(separator: "\n")
-        if ranges.count > 500 { searchResultText += "\n… \(ranges.count - 500) more matches" }
+        if ranges.count > 500 {
+            searchResultText += "\n" + AppLocalization.string("sidebar.moreMatches", [ranges.count - 500])
+        }
         if selectedUtilityPane == .results {
             placeholderLabel.stringValue = searchResultText.isEmpty ? markerResultText : searchResultText
         }
     }
 
     func updateSearchColorList(_ lines: [String]) {
-        searchResultText = lines.isEmpty ? "No search color layers." : lines.joined(separator: "\n")
+        searchResultText = lines.isEmpty ? AppLocalization.string("sidebar.noSearchLayers") : lines.joined(separator: "\n")
         if selectedUtilityPane == .results { placeholderLabel.stringValue = searchResultText }
     }
 
@@ -347,6 +352,22 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
     var searchResultTextForTesting: String { searchResultText }
 
     var markerResultTextForTesting: String { markerResultText }
+
+    func refreshLocalization() {
+        guard isViewLoaded else { return }
+        let titles = ["sidebar.filesTab", "sidebar.outlineTab", "sidebar.resultsTab", "sidebar.browserTab"]
+        for (index, key) in titles.enumerated() {
+            paneSelector.setLabel(AppLocalization.string(key), forSegment: index)
+        }
+        paneSelector.setAccessibilityLabel(AppLocalization.string("sidebar.utilityPane"))
+        let emptyMarkerMessages = AppLanguage.allCases.map {
+            AppLocalization.localizedFormat("sidebar.noColorMarkers", language: $0)
+        }
+        if markerResultText.isEmpty || emptyMarkerMessages.contains(markerResultText) {
+            markerResultText = AppLocalization.string("sidebar.noColorMarkers")
+        }
+        showUtilityPane(selectedUtilityPane)
+    }
 
     func applyTheme() {
         view.layer?.backgroundColor = Theme.sidebarBg.cgColor
@@ -446,7 +467,8 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
             label.textColor = Theme.sidebarText
             label.lineBreakMode = .byTruncatingTail
             label.translatesAutoresizingMaskIntoConstraints = false
-            label.setAccessibilityLabel("\(symbol.kind.rawValue): \(symbol.title), line \(symbol.line + 1)")
+            label.setAccessibilityLabel(AppLocalization.string(
+                "sidebar.symbolAccessibility", [symbol.kind.rawValue, symbol.title, symbol.line + 1]))
             cell.addSubview(label)
             cell.textField = label
             NSLayoutConstraint.activate([
@@ -534,18 +556,18 @@ extension SidebarViewController: NSMenuDelegate {
         guard row >= 0, let fi = outlineView.item(atRow: row) as? FileItem else { return }
 
         if !fi.isDirectory {
-            let openItem = NSMenuItem(title: "Open", action: #selector(contextOpen(_:)), keyEquivalent: "")
+            let openItem = NSMenuItem(title: AppLocalization.string(.commonOpen), action: #selector(contextOpen(_:)), keyEquivalent: "")
             openItem.target = self
             menu.addItem(openItem)
 
-            let newTabItem = NSMenuItem(title: "Open in New Tab", action: #selector(contextOpenInNewTab(_:)), keyEquivalent: "")
+            let newTabItem = NSMenuItem(title: AppLocalization.string("sidebar.openNewTab"), action: #selector(contextOpenInNewTab(_:)), keyEquivalent: "")
             newTabItem.target = self
             menu.addItem(newTabItem)
 
             menu.addItem(.separator())
         }
 
-        let revealItem = NSMenuItem(title: "Reveal in Finder", action: #selector(contextRevealInFinder(_:)), keyEquivalent: "")
+        let revealItem = NSMenuItem(title: AppLocalization.string("output.reveal"), action: #selector(contextRevealInFinder(_:)), keyEquivalent: "")
         revealItem.target = self
         menu.addItem(revealItem)
     }

@@ -3,6 +3,10 @@ import XCTest
 
 @MainActor
 final class TabBarParityTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        UserDefaults.standard.set(AppLanguage.english.rawValue, forKey: AppLocalization.defaultsKey)
+    }
     private final class Delegate: TabBarViewDelegate {
         var selected: [Int] = []
         var closed: [Int] = []
@@ -13,6 +17,7 @@ final class TabBarParityTests: XCTestCase {
         func tabBarLayoutOptionsDidChange() {}
     }
     override func tearDown() {
+        UserDefaults.standard.removeObject(forKey: AppLocalization.defaultsKey)
         UserDefaults.standard.removeObject(forKey: "MaruTabBarPosition")
         UserDefaults.standard.removeObject(forKey: "MaruTabBarHideSingle")
         UserDefaults.standard.removeObject(forKey: "MaruTabModeEnabled")

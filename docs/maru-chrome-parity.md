@@ -257,3 +257,26 @@ classification, and recursive stable-command placement in the live menu tree.
 - User-observed Version 9.57 menu, tab, ruler, cursor-position, toolbar, and status behavior
 - Local bundled-help page identifiers recorded as provenance only; the original
   files and prose are not redistributed
+# Application language
+
+- ✅ Localization uses semantic keys stored in standard SwiftPM `.lproj`
+  catalogs rather than language conditionals in feature code.
+- ✅ English is the mandatory fallback catalog. Missing translations render a
+  visible diagnostic token in development instead of silently mixing text.
+- ✅ Japanese and English catalogs are required to expose identical key sets;
+  automated tests enforce catalog parity and non-empty values.
+- ✅ `zh-Hans` is represented by the language model and falls back to English,
+  but remains hidden until its complete catalog is added. Enabling Chinese
+  requires a resource catalog change, not feature-code changes.
+- ✅ The default `Other` menu contains a persistent `Language` submenu with
+  `Japanese` and `English` choices.
+- ✅ Changing the language rebuilds the visible menu bar immediately without
+  restarting or discarding open documents.
+- ✅ The seven-menu classic presentation, its nested command groups, the
+  standard macOS application menu, Settings labels, and shared status prompts
+  follow the selected language.
+- ✅ Japanese remains the first-run default; the explicit choice is stored in
+  `MaruEditApplicationLanguage`, with migration for the earlier `japanese` and
+  `english` preference values.
+- ✅ Encoding, line-ending, input-mode, dynamic-window, View-group and classic
+  status controls use the same runtime language catalog.

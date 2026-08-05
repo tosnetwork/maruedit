@@ -44,7 +44,7 @@ final class ClassicWorkspaceChrome: NSView {
         layer?.backgroundColor = NSColor.clear.cgColor
         heading.font = .systemFont(ofSize: 11, weight: .medium)
         heading.lineBreakMode = .byTruncatingMiddle
-        heading.setAccessibilityLabel("Current document heading")
+        heading.setAccessibilityLabel(AppLocalization.string("classic.headingAccessibility"))
         addSubview(toolbar)
         addSubview(heading)
         addSubview(ruler)
@@ -118,6 +118,7 @@ final class ClassicWorkspaceChrome: NSView {
     var visibleToolbarHeight: CGFloat { toolbar.isHidden ? 0 : Self.toolbarHeight }
     var functionKeyCommandIDs: [String?] { commandStrip.commandIDs }
     var functionKeyCount: Int { commandStrip.visibleSlotCount }
+    var functionKeyTitlesForTesting: [String] { commandStrip.buttonTitlesForTesting }
     var functionKeyVisualStyleForTesting: (flatButtons: Bool, separatorSlots: [Int]) {
         commandStrip.visualStyleForTesting
     }
@@ -146,6 +147,9 @@ final class ClassicWorkspaceChrome: NSView {
     func refreshCommandPresentation() {
         toolbar.refreshCommandPresentation()
         commandStrip.refreshCommandPresentation()
+    }
+    func refreshLocalization() {
+        commandStrip.refreshLocalization()
     }
     func setToolbarLayoutForTesting(_ entries: [String]) { toolbar.setLayoutForTesting(entries) }
     func setToolbarDisplayModeForTesting(_ mode: ToolbarDisplayMode) {
@@ -303,7 +307,7 @@ private final class ClassicToolbarView: NSView {
         wantsLayer = true
         layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
         setAccessibilityRole(.toolbar)
-        setAccessibilityLabel("Maru Classic command toolbar")
+        setAccessibilityLabel(AppLocalization.string("classic.toolbarAccessibility"))
         toolbarLayout = loadLayout()
         displayMode = UserDefaults.standard.string(forKey: Self.displayModeDefaultsKey)
             .flatMap(ToolbarDisplayMode.init(rawValue:)) ?? .iconOnly
@@ -312,10 +316,10 @@ private final class ClassicToolbarView: NSView {
         if UserDefaults.standard.object(forKey: Self.searchDefaultsKey) != nil {
             showsSearchField = UserDefaults.standard.bool(forKey: Self.searchDefaultsKey)
         }
-        searchField.placeholderString = "Search"
+        searchField.placeholderString = AppLocalization.string("classic.searchPlaceholder")
         searchField.target = self; searchField.action = #selector(runToolbarSearch)
-        searchField.setAccessibilityLabel("Toolbar search")
-        searchField.toolTip = "Search the current document"
+        searchField.setAccessibilityLabel(AppLocalization.string("classic.searchAccessibility"))
+        searchField.toolTip = AppLocalization.string("classic.searchTooltip")
         addSubview(searchField)
         rebuildSubviews()
     }
@@ -379,7 +383,7 @@ private final class ClassicToolbarView: NSView {
             displayedItems.indices.contains($0.tag) ? Self.key(for: displayedItems[$0.tag]) : nil
         }
         contextSeparatorIndex = separatorEntryIndex(at: point)
-        let menu = NSMenu(title: "Customize Maru Classic Toolbar")
+        let menu = NSMenu(title: AppLocalization.string("classic.toolbar.customize"))
         if contextKey != nil {
             addContextItem("Move Left", action: #selector(moveToolbarItemLeft), to: menu)
             addContextItem("Move Right", action: #selector(moveToolbarItemRight), to: menu)
@@ -390,7 +394,7 @@ private final class ClassicToolbarView: NSView {
             addContextItem("Remove Separator", action: #selector(removeToolbarSeparator), to: menu)
             menu.addItem(.separator())
         }
-        let addMenu = NSMenu(title: "Add Command")
+        let addMenu = NSMenu(title: AppLocalization.string("classic.toolbar.addCommand"))
         for (key, item) in catalog.sorted(by: { $0.value.title < $1.value.title })
             where !toolbarLayout.entries.contains(key) {
             let menuItem = NSMenuItem(
@@ -399,11 +403,11 @@ private final class ClassicToolbarView: NSView {
             menuItem.representedObject = key
             addMenu.addItem(menuItem)
         }
-        let add = NSMenuItem(title: "Add Command", action: nil, keyEquivalent: "")
+        let add = NSMenuItem(title: AppLocalization.string("classic.addCommand"), action: nil, keyEquivalent: "")
         add.submenu = addMenu
         add.isEnabled = !addMenu.items.isEmpty
         menu.addItem(add)
-        let styleMenu = NSMenu(title: "Display Style")
+        let styleMenu = NSMenu(title: AppLocalization.string("classic.toolbar.displayStyle"))
         for mode in ToolbarDisplayMode.allCases {
             let item = NSMenuItem(
                 title: title(for: mode), action: #selector(changeDisplayMode(_:)), keyEquivalent: "")
@@ -411,9 +415,9 @@ private final class ClassicToolbarView: NSView {
             item.state = displayMode == mode ? .on : .off
             styleMenu.addItem(item)
         }
-        let style = NSMenuItem(title: "Display Style", action: nil, keyEquivalent: "")
+        let style = NSMenuItem(title: AppLocalization.string("classic.displayStyle"), action: nil, keyEquivalent: "")
         style.submenu = styleMenu; menu.addItem(style)
-        let sizeMenu = NSMenu(title: "Icon Size")
+        let sizeMenu = NSMenu(title: AppLocalization.string("classic.toolbar.iconSize"))
         for size in ToolbarIconSize.allCases {
             let item = NSMenuItem(
                 title: size.rawValue.capitalized, action: #selector(changeIconSize(_:)),
@@ -422,7 +426,7 @@ private final class ClassicToolbarView: NSView {
             item.state = iconSize == size ? .on : .off
             sizeMenu.addItem(item)
         }
-        let sizeItem = NSMenuItem(title: "Icon Size", action: nil, keyEquivalent: "")
+        let sizeItem = NSMenuItem(title: AppLocalization.string("classic.iconSize"), action: nil, keyEquivalent: "")
         sizeItem.submenu = sizeMenu; menu.addItem(sizeItem)
         let search = NSMenuItem(
             title: "Show Search Box", action: #selector(toggleSearchField), keyEquivalent: "")
@@ -684,7 +688,7 @@ private final class CharacterRulerView: NSView {
         wantsLayer = true
         layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
         setAccessibilityRole(.ruler)
-        setAccessibilityLabel("Character column ruler")
+        setAccessibilityLabel(AppLocalization.string("classic.rulerAccessibility"))
     }
 
     @available(*, unavailable)
@@ -737,20 +741,14 @@ private final class CharacterRulerView: NSView {
 }
 
 private final class ClassicCommandStripView: NSView {
-    private static let candidates: [(String, CommandID)] = [
-        ("MaruEdit ヘルプ", .appHelp), ("下候補", .editCompleteWord),
-        ("次の結果", .searchNextResult), ("単語をコピー", .editCopyWord),
-        ("分割ウィンドウ", .viewSplitHorizontal), ("切り抜き", .editCut),
-        ("コピー", .editCopy), ("貼り付け", .editPaste),
-        ("タグジャンプ", .navigateTagJump), ("アウトライン解析…", .highlightOutlineAnalysis),
-        ("行番号表示", .viewToggleLineNumbers),
-        ("Save", .fileSave), ("Find", .searchFind), ("Next", .searchFindNext),
-        ("Previous", .searchFindPrevious), ("Replace", .searchReplace),
-        ("Grep", .searchGrep), ("Macro", .appMacroMenu),
-        ("Bookmark", .navigateToggleBookmark), ("Next Mark", .navigateNextBookmark),
-        ("Go to Line", .searchGoToLine), ("Fold", .navigateToggleFold),
-        ("Utility Pane", .viewToggleSidebar), ("Wrap", .viewToggleWrap),
-        ("Settings", .appSettings),
+    private static let candidateCommands: [CommandID] = [
+        .appHelp, .editCompleteWord, .searchNextResult, .editCopyWord,
+        .viewSplitHorizontal, .editCut, .editCopy, .editPaste,
+        .navigateTagJump, .highlightOutlineAnalysis, .viewToggleLineNumbers,
+        .fileSave, .searchFind, .searchFindNext, .searchFindPrevious,
+        .searchReplace, .searchGrep, .appMacroMenu, .navigateToggleBookmark,
+        .navigateNextBookmark, .searchGoToLine, .navigateToggleFold,
+        .viewToggleSidebar, .viewToggleWrap, .appSettings,
     ]
     private static let defaultCommands: [CommandID?] = [
         .appHelp, .editCompleteWord, .searchNextResult, .editCopyWord,
@@ -765,7 +763,12 @@ private final class ClassicCommandStripView: NSView {
     private var functionKeyLayout = FunctionKeyLayout(assignments: defaultCommands)
     private var buttons: [NSButton] = []
     private var separators: [NSBox] = []
-    private var candidates: [(String, CommandID)] = ClassicCommandStripView.candidates
+    private static var localizedCandidates: [(String, CommandID)] {
+        candidateCommands.map {
+            (AppLocalization.string("classic.function.command.\($0.rawValue)"), $0)
+        }
+    }
+    private var candidates: [(String, CommandID)] = ClassicCommandStripView.localizedCandidates
     var onCommand: ((CommandID) -> Void)?
     var onMergeChange: (() -> Void)?
     var presentationProvider: ((CommandID) -> (enabled: Bool, selected: Bool))?
@@ -803,14 +806,14 @@ private final class ClassicCommandStripView: NSView {
         }
         rebuildButtons()
         setAccessibilityRole(.group)
-        setAccessibilityLabel("Favorite command strip")
+        setAccessibilityLabel(AppLocalization.string("classic.functionStripAccessibility"))
     }
 
     private func rebuildButtons() {
         buttons.forEach { $0.removeFromSuperview() }; buttons.removeAll()
         separators.forEach { $0.removeFromSuperview() }; separators.removeAll()
         for (index, command) in functionKeyLayout.assignments.prefix(visibleSlotCount).enumerated() {
-            let title = command.flatMap(title(for:)) ?? "Unassigned"
+            let title = command.flatMap(title(for:)) ?? AppLocalization.string("classic.function.unassigned")
             let button = NSButton(title: title, target: self, action: #selector(activate(_:)))
             button.font = .systemFont(ofSize: 10)
             button.alignment = .center
@@ -820,7 +823,7 @@ private final class ClassicCommandStripView: NSView {
             button.layer?.backgroundColor = NSColor.clear.cgColor
             button.layer?.borderWidth = 0
             button.tag = index
-            button.setAccessibilityLabel("F\(index + 1): \(title)")
+            button.setAccessibilityLabel(AppLocalization.string("classic.functionAccessibility", [index + 1, title]))
             button.isEnabled = command != nil
             buttons.append(button)
             addSubview(button)
@@ -833,6 +836,8 @@ private final class ClassicCommandStripView: NSView {
         }
         refreshCommandPresentation()
     }
+
+    func refreshLocalization() { rebuildButtons(); needsLayout = true }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError() }
@@ -861,9 +866,9 @@ private final class ClassicCommandStripView: NSView {
         guard let slot = buttons.firstIndex(where: { $0.frame.contains(point) }) else {
             super.rightMouseDown(with: event); return
         }
-        let menu = NSMenu(title: "Customize F\(slot + 1)")
-        for (title, command) in candidates {
-            let item = NSMenuItem(title: title, action: #selector(assignCommand(_:)), keyEquivalent: "")
+        let menu = NSMenu(title: AppLocalization.string("classic.function.customize", [slot + 1]))
+        for (_, command) in candidates {
+            let item = NSMenuItem(title: title(for: command) ?? command.rawValue, action: #selector(assignCommand(_:)), keyEquivalent: "")
             item.target = self; item.representedObject = "\(slot)|\(command.rawValue)"
             item.state = functionKeyLayout.assignments[slot] == command ? .on : .off
             menu.addItem(item)
@@ -874,7 +879,7 @@ private final class ClassicCommandStripView: NSView {
             keyEquivalent: "")
         merge.target = self; merge.state = isMergedWithStatusBar ? .on : .off
         menu.addItem(merge)
-        let countMenu = NSMenu(title: "Visible Function Keys")
+        let countMenu = NSMenu(title: AppLocalization.string("classic.function.visibleCount"))
         for count in 1...12 {
             let item = NSMenuItem(
                 title: "F1–F\(count)", action: #selector(changeVisibleSlotCount(_:)),
@@ -883,11 +888,11 @@ private final class ClassicCommandStripView: NSView {
             item.state = visibleSlotCount == count ? .on : .off
             countMenu.addItem(item)
         }
-        let countItem = NSMenuItem(title: "Visible Function Keys", action: nil, keyEquivalent: "")
+        let countItem = NSMenuItem(title: AppLocalization.string("classic.visibleFunctionKeys"), action: nil, keyEquivalent: "")
         countItem.submenu = countMenu; menu.addItem(countItem)
-        let clear = NSMenuItem(title: "Unassign F\(slot + 1)", action: #selector(clearCommand(_:)), keyEquivalent: "")
+        let clear = NSMenuItem(title: AppLocalization.string("classic.unassignFunction", [slot + 1]), action: #selector(clearCommand(_:)), keyEquivalent: "")
         clear.target = self; clear.tag = slot; menu.addItem(clear)
-        let restore = NSMenuItem(title: "Restore Default Function Keys", action: #selector(restoreDefaults), keyEquivalent: "")
+        let restore = NSMenuItem(title: AppLocalization.string("classic.restoreFunctionKeys"), action: #selector(restoreDefaults), keyEquivalent: "")
         restore.target = self; menu.addItem(restore)
         NSMenu.popUpContextMenu(menu, with: event, for: self)
     }
@@ -930,6 +935,8 @@ private final class ClassicCommandStripView: NSView {
     private func title(for command: CommandID) -> String? {
         candidates.first { $0.1 == command }?.0
     }
+
+    var buttonTitlesForTesting: [String] { buttons.map(\.title) }
 
     func setCommandsForTesting(_ commands: [CommandID?]) {
         functionKeyLayout = FunctionKeyLayout(assignments: commands)
@@ -978,8 +985,13 @@ private final class ClassicCommandStripView: NSView {
     }
 
     func configureAvailableCommands(_ commands: [(CommandID, String)]) {
-        let builtIns = Dictionary(uniqueKeysWithValues: Self.candidates.map { ($0.1, $0.0) })
-        candidates = commands.map { (builtIns[$0.0] ?? $0.1, $0.0) }
+        candidates = commands.map { command, fallback in
+            let key = "classic.function.command.\(command.rawValue)"
+            let title = AppLocalization.hasTranslation(key, language: AppLocalization.language)
+                ? AppLocalization.string(key)
+                : AppLocalization.commandTitle(id: command.rawValue, english: fallback)
+            return (title, command)
+        }
             .sorted { $0.0.localizedCaseInsensitiveCompare($1.0) == .orderedAscending }
         functionKeyLayout = functionKeyLayout.normalized(available: Set(candidates.map(\.1)))
         rebuildButtons(); needsLayout = true

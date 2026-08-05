@@ -37,10 +37,11 @@ final class AppCoordinator {
     var openDocumentationURL: (URL) -> Void = { NSWorkspace.shared.open($0) }
     var confirmOnlineHelpAccess: (String, URL) -> Bool = { purpose, url in
         let alert = NSAlert()
-        alert.messageText = "Open an Online Resource?"
-        alert.informativeText = "\(purpose) will open \(url.host ?? url.absoluteString) in your default browser. MaruEdit will not open it unless you continue."
-        alert.addButton(withTitle: "Open Website")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = AppLocalization.string("online.title")
+        alert.informativeText = AppLocalization.string(
+            "online.explanation", [purpose, url.host ?? url.absoluteString])
+        alert.addButton(withTitle: AppLocalization.string("online.openWebsite"))
+        alert.addButton(withTitle: AppLocalization.string(.commonCancel))
         return alert.runModal() == .alertFirstButtonReturn
     }
 
@@ -225,7 +226,7 @@ final class AppCoordinator {
             guard let self else { return }
             do {
                 try self.ensureWindowControllerReady().macroEditor.applyConversionPipeline(steps)
-                self.showStatusMessage("Conversion pipeline applied")
+                self.showLocalizedStatus("status.conversionApplied")
             } catch {
                 let alert = NSAlert(error: error); alert.runModal()
             }
@@ -242,7 +243,7 @@ final class AppCoordinator {
 
     func openExternalHelp(slot: Int) {
         guard hasExternalHelp(slot: slot) else {
-            showStatusMessage("External Help \(slot + 1) is not configured"); return
+            showLocalizedStatus("status.externalHelpNotConfigured", [slot + 1]); return
         }
         let target = externalHelpEntries[slot].target
         let url: URL?
@@ -254,7 +255,7 @@ final class AppCoordinator {
             url = FileManager.default.fileExists(atPath: expanded)
                 ? URL(fileURLWithPath: expanded) : nil
         }
-        guard let url else { showStatusMessage("External Help target is invalid", duration: 5); return }
+        guard let url else { showLocalizedStatus("status.externalHelpInvalid", duration: 5); return }
         if url.scheme?.lowercased() == "http" || url.scheme?.lowercased() == "https" {
             openOnlineHelpURL(url, purpose: externalHelpEntries[slot].name)
         } else {
@@ -290,16 +291,17 @@ final class AppCoordinator {
         if isRecordingCommands { stopMacroRecording() } else { startMacroRecording() }
     }
     func playMacroRecording() {
-        guard !recordedCommands.isEmpty else { showStatusMessage("No recorded commands"); return }
+        guard !recordedCommands.isEmpty else { showLocalizedStatus("status.noRecordedCommands"); return }
         let commands = recordedCommands
         isPlayingRecording = true
         for id in commands { _ = commandRegistry.execute(id, context: CommandContext(coordinator: self)) }
         isPlayingRecording = false
     }
     func repeatMacroRecording() {
-        guard !recordedCommands.isEmpty else { showStatusMessage("No recorded commands"); return }
-        let alert = NSAlert(); alert.messageText = "Repeat Recorded Commands"
-        alert.addButton(withTitle: "Play"); alert.addButton(withTitle: "Cancel")
+        guard !recordedCommands.isEmpty else { showLocalizedStatus("status.noRecordedCommands"); return }
+        let alert = NSAlert(); alert.messageText = AppLocalization.string("macro.repeat.title")
+        alert.addButton(withTitle: AppLocalization.string("macro.play"))
+        alert.addButton(withTitle: AppLocalization.string(.commonCancel))
         let field = NSTextField(string: "2")
         field.frame.size = NSSize(width: 120, height: 24); alert.accessoryView = field
         guard alert.runModal() == .alertFirstButtonReturn,
@@ -315,10 +317,11 @@ final class AppCoordinator {
     func showUserMenuConfiguration() { onShowUserMenuConfiguration?() }
     func openCurrentFolderInFinder() { ensureWindowControllerReady().openCurrentFolderInFinder() }
     func saveMacroRecording() {
-        guard !recordedCommands.isEmpty else { showStatusMessage("No recorded commands"); return }
-        let alert = NSAlert(); alert.messageText = "Save Recording as Macro"
-        alert.addButton(withTitle: "Save"); alert.addButton(withTitle: "Cancel")
-        let field = NSTextField(string: "Recorded Macro")
+        guard !recordedCommands.isEmpty else { showLocalizedStatus("status.noRecordedCommands"); return }
+        let alert = NSAlert(); alert.messageText = AppLocalization.string("macro.saveRecording.title")
+        alert.addButton(withTitle: AppLocalization.string(.commonSave))
+        alert.addButton(withTitle: AppLocalization.string(.commonCancel))
+        let field = NSTextField(string: AppLocalization.string("macro.saveRecording.defaultName"))
         field.frame.size = NSSize(width: 320, height: 24); alert.accessoryView = field
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         let name = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -362,19 +365,19 @@ final class AppCoordinator {
     func checkForUpdates() {
         openOnlineHelpURL(
             URL(string: "https://github.com/tosnetwork/maruedit/releases/latest")!,
-            purpose: "Checking for MaruEdit updates")
+            purpose: AppLocalization.string("online.purpose.updates"))
     }
     func showSupport() {
         openOnlineHelpURL(
             URL(string: "https://github.com/tosnetwork/maruedit/issues")!,
-            purpose: "Opening MaruEdit support")
+            purpose: AppLocalization.string("online.purpose.support"))
     }
 
     private func openBundledManual() {
         guard let url = Bundle.module.url(
             forResource: "maruedit", withExtension: "pdf", subdirectory: "Help")
             ?? Bundle.module.url(forResource: "maruedit", withExtension: "pdf") else {
-            showStatusMessage("Bundled help is unavailable", duration: 5)
+            showLocalizedStatus("status.bundledHelpUnavailable", duration: 5)
             return
         }
         openDocumentationURL(url)
@@ -502,6 +505,24 @@ final class AppCoordinator {
     func showStatusMessage(_ message: String, duration: TimeInterval = 1.5) {
         ensureWindowControllerReady().showStatusMessage(message, duration: duration)
     }
+    func showLocalizedStatus(
+        _ key: String, _ arguments: [CVarArg] = [], duration: TimeInterval = 1.5
+    ) {
+        showStatusMessage(AppLocalization.string(key, arguments), duration: duration)
+    }
+    func refreshLocalizedInterface() {
+        // Auxiliary controllers build AppKit controls imperatively. Recreate
+        // them on next use so no stale strings survive a runtime language
+        // switch; document windows refresh in place to preserve editing state.
+        settingsWindowController?.close()
+        settingsWindowController = nil
+        externalHelpWindowController?.close()
+        externalHelpWindowController = nil
+        conversionDialogWindowController?.close()
+        conversionDialogWindowController = nil
+        ([windowController].compactMap { $0 } + additionalWindowControllers)
+            .forEach { $0.refreshLocalizedInterface() }
+    }
     func updateMacroActivity(isRunning: Bool) {
         activeMacroCount = max(0, activeMacroCount + (isRunning ? 1 : -1))
         ensureWindowControllerReady().updateMacroActivity(isRunning: activeMacroCount > 0)
@@ -524,17 +545,17 @@ final class AppCoordinator {
     func pasteRemovingQuotePrefix()     { _ = ensureWindowControllerReady().macroEditor.pasteRemovingQuotePrefix() }
     func restoreLastDeletedText() {
         if !ensureWindowControllerReady().macroEditor.restoreLastDeletedText() {
-            showStatusMessage("No deleted text to restore")
+            showLocalizedStatus("status.noDeletedText")
         }
     }
     func correctCapsLockMistake() {
         if !ensureWindowControllerReady().macroEditor.correctCapsLockMistake() {
-            showStatusMessage("No word or selection to correct")
+            showLocalizedStatus("status.noWordToCorrect")
         }
     }
     func reconvertWithInputMethod() {
         if !ensureWindowControllerReady().macroEditor.reconvertWithCurrentInputMethod() {
-            showStatusMessage("The active input method does not support reconversion")
+            showLocalizedStatus("status.reconversionUnsupported")
         }
     }
     func appendCopy() { _ = ensureWindowControllerReady().macroEditor.appendSelectionToClipboard(cut: false) }
@@ -548,7 +569,7 @@ final class AppCoordinator {
     func pastePreviousClipboard() {
         clipboardHistory.poll()
         guard let value = clipboardHistory.entries.dropFirst().first ?? clipboardHistory.entries.first else {
-            showStatusMessage("Clipboard history is empty"); return
+            showLocalizedStatus("status.clipboardHistoryEmpty"); return
         }
         ensureWindowControllerReady().macroEditor.multiEditPaste(value)
     }
@@ -556,17 +577,18 @@ final class AppCoordinator {
     func showClipboardHistory() {
         clipboardHistory.poll()
         let entries = clipboardHistory.entries
-        guard !entries.isEmpty else { showStatusMessage("Clipboard history is empty"); return }
+        guard !entries.isEmpty else { showLocalizedStatus("status.clipboardHistoryEmpty"); return }
         let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 440, height: 26))
         popup.addItems(withTitles: entries.map {
             let oneLine = $0.replacingOccurrences(of: "\n", with: " ↩ ")
             return String(oneLine.prefix(100))
         })
-        let alert = NSAlert(); alert.messageText = "Clipboard History"
-        alert.informativeText = "Choose an earlier text value to paste at every active selection."
+        let alert = NSAlert(); alert.messageText = AppLocalization.string("clipboardHistory.title")
+        alert.informativeText = AppLocalization.string("clipboardHistory.explanation")
         alert.accessoryView = popup
-        alert.addButton(withTitle: "Paste"); alert.addButton(withTitle: "Clear History")
-        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: AppLocalization.string("menu.edit.paste"))
+        alert.addButton(withTitle: AppLocalization.string("menu.other.clearHistory"))
+        alert.addButton(withTitle: AppLocalization.string(.commonCancel))
         let response = alert.runModal()
         if response == .alertFirstButtonReturn, entries.indices.contains(popup.indexOfSelectedItem) {
             let editor = ensureWindowControllerReady().macroEditor
@@ -580,18 +602,18 @@ final class AppCoordinator {
     }
     func clearClipboardHistory() {
         clipboardHistory.clear()
-        showStatusMessage("Clipboard history cleared")
+        showLocalizedStatus("status.clipboardHistoryCleared")
     }
-    func clearRecentFiles() { RecentItems.clearFiles(); showStatusMessage("Recent files cleared") }
-    func clearRecentFolders() { RecentItems.clearFolders(); showStatusMessage("Recent project folders cleared") }
-    func clearRecentWorkspaces() { RecentItems.clearWorkspaces(); showStatusMessage("Recent workspaces cleared") }
-    func clearRecentEncodings() { RecentEncodings.clearAll(); showStatusMessage("Recent encodings cleared") }
+    func clearRecentFiles() { RecentItems.clearFiles(); showLocalizedStatus("status.recentFilesCleared") }
+    func clearRecentFolders() { RecentItems.clearFolders(); showLocalizedStatus("status.recentFoldersCleared") }
+    func clearRecentWorkspaces() { RecentItems.clearWorkspaces(); showLocalizedStatus("status.recentWorkspacesCleared") }
+    func clearRecentEncodings() { RecentEncodings.clearAll(); showLocalizedStatus("status.recentEncodingsCleared") }
     func clearAllHistories() {
         ensureWindowControllerReady().clearSearchHistory()
         clipboardHistory.clear()
         RecentItems.clearAll()
         RecentEncodings.clearAll()
-        showStatusMessage("All histories cleared")
+        showLocalizedStatus("status.allHistoriesCleared")
     }
     func toggleFreeCursor() {
         preferences.freeCursorEnabled.toggle()
@@ -611,26 +633,27 @@ final class AppCoordinator {
     func showSettingsExportPanel() {
         let panel = NSSavePanel(); panel.nameFieldStringValue = "MaruEdit-settings.json"
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        do { try exportSettings(to: url); showStatusMessage("Settings exported") }
+        do { try exportSettings(to: url); showLocalizedStatus("status.settingsExported") }
         catch { NSAlert(error: error).runModal() }
     }
     func showSettingsImportPanel() {
         let panel = NSOpenPanel(); panel.canChooseDirectories = false; panel.allowsMultipleSelection = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        do { try importSettings(from: url); showStatusMessage("Settings imported") }
+        do { try importSettings(from: url); showLocalizedStatus("status.settingsImported") }
         catch { NSAlert(error: error).runModal() }
     }
     func confirmRestoreDefaultSettings() {
-        let alert = NSAlert(); alert.messageText = "Restore Default Settings?"
-        alert.informativeText = "All MaruEdit appearance, editing, file, search, keyboard, macro, and advanced settings will return to their defaults."
-        alert.addButton(withTitle: "Restore"); alert.addButton(withTitle: "Cancel")
+        let alert = NSAlert(); alert.messageText = AppLocalization.string("settings.restoreAllTitle")
+        alert.informativeText = AppLocalization.string("settings.restoreAllExplanation")
+        alert.addButton(withTitle: AppLocalization.string(.commonRestore))
+        alert.addButton(withTitle: AppLocalization.string(.commonCancel))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
-        restoreDefaultSettings(); showStatusMessage("Default settings restored")
+        restoreDefaultSettings(); showLocalizedStatus("status.settingsRestored")
     }
     func showJapaneseUserDictionaryHelp() {
         openOnlineHelpURL(
             URL(string: "https://support.apple.com/guide/japanese-input-method/edit-and-use-your-user-dictionaries-jpim10228/mac")!,
-            purpose: "Opening the macOS Japanese dictionary guide")
+            purpose: AppLocalization.string("online.purpose.dictionary"))
     }
     func showSpellingCorrections() { ensureWindowControllerReady().showSpellingCorrections() }
     func performLineCommand(_ command: LineEditCommand) { ensureWindowControllerReady().performLineCommand(command) }

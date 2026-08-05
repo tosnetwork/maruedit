@@ -40,6 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let userMenuStore = UserMenuConfigurationStore()
     private lazy var userMenuConfiguration = userMenuStore.load()
     private var clipboardTimer: Timer?
+    private var languageObserver: NSObjectProtocol?
     private lazy var menuCustomizationStore: MenuCustomizationStore = {
         if isUITestMode {
             let suite = "network.tos.maruedit.MenuUITest.\(ProcessInfo.processInfo.processIdentifier)"
@@ -115,6 +116,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         classicDefaultMenuPlacements.values.flatMap { $0 })
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        languageObserver = NotificationCenter.default.addObserver(
+            forName: AppLocalization.didChange, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.applyApplicationLanguageChange() }
+        }
         coordinator.onShowMenuCustomization = { [weak self] in self?.showMenuCustomization() }
         coordinator.onShowMacroMenu = { [weak self] in
             guard let self else { return }
@@ -170,6 +176,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         clipboardTimer?.invalidate()
+        if let languageObserver { NotificationCenter.default.removeObserver(languageObserver) }
         if !isUITestMode { coordinator.saveActiveSession() }
     }
 
@@ -182,36 +189,55 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // MARK: - Menu bar
 
     func buildMenu() {
+        // AppKit retains its Services and Windows menu relationships across
+        // assignments, so detach them before rebuilding for a new language.
+        NSApp.servicesMenu = nil
+        NSApp.windowsMenu = nil
         let main = NSMenu()
+        func cloneMenu(_ source: NSMenu) -> NSMenu {
+            let copy = NSMenu(title: source.title)
+            for sourceItem in source.items {
+                if sourceItem.isSeparatorItem { copy.addItem(.separator()); continue }
+                let item = NSMenuItem(
+                    title: sourceItem.title, action: sourceItem.action,
+                    keyEquivalent: sourceItem.keyEquivalent)
+                item.target = sourceItem.target
+                item.representedObject = sourceItem.representedObject
+                item.isEnabled = sourceItem.isEnabled
+                if let submenu = sourceItem.submenu { item.submenu = cloneMenu(submenu) }
+                copy.addItem(item)
+            }
+            return copy
+        }
 
         // App menu
         let appItem = NSMenuItem()
         let appMenu = NSMenu()
-        appMenu.addItem(withTitle: "About MaruEdit", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        appMenu.addItem(withTitle: AppLocalization.string("app.about"), action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())
         appMenu.addItem(commandItem(.appSettings))
         appMenu.addItem(.separator())
-        let servicesItem = NSMenuItem(title: "Services", action: nil, keyEquivalent: "")
+        let servicesItem = NSMenuItem(title: AppLocalization.string("app.services"), action: nil, keyEquivalent: "")
         servicesItem.identifier = NSUserInterfaceItemIdentifier("menu.dynamic.services")
-        let servicesMenu = NSMenu(title: "Services")
+        let servicesMenu = NSMenu(title: servicesItem.title)
         servicesItem.submenu = servicesMenu
         appMenu.addItem(servicesItem)
         NSApp.servicesMenu = servicesMenu
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Hide MaruEdit", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        appMenu.addItem(withTitle: AppLocalization.string("app.hide"), action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
         let hideOthers = appMenu.addItem(
-            withTitle: "Hide Others", action: #selector(NSApplication.hideOtherApplications(_:)),
+            withTitle: AppLocalization.string("app.hideOthers"), action: #selector(NSApplication.hideOtherApplications(_:)),
             keyEquivalent: "h")
         hideOthers.keyEquivalentModifierMask = [.command, .option]
-        appMenu.addItem(withTitle: "Show All", action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
+        appMenu.addItem(withTitle: AppLocalization.string("app.showAll"), action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Quit MaruEdit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenu.addItem(withTitle: AppLocalization.string("app.quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu
         main.addItem(appItem)
 
         // File menu
         let fileItem = NSMenuItem()
-        let fileMenu = NSMenu(title: "File")
+        let fileMenu = NSMenu(title: AppLocalization.string("menu.top.file"))
         fileMenu.addItem(commandItem(.fileNew))
         fileMenu.addItem(commandItem(.fileNewFromTemplate))
         fileMenu.addItem(commandItem(.fileOpen))
@@ -225,16 +251,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         fileMenu.addItem(commandItem(.fileCloseWorkspace))
         fileMenu.addItem(commandItem(.fileWorkspaceHistory))
 
-        recentMenu = NSMenu(title: "Open Recent")
+        recentMenu = NSMenu(title: AppLocalization.string("menu.file.openRecent"))
         recentMenu.delegate = self
-        let recentItem = NSMenuItem(title: "Open Recent", action: nil, keyEquivalent: "")
+        let recentItem = NSMenuItem(title: AppLocalization.string("menu.file.openRecent"), action: nil, keyEquivalent: "")
         recentItem.submenu = recentMenu
         recentItem.identifier = NSUserInterfaceItemIdentifier("menu.dynamic.openRecent")
         fileMenu.addItem(recentItem)
 
-        reopenWithEncodingMenu = NSMenu(title: "エンコードの種類(D)")
+        reopenWithEncodingMenu = NSMenu(title: AppLocalization.string("menu.file.encoding"))
         reopenWithEncodingMenu.delegate = self
-        let reopenItem = NSMenuItem(title: "エンコードの種類(D)", action: nil, keyEquivalent: "")
+        let reopenItem = NSMenuItem(title: AppLocalization.string("menu.file.encoding"), action: nil, keyEquivalent: "")
         reopenItem.submenu = reopenWithEncodingMenu
         reopenItem.identifier = NSUserInterfaceItemIdentifier("menu.dynamic.reopenEncoding")
         fileMenu.addItem(reopenItem)
@@ -274,7 +300,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         // Edit menu
         let editItem = NSMenuItem()
-        let editMenu = NSMenu(title: "Edit")
+        let editMenu = NSMenu(title: AppLocalization.string("menu.top.edit"))
         editMenu.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
         editMenu.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
         editMenu.addItem(commandItem(.editRepeatLastOperation))
@@ -314,8 +340,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         editMenu.addItem(commandItem(.editReserveSelections))
         editMenu.addItem(commandItem(.editRestoreReservedSelections))
         editMenu.addItem(.separator())
-        let linesItem = NSMenuItem(title: "Lines", action: nil, keyEquivalent: "")
-        let linesMenu = NSMenu(title: "Lines")
+        let linesItem = NSMenuItem(title: AppLocalization.string("menu.edit.lines"), action: nil, keyEquivalent: "")
+        let linesMenu = NSMenu(title: AppLocalization.string("menu.edit.lines"))
         for id: CommandID in [
             .editDeleteLine, .editDuplicateLine, .editMoveLineUp, .editMoveLineDown,
             .editJoinLines, .editTrimTrailingWhitespace,
@@ -348,7 +374,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         // Search menu
         let findItem = NSMenuItem()
-        let findMenu = NSMenu(title: "Search")
+        let findMenu = NSMenu(title: AppLocalization.string("menu.top.search"))
         findMenu.addItem(commandItem(.searchFind))
         findMenu.addItem(commandItem(.searchFindUpward))
         findMenu.addItem(commandItem(.searchFindWord))
@@ -358,31 +384,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         findMenu.addItem(commandItem(.searchFindPrevious))
         findMenu.addItem(commandItem(.searchReturnToStart))
         findMenu.addItem(commandItem(.searchCaptureString))
-        let allMatchesItem = NSMenuItem(title: "All Matches", action: nil, keyEquivalent: "")
-        let allMatchesMenu = NSMenu(title: "All Matches")
+        let allMatchesItem = NSMenuItem(title: AppLocalization.string("menu.search.allMatches"), action: nil, keyEquivalent: "")
+        let allMatchesMenu = NSMenu(title: AppLocalization.string("menu.search.allMatches"))
         for id: CommandID in [
             .searchToggleHighlight, .searchSelectAllMatches, .searchColorAllMatches,
             .searchClearMatchColors, .searchListAllMatches, .searchOutlineAllMatches,
         ] { allMatchesMenu.addItem(commandItem(id)) }
         allMatchesItem.submenu = allMatchesMenu
         findMenu.addItem(allMatchesItem)
-        let optionsItem = NSMenuItem(title: "Search Options", action: nil, keyEquivalent: "")
-        let optionsMenu = NSMenu(title: "Search Options")
+        let optionsItem = NSMenuItem(title: AppLocalization.string("menu.search.options"), action: nil, keyEquivalent: "")
+        let optionsMenu = NSMenu(title: AppLocalization.string("menu.search.options"))
         optionsMenu.addItem(commandItem(.searchToggleCaseSensitive))
         optionsMenu.addItem(commandItem(.searchToggleWholeWord))
         optionsMenu.addItem(commandItem(.searchToggleRegex))
         optionsMenu.addItem(commandItem(.searchToggleFuzzy))
         optionsItem.submenu = optionsMenu
         findMenu.addItem(optionsItem)
-        let editMarksItem = NSMenuItem(title: "Edit Marks", action: nil, keyEquivalent: "")
-        let editMarksMenu = NSMenu(title: "Edit Marks")
+        let editMarksItem = NSMenuItem(title: AppLocalization.string("menu.search.editMarks"), action: nil, keyEquivalent: "")
+        let editMarksMenu = NSMenu(title: AppLocalization.string("menu.search.editMarks"))
         editMarksMenu.addItem(commandItem(.searchPreviousEditMark))
         editMarksMenu.addItem(commandItem(.searchNextEditMark))
         editMarksMenu.addItem(commandItem(.searchClearEditMarks))
         editMarksItem.submenu = editMarksMenu
         findMenu.addItem(editMarksItem)
-        let rangeItem = NSMenuItem(title: "Search Range", action: nil, keyEquivalent: "")
-        let rangeMenu = NSMenu(title: "Search Range")
+        let rangeItem = NSMenuItem(title: AppLocalization.string("menu.search.range"), action: nil, keyEquivalent: "")
+        let rangeMenu = NSMenu(title: AppLocalization.string("menu.search.range"))
         rangeMenu.addItem(commandItem(.searchSetRange))
         rangeMenu.addItem(commandItem(.searchSelectRange))
         rangeMenu.addItem(commandItem(.searchClearRange))
@@ -391,8 +417,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         findMenu.addItem(.separator())
         // Go to Line moves off ⌘G, which macOS reserves for Find Next.
         findMenu.addItem(commandItem(.searchGoToLine))
-        let cursorItem = NSMenuItem(title: "Cursor Navigation", action: nil, keyEquivalent: "")
-        let cursorMenu = NSMenu(title: "Cursor Navigation")
+        let cursorItem = NSMenuItem(title: AppLocalization.string("menu.search.cursorNavigation"), action: nil, keyEquivalent: "")
+        let cursorMenu = NSMenu(title: AppLocalization.string("menu.search.cursorNavigation"))
         for id: CommandID in [
             .navigateDocumentStart, .navigateDocumentEnd,
             .navigateScreenStart, .navigateScreenEnd,
@@ -415,8 +441,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .searchToggleMark, .searchListMarks, .navigateNextMarker, .navigatePreviousMarker,
             .searchClearAllMarks, .searchClearCurrentMarks, .searchListColorLayers,
         ] { findMenu.addItem(commandItem(id)) }
-        let searchColorMarkerItem = NSMenuItem(title: "Color Marker", action: nil, keyEquivalent: "")
-        let searchColorMarkerMenu = NSMenu(title: "Color Marker")
+        let searchColorMarkerItem = NSMenuItem(title: AppLocalization.string("menu.search.colorMarker"), action: nil, keyEquivalent: "")
+        let searchColorMarkerMenu = NSMenu(title: AppLocalization.string("menu.search.colorMarker"))
         for id: CommandID in [
             .highlightTemporaryConfigure, .highlightTemporaryApply, .highlightTemporaryRemove,
             .highlightTemporaryClear, .highlightTemporarySelect,
@@ -440,10 +466,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         findItem.submenu = findMenu
         main.addItem(findItem)
 
-        let toolsItem = NSMenuItem(title: "Tools", action: nil, keyEquivalent: "")
-        let toolsMenu = NSMenu(title: "Tools")
+        let toolsItem = NSMenuItem(title: AppLocalization.string("menu.other.tools"), action: nil, keyEquivalent: "")
+        let toolsMenu = NSMenu(title: AppLocalization.string("menu.other.tools"))
         for index in 0..<UserMenuConfiguration.menuCount {
-            let item = NSMenuItem(title: "User Menu \(index + 1)", action: nil, keyEquivalent: "")
+            let item = NSMenuItem(title: AppLocalization.string("settings.userMenus.number", [index + 1]), action: nil, keyEquivalent: "")
             item.submenu = buildUserMenu(at: index)
             toolsMenu.addItem(item)
         }
@@ -466,8 +492,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         toolsMenu.addItem(commandItem(.navigateDirectTagJump))
         toolsMenu.addItem(commandItem(.navigateBackTagJump))
         toolsMenu.addItem(.separator())
-        let externalItem = NSMenuItem(title: "External Commands", action: nil, keyEquivalent: "")
-        externalItem.submenu = externalCommandManager.menu
+        let externalItem = NSMenuItem(title: AppLocalization.string("menu.other.externalCommands"), action: nil, keyEquivalent: "")
+        externalItem.submenu = cloneMenu(externalCommandManager.menu)
         toolsMenu.addItem(externalItem)
         toolsMenu.addItem(commandItem(.otherCommandList))
         toolsMenu.addItem(.separator())
@@ -480,15 +506,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         toolsItem.submenu = toolsMenu
         main.addItem(toolsItem)
 
-        let macroItem = NSMenuItem(title: "Macro", action: nil, keyEquivalent: "")
-        let macroMenu = NSMenu(title: "Macro")
+        let macroItem = NSMenuItem(title: AppLocalization.string("menu.top.macro"), action: nil, keyEquivalent: "")
+        let macroMenu = NSMenu(title: AppLocalization.string("menu.top.macro"))
         macroMenu.addItem(commandItem(.macroToggleRecording))
         macroMenu.addItem(commandItem(.macroPlayRecording))
         macroMenu.addItem(commandItem(.macroRepeatPlayback))
         macroMenu.addItem(commandItem(.macroSaveRecording))
         macroMenu.addItem(.separator())
         macroMenu.addItem(commandItem(.macroRun))
-        let registeredMacros = NSMenuItem(title: "Registered Macros", action: nil, keyEquivalent: "")
+        let registeredMacros = NSMenuItem(title: AppLocalization.string("menu.macro.registered"), action: nil, keyEquivalent: "")
         registeredMacros.identifier = NSUserInterfaceItemIdentifier("menu.dynamic.registeredMacros")
         registeredMacros.submenu = macroManager.menu
         macroMenu.addItem(registeredMacros)
@@ -500,7 +526,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         // View menu
         let viewItem = NSMenuItem()
-        let viewMenu = NSMenu(title: "View")
+        let viewMenu = NSMenu(title: AppLocalization.string("menu.top.view"))
         viewMenu.addItem(commandItem(.viewToggleToolbar))
         viewMenu.addItem(commandItem(.viewToggleFloatingToolbar))
         viewMenu.addItem(commandItem(.viewToggleSidebar))
@@ -517,16 +543,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .windowShowDocumentBrowserPane, .windowShowSharedBrowserPane,
             .windowToggleBrowserPane,
         ] { viewMenu.addItem(commandItem(id)) }
-        let rulerItem = NSMenuItem(title: "Ruler", action: nil, keyEquivalent: "")
-        let rulerMenu = NSMenu(title: "Ruler")
+        let rulerItem = NSMenuItem(title: AppLocalization.string("menu.view.ruler"), action: nil, keyEquivalent: "")
+        let rulerMenu = NSMenu(title: AppLocalization.string("menu.view.ruler"))
         rulerMenu.addItem(commandItem(.viewToggleRuler))
         rulerMenu.addItem(commandItem(.viewRulerInterval8))
         rulerMenu.addItem(commandItem(.viewRulerInterval10))
         rulerMenu.addItem(commandItem(.viewToggleTabStops))
         rulerItem.submenu = rulerMenu
         viewMenu.addItem(rulerItem)
-        let invisiblesItem = NSMenuItem(title: "Show Invisibles", action: nil, keyEquivalent: "")
-        let invisiblesMenu = NSMenu(title: "Show Invisibles")
+        let invisiblesItem = NSMenuItem(title: AppLocalization.string("menu.view.invisibles"), action: nil, keyEquivalent: "")
+        let invisiblesMenu = NSMenu(title: AppLocalization.string("menu.view.invisibles"))
         invisiblesMenu.addItem(commandItem(.viewToggleSpaces))
         invisiblesMenu.addItem(commandItem(.viewToggleTabs))
         invisiblesMenu.addItem(commandItem(.viewToggleLineEndings))
@@ -535,8 +561,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         invisiblesItem.identifier = NSUserInterfaceItemIdentifier("menu.group.invisibles")
         viewMenu.addItem(invisiblesItem)
         viewMenu.addItem(commandItem(.viewToggleSpellChecking))
-        let tabWidthItem = NSMenuItem(title: "Tab Width", action: nil, keyEquivalent: "")
-        let tabWidthMenu = NSMenu(title: "Tab Width")
+        let tabWidthItem = NSMenuItem(title: AppLocalization.string("menu.view.tabWidth"), action: nil, keyEquivalent: "")
+        let tabWidthMenu = NSMenu(title: AppLocalization.string("menu.view.tabWidth"))
         tabWidthMenu.addItem(commandItem(.viewTabWidth2))
         tabWidthMenu.addItem(commandItem(.viewTabWidth4))
         tabWidthMenu.addItem(commandItem(.viewTabWidth8))
@@ -568,7 +594,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         // Window menu
         let winItem = NSMenuItem()
-        let winMenu = NSMenu(title: "Window")
+        let winMenu = NSMenu(title: AppLocalization.string("menu.top.window"))
         winMenu.addItem(withTitle: "Minimize", action: #selector(NSWindow.miniaturize(_:)), keyEquivalent: "m")
         winMenu.addItem(withTitle: "Zoom", action: #selector(NSWindow.zoom(_:)), keyEquivalent: "")
         winMenu.addItem(.separator())
@@ -610,7 +636,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // Maru-compatible business-menu groups. macOS keeps its required
         // application menu before this sequence.
         let convertItem = NSMenuItem()
-        let convertMenu = NSMenu(title: "Convert")
+        let convertMenu = NSMenu(title: AppLocalization.string("menu.edit.convert"))
         convertMenu.addItem(commandItem(.convertPipelineDialog))
         convertMenu.addItem(.separator())
         for id: CommandID in [.editUppercase, .editLowercase, .editTitlecase] {
@@ -627,7 +653,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         convertItem.submenu = convertMenu
 
         let insertItem = NSMenuItem()
-        let insertMenu = NSMenu(title: "Insert")
+        let insertMenu = NSMenu(title: AppLocalization.string("menu.group.insert"))
         insertMenu.addItem(commandItem(.insertDateTime))
         insertMenu.addItem(commandItem(.insertNewline))
         insertMenu.addItem(commandItem(.insertTab))
@@ -642,14 +668,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         insertItem.submenu = insertMenu
 
         let highlightItem = NSMenuItem()
-        let highlightMenu = NSMenu(title: "Highlight")
+        let highlightMenu = NSMenu(title: AppLocalization.string("menu.group.highlight"))
         highlightMenu.addItem(commandItem(.highlightOutlineAnalysis))
         highlightMenu.addItem(commandItem(.highlightNextLine))
         highlightMenu.addItem(commandItem(.highlightPreviousLine))
         highlightMenu.addItem(commandItem(.highlightSelectLineArea))
         highlightMenu.addItem(.separator())
-        let temporaryMarkerItem = NSMenuItem(title: "Temporary Color Marker", action: nil, keyEquivalent: "")
-        let temporaryMarkerMenu = NSMenu(title: "Temporary Color Marker")
+        let temporaryMarkerItem = NSMenuItem(title: AppLocalization.string("menu.view.temporaryMarker"), action: nil, keyEquivalent: "")
+        let temporaryMarkerMenu = NSMenu(title: AppLocalization.string("menu.view.temporaryMarker"))
         for id: CommandID in [
             .highlightTemporaryConfigure, .highlightTemporaryApply, .highlightTemporaryRemove,
             .highlightTemporaryClear, .highlightTemporarySelect,
@@ -666,7 +692,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         highlightItem.submenu = highlightMenu
 
         let bookmarkItem = NSMenuItem()
-        let bookmarkMenu = NSMenu(title: "Bookmark")
+        let bookmarkMenu = NSMenu(title: AppLocalization.string("menu.group.bookmark"))
         for id: CommandID in [
             .navigateToggleBookmark, .navigateNextBookmark,
             .navigatePreviousBookmark, .navigateBookmarkList, .navigateClearBookmarks,
@@ -674,7 +700,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         bookmarkItem.submenu = bookmarkMenu
 
         let otherItem = NSMenuItem()
-        let otherMenu = NSMenu(title: "Other")
+        let otherMenu = NSMenu(title: AppLocalization.string("menu.top.other"))
         otherMenu.addItem(commandItem(.appSettings))
         otherMenu.addItem(commandItem(.otherFileTypeProfiles))
         otherMenu.addItem(commandItem(.otherKeyAssignments))
@@ -692,8 +718,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         otherMenu.addItem(commandItem(.otherToggleFreeCursor))
         otherMenu.addItem(commandItem(.viewToggleVerticalLayout))
         otherMenu.addItem(commandItem(.viewToggleColumnLayout))
-        let settingsTransferItem = NSMenuItem(title: "Settings Transfer", action: nil, keyEquivalent: "")
-        let settingsTransferMenu = NSMenu(title: "Settings Transfer")
+        let settingsTransferItem = NSMenuItem(title: AppLocalization.string("menu.other.settingsTransferHeading"), action: nil, keyEquivalent: "")
+        let settingsTransferMenu = NSMenu(title: AppLocalization.string("menu.other.settingsTransferHeading"))
         settingsTransferMenu.addItem(commandItem(.otherExportSettings))
         settingsTransferMenu.addItem(commandItem(.otherImportSettings))
         settingsTransferMenu.addItem(.separator())
@@ -702,8 +728,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         otherMenu.addItem(settingsTransferItem)
         otherMenu.addItem(commandItem(.otherJapaneseUserDictionary))
         otherMenu.addItem(.separator())
-        let clearHistoryItem = NSMenuItem(title: "Clear History", action: nil, keyEquivalent: "")
-        let clearHistoryMenu = NSMenu(title: "Clear History")
+        let clearHistoryItem = NSMenuItem(title: AppLocalization.string("menu.other.clearHistory"), action: nil, keyEquivalent: "")
+        let clearHistoryMenu = NSMenu(title: AppLocalization.string("menu.other.clearHistory"))
         for id: CommandID in [
             .otherClearFindHistory, .otherClearReplaceHistory, .otherClearGrepHistory,
             .otherClearClipboardHistory, .otherClearRecentFiles, .otherClearRecentFolders,
@@ -720,7 +746,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         otherItem.submenu = otherMenu
 
         let helpItem = NSMenuItem()
-        let helpMenu = NSMenu(title: "Help")
+        let helpMenu = NSMenu(title: AppLocalization.string("menu.group.help"))
         helpMenu.addItem(commandItem(.appHelp))
         helpMenu.addItem(commandItem(.helpMacros))
         helpMenu.addItem(commandItem(.helpShortcuts))
@@ -747,8 +773,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             item.menu?.removeItem(item)
             return item
         }
-        func titled(_ title: String, _ id: CommandID, from menu: NSMenu) -> NSMenuItem {
-            let item = take(id, from: menu); item.title = title; return item
+        func titled(_ id: CommandID, from menu: NSMenu) -> NSMenuItem {
+            let item = take(id, from: menu)
+            let english = coordinator.commandRegistry.definition(for: id)?.title ?? item.title
+            item.title = AppLocalization.classicCommandTitle(id: id.rawValue, english: english)
+            return item
         }
         func preserveExtendedItems(_ oldItems: [NSMenuItem], in menu: NSMenu) {
             func commandIDs(in items: [NSMenuItem]) -> Set<CommandID> {
@@ -779,21 +808,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let oldFileItems = fileMenu.items
         fileMenu.removeAllItems()
         for item in [
-            titled("新規作成(N)", .fileNew, from: fileMenu),
-            titled("開く(O)...", .fileOpen, from: fileMenu),
-            titled("閉じて開く(L)...", .fileCloseAndOpen, from: fileMenu),
-            titled("上書き保存(S)", .fileSave, from: fileMenu),
-            titled("名前を付けて保存(A)...", .fileSaveAs, from: fileMenu),
-            titled("カーソル位置への読み込み(I)...", .insertFileContents, from: fileMenu),
-            titled("印刷(P)...", .filePrint, from: fileMenu),
+            titled(.fileNew, from: fileMenu), titled(.fileOpen, from: fileMenu),
+            titled(.fileCloseAndOpen, from: fileMenu), titled(.fileSave, from: fileMenu),
+            titled(.fileSaveAs, from: fileMenu), titled(.insertFileContents, from: fileMenu),
+            titled(.filePrint, from: fileMenu),
         ] { fileMenu.addItem(item) }
         fileMenu.addItem(.separator())
         reopenItem.menu?.removeItem(reopenItem); fileMenu.addItem(reopenItem)
         fileMenu.addItem(.separator())
-        fileMenu.addItem(titled("保存して終了(E)", .fileSaveAndClose, from: fileMenu))
-        fileMenu.addItem(NSMenuItem(title: "終了(X)", action: #selector(NSApplication.terminate(_:)), keyEquivalent: ""))
-        fileMenu.addItem(titled("全保存終了(T)", .fileSaveAllAndClose, from: fileMenu))
-        fileMenu.addItem(titled("全終了(Q)", .fileDiscardAllAndClose, from: fileMenu))
+        fileMenu.addItem(titled(.fileSaveAndClose, from: fileMenu))
+        fileMenu.addItem(NSMenuItem(title: AppLocalization.string("menu.file.quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: ""))
+        fileMenu.addItem(titled(.fileSaveAllAndClose, from: fileMenu))
+        fileMenu.addItem(titled(.fileDiscardAllAndClose, from: fileMenu))
         preserveExtendedItems(oldFileItems, in: fileMenu)
 
         let oldEditItems = editMenu.items
@@ -803,8 +829,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let copy = oldEditItems.first { $0.action == #selector(NSText.copy(_:)) }!
         let paste = oldEditItems.first { $0.action == #selector(NSText.paste(_:)) }!
         let selectAll = oldEditItems.first { $0.action == #selector(NSText.selectAll(_:)) }!
-        let conversion = NSMenuItem(title: "変換(V)", action: nil, keyEquivalent: "")
-        let conversionMenu = NSMenu(title: "変換(V)")
+        let conversionTitle = AppLocalization.string("menu.edit.convert")
+        let conversion = NSMenuItem(title: conversionTitle, action: nil, keyEquivalent: "")
+        let conversionMenu = NSMenu(title: conversionTitle)
         for id: CommandID in [
             .convertPipelineDialog, .editUppercase, .editLowercase, .editTitlecase,
             .convertHalfWidth, .convertFullWidth, .convertHiragana, .convertKatakana,
@@ -814,52 +841,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         ] { conversionMenu.addItem(commandItem(id)) }
         conversion.submenu = conversionMenu
         let formatting = oldEditItems.first { $0.identifier?.rawValue == "menu.group.lines" }!
-        formatting.title = "整形(-)"
+        formatting.title = AppLocalization.string("menu.edit.format")
         editMenu.removeAllItems()
-        undo.title = "やり直し(U)"; redo.title = "やり直しのやり直し(R)"
+        undo.title = AppLocalization.string("menu.edit.undo")
+        redo.title = AppLocalization.string("menu.edit.redo")
         editMenu.addItem(undo); editMenu.addItem(redo); editMenu.addItem(.separator())
-        cut.title = "切り抜き(T)"; copy.title = "コピー(C)"; paste.title = "貼り付け(P)"
+        cut.title = AppLocalization.string("menu.edit.cut")
+        copy.title = AppLocalization.string("menu.edit.copy")
+        paste.title = AppLocalization.string("menu.edit.paste")
         editMenu.addItem(cut); editMenu.addItem(copy)
-        editMenu.addItem(titled("追加切り抜き(W)", .editAppendCut, from: editMenu))
-        editMenu.addItem(titled("追加コピー(A)", .editAppendCopy, from: editMenu))
+        editMenu.addItem(titled(.editAppendCut, from: editMenu))
+        editMenu.addItem(titled(.editAppendCopy, from: editMenu))
         editMenu.addItem(paste)
-        editMenu.addItem(NSMenuItem(title: "削除(L)", action: #selector(NSText.deleteForward(_:)), keyEquivalent: ""))
+        editMenu.addItem(NSMenuItem(title: AppLocalization.string("menu.edit.delete"), action: #selector(NSText.deleteForward(_:)), keyEquivalent: ""))
         editMenu.addItem(conversion); editMenu.addItem(formatting); editMenu.addItem(.separator())
-        selectAll.title = "すべてを選択(S)"; editMenu.addItem(selectAll)
-        editMenu.addItem(titled("クリップボード履歴(H)...", .editClipboardHistory, from: editMenu))
+        selectAll.title = AppLocalization.string("menu.edit.selectAll"); editMenu.addItem(selectAll)
+        editMenu.addItem(titled(.editClipboardHistory, from: editMenu))
         editMenu.addItem(.separator())
-        editMenu.addItem(titled("単語補完(I)", .editCompleteWord, from: editMenu))
+        editMenu.addItem(titled(.editCompleteWord, from: editMenu))
         editMenu.addItem(.separator())
-        editMenu.addItem(titled("再読み込み(O)", .fileReload, from: editMenu))
+        editMenu.addItem(titled(.fileReload, from: editMenu))
         preserveExtendedItems(oldEditItems.filter { $0 !== formatting }, in: editMenu)
 
         func rebuildCommandMenu(
             _ menu: NSMenu,
-            entries: [(String, CommandID)],
+            entries: [CommandID],
             separatorsAfter: Set<Int>
         ) {
             let oldItems = menu.items
             menu.removeAllItems()
-            for (index, entry) in entries.enumerated() {
-                menu.addItem(titled(entry.0, entry.1, from: menu))
+            for (index, id) in entries.enumerated() {
+                menu.addItem(titled(id, from: menu))
                 if separatorsAfter.contains(index) { menu.addItem(.separator()) }
             }
             preserveExtendedItems(oldItems, in: menu)
         }
 
         rebuildCommandMenu(findMenu, entries: [
-            ("検索(F)...", .searchFind), ("下候補(N)", .searchFindNext),
-            ("上候補(P)", .searchFindPrevious), ("置換(R)...", .searchReplace),
-            ("検索文字列の強調(O)", .searchToggleHighlight),
-            ("検索開始位置へ戻る(S)", .searchReturnToStart),
-            ("指定行(J)...", .searchGoToLine), ("ファイルの先頭(T)", .navigateDocumentStart),
-            ("ファイルの最後(B)", .navigateDocumentEnd), ("最後に編集した所(L)", .navigateLastEdit),
-            ("下の編集マーク(D)", .searchNextEditMark), ("上の編集マーク(U)", .searchPreviousEditMark),
-            ("前のカーソル位置(V)", .navigatePreviousCursor), ("強調(H)", .highlightOutlineAnalysis),
-            ("マーカー一覧(M)...", .searchListMarks), ("カラーマーカー(I)", .searchListColorLayers),
-            ("grepして置換(@)...", .searchGrepReplace), ("grepの実行(G)...", .searchGrep),
+            .searchFind, .searchFindNext, .searchFindPrevious, .searchReplace,
+            .searchToggleHighlight, .searchReturnToStart, .searchGoToLine,
+            .navigateDocumentStart, .navigateDocumentEnd, .navigateLastEdit,
+            .searchNextEditMark, .searchPreviousEditMark, .navigatePreviousCursor,
+            .highlightOutlineAnalysis, .searchListMarks, .searchListColorLayers,
+            .searchGrepReplace, .searchGrep,
         ], separatorsAfter: [5, 12, 15])
-        if let highlight = findMenu.item(withTitle: "強調(H)") {
+        if let highlight = findMenu.items.first(where: { ($0.representedObject as? CommandID) == .highlightOutlineAnalysis }) {
             highlight.action = nil
             highlight.identifier = NSUserInterfaceItemIdentifier("menu.dynamic.searchHighlight")
             let submenu = NSMenu(title: highlight.title)
@@ -869,7 +895,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             ] { submenu.addItem(commandItem(id)) }
             highlight.submenu = submenu
         }
-        if let colorMarker = findMenu.item(withTitle: "カラーマーカー(I)") {
+        if let colorMarker = findMenu.items.first(where: { ($0.representedObject as? CommandID) == .searchListColorLayers }) {
             colorMarker.action = nil
             colorMarker.identifier = NSUserInterfaceItemIdentifier("menu.dynamic.searchColorMarker")
             let submenu = NSMenu(title: colorMarker.title)
@@ -884,39 +910,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             for duplicate in findMenu.items where
                 duplicate !== colorMarker
                 && ((duplicate.representedObject as? CommandID) == .searchListColorLayers
-                    || duplicate.title == "Color Marker")
+                    || duplicate.title == AppLocalization.string("menu.search.colorMarker"))
             {
                 findMenu.removeItem(duplicate)
             }
         }
 
         rebuildCommandMenu(macroMenu, entries: [
-            ("キー操作の記録開始/終了(R)", .macroToggleRecording),
-            ("キー操作の再生(P)", .macroPlayRecording),
-            ("キー操作の保存(S)...", .macroSaveRecording),
-            ("キー操作の読み込み(L)...", .macroReload),
-            ("マクロ実行(X)...", .macroRun),
-            ("マクロ登録(E)...", .appMacroMenu),
-            ("マクロヘルプ(H)", .macroHelp),
+            .macroToggleRecording, .macroPlayRecording, .macroSaveRecording,
+            .macroReload, .macroRun, .appMacroMenu, .macroHelp,
         ], separatorsAfter: [4])
 
         rebuildCommandMenu(winMenu, entries: [
-            ("縦に並べる(V)", .windowTileVertical), ("横に並べる(H)", .windowTileHorizontal),
-            ("重ねて表示(C)", .windowCascade), ("並べて表示(T)", .windowTileGrid),
-            ("全部最小化(N)", .windowMinimizeAll), ("ウィンドウ分割上下(D)", .viewSplitHorizontal),
-            ("他のMaruエディタと同時スクロール(L)...", .windowToggleCrossDocumentScrollLink),
-            ("他のMaruエディタと内容比較(F)...", .navigateCompareNextDocument),
-            ("デスクトップ保存(S)", .fileSaveWorkspace), ("デスクトップ復元(R)", .fileOpenWorkspace),
-            ("常に手前に表示(A)", .windowAlwaysOnTop), ("アウトライン解析の枠(O)", .windowShowOutlinePane),
-            ("ファイルマネージャ枠(X)", .windowShowFilesPane), ("アウトプット枠(U)", .viewToggleOutputPane),
-            ("ブラウザ枠(￥)", .windowShowSharedBrowserPane), ("タブモード(B)", .viewToggleTabMode),
-            ("このタブを分離/移動(I)", .windowDetachTab),
+            .windowTileVertical, .windowTileHorizontal, .windowCascade, .windowTileGrid,
+            .windowMinimizeAll, .viewSplitHorizontal, .windowToggleCrossDocumentScrollLink,
+            .navigateCompareNextDocument, .fileSaveWorkspace, .fileOpenWorkspace,
+            .windowAlwaysOnTop, .windowShowOutlinePane, .windowShowFilesPane,
+            .viewToggleOutputPane, .windowShowSharedBrowserPane, .viewToggleTabMode,
+            .windowDetachTab,
         ], separatorsAfter: [4, 7, 9, 10, 14, 16])
 
         let oldViewItems = viewMenu.items
         viewMenu.removeAllItems()
-        func viewCommand(_ title: String, _ id: CommandID) {
-            viewMenu.addItem(titled(title, id, from: viewMenu))
+        func viewCommand(_ id: CommandID, titleKey: String? = nil) {
+            let item = titled(id, from: viewMenu)
+            if let titleKey { item.title = AppLocalization.string(titleKey) }
+            viewMenu.addItem(item)
         }
         func viewGroup(_ title: String, primary: CommandID, children: [CommandID]) {
             let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
@@ -926,80 +945,68 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             item.submenu = submenu
             viewMenu.addItem(item)
         }
-        viewCommand("ツールバー(T)", .viewToggleToolbar)
-        viewCommand("タブモード(B)", .viewToggleTabMode)
-        viewCommand("ファンクションキー表示(F)", .viewToggleFunctionKeys)
-        viewCommand("ステータスバー(S)", .viewToggleStatusBar); viewMenu.addItem(.separator())
-        viewCommand("ファイルマネージャ枠(X)", .windowShowFilesPane)
-        viewCommand("アウトプット枠(P)", .viewToggleOutputPane)
-        viewCommand("ブラウザ枠(￥)", .windowShowSharedBrowserPane); viewMenu.addItem(.separator())
-        viewCommand("アウトライン解析の枠(O)", .windowShowOutlinePane)
-        viewCommand("見出しバー(U)", .viewToggleHeading)
-        viewCommand("折りたたみ用の余白(M)", .viewToggleFoldMargin)
-        viewCommand("行番号(L)", .viewToggleLineNumbers)
-        viewCommand("ルーラー(R)", .viewToggleRuler)
-        viewCommand("自動スペルチェック(K)", .viewToggleSpellChecking)
-        viewCommand("個別ブラウザ枠(￥)", .windowShowDocumentBrowserPane); viewMenu.addItem(.separator())
-        viewGroup("折り返し(I)", primary: .viewToggleWrap, children: [.viewToggleWrap])
-        viewGroup("ルーラーの表示(D)", primary: .viewRulerInterval8,
+        viewCommand(.viewToggleToolbar); viewCommand(.viewToggleTabMode)
+        viewCommand(.viewToggleFunctionKeys); viewCommand(.viewToggleStatusBar); viewMenu.addItem(.separator())
+        viewCommand(.windowShowFilesPane); viewCommand(.viewToggleOutputPane, titleKey: "classic.view.outputPane")
+        viewCommand(.windowShowSharedBrowserPane); viewMenu.addItem(.separator())
+        viewCommand(.windowShowOutlinePane); viewCommand(.viewToggleHeading)
+        viewCommand(.viewToggleFoldMargin); viewCommand(.viewToggleLineNumbers)
+        viewCommand(.viewToggleRuler); viewCommand(.viewToggleSpellChecking)
+        viewCommand(.windowShowDocumentBrowserPane); viewMenu.addItem(.separator())
+        viewGroup(AppLocalization.string("menu.view.wrapping"), primary: .viewToggleWrap, children: [.viewToggleWrap])
+        viewGroup(AppLocalization.string("menu.view.rulerDisplay"), primary: .viewRulerInterval8,
                   children: [.viewToggleRuler, .viewRulerInterval8, .viewRulerInterval10])
-        viewGroup("タブストップ(A)", primary: .viewToggleTabStops,
+        viewGroup(AppLocalization.string("menu.view.tabStops"), primary: .viewToggleTabStops,
                   children: [.viewToggleTabStops, .viewTabWidth2, .viewTabWidth4, .viewTabWidth8])
-        viewCommand("縦書きモード(Q)", .viewToggleVerticalLayout)
-        viewCommand("段組モード(J)", .viewToggleColumnLayout); viewMenu.addItem(.separator())
-        viewCommand("部分編集([)", .viewBeginPartialEditing)
-        viewCommand("部分編集解除(])", .viewEndPartialEditing)
-        viewGroup("折りたたみ(V)", primary: .navigateToggleFold,
+        viewCommand(.viewToggleVerticalLayout)
+        viewCommand(.viewToggleColumnLayout); viewMenu.addItem(.separator())
+        viewCommand(.viewBeginPartialEditing); viewCommand(.viewEndPartialEditing)
+        viewGroup(AppLocalization.string("menu.view.folding"), primary: .navigateToggleFold,
                   children: [.navigateToggleFold, .navigateCollapseAllFolds, .navigateExpandAllFolds])
         viewMenu.addItem(.separator())
-        viewCommand("全画面表示(Z)", .viewToggleFullScreen)
+        viewCommand(.viewToggleFullScreen)
         preserveExtendedItems(oldViewItems.filter {
             ($0.representedObject as? CommandID) != .viewCustomizeMenus
         }, in: viewMenu)
 
         let oldOtherItems = otherMenu.items
         otherMenu.removeAllItems()
-        let otherEntries: [(String, CommandID)] = [
-            ("ファイルタイプ別の設定(C)...", .otherFileTypeProfiles), ("動作環境(E)...", .appSettings),
-            ("キー割り当て(K)...", .otherKeyAssignments), ("メニュー編集(M)...", .viewCustomizeMenus),
-            ("タグジャンプ(T)", .navigateTagJump), ("ダイレクトタグジャンプ(D)", .navigateDirectTagJump),
-            ("バックタグジャンプ(B)", .navigateBackTagJump), ("制御コード入力(I)...", .insertControlCode),
-            ("tagsファイルの作成(G)...", .navigateGenerateTags),
+        let otherEntries: [CommandID] = [
+            .otherFileTypeProfiles, .appSettings, .otherKeyAssignments, .viewCustomizeMenus,
+            .navigateTagJump, .navigateDirectTagJump, .navigateBackTagJump,
+            .insertControlCode, .navigateGenerateTags,
         ]
-        for (index, entry) in otherEntries.enumerated() {
-            otherMenu.addItem(titled(entry.0, entry.1, from: otherMenu))
+        for (index, id) in otherEntries.enumerated() {
+            otherMenu.addItem(titled(id, from: otherMenu))
             if index == 3 { otherMenu.addItem(.separator()) }
         }
-        func cloneMenu(_ source: NSMenu) -> NSMenu {
-            let copy = NSMenu(title: source.title)
-            for sourceItem in source.items {
-                if sourceItem.isSeparatorItem { copy.addItem(.separator()); continue }
-                let item = NSMenuItem(
-                    title: sourceItem.title, action: sourceItem.action,
-                    keyEquivalent: sourceItem.keyEquivalent)
-                item.target = sourceItem.target
-                item.representedObject = sourceItem.representedObject
-                item.isEnabled = sourceItem.isEnabled
-                if let submenu = sourceItem.submenu { item.submenu = cloneMenu(submenu) }
-                copy.addItem(item)
-            }
-            return copy
-        }
-        let program = NSMenuItem(title: "プログラム実行(X)...", action: nil, keyEquivalent: "")
+        let program = NSMenuItem(title: AppLocalization.string("menu.other.runProgram"), action: nil, keyEquivalent: "")
         program.submenu = cloneMenu(externalCommandManager.menu); otherMenu.addItem(program)
-        otherMenu.addItem(titled("スペルミスの修正(Z)...", .otherCorrectSpelling, from: otherMenu))
-        otherMenu.addItem(titled("コマンド一覧(O)...", .otherCommandList, from: otherMenu))
-        otherMenu.addItem(titled("閲覧モード(R)", .fileToggleViewMode, from: otherMenu))
+        otherMenu.addItem(titled(.otherCorrectSpelling, from: otherMenu))
+        otherMenu.addItem(titled(.otherCommandList, from: otherMenu))
+        otherMenu.addItem(titled(.fileToggleViewMode, from: otherMenu))
         otherMenu.addItem(.separator())
-        let transfer = NSMenuItem(title: "設定内容の保存/復元(U)...", action: nil, keyEquivalent: "")
+        let transfer = NSMenuItem(title: AppLocalization.string("menu.other.settingsTransfer"), action: nil, keyEquivalent: "")
         let transferMenu = NSMenu(title: transfer.title)
         for id: CommandID in [.otherExportSettings, .otherImportSettings, .otherRestoreSettings] {
             transferMenu.addItem(commandItem(id))
         }
         transfer.submenu = transferMenu; otherMenu.addItem(transfer); otherMenu.addItem(.separator())
-        otherMenu.addItem(titled("最新バージョンの確認(V)...", .helpCheckUpdates, from: otherMenu))
-        otherMenu.addItem(titled("MaruEditヘルプ(P)", .appHelp, from: otherMenu))
-        otherMenu.addItem(NSMenuItem(title: "MaruEditについて(A)...", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: ""))
+        otherMenu.addItem(titled(.helpCheckUpdates, from: otherMenu))
+        otherMenu.addItem(titled(.appHelp, from: otherMenu))
+        otherMenu.addItem(NSMenuItem(title: AppLocalization.string("menu.other.about"), action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: ""))
+        otherMenu.addItem(.separator())
+        let languageItem = NSMenuItem(title: AppLocalization.string(.languageMenu), action: nil, keyEquivalent: "")
+        let languageMenu = NSMenu(title: languageItem.title)
+        for language in AppLanguage.selectable {
+            let item = NSMenuItem(title: AppLocalization.string(language.displayNameKey), action: #selector(changeApplicationLanguage(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = language.rawValue
+            item.state = language == AppLocalization.language ? .on : .off
+            languageMenu.addItem(item)
+        }
+        languageItem.submenu = languageMenu
+        otherMenu.addItem(languageItem)
         preserveExtendedItems(oldOtherItems, in: otherMenu)
 
         main.removeAllItems()
@@ -1007,10 +1014,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
          highlightItem, bookmarkItem, toolsItem, winItem, macroItem, otherItem,
          helpItem].forEach(main.addItem)
 
+        let visibleMenuTitles = [
+            "menu.top.file", "menu.top.edit", "menu.top.view", "menu.top.search",
+            "menu.top.window", "menu.top.macro", "menu.top.other",
+        ].map { AppLocalization.string($0) }
         for (item, title) in zip(
             [fileItem, editItem, viewItem, findItem, winItem, macroItem, otherItem],
-            ["ファイル(F)", "編集(E)", "表示(V)", "検索(S)",
-             "ウィンドウ(W)", "マクロ(M)", "その他(O)"]
+            visibleMenuTitles
         ) { item.title = title }
 
         NSApp.mainMenu = main
@@ -1018,7 +1028,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         classicWindowMenu = winMenu
         winMenu.delegate = self
         applyMenuCustomization(to: main)
+        // The macOS menu bar renders the submenu title, not only the owning
+        // menu-item title. Keep both synchronized after customization has
+        // consumed the stable English menu keys.
+        for (item, title) in zip(
+            [fileItem, editItem, viewItem, findItem, winItem, macroItem, otherItem],
+            visibleMenuTitles
+        ) {
+            item.title = title
+            item.submenu?.title = title
+        }
         syncCommandMenuBindings()
+    }
+
+    @objc private func changeApplicationLanguage(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String,
+              let language = AppLanguage(rawValue: raw) else { return }
+        AppLocalization.language = language
+        // Unit-level menu construction does not run the application lifecycle
+        // and therefore has no observer installed.
+        if languageObserver == nil { applyApplicationLanguageChange() }
+    }
+
+    private func applyApplicationLanguageChange() {
+        // Replacing a menu while AppKit is dispatching an action from that
+        // same menu violates its submenu ownership invariant. Rebuild on the
+        // next main-loop turn, after the menu has closed.
+        DispatchQueue.main.async { [weak self] in
+            self?.buildMenu()
+            self?.coordinator.refreshLocalizedInterface()
+        }
     }
 
     private func showMenuCustomization() {
@@ -1041,7 +1080,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func buildUserMenu(at index: Int) -> NSMenu {
-        let menu = NSMenu(title: "User Menu \(index + 1)")
+        let menu = NSMenu(title: AppLocalization.string("settings.userMenus.number", [index + 1]))
         for entry in userMenuConfiguration[index] {
             if entry == UserMenuConfiguration.separator {
                 menu.addItem(.separator())
@@ -1052,7 +1091,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         }
         if menu.items.isEmpty {
-            let empty = NSMenuItem(title: "No Commands Configured", action: nil, keyEquivalent: "")
+            let empty = NSMenuItem(title: AppLocalization.string("menu.noCommands"), action: nil, keyEquivalent: "")
             empty.isEnabled = false; menu.addItem(empty)
         }
         return menu
@@ -1087,6 +1126,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         defaultMenuPlacements: [String: Set<CommandID>],
         to root: NSMenu
     ) {
+        func canonicalTopLevelTitle(_ title: String) -> String {
+            let keys = [
+                "menu.top.file": "File", "menu.top.edit": "Edit", "menu.top.view": "View",
+                "menu.top.search": "Search", "menu.top.window": "Window",
+                "menu.top.macro": "Macro", "menu.top.other": "Other",
+                "menu.edit.convert": "Convert", "menu.group.insert": "Insert",
+                "menu.group.highlight": "Highlight", "menu.group.bookmark": "Bookmark",
+                "menu.other.tools": "Tools", "menu.group.help": "Help",
+            ]
+            for (key, canonical) in keys where AppLanguage.allCases.contains(where: {
+                AppLocalization.localizedFormat(key, language: $0) == title
+            }) {
+                return canonical
+            }
+            return title
+        }
         func apply(_ menu: NSMenu, topLevelMenu: String?) {
             for item in menu.items {
                 item.isHidden = false
@@ -1099,7 +1154,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                             } ?? false)
                 }
                 if let submenu = item.submenu {
-                    apply(submenu, topLevelMenu: topLevelMenu ?? submenu.title)
+                    apply(submenu, topLevelMenu: topLevelMenu ?? canonicalTopLevelTitle(submenu.title))
                 }
                 if topLevelMenu != nil,
                    item.identifier?.rawValue.hasPrefix("menu.dynamic.") != true,
@@ -1122,7 +1177,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         apply(root, topLevelMenu: nil)
         for item in root.items {
-            guard let title = item.submenu?.title else { continue }
+            guard let rawTitle = item.submenu?.title else { continue }
+            let title = canonicalTopLevelTitle(rawTitle)
             if customization.hiddenMenus.contains(title) { item.isHidden = true }
         }
     }
@@ -1157,7 +1213,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         let gesture = keyBindings.keys(for: id).flatMap { $0.count == 1 ? $0[0] : nil }
         let mi = NSMenuItem(
-            title: definition.title,
+            title: AppLocalization.commandTitle(id: id.rawValue, english: definition.title),
             action: #selector(performCommand(_:)),
             keyEquivalent: gesture?.menuKeyEquivalent ?? "")
         mi.keyEquivalentModifierMask = gesture?.menuModifierFlags ?? []
@@ -1210,8 +1266,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 guard let window = item.target as? NSWindow else { continue }
                 let rawTitle = window.title
                 let name = rawTitle.components(separatedBy: " — ").last ?? rawTitle
-                let displayName = name == "Untitled" ? "無題" : name
-                item.title = "\(index) (\(displayName))\(window.isDocumentEdited ? "(更新)" : "")"
+                let displayName = name == "Untitled" ? AppLocalization.string("window.untitled") : name
+                let modified = window.isDocumentEdited ? AppLocalization.string("window.modifiedSuffix") : ""
+                item.title = AppLocalization.string("window.menu.document", [index, displayName, modified])
                 index += 1
             }
             return
@@ -1232,14 +1289,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let recentFolders = RecentItems.folders
 
         if recentFolders.isEmpty && recentFiles.isEmpty {
-            let empty = NSMenuItem(title: "No Recent Items", action: nil, keyEquivalent: "")
+            let empty = NSMenuItem(title: AppLocalization.string("menu.file.noRecent"), action: nil, keyEquivalent: "")
             empty.isEnabled = false
             menu.addItem(empty)
             return
         }
 
         if !recentFolders.isEmpty {
-            let header = NSMenuItem(title: "Folders", action: nil, keyEquivalent: "")
+            let header = NSMenuItem(title: AppLocalization.string("menu.file.folders"), action: nil, keyEquivalent: "")
             header.isEnabled = false
             menu.addItem(header)
             for url in recentFolders {
@@ -1255,7 +1312,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         if !recentFiles.isEmpty {
             if !recentFolders.isEmpty { menu.addItem(.separator()) }
-            let header = NSMenuItem(title: "Files", action: nil, keyEquivalent: "")
+            let header = NSMenuItem(title: AppLocalization.string("menu.file.files"), action: nil, keyEquivalent: "")
             header.isEnabled = false
             menu.addItem(header)
             for url in recentFiles {
@@ -1270,7 +1327,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         menu.addItem(.separator())
-        let clear = NSMenuItem(title: "Clear Recent", action: #selector(doClearRecent), keyEquivalent: "")
+        let clear = NSMenuItem(title: AppLocalization.string("menu.file.clearRecent"), action: #selector(doClearRecent), keyEquivalent: "")
         clear.target = self
         menu.addItem(clear)
     }

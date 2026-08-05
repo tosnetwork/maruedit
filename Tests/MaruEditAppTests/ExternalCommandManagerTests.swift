@@ -5,6 +5,14 @@ import MaruEditCore
 
 @preconcurrency @MainActor
 final class ExternalCommandManagerTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        UserDefaults.standard.set(AppLanguage.english.rawValue, forKey: AppLocalization.defaultsKey)
+    }
+    override func tearDown() {
+        UserDefaults.standard.removeObject(forKey: AppLocalization.defaultsKey)
+        super.tearDown()
+    }
     func testReloadRegistersCommandsBuildsRiskMarkedMenuAndRemovesDeletedCommands() async throws {
         let url = temporaryConfigurationURL()
         let direct = ExternalCommandConfiguration(

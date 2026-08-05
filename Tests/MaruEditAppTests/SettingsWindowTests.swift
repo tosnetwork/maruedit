@@ -16,7 +16,7 @@ final class SettingsWindowTests: XCTestCase {
     func testLocalizationCoversEnglishJapaneseAndSimplifiedChinese() async {
         XCTAssertEqual(SettingsLocalization.text("settings", language: .english), "Settings")
         XCTAssertEqual(SettingsLocalization.text("settings", language: .japanese), "設定")
-        XCTAssertEqual(SettingsLocalization.text("settings", language: .simplifiedChinese), "设置")
+        XCTAssertEqual(SettingsLocalization.text("settings", language: .simplifiedChinese), "Settings")
         for group in SettingsWindowController.Group.allCases {
             XCTAssertNotEqual(SettingsLocalization.text(group.rawValue, language: .japanese), group.rawValue)
             XCTAssertNotEqual(SettingsLocalization.text(group.rawValue, language: .simplifiedChinese), group.rawValue)

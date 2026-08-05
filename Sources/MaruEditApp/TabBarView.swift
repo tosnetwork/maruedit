@@ -220,7 +220,7 @@ final class TabBarView: NSView {
             lbl.isEditable = false
             lbl.drawsBackground = false
             lbl.setAccessibilityRole(.radioButton)
-            lbl.setAccessibilityLabel("Tab \(index + 1): \(tab.title)")
+            lbl.setAccessibilityLabel(AppLocalization.string("tab.accessibility", [index + 1, tab.title]))
             lbl.onPress = { [weak self] in self?.delegate?.tabBarDidSelectTab(at: index) }
             addSubview(lbl)
             titleLabels.append(lbl)
@@ -233,7 +233,7 @@ final class TabBarView: NSView {
             close.drawsBackground = false
             close.forwardsMouseToTabBar = false
             close.setAccessibilityRole(.button)
-            close.setAccessibilityLabel("Close tab \(index + 1): \(tab.title)")
+            close.setAccessibilityLabel(AppLocalization.string("tab.closeAccessibility", [index + 1, tab.title]))
             close.onPress = { [weak self] in self?.delegate?.tabBarDidCloseTab(at: index) }
             addSubview(close)
             closeLabels.append(close)
@@ -248,8 +248,8 @@ final class TabBarView: NSView {
         for (i, tab) in tabs.enumerated() where i < titleLabels.count {
             let displayTitle = tab.isModified ? "● \(tab.title)" : tab.title
             titleLabels[i].stringValue = displayTitle
-            titleLabels[i].setAccessibilityLabel("Tab \(i + 1): \(tab.title)")
-            closeLabels[i].setAccessibilityLabel("Close tab \(i + 1): \(tab.title)")
+            titleLabels[i].setAccessibilityLabel(AppLocalization.string("tab.accessibility", [i + 1, tab.title]))
+            closeLabels[i].setAccessibilityLabel(AppLocalization.string("tab.closeAccessibility", [i + 1, tab.title]))
         }
     }
 
@@ -304,19 +304,19 @@ final class TabBarView: NSView {
     override func rightMouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
         let clickedIndex = tabIndex(at: point)
-        let menu = NSMenu(title: "Tab Bar")
+        let menu = NSMenu(title: AppLocalization.string("tab.menu.title"))
         if let clickedIndex {
-            addCloseItem("Close Tab", scope: .current, index: clickedIndex, to: menu)
-            addCloseItem("Close Other Tabs", scope: .others, index: clickedIndex, to: menu)
-            addCloseItem("Close Tabs to the Left", scope: .left, index: clickedIndex, to: menu)
-            addCloseItem("Close Tabs to the Right", scope: .right, index: clickedIndex, to: menu)
+            addCloseItem(AppLocalization.string("tab.close"), scope: .current, index: clickedIndex, to: menu)
+            addCloseItem(AppLocalization.string("tab.closeOthers"), scope: .others, index: clickedIndex, to: menu)
+            addCloseItem(AppLocalization.string("tab.closeLeft"), scope: .left, index: clickedIndex, to: menu)
+            addCloseItem(AppLocalization.string("tab.closeRight"), scope: .right, index: clickedIndex, to: menu)
             menu.addItem(.separator())
         }
-        let top = NSMenuItem(title: "Tab Bar at Top", action: #selector(placeAtTop), keyEquivalent: "")
+        let top = NSMenuItem(title: AppLocalization.string("tab.positionTop"), action: #selector(placeAtTop), keyEquivalent: "")
         top.target = self; top.state = position == .top ? .on : .off; menu.addItem(top)
-        let bottom = NSMenuItem(title: "Tab Bar at Bottom", action: #selector(placeAtBottom), keyEquivalent: "")
+        let bottom = NSMenuItem(title: AppLocalization.string("tab.positionBottom"), action: #selector(placeAtBottom), keyEquivalent: "")
         bottom.target = self; bottom.state = position == .bottom ? .on : .off; menu.addItem(bottom)
-        let single = NSMenuItem(title: "Hide When One Tab", action: #selector(toggleHideSingle), keyEquivalent: "")
+        let single = NSMenuItem(title: AppLocalization.string("tab.hideSingle"), action: #selector(toggleHideSingle), keyEquivalent: "")
         single.target = self; single.state = hidesForSingleTab ? .on : .off; menu.addItem(single)
         NSMenu.popUpContextMenu(menu, with: event, for: self)
     }

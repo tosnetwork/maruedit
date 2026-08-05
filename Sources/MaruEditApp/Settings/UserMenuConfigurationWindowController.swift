@@ -22,7 +22,7 @@ final class UserMenuConfigurationWindowController: NSWindowController, NSTextVie
             contentRect: NSRect(x: 0, y: 0, width: 720, height: 520),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered, defer: false)
-        window.title = "Configure User Menus"
+        window.title = AppLocalization.string("settings.userMenus.title")
         window.minSize = NSSize(width: 560, height: 360)
         window.center()
         super.init(window: window)
@@ -36,29 +36,31 @@ final class UserMenuConfigurationWindowController: NSWindowController, NSTextVie
     private func buildUI() {
         guard let root = window?.contentView else { return }
         let explanation = NSTextField(wrappingLabelWithString:
-            "Enter one stable CommandID per line in execution order. Use a single '-' line for a separator. Unknown IDs are ignored in the live menu.")
+            AppLocalization.string("settings.userMenus.explanation"))
         explanation.translatesAutoresizingMaskIntoConstraints = false
         root.addSubview(explanation)
 
-        menuPopup.addItems(withTitles: (1...8).map { "User Menu \($0)" })
+        menuPopup.addItems(withTitles: (1...8).map { AppLocalization.string("settings.userMenus.number", [$0]) })
         menuPopup.target = self; menuPopup.action = #selector(menuChanged)
         menuPopup.translatesAutoresizingMaskIntoConstraints = false
-        menuPopup.setAccessibilityLabel("User menu number")
+        menuPopup.setAccessibilityLabel(AppLocalization.string("settings.userMenus.numberLabel"))
         root.addSubview(menuPopup)
 
         let editScroll = scrollView(for: editor, editable: true)
         editor.delegate = self
         editor.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
-        editor.setAccessibilityLabel("Ordered user menu command IDs")
+        editor.setAccessibilityLabel(AppLocalization.string("settings.userMenus.orderedIDs"))
         root.addSubview(editScroll)
 
         let referenceScroll = scrollView(for: reference, editable: false)
         reference.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
-        reference.string = definitions.map { "\($0.id.rawValue)  —  \($0.title)" }.joined(separator: "\n")
-        reference.setAccessibilityLabel("Available command IDs")
+        reference.string = definitions.map {
+            "\($0.id.rawValue)  —  \(AppLocalization.commandTitle(id: $0.id.rawValue, english: $0.title))"
+        }.joined(separator: "\n")
+        reference.setAccessibilityLabel(AppLocalization.string("settings.userMenus.availableIDs"))
         root.addSubview(referenceScroll)
 
-        let reset = NSButton(title: "Clear This Menu", target: self, action: #selector(clearMenu))
+        let reset = NSButton(title: AppLocalization.string("settings.userMenus.clear"), target: self, action: #selector(clearMenu))
         reset.translatesAutoresizingMaskIntoConstraints = false
         root.addSubview(reset)
         NSLayoutConstraint.activate([

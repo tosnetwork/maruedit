@@ -4,6 +4,15 @@ import MaruEditCore
 
 @preconcurrency @MainActor
 final class ClassicWorkspaceTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        UserDefaults.standard.set(AppLanguage.english.rawValue, forKey: AppLocalization.defaultsKey)
+    }
+
+    override func tearDown() {
+        UserDefaults.standard.removeObject(forKey: AppLocalization.defaultsKey)
+        super.tearDown()
+    }
     func testFreshClassicWorkspaceDefaultsToMergedBottomRowWithF1Help() {
         let defaults = UserDefaults.standard
         let key = "MaruClassicFunctionKeysMergedWithStatus"

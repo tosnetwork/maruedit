@@ -7,6 +7,8 @@ import XCTest
 @preconcurrency @MainActor
 final class StatusBarFormatMenuTests: XCTestCase {
     func testMenusExposeEncodingBOMLineEndingAndEveryLanguage() async {
+        AppLocalization.language = .english
+        defer { UserDefaults.standard.removeObject(forKey: AppLocalization.defaultsKey) }
         let controller = MainWindowController()
 
         XCTAssertFalse(controller.buildEncodingMenu().items.isEmpty)

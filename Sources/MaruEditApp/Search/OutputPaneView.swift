@@ -58,7 +58,7 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     // MARK: - Build
 
     private func buildUI() {
-        setAccessibilityLabel("Output")
+        setAccessibilityLabel(AppLocalization.string("output.title"))
 
         func style(_ button: NSButton, _ title: String, _ action: Selector, _ label: String) {
             button.title = title
@@ -71,18 +71,18 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
             button.translatesAutoresizingMaskIntoConstraints = false
             button.setAccessibilityLabel(label)
         }
-        style(rerunButton, "Rerun", #selector(rerun), "Rerun this search")
-        style(copyButton, "Copy", #selector(copyAll), "Copy all output")
-        style(clearButton, "Clear", #selector(clearOutput), "Clear output")
-        style(saveButton, "Save…", #selector(save), "Save these results")
-        style(cancelButton, "Stop", #selector(cancel), "Stop the running operation")
-        style(closeButton, "✕", #selector(close), "Close output")
+        style(rerunButton, AppLocalization.string("output.rerun"), #selector(rerun), AppLocalization.string("output.rerun"))
+        style(copyButton, AppLocalization.string("output.copy"), #selector(copyAll), AppLocalization.string("output.copy"))
+        style(clearButton, AppLocalization.string("output.clear"), #selector(clearOutput), AppLocalization.string("output.clear"))
+        style(saveButton, AppLocalization.string("output.save"), #selector(save), AppLocalization.string("output.save"))
+        style(cancelButton, AppLocalization.string("output.stop"), #selector(cancel), AppLocalization.string("output.stop"))
+        style(closeButton, "✕", #selector(close), AppLocalization.string("output.close"))
         cancelButton.isHidden = true
 
         statusLabel.font = Theme.uiFontSmall
         statusLabel.textColor = Theme.statusText
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
-        statusLabel.setAccessibilityLabel("Output summary")
+        statusLabel.setAccessibilityLabel(AppLocalization.string("output.summary"))
 
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("result"))
         column.resizingMask = .autoresizingMask
@@ -98,7 +98,7 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         tableView.doubleAction = #selector(activateSelectedRow)
         tableView.menu = buildContextMenu()
         tableView.onActivate = { [weak self] in self?.activateSelectedRow() }
-        tableView.setAccessibilityLabel("Search results list")
+        tableView.setAccessibilityLabel(AppLocalization.string("output.results"))
 
         scrollView.documentView = tableView
         scrollView.hasVerticalScroller = true
@@ -147,9 +147,9 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     private func buildContextMenu() -> NSMenu {
         let menu = NSMenu()
         for (title, action) in [
-            ("Copy Path", #selector(copyPathAction)),
-            ("Copy Line", #selector(copyLineAction)),
-            ("Reveal in Finder", #selector(revealInFinder)),
+            (AppLocalization.string("output.copyPath"), #selector(copyPathAction)),
+            (AppLocalization.string("output.copyLine"), #selector(copyLineAction)),
+            (AppLocalization.string("output.reveal"), #selector(revealInFinder)),
         ] {
             let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
             item.target = self
@@ -169,7 +169,7 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         summary = GrepSummary()
         isRunning = true
         cancelButton.isHidden = false
-        statusLabel.stringValue = "Searching for “\(pattern)”…"
+        statusLabel.stringValue = AppLocalization.string("output.searchingFor", [pattern])
         tableView.reloadData()
     }
 
@@ -178,7 +178,7 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         matches = []; externalLines = []; externalPending = [:]; outputBuffer.clear(); isRunning = true
         outputBaseURL = workingDirectory
         rerunButton.isHidden = true; cancelButton.isHidden = false
-        statusLabel.stringValue = "Running \(name)…"
+        statusLabel.stringValue = AppLocalization.string("output.running", [name])
         tableView.reloadData()
     }
 
@@ -220,8 +220,8 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         }
         externalPending.removeAll(); tableView.reloadData()
         isRunning = false; cancelButton.isHidden = true
-        statusLabel.stringValue = cancelled ? "External command cancelled."
-            : "External command exited with status \(status)."
+        statusLabel.stringValue = cancelled ? AppLocalization.string("output.cancelled")
+            : AppLocalization.string("output.exited", [status])
         statusLabel.setAccessibilityValue(statusLabel.stringValue)
     }
 
@@ -237,7 +237,7 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
                 location: OutputLocationParser.parse(String(line)))
         }
         externalLines = outputBuffer.entries.map(Self.formatted)
-        statusLabel.stringValue = "Macro error: \(name)"
+        statusLabel.stringValue = AppLocalization.string("output.macroError", [name])
         tableView.reloadData()
     }
 
@@ -276,7 +276,7 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
 
     func updateProgress(scannedFiles: Int) {
         guard isRunning else { return }
-        statusLabel.stringValue = "Searching… \(scannedFiles) file\(scannedFiles == 1 ? "" : "s"), \(matches.count) match\(matches.count == 1 ? "" : "es")"
+        statusLabel.stringValue = AppLocalization.string("output.progress", [scannedFiles, matches.count])
     }
 
     func finish(_ summary: GrepSummary) {
@@ -339,7 +339,8 @@ final class OutputPaneView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     @objc private func clearOutput() {
         if isRunning { delegate?.outputPaneDidRequestCancel(self) }
         matches.removeAll(); grepRows.removeAll(); externalLines.removeAll(); externalPending.removeAll(); outputBuffer.clear()
-        isRunning = false; cancelButton.isHidden = true; statusLabel.stringValue = "Output cleared."
+        isRunning = false; cancelButton.isHidden = true
+        statusLabel.stringValue = AppLocalization.string("output.cleared")
         tableView.reloadData()
     }
 

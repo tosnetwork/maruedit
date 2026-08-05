@@ -20,7 +20,7 @@ final class ExternalHelpStore {
             .flatMap { try? JSONDecoder().decode([ExternalHelpEntry].self, from: $0) } ?? []
         return (0..<6).map { index in
             decoded.indices.contains(index) ? decoded[index]
-                : ExternalHelpEntry(name: "External Help \(index + 1)", target: "")
+                : ExternalHelpEntry(name: AppLocalization.string("help.external.defaultName", [index + 1]), target: "")
         }
     }
 
@@ -28,7 +28,7 @@ final class ExternalHelpStore {
         var normalized = Array(entries.prefix(6))
         while normalized.count < 6 {
             normalized.append(ExternalHelpEntry(
-                name: "External Help \(normalized.count + 1)", target: ""))
+                name: AppLocalization.string("help.external.defaultName", [normalized.count + 1]), target: ""))
         }
         if let data = try? JSONEncoder().encode(normalized) { defaults.set(data, forKey: key) }
     }
@@ -45,7 +45,7 @@ final class ExternalHelpWindowController: NSWindowController {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 680, height: 330),
             styleMask: [.titled, .closable], backing: .buffered, defer: false)
-        window.title = "Configure External Help"
+        window.title = AppLocalization.string("help.external.title")
         window.center()
         super.init(window: window)
         buildUI(entries: entries)
@@ -58,15 +58,15 @@ final class ExternalHelpWindowController: NSWindowController {
         guard let root = window?.contentView else { return }
         let grid = NSGridView()
         grid.translatesAutoresizingMaskIntoConstraints = false
-        grid.addRow(with: [NSTextField(labelWithString: "Slot"),
-                           NSTextField(labelWithString: "Menu Name"),
-                           NSTextField(labelWithString: "URL or Local File")])
+        grid.addRow(with: [NSTextField(labelWithString: AppLocalization.string("help.external.slot")),
+                           NSTextField(labelWithString: AppLocalization.string("help.external.menuName")),
+                           NSTextField(labelWithString: AppLocalization.string("help.external.target"))])
         for index in 0..<6 {
             let entry = entries[index]
             let name = NSTextField(string: entry.name)
             let target = NSTextField(string: entry.target)
-            name.setAccessibilityLabel("External Help \(index + 1) name")
-            target.setAccessibilityLabel("External Help \(index + 1) URL or file")
+            name.setAccessibilityLabel(AppLocalization.string("help.external.nameLabel", [index + 1]))
+            target.setAccessibilityLabel(AppLocalization.string("help.external.targetLabel", [index + 1]))
             nameFields.append(name); targetFields.append(target)
             grid.addRow(with: [NSTextField(labelWithString: "\(index + 1)"), name, target])
         }
@@ -74,7 +74,7 @@ final class ExternalHelpWindowController: NSWindowController {
         grid.column(at: 1).width = 180
         grid.column(at: 2).width = 390
         root.addSubview(grid)
-        let save = NSButton(title: "Save", target: self, action: #selector(saveEntries))
+        let save = NSButton(title: AppLocalization.string("help.external.save"), target: self, action: #selector(saveEntries))
         save.keyEquivalent = "\r"; save.translatesAutoresizingMaskIntoConstraints = false
         root.addSubview(save)
         NSLayoutConstraint.activate([
@@ -90,7 +90,7 @@ final class ExternalHelpWindowController: NSWindowController {
         let entries = (0..<6).map { index in
             let name = nameFields[index].stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
             return ExternalHelpEntry(
-                name: name.isEmpty ? "External Help \(index + 1)" : name,
+                name: name.isEmpty ? AppLocalization.string("help.external.defaultName", [index + 1]) : name,
                 target: targetFields[index].stringValue.trimmingCharacters(in: .whitespacesAndNewlines))
         }
         onSave(entries); close()
