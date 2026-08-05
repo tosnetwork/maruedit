@@ -55,6 +55,26 @@ final class StatusBarViewTests: XCTestCase {
         XCTAssertEqual(status.displayedLanguageProfileText, "Swift · Swift")
     }
 
+    func testHidemaruMetricsCharacterCodeAndInteractiveSegments() async {
+        let status = StatusBarView(frame: NSRect(x: 0, y: 0, width: 1100, height: 24))
+        let delegate = Delegate(); status.delegate = delegate
+        status.updateDocumentMetrics(text: "A日\nthird", fontSize: 15)
+        status.updateCursor(EditorCursorState(
+            lineNumber: 1, displayColumn: 2, utf16Offset: 1,
+            selectedCharacterCount: 2, selectedUTF16Length: 2,
+            selectionRangeCount: 1, selectedLineCount: 2))
+        status.layoutSubtreeIfNeeded()
+
+        XCTAssertEqual(status.displayedTotalsText, "2 lines · 8 chars")
+        XCTAssertEqual(status.displayedCharacterCodeText, "U+65E5")
+        XCTAssertEqual(status.displayedFontSizeText, "15 pt")
+        XCTAssertTrue(status.displayedSelectionText.contains("2 lines"))
+        for control: StatusBarControl in [.cursorPosition, .characterCode, .inputMode, .fontSize] {
+            XCTAssertNotNil(status.frame(for: control)); status.activate(control)
+        }
+        XCTAssertEqual(delegate.controls, [.cursorPosition, .characterCode, .inputMode, .fontSize])
+    }
+
     func testEveryFormatFieldRoutesAsAClickableControl() async {
         let status = StatusBarView(frame: NSRect(x: 0, y: 0, width: 900, height: 24))
         let delegate = Delegate()
@@ -117,6 +137,7 @@ final class EditorCursorStateTests: XCTestCase {
 
         XCTAssertEqual(delegate.state, EditorCursorState(
             lineNumber: 1, displayColumn: 7, utf16Offset: 2,
-            selectedCharacterCount: 2, selectedUTF16Length: 3, selectionRangeCount: 2))
+            selectedCharacterCount: 2, selectedUTF16Length: 3,
+            selectionRangeCount: 2, selectedLineCount: 2))
     }
 }

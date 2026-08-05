@@ -10,4 +10,18 @@ struct EditorCursorState: Equatable {
     let selectedCharacterCount: Int
     let selectedUTF16Length: Int
     let selectionRangeCount: Int
+    let selectedLineCount: Int
+
+    init(
+        lineNumber: Int, displayColumn: Int, utf16Offset: Int,
+        selectedCharacterCount: Int, selectedUTF16Length: Int,
+        selectionRangeCount: Int, selectedLineCount: Int = 0
+    ) {
+        self.lineNumber = lineNumber; self.displayColumn = displayColumn
+        self.utf16Offset = utf16Offset
+        self.selectedCharacterCount = selectedCharacterCount
+        self.selectedUTF16Length = selectedUTF16Length
+        self.selectionRangeCount = selectionRangeCount
+        self.selectedLineCount = selectedLineCount
+    }
 }

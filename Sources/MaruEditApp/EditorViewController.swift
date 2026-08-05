@@ -1000,7 +1000,13 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
                     $1, NSRange(location: 0, length: ns.length))).count
             },
             selectedUTF16Length: ranges.reduce(0) { $0 + $1.length },
-            selectionRangeCount: ranges.count
+            selectionRangeCount: ranges.count,
+            selectedLineCount: ranges.reduce(0) { count, range in
+                guard range.length > 0 else { return count }
+                return count + ns.substring(with: NSIntersectionRange(
+                    range, NSRange(location: 0, length: ns.length)))
+                    .reduce(1) { $1 == "\n" ? $0 + 1 : $0 }
+            }
         ))
     }
 

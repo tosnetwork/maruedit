@@ -1342,6 +1342,8 @@ final class MainWindowController: NSWindowController,
                 width: editorVC.effectiveTabWidth)
             statusBar.updateReadOnly(doc.isReadOnly)
             statusBar.updateLargeFileMode(doc.largeFileMode)
+            statusBar.updateDocumentMetrics(
+                text: doc.content, fontSize: editorVC.currentEditorFont.pointSize)
         }
     }
 
@@ -1389,6 +1391,18 @@ final class MainWindowController: NSWindowController,
     ) {
         let menu: NSMenu
         switch control {
+        case .cursorPosition:
+            showGoToLine(); return
+        case .characterCode:
+            let alert = NSAlert()
+            alert.messageText = "Character Code"
+            alert.informativeText = statusBar.characterCodeDetail
+            alert.addButton(withTitle: "OK")
+            alert.beginSheetModal(for: window!); return
+        case .inputMode:
+            toggleInputMode(); return
+        case .fontSize:
+            showFontPanel(); return
         case .largeFileMode:
             menu = buildLargeFileModeMenu()
         case .encoding:
@@ -1578,6 +1592,8 @@ final class MainWindowController: NSWindowController,
             tabBar.updateTab(at: curIdx, item: TabItem(title: doc.displayName, isModified: doc.isModified))
             scheduleRecoverySaveIfUnnamed(doc)
             refreshOutline(for: doc)
+            statusBar.updateDocumentMetrics(
+                text: doc.content, fontSize: editorVC.currentEditorFont.pointSize)
         }
         scheduleSessionSave()
         if vc === editorVC { secondaryEditorVC?.synchronizeSharedDocumentState() }

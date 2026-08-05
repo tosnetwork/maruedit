@@ -1,0 +1,92 @@
+# Hidemaru Chrome Parity Matrix
+
+Baseline: Hidemaru Editor 9.57 official help, compared with MaruEdit `main`.
+This matrix covers application chrome only: menus, command toolbar, function-key
+strip, and status bar. Windows-only shell integrations use a native macOS
+equivalent and must never be reported as byte-for-byte parity.
+
+## Menu bar
+
+Hidemaru's documented top-level business menus are File, Edit, Convert,
+View, Insert, Search, Highlight, Bookmark, Tools, Window, Macro, Other, and
+Help. macOS additionally requires the application menu; MaruEdit keeps that
+native menu before the Hidemaru-compatible business menus.
+
+| Hidemaru menu | MaruEdit today | Gap |
+|---|---|---|
+| File | File | Missing partial open, close-and-open, append save/read, save-and-exit variants, reload, properties/rename, project/desktop histories, read-only/view/binary modes |
+| Edit | Edit | Core clipboard/Undo and line editing exist; missing clipboard history, quote copy/paste, restore deletion, kana/CapsLock correction and several selection commands |
+| Convert | Mixed into Edit > Lines | Missing dedicated menu and half/full-width, hiragana/katakana, Tab/space conversions |
+| View | View | Wrapping, invisibles, splits exist; missing ruler modes, tab-stop display, vertical/column layouts and several pane commands |
+| Insert | None | Missing date/time, page break, control-code and file insertion menu |
+| Search | Named Find | Search/replace/grep core exists; missing Hidemaru hierarchy, search flags, highlight/refine variants and edit-mark navigation |
+| Highlight | None | Color markers exist but need a dedicated compatible menu; highlight-list commands are missing |
+| Bookmark | Mixed into Edit | Bookmark core exists but needs compatible top-level placement and list/organize operations |
+| Tools | Empty dynamic menu | External commands exist; project/tag/compare commands need compatible grouping and command-list access |
+| Window | Minimal macOS Window | Tab cycling exists; missing tab list, close-range entries in menu, pane focus and desktop/window arrangement equivalents |
+| Macro | Dynamic Macro menu | Recording/playback and registration management remain incomplete |
+| Other | None | Settings, file-type profiles, key assignment, menu editing and command list must be grouped here |
+| Help | Native About only | Missing MaruEdit help, macro help, shortcut/command reference and update/support entries |
+
+Official menu pages contain roughly 297 command references across these
+menus. MaruEdit currently registers 93 stable command IDs. Duplicate menu
+placements mean this is not a one-to-one command count, but it establishes
+that functional parity is not complete.
+
+## Toolbar and function-key strip
+
+| Capability | Hidemaru | MaruEdit today | Status |
+|---|---|---|---|
+| Default editing buttons | File, clipboard, search/navigation groups | 21 colored SF Symbol buttons in similar groups | Partial |
+| Add any command | Almost every command is eligible | Fixed candidate list | Missing |
+| Reorder buttons | Supported | Not supported | Missing |
+| Add/remove separators | Supported | Fixed separators | Missing |
+| Hide/remove buttons | Supported | Supported through context menu | Present |
+| Reset defaults | Supported | Supported | Present |
+| Icon size/DPI | Automatic plus size choices | Native scaling only | Partial/native equivalent |
+| Text-only/fallback labels | Supported through definition JSON | Tooltip/accessibility label only | Missing |
+| Search box in toolbar | Supported/configurable | Find Bar is separate | Partial |
+| Floating toolbar | Supported on Windows | No native equivalent | Intentional platform difference |
+| Function-key strip | Configurable and can merge with status bar | Six fixed F-key entries | Partial |
+
+## Status bar
+
+| Field or action | Hidemaru | MaruEdit today | Status |
+|---|---|---|---|
+| Encoding, line ending, BOM | Display and click menus | Display and click menus | Present |
+| Read-only/view mode | Conditional state | Read-only state | Partial |
+| Cursor line/column | Display; click opens Go To | Display only | Partial |
+| Selection characters/ranges | Display | Display | Present |
+| Selection line count/BOX dimensions | Display | Missing | Missing |
+| Total line/character count | Optional fields | Missing | Missing |
+| Character code at cursor | Display; click details | Missing | Missing |
+| Insert/overwrite | Display; click toggles | Display only | Partial |
+| Font size | Display; click adjustment | Missing | Missing |
+| File-type profile | Display; click list | Display; click language/profile menu | Partial |
+| CapsLock | Optional field | Missing | Missing |
+| Vertical/horizontal and column count | Display/click | Missing; vertical mode is not production-ready | Missing |
+| Macro recording | Conditional state/click | Missing | Missing |
+| Large-file mode | No direct equivalent | MaruEdit-specific safety field | Native addition |
+| Configurable fields/clickability | Supported | Fixed layout | Missing |
+| Merge with function-key strip | Supported | Separate rows | Missing |
+
+## Acceptance gates
+
+1. Every compatible Hidemaru menu entry has a stable `CommandID`, enabled
+   state, menu placement, documentation, and an executable test.
+2. Platform-specific entries have a documented native mapping or an explicit
+   unsupported reason; placeholders do not count.
+3. Toolbar configuration stores ordered command IDs and separators, supports
+   add/remove/reorder/reset, and reflects command enabled/toggle state.
+4. Status fields are individually configurable, interactive where Hidemaru is
+   interactive, and remain correct across tabs, IME, BOX/multi-selection,
+   encodings, large files, and profile changes.
+5. Default and customized chrome have screenshot baselines in light/dark and
+   narrow/wide windows, plus keyboard-only and accessibility verification.
+
+## Primary sources
+
+- Hidemaru 9.57 menu pages (`225_amnl*.html`), official help
+- Toolbar detail and toolbar design, official help
+- Status bar detail (`070_Env_Win_Statusbar.html`), official help
+- Command value list and tab/window management, official help

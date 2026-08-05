@@ -2,6 +2,7 @@ import AppKit
 import MaruEditCore
 
 enum StatusBarControl: CaseIterable {
+    case cursorPosition, characterCode, inputMode, fontSize
     case largeFileMode, encoding, byteOrderMark, lineEnding, languageProfile
 }
 
@@ -18,6 +19,9 @@ final class StatusBarView: NSView {
     private let selectionLabel = NSTextField(labelWithString: "")
     private let indentLabel = NSTextField(labelWithString: "Spaces: 4")
     private let inputModeLabel = NSTextField(labelWithString: "INS")
+    private let totalsLabel = NSTextField(labelWithString: "1 lines · 0 chars")
+    private let characterCodeLabel = NSTextField(labelWithString: "")
+    private let fontSizeLabel = NSTextField(labelWithString: "13 pt")
     private let langLabel = NSTextField(labelWithString: "Plain Text")
     private let encLabel = NSTextField(labelWithString: "UTF-8")
     private let bomLabel = NSTextField(labelWithString: "No BOM")
@@ -25,6 +29,7 @@ final class StatusBarView: NSView {
     private let readOnlyLabel = NSTextField(labelWithString: "Read-Only")
     private let largeFileModeLabel = NSTextField(labelWithString: "Reduced Features")
     private var cursorText = "Ln 1, Col 1"
+    private var documentText = ""
     private var messageWorkItem: DispatchWorkItem?
 
     var displayedLeadingText: String { lineColLabel.stringValue }
@@ -34,6 +39,10 @@ final class StatusBarView: NSView {
     var displayedLineEndingText: String { lineEndingLabel.stringValue }
     var displayedLanguageProfileText: String { langLabel.stringValue }
     var displayedInputModeText: String { inputModeLabel.stringValue }
+    var displayedTotalsText: String { totalsLabel.stringValue }
+    var displayedCharacterCodeText: String { characterCodeLabel.stringValue }
+    var characterCodeDetail: String { characterCodeLabel.toolTip ?? characterCodeLabel.stringValue }
+    var displayedFontSizeText: String { fontSizeLabel.stringValue }
     var displayedLargeFileModeText: String? {
         largeFileModeLabel.isHidden ? nil : largeFileModeLabel.stringValue
     }
@@ -56,6 +65,9 @@ final class StatusBarView: NSView {
         selectionLabel.frame = NSRect(x: 122, y: midY, width: 130, height: 16)
         indentLabel.frame = NSRect(x: 255, y: midY, width: 85, height: 16)
         inputModeLabel.frame = NSRect(x: 342, y: midY, width: 34, height: 16)
+        totalsLabel.frame = NSRect(x: 380, y: midY, width: 125, height: 16)
+        characterCodeLabel.frame = NSRect(x: 508, y: midY, width: 70, height: 16)
+        fontSizeLabel.frame = NSRect(x: 580, y: midY, width: 45, height: 16)
 
         var right = bounds.width - 14
         for label in [langLabel, encLabel, bomLabel, lineEndingLabel, largeFileModeLabel] {
@@ -71,7 +83,8 @@ final class StatusBarView: NSView {
     }
 
     private func setup() {
-        let labels = [lineColLabel, selectionLabel, indentLabel, inputModeLabel, langLabel, encLabel,
+        let labels = [lineColLabel, selectionLabel, indentLabel, inputModeLabel,
+                      totalsLabel, characterCodeLabel, fontSizeLabel, langLabel, encLabel,
                       bomLabel, lineEndingLabel, readOnlyLabel, largeFileModeLabel]
         for label in labels {
             label.font = Theme.uiFontSmall
@@ -97,6 +110,10 @@ final class StatusBarView: NSView {
         selectionLabel.setAccessibilityLabel("Selection count")
         inputModeLabel.setAccessibilityLabel("Input mode: insert")
         inputModeLabel.toolTip = "Insert mode; overwrite mode is not enabled"
+        for label in [lineColLabel, inputModeLabel, characterCodeLabel, fontSizeLabel] {
+            label.textColor = Theme.accent
+            label.setAccessibilityRole(.button)
+        }
         readOnlyLabel.textColor = .systemOrange
         readOnlyLabel.toolTip = "This file is read-only on disk; use Save As to save changes"
         readOnlyLabel.isHidden = true
@@ -110,10 +127,14 @@ final class StatusBarView: NSView {
     func applyTheme() {
         layer?.backgroundColor = Theme.statusBg.cgColor
         for label in [lineColLabel, selectionLabel, indentLabel, inputModeLabel,
+                      totalsLabel, characterCodeLabel, fontSizeLabel,
                       langLabel, encLabel, bomLabel, lineEndingLabel] {
             label.textColor = Theme.statusText
         }
         for label in [encLabel, bomLabel, lineEndingLabel, langLabel] {
+            label.textColor = Theme.accent
+        }
+        for label in [lineColLabel, inputModeLabel, characterCodeLabel, fontSizeLabel] {
             label.textColor = Theme.accent
         }
     }
@@ -130,8 +151,31 @@ final class StatusBarView: NSView {
             selectionLabel.stringValue = "Sel \(state.selectedCharacterCount)"
         }
         lineColLabel.toolTip = "UTF-16 offset: \(state.utf16Offset)"
+        updateCharacterCode(at: state.utf16Offset)
+        if state.selectedLineCount > 0 {
+            selectionLabel.stringValue += " · \(state.selectedLineCount) lines"
+        }
         selectionLabel.toolTip = "Selected UTF-16 units: \(state.selectedUTF16Length)"
         needsLayout = true
+    }
+
+    func updateDocumentMetrics(text: String, fontSize: CGFloat) {
+        documentText = text
+        let lines = text.isEmpty ? 1 : text.reduce(1) { $1 == "\n" ? $0 + 1 : $0 }
+        totalsLabel.stringValue = "\(lines) lines · \(text.count) chars"
+        fontSizeLabel.stringValue = "\(Int(fontSize.rounded())) pt"
+        needsLayout = true
+    }
+
+    private func updateCharacterCode(at utf16Offset: Int) {
+        let ns = documentText as NSString
+        guard utf16Offset >= 0, utf16Offset < ns.length else {
+            characterCodeLabel.stringValue = ""; return
+        }
+        let value = ns.substring(with: ns.rangeOfComposedCharacterSequence(at: utf16Offset))
+        let scalars = value.unicodeScalars.map { String(format: "U+%04X", $0.value) }
+        characterCodeLabel.stringValue = scalars.count == 1 ? scalars[0] : "\(scalars.count) codes"
+        characterCodeLabel.toolTip = scalars.joined(separator: " ")
     }
 
     func showTransientMessage(_ message: String, duration: TimeInterval = 1.5) {
@@ -217,6 +261,10 @@ final class StatusBarView: NSView {
 
     func frame(for control: StatusBarControl) -> NSRect? {
         switch control {
+        case .cursorPosition: return lineColLabel.frame
+        case .characterCode: return characterCodeLabel.stringValue.isEmpty ? nil : characterCodeLabel.frame
+        case .inputMode: return inputModeLabel.frame
+        case .fontSize: return fontSizeLabel.frame
         case .largeFileMode:
             return largeFileModeLabel.isHidden ? nil : largeFileModeLabel.frame
         case .encoding: return encLabel.frame
