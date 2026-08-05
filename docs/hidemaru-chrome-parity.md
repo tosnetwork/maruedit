@@ -18,7 +18,7 @@ passing MaruEdit regression tests from exhaustive Hidemaru feature parity.
 
 | Area | ✅ Complete | 🟡 Partial/native | ❌ Incomplete |
 |---|---:|---:|---:|
-| Menu rows | 1 | 7 | 5 |
+| Menu rows | 1 | 8 | 4 |
 | Toolbar/function-key rows | 9 | 3 | 0 |
 | Status-bar rows | 16 | 0 | 0 |
 | Acceptance gates | 1 | 2 | 2 |
@@ -34,7 +34,7 @@ native menu before the Hidemaru-compatible business menus.
 |---|---|---|---|
 | File | Reload, properties, rename, View Mode, append save/read, bounded partial open, editable hexadecimal binary mode, save/close variants, recent projects, and workspace history | 🟡 Partial | Build an official File-command inventory and verify every encoding, history, desktop/workspace, and platform-specific entry one by one. |
 | Edit | Undo/clipboard, line editing, histories, quoted clipboard, deletion restore, selections, Caps Lock correction, and native IME reconversion | ❌ Incomplete | Add repeat-last-operation, append cut/copy, delete-before/after-cursor variants, invert selection, multi-selection reservation, BOX paste, and paste-with-history variants. Physical Caps Lock remains macOS-owned. |
-| Convert | Case, generic half/full-width, hiragana/katakana, and Tab/space conversions | ❌ Incomplete | Add alphanumeric/symbol/space-only width conversion, katakana-only width conversion, conversion dialogs, and extensible conversion-module behavior. |
+| Convert | Case, generic and alphanumeric/symbol/space-only half/full-width, katakana-only half/full-width, hiragana/katakana, and Tab/space conversions | 🟡 Partial | Selective conversion commands are implemented and tested without modifying unrelated kana/Latin text; conversion-dialog presets and extensible conversion-module behavior remain. |
 | View | Wrapping, invisibles, ruler marks, profile tab stops, editable vertical writing, continuous column flow, splits, chrome visibility, and output-pane focus | 🟡 Partial | Complete the official view/frame inventory and native mappings; browser/file-manager frame variants and all display configuration have not been audited one by one. |
 | Insert | Date/time, page break, C0/DEL control codes, and encoding-aware file-content insertion | 🟡 Partial | The implemented subset is tested, but the official insertion-command inventory has not been exhaustively mapped. |
 | Search | Search/replace/grep, case/word/regex/fuzzy flags, return to search start, edit marks, all-match operations, and persistent ranges | 🟡 Partial | Map and implement the remaining fine-grained Hidemaru search, marker, candidate, and result commands. |

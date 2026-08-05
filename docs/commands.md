@@ -63,6 +63,10 @@ significantly, replace this with a small script that generates it from
 | `convert.katakana` | Convert to Katakana | Convert | — | `LineEditCommand.katakana` |
 | `convert.tabsToSpaces` | Convert Tabs to Spaces | Convert | — | `LineEditCommand.tabsToSpaces` |
 | `convert.spacesToTabs` | Convert Leading Spaces to Tabs | Convert | — | `LineEditCommand.spacesToTabs` |
+| `convert.halfWidthAlphanumeric` | Alphanumerics/Symbols/Spaces to Half-Width | Convert | — | Selective width conversion that preserves kana |
+| `convert.fullWidthAlphanumeric` | Alphanumerics/Symbols/Spaces to Full-Width | Convert | — | Selective width conversion that preserves kana |
+| `convert.halfWidthKatakana` | Katakana Only to Half-Width | Convert | — | Selective kana conversion that preserves Latin text |
+| `convert.fullWidthKatakana` | Katakana Only to Full-Width | Convert | — | Selective kana conversion that preserves Latin text |
 | `file.clearRecoveryData` | Clear Recovery Data... | File | — | `AppCoordinator.clearRecoveryData()` |
 | `file.pageSetup` | Page Setup… | File | — | `AppCoordinator.showPageSetup()` |
 | `file.print` | Print… | File | — | `AppCoordinator.printDocument()` |

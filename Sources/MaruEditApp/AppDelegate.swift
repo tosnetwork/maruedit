@@ -411,6 +411,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         convertMenu.addItem(.separator())
         for id: CommandID in [
             .convertHalfWidth, .convertFullWidth, .convertHiragana, .convertKatakana,
+            .convertHalfWidthAlphanumeric, .convertFullWidthAlphanumeric,
+            .convertHalfWidthKatakana, .convertFullWidthKatakana,
             .convertTabsToSpaces, .convertSpacesToTabs,
         ] { convertMenu.addItem(commandItem(id)) }
         convertItem.submenu = convertMenu

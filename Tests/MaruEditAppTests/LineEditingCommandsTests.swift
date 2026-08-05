@@ -102,6 +102,20 @@ final class LineEditingCommandsTests: XCTestCase {
         XCTAssertEqual(tabs.textView.string, "\talpha\n\t\tbeta")
     }
 
+    func testSelectiveAlphanumericAndKatakanaWidthConversions() async {
+        let alphanumeric = editor("ＡＢＣ　１２３ カタカナ")
+        alphanumeric.performLineCommand(.halfWidthAlphanumeric)
+        XCTAssertEqual(alphanumeric.textView.string, "ABC 123 カタカナ")
+        alphanumeric.performLineCommand(.fullWidthAlphanumeric)
+        XCTAssertEqual(alphanumeric.textView.string, "ＡＢＣ　１２３　カタカナ")
+
+        let katakana = editor("ABC カタカナ。 １２３")
+        katakana.performLineCommand(.halfWidthKatakana)
+        XCTAssertEqual(katakana.textView.string, "ABC ｶﾀｶﾅ｡ １２３")
+        katakana.performLineCommand(.fullWidthKatakana)
+        XCTAssertEqual(katakana.textView.string, "ABC カタカナ。 １２３")
+    }
+
     func testSortAndReverseLines() async {
         let sort = editor("c\na\nb\n")
         sort.performLineCommand(.sort)

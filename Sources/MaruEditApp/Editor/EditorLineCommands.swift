@@ -5,6 +5,7 @@ enum LineEditCommand {
     case delete, duplicate, moveUp, moveDown, join
     case trimTrailingWhitespace, uppercase, lowercase, titlecase, sort, reverse
     case halfWidth, fullWidth, hiragana, katakana, tabsToSpaces, spacesToTabs
+    case halfWidthAlphanumeric, fullWidthAlphanumeric, halfWidthKatakana, fullWidthKatakana
     case indent, outdent, toggleComment
 }
 
@@ -117,6 +118,14 @@ extension EditorViewController {
             return (range, original, original.applyingTransform(.fullwidthToHalfwidth, reverse: false) ?? original)
         case .fullWidth:
             return (range, original, original.applyingTransform(.fullwidthToHalfwidth, reverse: true) ?? original)
+        case .halfWidthAlphanumeric:
+            return (range, original, convertAlphanumericWidth(original, toFullWidth: false))
+        case .fullWidthAlphanumeric:
+            return (range, original, convertAlphanumericWidth(original, toFullWidth: true))
+        case .halfWidthKatakana:
+            return (range, original, convertKatakanaWidth(original, toFullWidth: false))
+        case .fullWidthKatakana:
+            return (range, original, convertKatakanaWidth(original, toFullWidth: true))
         case .hiragana:
             return (range, original, original.applyingTransform(.hiraganaToKatakana, reverse: true) ?? original)
         case .katakana:
@@ -177,6 +186,38 @@ extension EditorViewController {
         let trailing = text.hasSuffix("\n")
         let result = logicalLines(text).map(transform).joined(separator: "\n")
         return result + (trailing ? "\n" : "")
+    }
+
+    private func convertAlphanumericWidth(_ text: String, toFullWidth: Bool) -> String {
+        String(String.UnicodeScalarView(text.unicodeScalars.map { scalar in
+            if toFullWidth {
+                if scalar.value == 0x20 { return UnicodeScalar(0x3000)! }
+                if (0x21...0x7E).contains(scalar.value) { return UnicodeScalar(scalar.value + 0xFEE0)! }
+            } else {
+                if scalar.value == 0x3000 { return UnicodeScalar(0x20)! }
+                if (0xFF01...0xFF5E).contains(scalar.value) { return UnicodeScalar(scalar.value - 0xFEE0)! }
+            }
+            return scalar
+        }))
+    }
+
+    private func convertKatakanaWidth(_ text: String, toFullWidth: Bool) -> String {
+        var result = ""
+        var run = ""
+        func flush() -> String {
+            defer { run.removeAll(keepingCapacity: true) }
+            return run.applyingTransform(.fullwidthToHalfwidth, reverse: toFullWidth) ?? run
+        }
+        for character in text {
+            let eligible = character.unicodeScalars.allSatisfy { scalar in
+                toFullWidth ? (0xFF61...0xFF9F).contains(scalar.value)
+                    : (0x30A0...0x30FF).contains(scalar.value) || (0x3001...0x3002).contains(scalar.value)
+            }
+            if eligible { run.append(character) }
+            else { result += flush(); result.append(character) }
+        }
+        result += flush()
+        return result
     }
 
     private func reorderLines(_ text: String, reorder: ([String]) -> [String]) -> String {

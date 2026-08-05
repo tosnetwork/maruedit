@@ -138,6 +138,10 @@ extension CommandID {
     static let convertKatakana = CommandID("convert.katakana")
     static let convertTabsToSpaces = CommandID("convert.tabsToSpaces")
     static let convertSpacesToTabs = CommandID("convert.spacesToTabs")
+    static let convertHalfWidthAlphanumeric = CommandID("convert.halfWidthAlphanumeric")
+    static let convertFullWidthAlphanumeric = CommandID("convert.fullWidthAlphanumeric")
+    static let convertHalfWidthKatakana = CommandID("convert.halfWidthKatakana")
+    static let convertFullWidthKatakana = CommandID("convert.fullWidthKatakana")
     static let insertDateTime = CommandID("insert.dateTime")
     static let insertPageBreak = CommandID("insert.pageBreak")
     static let insertFileContents = CommandID("insert.fileContents")
@@ -390,6 +394,10 @@ enum AppCommands {
             (.convertKatakana, "Convert to Katakana", .katakana),
             (.convertTabsToSpaces, "Convert Tabs to Spaces", .tabsToSpaces),
             (.convertSpacesToTabs, "Convert Leading Spaces to Tabs", .spacesToTabs),
+            (.convertHalfWidthAlphanumeric, "Alphanumerics/Symbols/Spaces to Half-Width", .halfWidthAlphanumeric),
+            (.convertFullWidthAlphanumeric, "Alphanumerics/Symbols/Spaces to Full-Width", .fullWidthAlphanumeric),
+            (.convertHalfWidthKatakana, "Katakana Only to Half-Width", .halfWidthKatakana),
+            (.convertFullWidthKatakana, "Katakana Only to Full-Width", .fullWidthKatakana),
         ]
         for (id, title, command) in conversions {
             registry.register(CommandDefinition(id: id, title: title) {
