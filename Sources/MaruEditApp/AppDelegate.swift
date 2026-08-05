@@ -297,6 +297,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         winMenu.addItem(.separator())
         winMenu.addItem(commandItem(.windowNextTab))
         winMenu.addItem(commandItem(.windowPreviousTab))
+        winMenu.addItem(commandItem(.windowTabList))
+        winMenu.addItem(.separator())
+        winMenu.addItem(commandItem(.windowCloseOtherTabs))
+        winMenu.addItem(commandItem(.windowCloseTabsLeft))
+        winMenu.addItem(commandItem(.windowCloseTabsRight))
+        winMenu.addItem(.separator())
+        winMenu.addItem(commandItem(.windowFocusEditor))
+        winMenu.addItem(commandItem(.windowFocusUtilityPane))
         winItem.submenu = winMenu
         main.addItem(winItem)
 

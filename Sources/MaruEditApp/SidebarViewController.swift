@@ -95,6 +95,11 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
     private var markerResultText = "No color markers."
     private var searchResultText = ""
 
+    func focusCurrentPane(in window: NSWindow?) {
+        _ = view
+        window?.makeFirstResponder(outlineView)
+    }
+
     override func loadView() {
         let wrapper = NSView()
         wrapper.wantsLayer = true

@@ -950,6 +950,34 @@ final class MainWindowController: NSWindowController,
         tabBarDidSelectTab(at: destination)
     }
 
+    func showTabList() {
+        let documents = documentController.documents
+        guard documents.count > 1 else { showStatusMessage(curDoc?.displayName ?? "No open document"); return }
+        let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 420, height: 26))
+        popup.addItems(withTitles: documents.enumerated().map { index, document in
+            "\(index + 1). \(document.isModified ? "● " : "")\(document.displayName)"
+        })
+        popup.selectItem(at: curIdx)
+        let alert = NSAlert()
+        alert.messageText = "Tab List"
+        alert.informativeText = "Select an open document."
+        alert.accessoryView = popup
+        alert.addButton(withTitle: "Select"); alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        tabBarDidSelectTab(at: popup.indexOfSelectedItem)
+    }
+
+    func closeTabs(_ scope: TabCloseScope) {
+        tabBarDidRequestClose(scope, at: curIdx)
+    }
+
+    func focusEditor() { window?.makeFirstResponder(editorVC.textView) }
+
+    func focusUtilityPane() {
+        if sidebarVC.view.isHidden || splitView.isSubviewCollapsed(sidebarVC.view) { toggleSidebar() }
+        sidebarVC.focusCurrentPane(in: window)
+    }
+
     func insertDateTime(now: Date = Date()) {
         let formatter = DateFormatter()
         formatter.locale = Locale.current

@@ -125,6 +125,12 @@ final class AppCoordinator {
     func insertControlCode()          { ensureWindowControllerReady().insertControlCode() }
     func selectNextTab()              { ensureWindowControllerReady().selectRelativeTab(1) }
     func selectPreviousTab()          { ensureWindowControllerReady().selectRelativeTab(-1) }
+    func showTabList()                { ensureWindowControllerReady().showTabList() }
+    func closeOtherTabs()             { ensureWindowControllerReady().closeTabs(.others) }
+    func closeTabsLeft()              { ensureWindowControllerReady().closeTabs(.left) }
+    func closeTabsRight()             { ensureWindowControllerReady().closeTabs(.right) }
+    func focusEditor()                { ensureWindowControllerReady().focusEditor() }
+    func focusUtilityPane()           { ensureWindowControllerReady().focusUtilityPane() }
     func showPageSetup()              { ensureWindowControllerReady().showPageSetup() }
     func printDocument()              { ensureWindowControllerReady().printDocument() }
     func reloadDocument()             { ensureWindowControllerReady().reloadDocument() }
