@@ -103,6 +103,25 @@ final class ClassicWorkspaceTests: XCTestCase {
         XCTAssertTrue(buttons.allSatisfy { $0.imagePosition == .noImage && !$0.title.isEmpty })
     }
 
+    func testFunctionKeyStripHasTwelveConfigurableStableCommandSlots() async {
+        let controller = MainWindowController()
+        controller.setClassicFunctionKeyCommandsForTesting([.searchGrep, nil, .fileSave])
+        XCTAssertEqual(controller.classicFunctionKeyCommandsForTesting.count, 12)
+        XCTAssertEqual(Array(controller.classicFunctionKeyCommandsForTesting.prefix(3)),
+                       ["search.grep", nil, "file.save"])
+        let labels = descendants(of: try! XCTUnwrap(controller.window?.contentView))
+            .compactMap { ($0 as? NSButton)?.accessibilityLabel() }
+        XCTAssertTrue(labels.contains("F1 Grep"))
+        XCTAssertTrue(labels.contains("F2 Unassigned"))
+        XCTAssertTrue(labels.contains("F3 Save"))
+        var received: CommandID?
+        controller.onClassicToolbarCommand = { received = $0 }
+        controller.activateClassicFunctionKeyForTesting(0)
+        XCTAssertEqual(received, .searchGrep)
+        controller.activateClassicFunctionKeyForTesting(1)
+        XCTAssertEqual(received, .searchGrep, "an unassigned slot must be a no-op")
+    }
+
     func testClassicLightAndModernThemesSwitchWithoutChangingDocument() async {
         let controller = MainWindowController()
         controller.macroEditor.textView.string = "theme-safe content"

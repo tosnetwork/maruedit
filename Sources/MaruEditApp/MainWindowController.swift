@@ -220,12 +220,19 @@ final class MainWindowController: NSWindowController,
     }
     var classicToolbarLayoutForTesting: [String] { classicChrome.toolbarLayoutEntries }
     var classicToolbarDisplayModeForTesting: ToolbarDisplayMode { classicChrome.toolbarDisplayMode }
+    var classicFunctionKeyCommandsForTesting: [String?] { classicChrome.functionKeyCommandIDs }
 
     func setClassicToolbarLayoutForTesting(_ entries: [String]) {
         classicChrome.setToolbarLayoutForTesting(entries)
     }
     func setClassicToolbarDisplayModeForTesting(_ mode: ToolbarDisplayMode) {
         classicChrome.setToolbarDisplayModeForTesting(mode)
+    }
+    func setClassicFunctionKeyCommandsForTesting(_ ids: [CommandID?]) {
+        classicChrome.setFunctionKeyCommandsForTesting(ids)
+    }
+    func activateClassicFunctionKeyForTesting(_ index: Int) {
+        classicChrome.activateFunctionKeyForTesting(index)
     }
 
     func activateClassicToolbarCommandForTesting(_ command: CommandID) {

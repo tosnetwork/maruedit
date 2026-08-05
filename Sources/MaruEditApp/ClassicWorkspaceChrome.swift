@@ -84,12 +84,17 @@ final class ClassicWorkspaceChrome: NSView {
     var toolbarCommandIDs: [String] { toolbar.commandIDs.map(\.rawValue) }
     var toolbarLayoutEntries: [String] { toolbar.layoutEntries }
     var toolbarDisplayMode: ToolbarDisplayMode { toolbar.displayMode }
+    var functionKeyCommandIDs: [String?] { commandStrip.commandIDs }
 
     func activateToolbarCommand(_ command: CommandID) { toolbar.activate(command) }
     func setToolbarLayoutForTesting(_ entries: [String]) { toolbar.setLayoutForTesting(entries) }
     func setToolbarDisplayModeForTesting(_ mode: ToolbarDisplayMode) {
         toolbar.setDisplayModeForTesting(mode)
     }
+    func setFunctionKeyCommandsForTesting(_ ids: [CommandID?]) {
+        commandStrip.setCommandsForTesting(ids)
+    }
+    func activateFunctionKeyForTesting(_ index: Int) { commandStrip.activateSlotForTesting(index) }
 
     func applyVisibility(_ options: ClassicChromeOptions) {
         configuredVisibility = options
@@ -515,31 +520,57 @@ private final class CharacterRulerView: NSView {
 }
 
 private final class ClassicCommandStripView: NSView {
-    private let items: [(String, CommandID?)] = [
-        ("F1 Help", nil), ("F2 Save", .fileSave), ("F3 Find", .searchFind),
-        ("F4 Next", .searchFindNext), ("F5 Grep", .searchGrep), ("F6 Macro", .appMacroMenu),
+    private static let candidates: [(String, CommandID)] = [
+        ("Help", .appHelp), ("Save", .fileSave), ("Find", .searchFind),
+        ("Next", .searchFindNext), ("Previous", .searchFindPrevious),
+        ("Replace", .searchReplace), ("Grep", .searchGrep), ("Macro", .appMacroMenu),
+        ("Bookmark", .navigateToggleBookmark), ("Next Mark", .navigateNextBookmark),
+        ("Go to Line", .searchGoToLine), ("Fold", .navigateToggleFold),
+        ("Utility Pane", .viewToggleSidebar), ("Wrap", .viewToggleWrap),
+        ("Settings", .appSettings),
     ]
+    private static let defaultCommands: [CommandID?] = [
+        .appHelp, .fileSave, .searchFind, .searchFindNext, .searchGrep, .appMacroMenu,
+        .navigateToggleBookmark, .searchGoToLine, .searchReplace, .viewToggleSidebar,
+        .viewToggleWrap, .appSettings,
+    ]
+    private static let defaultsKey = "MaruClassicFunctionKeyCommands"
+    private var functionKeyLayout = FunctionKeyLayout(assignments: defaultCommands)
     private var buttons: [NSButton] = []
     var onCommand: ((CommandID) -> Void)?
+    var commandIDs: [String?] { functionKeyLayout.assignments.map { $0?.rawValue } }
 
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
         layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
-        for (index, item) in items.enumerated() {
-            let button = NSButton(title: item.0, target: self, action: #selector(activate(_:)))
+        let available = Set(Self.candidates.map(\.1))
+        if let values = UserDefaults.standard.array(forKey: Self.defaultsKey) as? [String] {
+            functionKeyLayout = FunctionKeyLayout(assignments: values.map { $0.isEmpty ? nil : CommandID($0) })
+                .normalized(available: available)
+        } else {
+            functionKeyLayout = functionKeyLayout.normalized(available: available)
+        }
+        rebuildButtons()
+        setAccessibilityRole(.group)
+        setAccessibilityLabel("Favorite command strip")
+    }
+
+    private func rebuildButtons() {
+        buttons.forEach { $0.removeFromSuperview() }; buttons.removeAll()
+        for (index, command) in functionKeyLayout.assignments.enumerated() {
+            let title = command.flatMap(title(for:)) ?? "Unassigned"
+            let button = NSButton(title: "F\(index + 1) \(title)", target: self, action: #selector(activate(_:)))
             button.font = .systemFont(ofSize: 10)
             button.alignment = .center
             button.bezelStyle = .inline
             button.isBordered = false
             button.tag = index
-            button.setAccessibilityLabel(item.0)
-            button.isEnabled = item.1 != nil
+            button.setAccessibilityLabel("F\(index + 1) \(title)")
+            button.isEnabled = command != nil
             buttons.append(button)
             addSubview(button)
         }
-        setAccessibilityRole(.group)
-        setAccessibilityLabel("Favorite command strip")
     }
 
     @available(*, unavailable)
@@ -554,7 +585,66 @@ private final class ClassicCommandStripView: NSView {
     }
 
     @objc private func activate(_ sender: NSButton) {
-        guard items.indices.contains(sender.tag), let command = items[sender.tag].1 else { return }
+        guard functionKeyLayout.assignments.indices.contains(sender.tag),
+              let command = functionKeyLayout.assignments[sender.tag] else { return }
+        onCommand?(command)
+    }
+
+    override func rightMouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        guard let slot = buttons.firstIndex(where: { $0.frame.contains(point) }) else {
+            super.rightMouseDown(with: event); return
+        }
+        let menu = NSMenu(title: "Customize F\(slot + 1)")
+        for (title, command) in Self.candidates {
+            let item = NSMenuItem(title: title, action: #selector(assignCommand(_:)), keyEquivalent: "")
+            item.target = self; item.representedObject = "\(slot)|\(command.rawValue)"
+            item.state = functionKeyLayout.assignments[slot] == command ? .on : .off
+            menu.addItem(item)
+        }
+        menu.addItem(.separator())
+        let clear = NSMenuItem(title: "Unassign F\(slot + 1)", action: #selector(clearCommand(_:)), keyEquivalent: "")
+        clear.target = self; clear.tag = slot; menu.addItem(clear)
+        let restore = NSMenuItem(title: "Restore Default Function Keys", action: #selector(restoreDefaults), keyEquivalent: "")
+        restore.target = self; menu.addItem(restore)
+        NSMenu.popUpContextMenu(menu, with: event, for: self)
+    }
+
+    @objc private func assignCommand(_ sender: NSMenuItem) {
+        guard let value = sender.representedObject as? String,
+              let separator = value.firstIndex(of: "|"),
+              let slot = Int(value[..<separator]), functionKeyLayout.assignments.indices.contains(slot) else { return }
+        functionKeyLayout.assignments[slot] = CommandID(String(value[value.index(after: separator)...]))
+        persistAndRebuild()
+    }
+
+    @objc private func clearCommand(_ sender: NSMenuItem) {
+        guard functionKeyLayout.assignments.indices.contains(sender.tag) else { return }
+        functionKeyLayout.assignments[sender.tag] = nil; persistAndRebuild()
+    }
+
+    @objc private func restoreDefaults() {
+        functionKeyLayout = FunctionKeyLayout(assignments: Self.defaultCommands); persistAndRebuild()
+    }
+
+    private func persistAndRebuild() {
+        UserDefaults.standard.set(functionKeyLayout.assignments.map { $0?.rawValue ?? "" }, forKey: Self.defaultsKey)
+        rebuildButtons(); needsLayout = true
+    }
+
+    private func title(for command: CommandID) -> String? {
+        Self.candidates.first { $0.1 == command }?.0
+    }
+
+    func setCommandsForTesting(_ commands: [CommandID?]) {
+        functionKeyLayout = FunctionKeyLayout(assignments: commands)
+            .normalized(available: Set(Self.candidates.map(\.1)))
+        rebuildButtons(); needsLayout = true
+    }
+
+    func activateSlotForTesting(_ index: Int) {
+        guard functionKeyLayout.assignments.indices.contains(index),
+              let command = functionKeyLayout.assignments[index] else { return }
         onCommand?(command)
     }
 }
