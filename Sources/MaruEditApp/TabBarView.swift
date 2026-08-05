@@ -17,6 +17,39 @@ struct TabItem: Equatable {
     let isModified: Bool
 }
 
+private final class AccessibleTabLabel: NSTextField {
+    var onPress: (() -> Void)?
+    var forwardsMouseToTabBar = true
+    var accessibilitySelectionValue: Bool?
+
+    override var acceptsFirstResponder: Bool { true }
+
+    override func accessibilityValue() -> String? {
+        accessibilitySelectionValue.map { $0 ? "selected" : "not selected" }
+            ?? super.accessibilityValue()
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        guard !isHidden, let onPress else { return false }
+        onPress()
+        return true
+    }
+
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 36 || event.keyCode == 76 || event.charactersIgnoringModifiers == " " {
+            onPress?()
+        } else {
+            super.keyDown(with: event)
+        }
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        if forwardsMouseToTabBar { superview?.mouseDown(with: event) } else { onPress?() }
+    }
+    override func mouseDragged(with event: NSEvent) { superview?.mouseDragged(with: event) }
+    override func mouseUp(with event: NSEvent) { superview?.mouseUp(with: event) }
+}
+
 final class TabBarView: NSView {
     weak var delegate: TabBarViewDelegate?
 
@@ -47,8 +80,8 @@ final class TabBarView: NSView {
 
     private var bgLayers: [NSView] = []
     private var accentLayers: [NSView] = []
-    private var titleLabels: [NSTextField] = []
-    private var closeLabels: [NSTextField] = []
+    private var titleLabels: [AccessibleTabLabel] = []
+    private var closeLabels: [AccessibleTabLabel] = []
     private var separators: [NSView] = []
     private let bottomBorder = NSView()
 
@@ -148,7 +181,7 @@ final class TabBarView: NSView {
     private func rebuildTabs() {
         clearAll()
 
-        for (_, tab) in tabs.enumerated() {
+        for (index, tab) in tabs.enumerated() {
             let bg = NSView()
             bg.wantsLayer = true
             addSubview(bg)
@@ -167,21 +200,28 @@ final class TabBarView: NSView {
             separators.append(sep)
 
             let displayTitle = tab.isModified ? "● \(tab.title)" : tab.title
-            let lbl = NSTextField(labelWithString: displayTitle)
+            let lbl = AccessibleTabLabel(labelWithString: displayTitle)
             lbl.font = NSFont.systemFont(ofSize: 12)
             lbl.lineBreakMode = .byTruncatingTail
             lbl.isBordered = false
             lbl.isEditable = false
             lbl.drawsBackground = false
+            lbl.setAccessibilityRole(.radioButton)
+            lbl.setAccessibilityLabel("Tab \(index + 1): \(tab.title)")
+            lbl.onPress = { [weak self] in self?.delegate?.tabBarDidSelectTab(at: index) }
             addSubview(lbl)
             titleLabels.append(lbl)
 
-            let close = NSTextField(labelWithString: "×")
+            let close = AccessibleTabLabel(labelWithString: "×")
             close.font = NSFont.systemFont(ofSize: 14, weight: .light)
             close.alignment = .center
             close.isBordered = false
             close.isEditable = false
             close.drawsBackground = false
+            close.forwardsMouseToTabBar = false
+            close.setAccessibilityRole(.button)
+            close.setAccessibilityLabel("Close tab \(index + 1): \(tab.title)")
+            close.onPress = { [weak self] in self?.delegate?.tabBarDidCloseTab(at: index) }
             addSubview(close)
             closeLabels.append(close)
         }
@@ -195,6 +235,8 @@ final class TabBarView: NSView {
         for (i, tab) in tabs.enumerated() where i < titleLabels.count {
             let displayTitle = tab.isModified ? "● \(tab.title)" : tab.title
             titleLabels[i].stringValue = displayTitle
+            titleLabels[i].setAccessibilityLabel("Tab \(i + 1): \(tab.title)")
+            closeLabels[i].setAccessibilityLabel("Close tab \(i + 1): \(tab.title)")
         }
     }
 
@@ -208,6 +250,7 @@ final class TabBarView: NSView {
             titleLabels[i].textColor = compactStyle
                 ? NSColor.labelColor : (active ? Theme.tabTextActive : Theme.tabText)
             titleLabels[i].font = NSFont.systemFont(ofSize: 12, weight: active ? .medium : .regular)
+            titleLabels[i].accessibilitySelectionValue = active
             closeLabels[i].isHidden = tabWidth < 42 || (i != hoveredIndex && !active)
             closeLabels[i].textColor = active ? Theme.tabText : Theme.tabText.withAlphaComponent(0.75)
             separators[i].isHidden = active
@@ -300,6 +343,9 @@ final class TabBarView: NSView {
     func setHoveredIndexForTesting(_ index: Int?) { hoveredIndex = index }
     var visibleCloseIndicesForTesting: [Int] {
         closeLabels.indices.filter { !closeLabels[$0].isHidden }
+    }
+    var accessibilityTabControlsForTesting: [(tab: NSView, close: NSView)] {
+        zip(titleLabels, closeLabels).map { ($0.0, $0.1) }
     }
 
     @objc private func placeAtTop() { position = .top }

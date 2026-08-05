@@ -3,6 +3,15 @@ import XCTest
 
 @MainActor
 final class TabBarParityTests: XCTestCase {
+    private final class Delegate: TabBarViewDelegate {
+        var selected: [Int] = []
+        var closed: [Int] = []
+        func tabBarDidSelectTab(at index: Int) { selected.append(index) }
+        func tabBarDidCloseTab(at index: Int) { closed.append(index) }
+        func tabBarDidMoveTab(from source: Int, to destination: Int) {}
+        func tabBarDidRequestClose(_ scope: TabCloseScope, at index: Int) {}
+        func tabBarLayoutOptionsDidChange() {}
+    }
     override func tearDown() {
         UserDefaults.standard.removeObject(forKey: "MaruTabBarPosition")
         UserDefaults.standard.removeObject(forKey: "MaruTabBarHideSingle")
@@ -54,6 +63,30 @@ final class TabBarParityTests: XCTestCase {
         XCTAssertEqual(bar.visibleCloseIndicesForTesting, [0, 1])
         bar.setHoveredIndexForTesting(nil)
         XCTAssertEqual(bar.visibleCloseIndicesForTesting, [0])
+    }
+
+    func testTabsAndCloseAffordancesAreKeyboardAndVoiceOverOperable() {
+        let bar = TabBarView(frame: NSRect(x: 0, y: 0, width: 500, height: 32))
+        let delegate = Delegate(); bar.delegate = delegate
+        bar.setTabs([
+            TabItem(title: "one.swift", isModified: false),
+            TabItem(title: "two.txt", isModified: true),
+        ], selectedIndex: 1)
+        bar.layoutSubtreeIfNeeded()
+
+        let controls = bar.accessibilityTabControlsForTesting
+        XCTAssertEqual(controls.count, 2)
+        XCTAssertTrue(controls.allSatisfy { $0.tab.acceptsFirstResponder })
+        XCTAssertEqual(controls[0].tab.accessibilityRole(), .radioButton)
+        XCTAssertEqual(controls[1].tab.accessibilityValue() as? String, "selected")
+        XCTAssertEqual(controls[0].close.accessibilityRole(), .button)
+        XCTAssertEqual(controls[0].tab.accessibilityLabel(), "Tab 1: one.swift")
+        XCTAssertEqual(controls[1].close.accessibilityLabel(), "Close tab 2: two.txt")
+
+        XCTAssertTrue(controls[0].tab.accessibilityPerformPress())
+        XCTAssertTrue(controls[1].close.accessibilityPerformPress())
+        XCTAssertEqual(delegate.selected, [0])
+        XCTAssertEqual(delegate.closed, [1])
     }
 
     func testRelativeTabSelectionWrapsInBothDirections() {
