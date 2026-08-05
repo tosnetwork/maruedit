@@ -34,6 +34,12 @@ folding, the Macro menu, utility-pane control, and Settings. Right-clicking it o
 show/hide checklist and restores the default layout. All product-specific
 actions use stable Command Registry identifiers.
 
+Icons use an original semantic palette instead of a monochrome strip: blue for
+file and navigation operations, yellow for folders, purple for print/replace/
+folding, red/orange for destructive or marker operations, green for directional
+search, cyan for Grep, and pink for macros. Hovering gives each 27 pt cell a
+subtle rounded highlight without changing its command color.
+
 ## Acceptance
 
 - The system titlebar contains no large icon-and-label toolbar.

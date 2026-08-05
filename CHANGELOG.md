@@ -10,7 +10,8 @@ semantic version tags.
 
 - Rebuilt Maru Classic around a compact in-window command bar above the tab row,
   with twenty-one grouped file/edit/search/navigation controls, persistent right-click
-  customization, and no oversized macOS titlebar toolbar.
+  customization, semantic color-coded icons, hover feedback, and no oversized
+  macOS titlebar toolbar.
 - Added native Page Setup and Print commands, presentation-only CSV/TSV table
   alignment, and non-destructive editing isolation for the current outline region.
 - Added executable vertical TextKit layout feasibility coverage and a bounded-memory

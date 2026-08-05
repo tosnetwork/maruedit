@@ -54,6 +54,20 @@ final class ClassicWorkspaceTests: XCTestCase {
         XCTAssertTrue(labels.contains("Print"))
     }
 
+    func testClassicToolbarUsesAColorCodedOriginalIconPalette() async {
+        let controller = MainWindowController()
+        controller.applyPreferences(.defaults)
+        let root = try! XCTUnwrap(controller.window?.contentView)
+        let toolbar = try! XCTUnwrap(descendants(of: root).first {
+            $0.accessibilityLabel() == "Maru Classic command toolbar"
+        })
+        let buttons = descendants(of: toolbar).compactMap { $0 as? NSButton }
+        XCTAssertEqual(buttons.count, 21)
+        let palette = Set(buttons.compactMap { $0.contentTintColor?.description })
+        XCTAssertGreaterThanOrEqual(palette.count, 8)
+        XCTAssertTrue(buttons.allSatisfy { $0.image != nil && $0.contentTintColor != nil })
+    }
+
     func testClassicLightAndModernThemesSwitchWithoutChangingDocument() async {
         let controller = MainWindowController()
         controller.macroEditor.textView.string = "theme-safe content"

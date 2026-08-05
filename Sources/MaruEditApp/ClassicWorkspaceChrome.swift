@@ -94,42 +94,43 @@ private final class ClassicToolbarView: NSView {
         let command: CommandID?
         let title: String
         let symbol: String
+        let tint: NSColor
         let responderAction: Selector?
     }
 
     private static let groups: [[Item]] = [
         [
-            Item(command: .fileNew, title: "New", symbol: "doc.badge.plus", responderAction: nil),
-            Item(command: .fileOpen, title: "Open", symbol: "folder", responderAction: nil),
-            Item(command: .fileSave, title: "Save", symbol: "square.and.arrow.down", responderAction: nil),
-            Item(command: .filePrint, title: "Print", symbol: "printer", responderAction: nil),
+            Item(command: .fileNew, title: "New", symbol: "doc.badge.plus", tint: .systemBlue, responderAction: nil),
+            Item(command: .fileOpen, title: "Open", symbol: "folder.fill", tint: .systemYellow, responderAction: nil),
+            Item(command: .fileSave, title: "Save", symbol: "square.and.arrow.down.fill", tint: .systemBlue, responderAction: nil),
+            Item(command: .filePrint, title: "Print", symbol: "printer.fill", tint: .systemPurple, responderAction: nil),
         ],
         [
-            Item(command: nil, title: "Undo", symbol: "arrow.uturn.backward", responderAction: Selector(("undo:"))),
-            Item(command: nil, title: "Redo", symbol: "arrow.uturn.forward", responderAction: Selector(("redo:"))),
+            Item(command: nil, title: "Undo", symbol: "arrow.uturn.backward", tint: .systemIndigo, responderAction: Selector(("undo:"))),
+            Item(command: nil, title: "Redo", symbol: "arrow.uturn.forward", tint: .systemIndigo, responderAction: Selector(("redo:"))),
         ],
         [
-            Item(command: nil, title: "Cut", symbol: "scissors", responderAction: #selector(NSText.cut(_:))),
-            Item(command: nil, title: "Copy", symbol: "doc.on.doc", responderAction: #selector(NSText.copy(_:))),
-            Item(command: nil, title: "Paste", symbol: "doc.on.clipboard", responderAction: #selector(NSText.paste(_:))),
+            Item(command: nil, title: "Cut", symbol: "scissors", tint: .systemRed, responderAction: #selector(NSText.cut(_:))),
+            Item(command: nil, title: "Copy", symbol: "doc.on.doc.fill", tint: .systemTeal, responderAction: #selector(NSText.copy(_:))),
+            Item(command: nil, title: "Paste", symbol: "doc.on.clipboard.fill", tint: .systemOrange, responderAction: #selector(NSText.paste(_:))),
         ],
         [
-            Item(command: .searchFind, title: "Find", symbol: "magnifyingglass", responderAction: nil),
-            Item(command: .searchReplace, title: "Replace", symbol: "arrow.left.arrow.right", responderAction: nil),
-            Item(command: .searchFindNext, title: "Find Next", symbol: "arrow.down", responderAction: nil),
-            Item(command: .searchFindPrevious, title: "Find Previous", symbol: "arrow.up", responderAction: nil),
-            Item(command: .searchGrep, title: "Grep", symbol: "text.magnifyingglass", responderAction: nil),
+            Item(command: .searchFind, title: "Find", symbol: "magnifyingglass", tint: .systemBlue, responderAction: nil),
+            Item(command: .searchReplace, title: "Replace", symbol: "arrow.left.arrow.right", tint: .systemPurple, responderAction: nil),
+            Item(command: .searchFindNext, title: "Find Next", symbol: "arrow.down.circle.fill", tint: .systemGreen, responderAction: nil),
+            Item(command: .searchFindPrevious, title: "Find Previous", symbol: "arrow.up.circle.fill", tint: .systemGreen, responderAction: nil),
+            Item(command: .searchGrep, title: "Grep", symbol: "text.magnifyingglass", tint: .systemCyan, responderAction: nil),
         ],
         [
-            Item(command: .navigateToggleBookmark, title: "Bookmark", symbol: "bookmark", responderAction: nil),
-            Item(command: .navigateNextBookmark, title: "Next Bookmark", symbol: "bookmark.fill", responderAction: nil),
-            Item(command: .searchGoToLine, title: "Go to Line", symbol: "number", responderAction: nil),
-            Item(command: .navigateToggleFold, title: "Toggle Fold", symbol: "chevron.left.forwardslash.chevron.right", responderAction: nil),
+            Item(command: .navigateToggleBookmark, title: "Bookmark", symbol: "bookmark.fill", tint: .systemRed, responderAction: nil),
+            Item(command: .navigateNextBookmark, title: "Next Bookmark", symbol: "bookmark.circle.fill", tint: .systemOrange, responderAction: nil),
+            Item(command: .searchGoToLine, title: "Go to Line", symbol: "number.circle.fill", tint: .systemBrown, responderAction: nil),
+            Item(command: .navigateToggleFold, title: "Toggle Fold", symbol: "chevron.left.forwardslash.chevron.right", tint: .systemPurple, responderAction: nil),
         ],
         [
-            Item(command: .appMacroMenu, title: "Macro", symbol: "play.rectangle", responderAction: nil),
-            Item(command: .viewToggleSidebar, title: "Utility Pane", symbol: "sidebar.left", responderAction: nil),
-            Item(command: .appSettings, title: "Settings", symbol: "gearshape", responderAction: nil),
+            Item(command: .appMacroMenu, title: "Macro", symbol: "play.rectangle.fill", tint: .systemPink, responderAction: nil),
+            Item(command: .viewToggleSidebar, title: "Utility Pane", symbol: "sidebar.left", tint: .systemBlue, responderAction: nil),
+            Item(command: .appSettings, title: "Settings", symbol: "gearshape.fill", tint: .systemGray, responderAction: nil),
         ],
     ]
 
@@ -157,13 +158,14 @@ private final class ClassicToolbarView: NSView {
                 addSubview(separator)
             }
             for item in group {
-                let button = NSButton()
+                let button = ClassicToolbarButton()
                 button.bezelStyle = .inline
                 button.isBordered = false
                 button.imagePosition = .imageOnly
                 button.imageScaling = .scaleProportionallyDown
                 button.image = NSImage(
                     systemSymbolName: item.symbol, accessibilityDescription: item.title)
+                button.contentTintColor = item.tint
                 button.toolTip = item.title
                 button.setAccessibilityLabel(item.title)
                 button.target = self
@@ -258,6 +260,30 @@ private final class ClassicToolbarView: NSView {
 
     private func key(for item: Item) -> String {
         item.command?.rawValue ?? "responder.\(item.title.lowercased())"
+    }
+}
+
+private final class ClassicToolbarButton: NSButton {
+    private var tracking: NSTrackingArea?
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let tracking { removeTrackingArea(tracking) }
+        let area = NSTrackingArea(
+            rect: bounds, options: [.activeInKeyWindow, .mouseEnteredAndExited],
+            owner: self, userInfo: nil)
+        addTrackingArea(area)
+        tracking = area
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        wantsLayer = true
+        layer?.cornerRadius = 4
+        layer?.backgroundColor = NSColor.selectedControlColor.withAlphaComponent(0.16).cgColor
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        layer?.backgroundColor = NSColor.clear.cgColor
     }
 }
 
