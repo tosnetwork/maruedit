@@ -12,21 +12,26 @@ public struct FileTypeSettings: Codable, Equatable, Sendable {
     public var lineComment: String?
     public var blockCommentStart: String?
     public var blockCommentEnd: String?
+    /// Optional so profiles written before schema v2 decode without a custom
+    /// migration pass. An empty/nil list uses only the built-in language rules.
+    public var outlineRules: [OutlineRule]?
 
     public init(
         tabWidth: Int = 4, indentWidth: Int = 4, indentStyle: IndentStyle = .spaces,
         wrapLines: Bool = false, encoding: TextEncoding? = nil, syntax: Language = .plainText,
-        lineComment: String? = nil, blockCommentStart: String? = nil, blockCommentEnd: String? = nil
+        lineComment: String? = nil, blockCommentStart: String? = nil, blockCommentEnd: String? = nil,
+        outlineRules: [OutlineRule]? = nil
     ) {
         self.tabWidth = tabWidth; self.indentWidth = indentWidth; self.indentStyle = indentStyle
         self.wrapLines = wrapLines; self.encoding = encoding; self.syntax = syntax
         self.lineComment = lineComment; self.blockCommentStart = blockCommentStart
         self.blockCommentEnd = blockCommentEnd
+        self.outlineRules = outlineRules
     }
 }
 
 public struct FileTypeProfile: Codable, Equatable, Identifiable, Sendable {
-    public static let currentSchemaVersion = 1
+    public static let currentSchemaVersion = 2
     public var schemaVersion: Int
     public var id: String
     public var name: String

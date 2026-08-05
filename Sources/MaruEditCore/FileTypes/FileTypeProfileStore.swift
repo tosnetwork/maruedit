@@ -22,8 +22,8 @@ public final class FileTypeProfileStore {
         return urls.sorted { $0.lastPathComponent < $1.lastPathComponent }.compactMap {
             guard let data = try? Data(contentsOf: $0),
                   let profile = try? JSONDecoder().decode(FileTypeProfile.self, from: data),
-                  profile.schemaVersion == FileTypeProfile.currentSchemaVersion else { return nil }
-            return profile
+                  let migrated = try? migrate(profile) else { return nil }
+            return migrated
         }
     }
 
@@ -36,7 +36,8 @@ public final class FileTypeProfileStore {
     }
 
     public func importProfile(from url: URL) throws -> FileTypeProfile {
-        let profile = try JSONDecoder().decode(FileTypeProfile.self, from: Data(contentsOf: url))
+        let decoded = try JSONDecoder().decode(FileTypeProfile.self, from: Data(contentsOf: url))
+        let profile = try migrate(decoded)
         try saveUserProfile(profile)
         return profile
     }
@@ -54,5 +55,14 @@ public final class FileTypeProfileStore {
 
     private func safeFilename(_ id: String) -> String {
         id.map { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" ? $0 : "_" }.reduce("", { $0 + String($1) })
+    }
+
+    private func migrate(_ profile: FileTypeProfile) throws -> FileTypeProfile {
+        guard profile.schemaVersion <= FileTypeProfile.currentSchemaVersion else {
+            throw FileTypeProfileError.unsupportedSchema(profile.schemaVersion)
+        }
+        var migrated = profile
+        migrated.schemaVersion = FileTypeProfile.currentSchemaVersion
+        return migrated
     }
 }

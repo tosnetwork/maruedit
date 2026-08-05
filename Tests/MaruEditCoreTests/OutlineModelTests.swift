@@ -37,4 +37,29 @@ final class OutlineModelTests: XCTestCase {
         XCTAssertEqual(model.text, "hello")
         XCTAssertTrue(model.symbols.isEmpty)
     }
+
+    func testCustomProfileRuleRunsBeforeBuiltInRules() {
+        let rule = OutlineRule(
+            id: "region", pattern: #"^\s*//\s*MARK:\s*(.+)$"#,
+            kind: .section, titleCaptureGroup: 1, fixedLevel: 2)
+        let model = OutlineModel(
+            text: "// MARK: Networking\nfunc load() {}", language: .swift,
+            customRules: [rule])
+        XCTAssertEqual(model.symbols.map(\.title), ["Networking", "load"])
+        XCTAssertEqual(model.symbols.first?.level, 2)
+    }
+
+    func testMalformedAndExcessiveRulesDegradeSafely() {
+        let invalid = OutlineRule(pattern: "(")
+        let valid = OutlineRule(pattern: #"^SECTION (.+)$"#)
+        let rules = [invalid, valid] + (0..<100).map {
+            OutlineRule(id: "unused-\($0)", pattern: #"^NEVER (.+)$"#)
+        }
+        let oversized = "SECTION " + String(repeating: "x", count: OutlineModel.maximumScannedLineLength)
+        let model = OutlineModel(
+            text: "SECTION Kept\n\(oversized)", language: .plainText,
+            customRules: rules)
+        XCTAssertEqual(model.symbols.map(\.title), ["Kept"])
+        XCTAssertEqual(model.customRules.count, OutlineModel.maximumCustomRuleCount)
+    }
 }

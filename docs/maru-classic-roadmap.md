@@ -24,7 +24,7 @@ that would weaken MaruEdit's security model.
 ## MC2 — Outline and folding
 
 - [x] Pure incremental outline model and per-language symbol rules.
-- [ ] User-defined regex outline rules in FileType Profiles.
+- [x] User-defined regex outline rules in FileType Profiles.
 - [ ] Outline pane and current-heading synchronization.
 - [ ] Fold gutter, fold commands and persisted fold state.
 - [ ] Large-file and malformed-rule degradation tests.

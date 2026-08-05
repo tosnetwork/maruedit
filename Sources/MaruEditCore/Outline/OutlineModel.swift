@@ -14,6 +14,26 @@ public struct OutlineSymbol: Equatable, Sendable, Identifiable {
     public var id: String { "\(line):\(utf16Range.location):\(kind.rawValue):\(title)" }
 }
 
+public struct OutlineRule: Codable, Equatable, Sendable, Identifiable {
+    public var id: String
+    public var pattern: String
+    public var kind: OutlineSymbolKind
+    public var titleCaptureGroup: Int
+    public var fixedLevel: Int?
+
+    public init(
+        id: String = UUID().uuidString, pattern: String,
+        kind: OutlineSymbolKind = .section, titleCaptureGroup: Int = 1,
+        fixedLevel: Int? = nil
+    ) {
+        self.id = id
+        self.pattern = pattern
+        self.kind = kind
+        self.titleCaptureGroup = titleCaptureGroup
+        self.fixedLevel = fixedLevel
+    }
+}
+
 /// Foundation-only outline index. Edits preserve the unchanged prefix and
 /// rescan from the first touched logical line, avoiding a full-document pass
 /// for the common case of edits near the end of a document.
@@ -21,17 +41,28 @@ public struct OutlineModel: Sendable, Equatable {
     public private(set) var text: String
     public private(set) var language: Language
     public private(set) var symbols: [OutlineSymbol]
+    public private(set) var customRules: [OutlineRule]
 
-    public init(text: String, language: Language) {
+    public init(text: String, language: Language, customRules: [OutlineRule] = []) {
         self.text = text
         self.language = language
-        symbols = Self.scan(text: text, language: language, startingAtLine: 0, baseOffset: 0)
+        self.customRules = Array(customRules.prefix(Self.maximumCustomRuleCount))
+        symbols = Self.scan(
+            text: text, language: language, customRules: self.customRules,
+            startingAtLine: 0, baseOffset: 0)
     }
 
-    public mutating func replaceText(_ text: String, language: Language) {
+    public mutating func replaceText(
+        _ text: String, language: Language, customRules: [OutlineRule]? = nil
+    ) {
         self.text = text
         self.language = language
-        symbols = Self.scan(text: text, language: language, startingAtLine: 0, baseOffset: 0)
+        if let customRules {
+            self.customRules = Array(customRules.prefix(Self.maximumCustomRuleCount))
+        }
+        symbols = Self.scan(
+            text: text, language: language, customRules: self.customRules,
+            startingAtLine: 0, baseOffset: 0)
     }
 
     public mutating func applyEdit(range: NSRange, replacement: String) {
@@ -45,7 +76,7 @@ public struct OutlineModel: Sendable, Equatable {
         let suffix = newNSString.substring(from: min(prefixOffset, newNSString.length))
         symbols.removeAll { $0.line >= firstLine }
         symbols.append(contentsOf: Self.scan(
-            text: suffix, language: language,
+            text: suffix, language: language, customRules: customRules,
             startingAtLine: firstLine, baseOffset: prefixOffset))
     }
 
@@ -57,9 +88,13 @@ public struct OutlineModel: Sendable, Equatable {
     }
 
     private static func scan(
-        text: String, language: Language, startingAtLine: Int, baseOffset: Int
+        text: String, language: Language, customRules: [OutlineRule],
+        startingAtLine: Int, baseOffset: Int
     ) -> [OutlineSymbol] {
-        let rules = rules(for: language)
+        let rules = customRules.prefix(maximumCustomRuleCount).map {
+            Rule(kind: $0.kind, pattern: $0.pattern,
+                 titleGroup: max(0, $0.titleCaptureGroup), fixedLevel: $0.fixedLevel)
+        } + rules(for: language)
         guard !rules.isEmpty else { return [] }
         let compiled = rules.compactMap { rule in
             try? (rule, NSRegularExpression(pattern: rule.pattern))
@@ -75,7 +110,8 @@ public struct OutlineModel: Sendable, Equatable {
             let lineRange = NSRange(location: offset, length: end - offset)
             let line = ns.substring(with: lineRange)
             let lineNS = line as NSString
-            for (rule, regex) in compiled {
+            if lineNS.length <= maximumScannedLineLength {
+              for (rule, regex) in compiled {
                 let full = NSRange(location: 0, length: lineNS.length)
                 guard let match = regex.firstMatch(in: line, range: full),
                       rule.titleGroup < match.numberOfRanges else { continue }
@@ -92,6 +128,7 @@ public struct OutlineModel: Sendable, Equatable {
                         length: capture.length),
                     level: rule.fixedLevel ?? indentation / 4))
                 break
+              }
             }
             if newline.location == NSNotFound { break }
             offset = end + 1
@@ -99,6 +136,9 @@ public struct OutlineModel: Sendable, Equatable {
         }
         return output
     }
+
+    public static let maximumCustomRuleCount = 64
+    public static let maximumScannedLineLength = 16_384
 
     private static func rules(for language: Language) -> [Rule] {
         let name = #"([\p{L}_][\p{L}\p{N}_]*)"#

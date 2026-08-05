@@ -9,7 +9,8 @@ semantic version tags.
 ### Added
 
 - Added a Foundation-only incremental document-outline model with built-in
-  symbol rules for source, markup, scripting, configuration, and SQL languages.
+  symbol rules for source, markup, scripting, configuration, and SQL languages,
+  plus bounded user-defined regex rules in versioned FileType Profiles.
 - Added the Maru Classic workspace foundation: a Classic Light palette, compact tabs,
   current-document heading and character ruler, favorite-command strip, explicit
   insert-mode status, a customizable command-registry toolbar, and Files / Outline /
