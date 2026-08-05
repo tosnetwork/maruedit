@@ -49,7 +49,7 @@ native menu before the Hidemaru-compatible business menus.
 The checked-in [official 9.57 inventory](hidemaru-9.57-menu-inventory.tsv)
 contains 336 rows extracted from the 13 official pages, including repeated
 placements, dynamic entries, submenus, commands that are bindable but absent
-from the menu bar, and Windows-only commands. MaruEdit registers 309
+from the menu bar, and Windows-only commands. MaruEdit registers 310
 stable command IDs plus dynamic and native-responder entries, so the raw totals
 are not a parity measure. `ChromeParityAuditTests` freezes the official per-menu
 counts, schema, placement classification, uniqueness, and cross-menu sentinels,

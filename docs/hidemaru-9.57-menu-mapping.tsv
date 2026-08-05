@@ -41,3 +41,42 @@ File	File history	dynamic	NSDocumentController.recentDocumentURLs	Native recent-
 File	Folder history	stable	file.projectHistory	Recent folder projects
 File	Desktop history(@)	stable	file.workspaceHistory	Recent .maruedit-workspace desktops
 File	Project history(:)	stable	file.projectHistory	Recent folder projects
+Hilight	Outline...	stable	highlight.outlineAnalysis	Reveal the live profile-aware outline pane
+Hilight	Go Next Highlighted line	stable	highlight.nextLine	Wraparound highlighted-line navigation
+Hilight	Go Previous Highlighted line	stable	highlight.previousLine	Reverse wraparound highlighted-line navigation
+Hilight	Select Highlighted line area	stable	highlight.selectLineArea	Select the contiguous highlighted logical-line region
+Bookmark	Add bookmark...	stable	navigate.toggleBookmark	Add or remove the current document line bookmark
+Bookmark	Edit bookmark...	stable	navigate.bookmarkList	List bookmarks with jump and remove actions
+Help	External Help(1)	stable	help.external1	Persistent external-help slot 1
+Help	External Help 2(2)	stable	help.external2	Persistent external-help slot 2
+Help	External Help 3(3)	stable	help.external3	Persistent external-help slot 3
+Help	External Help 4(4)	stable	help.external4	Persistent external-help slot 4
+Help	External Help 5(5)	stable	help.external5	Persistent external-help slot 5
+Help	External Help 6(6)	stable	help.external6	Persistent external-help slot 6
+Help	Version check...	stable	help.checkUpdates	Open the release-check destination
+Help	Help for Maruo Editor	stable	app.help	Open the MaruEdit user guide
+Help	Macro help	stable	help.macros	Open the macro guide
+Help	About Maruo Editor	native	NSApplication.orderFrontStandardAboutPanel	Native macOS About panel in the application menu
+Conv	to Upper case	stable	edit.uppercase	Unicode-aware uppercase conversion
+Conv	to Lower case	stable	edit.lowercase	Unicode-aware lowercase conversion
+Conv	Convert to hankaku	stable	convert.halfWidth	Generic full-width to half-width conversion
+Conv	To zenkaku-hiragana	stable	convert.hiragana	Full-width hiragana conversion
+Conv	To zenkaku-katakana	stable	convert.katakana	Full-width katakana conversion
+Conv	To hankaku alphabet	stable	convert.halfWidthAlphanumeric	Selective alphanumeric symbol and space conversion
+Conv	To zenkaku alphabet	stable	convert.fullWidthAlphanumeric	Selective full-width alphanumeric conversion
+Conv	To hankaku katakana only	stable	convert.halfWidthKatakana	Selective katakana half-width conversion
+Conv	To zenkaku katakana only	stable	convert.fullWidthKatakana	Selective katakana full-width conversion
+Conv	Tab -&gt; Space	stable	convert.tabsToSpaces	Tab-to-space conversion using active tab width
+Conv	Space -&gt; Tab	stable	convert.spacesToTabs	Space-to-tab conversion using active tab width
+Conv	Indent	stable	edit.indent	Multi-selection line indent
+Conv	Unindent	stable	edit.outdent	Multi-selection line outdent
+Conv	Sort...	stable	edit.sortLines	Stable line sort with one-step Undo
+Macro	Start/Stop record	stable	macro.toggleRecording	Single menu command toggles recording state
+Macro	Play	stable	macro.playRecording	Play captured command sequence once
+Macro	Repeat play...	stable	macro.repeatPlayback	Prompt for bounded repeat count
+Macro	Save record...	stable	macro.saveRecording	Save capture as non-overwriting JavaScript macro
+Macro	Load record...	stable	macro.reload	Reload saved recordings into the registered catalog
+Macro	Execute macro...	stable	macro.run	Choose and execute a registered macro
+Macro	Register macro...	dynamic	macro.registeredCatalog	Metadata-driven named catalog and shortcut assignments replace fixed Windows slots
+Macro	Macro folder	stable	macro.openFolder	Reveal the permission-scoped macro folder in Finder
+Macro	Macro help	stable	macro.help	Open macro documentation

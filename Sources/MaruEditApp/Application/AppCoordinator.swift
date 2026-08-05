@@ -262,6 +262,9 @@ final class AppCoordinator {
         isRecordingCommands = false
         ensureWindowControllerReady().updateMacroRecording(isRecording: false)
     }
+    func toggleMacroRecording() {
+        if isRecordingCommands { stopMacroRecording() } else { startMacroRecording() }
+    }
     func playMacroRecording() {
         guard !recordedCommands.isEmpty else { showStatusMessage("No recorded commands"); return }
         let commands = recordedCommands

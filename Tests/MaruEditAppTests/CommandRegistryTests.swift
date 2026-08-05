@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 import MaruEditCore
 @preconcurrency @testable import MaruEditApp
@@ -51,6 +52,19 @@ final class CommandRegistryTests: XCTestCase {
         XCTAssertFalse(didRun, "a disabled command must never run, even if execute() is called directly")
     }
 
+    func testOfficialMacroRecordingCommandTogglesOneSharedState() {
+        let coordinator = AppCoordinator()
+        let context = CommandContext(coordinator: coordinator)
+        let registry = CommandRegistry(); AppCommands.registerAll(in: registry)
+
+        XCTAssertFalse(coordinator.isRecordingCommands)
+        XCTAssertTrue(registry.execute(.macroToggleRecording, context: context))
+        XCTAssertTrue(coordinator.isRecordingCommands)
+        XCTAssertTrue(registry.execute(.macroToggleRecording, context: context))
+        XCTAssertFalse(coordinator.isRecordingCommands)
+        NSApp.windows.filter { $0.windowController is MainWindowController }.forEach { $0.close() }
+    }
+
     func testUnregisteredCommandIsSafelyANoOp() async {
         let registry = CommandRegistry()
         XCTAssertFalse(registry.isEnabled(CommandID("does.not.exist"), context: makeContext()))
@@ -63,7 +77,7 @@ final class CommandRegistryTests: XCTestCase {
         AppCommands.registerAll(in: registry)
 
         let ids: [CommandID] = [
-            .appSettings, .appMacroMenu, .macroStartRecording, .macroStopRecording,
+            .appSettings, .appMacroMenu, .macroStartRecording, .macroStopRecording, .macroToggleRecording,
             .macroPlayRecording, .macroRepeatPlayback, .macroSaveRecording,
             .macroRun, .macroReload, .macroOpenFolder, .macroHelp,
             .appHelp, .helpMacros, .helpShortcuts,

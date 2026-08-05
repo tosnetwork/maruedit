@@ -404,8 +404,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         let macroItem = NSMenuItem(title: "Macro", action: nil, keyEquivalent: "")
         let macroMenu = NSMenu(title: "Macro")
-        macroMenu.addItem(commandItem(.macroStartRecording))
-        macroMenu.addItem(commandItem(.macroStopRecording))
+        macroMenu.addItem(commandItem(.macroToggleRecording))
         macroMenu.addItem(commandItem(.macroPlayRecording))
         macroMenu.addItem(commandItem(.macroRepeatPlayback))
         macroMenu.addItem(commandItem(.macroSaveRecording))
