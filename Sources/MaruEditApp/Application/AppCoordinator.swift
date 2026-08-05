@@ -318,6 +318,21 @@ final class AppCoordinator {
         preferences.classicChrome.showTabStops.toggle()
         saveAndApplyPreferences()
     }
+    func toggleLineNumbers() {
+        preferences.showLineNumbers.toggle()
+        saveAndApplyPreferences()
+    }
+    func toggleClassicHeading() {
+        preferences.classicChrome.showHeading.toggle()
+        saveAndApplyPreferences()
+    }
+    func toggleFunctionKeyStrip() {
+        preferences.classicChrome.showCommandStrip.toggle()
+        saveAndApplyPreferences()
+    }
+    func toggleStatusBar() { ensureWindowControllerReady().toggleStatusBar() }
+    func toggleOutputPane() { ensureWindowControllerReady().toggleOutputPane() }
+    func focusOutputPane() { ensureWindowControllerReady().focusOutputPane() }
     private func saveAndApplyPreferences() {
         preferencesStore.save(preferences)
         windowController?.applyPreferences(preferences)
@@ -343,6 +358,11 @@ final class AppCoordinator {
         case .viewRulerInterval10: preferences.classicChrome.rulerInterval == 10
         case .viewToggleTabStops: preferences.classicChrome.showTabStops
         case .viewToggleVerticalLayout: ensureWindowControllerReady().macroEditor.isVerticalLayout
+        case .viewToggleLineNumbers: preferences.showLineNumbers
+        case .viewToggleHeading: preferences.classicChrome.showHeading
+        case .viewToggleFunctionKeys: preferences.classicChrome.showCommandStrip
+        case .viewToggleStatusBar: ensureWindowControllerReady().isStatusBarVisibleForTesting
+        case .viewToggleOutputPane: ensureWindowControllerReady().isOutputPaneVisibleForTesting
         default: false
         }
     }

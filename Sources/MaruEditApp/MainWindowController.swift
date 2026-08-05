@@ -28,6 +28,7 @@ final class MainWindowController: NSWindowController,
     private var modifierFlagsMonitor: Any?
     private var classicChrome: ClassicWorkspaceChrome!
     private var workspaceStyle: WorkspaceStyle = .classic
+    private var isStatusBarVisible = true
     var macroEditor: EditorViewController { editorVC }
 
     private var quickOpen: QuickOpenPanel?
@@ -114,7 +115,7 @@ final class MainWindowController: NSWindowController,
         guard let cv = window?.contentView else { return }
 
         let tabH: CGFloat = 32
-        let statusH: CGFloat = 24
+        let statusH: CGFloat = isStatusBarVisible ? 24 : 0
 
         tabBar = TabBarView()
         tabBar.delegate = self
@@ -327,7 +328,7 @@ final class MainWindowController: NSWindowController,
             x: editorX,
             y: tabBar.position == .top
                 ? cv.bounds.height - tabH - (workspaceStyle == .classic ? ClassicWorkspaceChrome.toolbarHeight : 0)
-                : 24,
+                : (isStatusBarVisible ? 24 : 0),
             width: cv.bounds.width - editorX,
             height: tabH
         )
@@ -1505,6 +1506,35 @@ final class MainWindowController: NSWindowController,
         outputPane = pane
         return pane
     }
+
+    func toggleOutputPane() {
+        if let outputPane, !outputPane.isHidden {
+            outputPaneDidRequestClose(outputPane)
+        } else {
+            let isNew = outputPane == nil
+            let pane = ensureOutputPane()
+            if isNew { pane.beginOperation("Output") }
+            layoutContentViews()
+            pane.focusResults()
+        }
+    }
+
+    func focusOutputPane() {
+        guard let outputPane, !outputPane.isHidden else {
+            toggleOutputPane()
+            return
+        }
+        outputPane.focusResults()
+    }
+
+    func toggleStatusBar() {
+        isStatusBarVisible.toggle()
+        statusBar.isHidden = !isStatusBarVisible
+        layoutContentViews()
+    }
+
+    var isStatusBarVisibleForTesting: Bool { isStatusBarVisible }
+    var isOutputPaneVisibleForTesting: Bool { outputPane?.isHidden == false }
 
     func beginExternalCommandOutput(name: String, workingDirectory: URL? = nil,
                                     cancellation: ExternalCommandCancellation?) {

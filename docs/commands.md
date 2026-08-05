@@ -109,6 +109,12 @@ significantly, replace this with a small script that generates it from
 | `view.toggleLinkedScrolling` | Linked Editor Scrolling | View | — | `AppCoordinator.toggleLinkedEditorScrolling()` |
 | `view.toggleTableMode` | CSV/TSV Table Mode | View | — | `AppCoordinator.toggleTableMode()` |
 | `view.toggleVerticalLayout` | Vertical Writing Mode | View | — | Switches between AppKit horizontal and native vertical glyph layout |
+| `view.toggleLineNumbers` | Show Line Numbers | View | — | Shows or hides the editor gutter |
+| `view.toggleHeading` | Show Heading Bar | View | — | Shows or hides the classic outline/current-document heading |
+| `view.toggleFunctionKeys` | Show Function-Key Bar | View | — | Shows or hides the twelve-slot classic function-key strip |
+| `view.toggleStatusBar` | Show Status Bar | View | — | Shows or hides the interactive status fields |
+| `view.toggleOutputPane` | Show Output Pane | View | — | Shows or hides grep, macro and external-command output |
+| `view.focusOutputPane` | Focus Output Pane | View | — | Shows the output pane if necessary and moves keyboard focus to it |
 | `edit.addCursorAbove` | Add Cursor Above | Edit | ⌥⌘↑ | `AppCoordinator.addCursorAbove()` |
 | `edit.addCursorBelow` | Add Cursor Below | Edit | ⌥⌘↓ | `AppCoordinator.addCursorBelow()` |
 | `edit.selectNextOccurrence` | Select Next Occurrence | Edit | ⌘D | `AppCoordinator.selectNextOccurrence()` |
