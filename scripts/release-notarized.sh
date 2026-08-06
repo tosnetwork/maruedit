@@ -3,7 +3,7 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-VERSION="${VERSION:-0.1.1}"
+VERSION="${VERSION:-0.1.2}"
 SIGNING_IDENTITY="${MARUEDIT_SIGNING_IDENTITY:-}"
 NOTARY_PROFILE="${NOTARY_PROFILE:-}"
 DIST="dist"

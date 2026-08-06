@@ -6,6 +6,14 @@ semantic version tags.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-08-06
+
+### Changed
+
+- Refined the MaruEdit application icon with an original upright, flowing M,
+  variable stroke weight, softer continuous curves, and a more prominent
+  AI-cursor dot while retaining the deep blue-green and emerald palette.
+
 ## [0.1.1] - 2026-08-06
 
 ### Added
