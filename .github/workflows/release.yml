@@ -30,7 +30,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: MaruEdit ${{ steps.version.outputs.tag }}
-          body_path: docs/release-notes-0.1.0.md
+          body_path: docs/release-notes-${{ steps.version.outputs.number }}.md
           files: |
             MaruEdit-${{ steps.version.outputs.number }}.dmg
             MaruEdit-${{ steps.version.outputs.number }}.dmg.sha256

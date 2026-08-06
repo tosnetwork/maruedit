@@ -5,7 +5,7 @@ APP="MaruEdit"        # user-visible app/bundle name (unchanged since M0)
 PRODUCT="MaruEditApp" # SwiftPM executable target name (see ROADMAP.md ADR-004)
 BUILD=".build/release"
 BUNDLE="${APP}.app"
-VERSION="${VERSION:-0.1.0}"
+VERSION="${VERSION:-0.1.1}"
 
 if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
   echo "Invalid VERSION: ${VERSION}" >&2
@@ -57,9 +57,9 @@ cat > "${BUNDLE}/Contents/Info.plist" << 'PLIST'
   <key>CFBundleIdentifier</key>
   <string>network.tos.maruedit</string>
   <key>CFBundleVersion</key>
-  <string>0.1.0</string>
+  <string>0.1.1</string>
   <key>CFBundleShortVersionString</key>
-  <string>0.1.0</string>
+  <string>0.1.1</string>
   <key>CFBundleExecutable</key>
   <string>MaruEdit</string>
   <key>CFBundlePackageType</key>

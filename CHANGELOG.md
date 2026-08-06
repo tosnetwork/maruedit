@@ -6,6 +6,8 @@ semantic version tags.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-08-06
+
 ### Added
 
 - Expanded Maru-style tab behavior with top/bottom placement, optional
