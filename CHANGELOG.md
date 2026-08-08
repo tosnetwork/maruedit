@@ -6,6 +6,23 @@ semantic version tags.
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-08-08
+
+### Added
+
+- Added a Hidemaru-style current-line highlight that shades the full width of
+  the line holding the caret (or each caret, in multi-cursor mode) so the
+  editing position stays visible without a selection. Added a matching
+  `View > Highlight Current Line` command and Settings checkbox; on by default,
+  toggleable, and included in preferences export/import.
+
+### Fixed
+
+- Padded the application icon artwork within its 1024×1024 canvas to match
+  macOS's icon-content convention (previously the artwork bled to the edge),
+  so MaruEdit no longer renders oversized next to other apps in the Dock and
+  the Cmd+Tab application switcher.
+
 ## [0.1.2] - 2026-08-06
 
 ### Changed

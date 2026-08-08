@@ -10,7 +10,7 @@ Reproduce the unsigned application:
 ```bash
 git clone https://github.com/tosnetwork/maruedit.git
 cd maruedit
-git checkout v0.1.2
+git checkout v0.1.3
 bash scripts/security-audit.sh
 bash scripts/build-release.sh
 lipo -archs MaruEdit.app/Contents/MacOS/MaruEdit
