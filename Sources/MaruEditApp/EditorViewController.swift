@@ -594,6 +594,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         (textView as? MaruTextView)?.invisibleCharacters = document?.largeFileMode.usesReducedFeatures == true
             ? .none : preferences.invisibleCharacters
         (textView as? MaruTextView)?.freeCursorEnabled = preferences.freeCursorEnabled
+        (textView as? MaruTextView)?.highlightsCurrentLine = preferences.highlightCurrentLine
         textView.defaultParagraphStyle = paragraph
         textView.typingAttributes[.font] = font
         textView.typingAttributes[.paragraphStyle] = paragraph
@@ -1144,6 +1145,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         )
         recordCursorTransition(from: previous, to: selectionSet.primaryRange.location)
         lineNumbers?.needsDisplay = true
+        if (textView as? MaruTextView)?.highlightsCurrentLine == true { textView.needsDisplay = true }
         emitCursor()
     }
 

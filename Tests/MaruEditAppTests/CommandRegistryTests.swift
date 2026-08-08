@@ -138,7 +138,7 @@ final class CommandRegistryTests: XCTestCase {
             .navigateMatchingBracket, .navigateOpeningBrace, .navigateClosingBrace,
             .navigateMatchingTag, .navigateLastEdit, .navigatePreviousCursor,
             .viewToggleVerticalLayout, .viewToggleColumnLayout,
-            .viewToggleLineNumbers, .viewToggleHeading, .viewToggleFunctionKeys,
+            .viewToggleLineNumbers, .viewToggleCurrentLineHighlight, .viewToggleHeading, .viewToggleFunctionKeys,
             .viewToggleStatusBar, .viewToggleOutputPane, .viewFocusOutputPane,
             .viewToggleSpellChecking, .viewShowCharacterCode, .viewShowCharacterCount,
             .viewRedraw, .viewToggleFullScreen,

@@ -15,6 +15,7 @@ enum Theme {
     static var type: NSColor { light ? NSColor(srgbRed: 0.05, green: 0.38, blue: 0.52, alpha: 1) : NSColor(srgbRed: 0.400, green: 0.851, blue: 0.937, alpha: 1) }
 
     static var selection: NSColor { light ? .selectedTextBackgroundColor : NSColor(srgbRed: 0.286, green: 0.282, blue: 0.235, alpha: 1) }
+    static var currentLineHighlight: NSColor { light ? NSColor(srgbRed: 0, green: 0, blue: 0, alpha: 0.05) : NSColor(srgbRed: 1, green: 1, blue: 1, alpha: 0.07) }
     static var cursor: NSColor { light ? .textColor : NSColor(srgbRed: 0.973, green: 0.973, blue: 0.949, alpha: 1) }
     static var gutterBg: NSColor { light ? .controlBackgroundColor : NSColor(srgbRed: 0.184, green: 0.184, blue: 0.165, alpha: 1) }
     static var gutterText: NSColor { light ? .secondaryLabelColor : NSColor(srgbRed: 0.565, green: 0.565, blue: 0.541, alpha: 1) }

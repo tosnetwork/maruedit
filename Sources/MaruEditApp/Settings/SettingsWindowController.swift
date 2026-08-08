@@ -25,6 +25,7 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
     private let tabWidthField = NSTextField()
     private let lineNumbersButton = NSButton(checkboxWithTitle: "", target: nil, action: nil)
     private let freeCursorButton = NSButton(checkboxWithTitle: "Free cursor beyond line endings", target: nil, action: nil)
+    private let currentLineHighlightButton = NSButton(checkboxWithTitle: "Highlight current line", target: nil, action: nil)
     private let wrapModePopup = NSPopUpButton()
     private let wrapColumnField = NSTextField()
     private let workspacePopup = NSPopUpButton()
@@ -168,6 +169,10 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
             freeCursorButton.target = self; freeCursorButton.action = #selector(controlChanged)
             freeCursorButton.identifier = NSUserInterfaceItemIdentifier("settings.freeCursor")
             stack.addArrangedSubview(freeCursorButton)
+            currentLineHighlightButton.state = preferences.highlightCurrentLine ? .on : .off
+            currentLineHighlightButton.target = self; currentLineHighlightButton.action = #selector(controlChanged)
+            currentLineHighlightButton.identifier = NSUserInterfaceItemIdentifier("settings.highlightCurrentLine")
+            stack.addArrangedSubview(currentLineHighlightButton)
             stack.addArrangedSubview(row(SettingsLocalization.text("wrapMode"), wrapModePopup))
             stack.addArrangedSubview(row(SettingsLocalization.text("wrapColumn"), wrapColumnField))
         case .appearance:
@@ -250,6 +255,7 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
             preferences.tabWidth = max(1, min(16, tabWidthField.integerValue))
             preferences.showLineNumbers = lineNumbersButton.state == .on
             preferences.freeCursorEnabled = freeCursorButton.state == .on
+            preferences.highlightCurrentLine = currentLineHighlightButton.state == .on
             preferences.wrapMode = WrapMode.allCases[wrapModePopup.indexOfSelectedItem]
             preferences.wrapLines = preferences.wrapMode != .none
             preferences.wrapColumn = max(20, min(8_000, wrapColumnField.integerValue))
@@ -285,6 +291,7 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
             preferences.wrapMode = defaults.wrapMode
             preferences.wrapColumn = defaults.wrapColumn
             preferences.freeCursorEnabled = defaults.freeCursorEnabled
+            preferences.highlightCurrentLine = defaults.highlightCurrentLine
         case .appearance:
             preferences.fontName = defaults.fontName
             preferences.fontSize = defaults.fontSize
@@ -392,6 +399,7 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
             preferences.wrapColumn = imported.wrapColumn
             preferences.invisibleCharacters = imported.invisibleCharacters
             preferences.freeCursorEnabled = imported.freeCursorEnabled
+            preferences.highlightCurrentLine = imported.highlightCurrentLine
         case .appearance:
             preferences.fontName = imported.fontName
             preferences.fontSize = imported.fontSize

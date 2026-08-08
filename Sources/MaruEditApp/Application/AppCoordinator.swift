@@ -750,6 +750,10 @@ final class AppCoordinator {
         preferences.showLineNumbers.toggle()
         saveAndApplyPreferences()
     }
+    func toggleCurrentLineHighlight() {
+        preferences.highlightCurrentLine.toggle()
+        saveAndApplyPreferences()
+    }
     func toggleClassicHeading() {
         preferences.classicChrome.showHeading.toggle()
         saveAndApplyPreferences()
@@ -794,6 +798,7 @@ final class AppCoordinator {
         case .viewToggleVerticalLayout: ensureWindowControllerReady().macroEditor.isVerticalLayout
         case .viewToggleColumnLayout: ensureWindowControllerReady().macroEditor.isColumnLayout
         case .viewToggleLineNumbers: preferences.showLineNumbers
+        case .viewToggleCurrentLineHighlight: preferences.highlightCurrentLine
         case .viewToggleHeading: preferences.classicChrome.showHeading
         case .viewToggleFunctionKeys: preferences.classicChrome.showCommandStrip
         case .viewToggleStatusBar: ensureWindowControllerReady().isStatusBarVisibleForTesting

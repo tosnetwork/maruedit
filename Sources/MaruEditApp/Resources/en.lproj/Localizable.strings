@@ -79,6 +79,7 @@
 "command.navigate.tagJump" = "Tag Jump";
 "command.highlight.outlineAnalysis" = "Outline Analysis…";
 "command.view.toggleLineNumbers" = "Line Numbers";
+"command.view.toggleCurrentLineHighlight" = "Highlight Current Line";
 "find.placeholder" = "Find";
 "find.replacePlaceholder" = "Replace";
 "find.accessibility.search" = "Find";

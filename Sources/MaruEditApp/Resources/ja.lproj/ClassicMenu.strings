@@ -61,6 +61,7 @@
 "command.view.toggleHeading" = "見出しバー(U)";
 "command.view.toggleFoldMargin" = "折りたたみ用の余白(M)";
 "command.view.toggleLineNumbers" = "行番号(L)";
+"command.view.toggleCurrentLineHighlight" = "現在行の強調表示(H)";
 "command.view.toggleRuler" = "ルーラー(R)";
 "command.view.toggleSpellChecking" = "自動スペルチェック(K)";
 "command.window.showDocumentBrowserPane" = "個別ブラウザ枠(￥)";

@@ -70,7 +70,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             "view.toggleToolbar", "view.toggleFunctionKeys", "view.toggleStatusBar",
             "window.showFilesPane", "view.toggleOutputPane", "window.showSharedBrowserPane",
             "window.showOutlinePane", "view.toggleHeading", "view.toggleFoldMargin",
-            "view.toggleLineNumbers", "view.toggleRuler", "view.toggleSpellChecking",
+            "view.toggleLineNumbers", "view.toggleCurrentLineHighlight",
+            "view.toggleRuler", "view.toggleSpellChecking",
             "window.showDocumentBrowserPane", "view.toggleWrap", "view.toggleTabStops",
             "view.toggleTabMode", "view.rulerInterval8",
             "view.toggleVerticalLayout", "view.toggleColumnLayout",
@@ -553,7 +554,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         viewMenu.addItem(commandItem(.viewToggleVerticalLayout))
         viewMenu.addItem(commandItem(.viewToggleColumnLayout))
         for id: CommandID in [
-            .viewToggleLineNumbers, .viewToggleHeading, .viewToggleFunctionKeys,
+            .viewToggleLineNumbers, .viewToggleCurrentLineHighlight, .viewToggleHeading, .viewToggleFunctionKeys,
             .viewToggleStatusBar, .viewToggleOutputPane, .viewFocusOutputPane,
             .viewToggleFoldMargin, .viewBeginPartialEditing, .viewEndPartialEditing,
             .viewWebBrowseMode,
@@ -969,6 +970,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         viewCommand(.windowShowSharedBrowserPane); viewMenu.addItem(.separator())
         viewCommand(.windowShowOutlinePane); viewCommand(.viewToggleHeading)
         viewCommand(.viewToggleFoldMargin); viewCommand(.viewToggleLineNumbers)
+        viewCommand(.viewToggleCurrentLineHighlight)
         viewCommand(.viewToggleRuler); viewCommand(.viewToggleSpellChecking)
         viewCommand(.windowShowDocumentBrowserPane); viewMenu.addItem(.separator())
         viewGroup(AppLocalization.string("menu.view.wrapping"), primary: .viewToggleWrap, children: [.viewToggleWrap])
@@ -1257,6 +1259,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .viewTabWidth2, .viewTabWidth4, .viewTabWidth8,
             .viewToggleRuler, .viewRulerInterval8, .viewRulerInterval10,
             .viewToggleTabStops, .viewToggleVerticalLayout, .viewToggleColumnLayout, .viewToggleLineNumbers,
+            .viewToggleCurrentLineHighlight,
             .viewToggleHeading, .viewToggleFunctionKeys, .viewToggleStatusBar,
             .viewToggleOutputPane,
         ]

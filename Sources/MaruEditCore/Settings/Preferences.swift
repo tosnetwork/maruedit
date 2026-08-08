@@ -23,6 +23,7 @@ public struct Preferences: Codable, Equatable, Sendable {
     public var invisibleCharacters: InvisibleCharacterOptions
     public var workspaceStyle: WorkspaceStyle
     public var classicChrome: ClassicChromeOptions
+    public var highlightCurrentLine: Bool
 
     public init(
         schemaVersion: Int = Preferences.currentSchemaVersion,
@@ -34,7 +35,8 @@ public struct Preferences: Codable, Equatable, Sendable {
         tabWidth: Int, freeCursorEnabled: Bool = false,
         invisibleCharacters: InvisibleCharacterOptions = .none,
         workspaceStyle: WorkspaceStyle = .classic,
-        classicChrome: ClassicChromeOptions = .allVisible
+        classicChrome: ClassicChromeOptions = .allVisible,
+        highlightCurrentLine: Bool = true
     ) {
         self.schemaVersion = schemaVersion
         self.fontName = fontName
@@ -49,6 +51,7 @@ public struct Preferences: Codable, Equatable, Sendable {
         self.invisibleCharacters = invisibleCharacters
         self.workspaceStyle = workspaceStyle
         self.classicChrome = classicChrome
+        self.highlightCurrentLine = highlightCurrentLine
     }
 
     /// Matches the values currently hardcoded in `Theme.swift` and
@@ -68,7 +71,7 @@ public struct Preferences: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, fontName, fontSize, theme, showLineNumbers, wrapLines, wrapMode, wrapColumn, tabWidth, freeCursorEnabled
-        case invisibleCharacters, workspaceStyle, classicChrome
+        case invisibleCharacters, workspaceStyle, classicChrome, highlightCurrentLine
     }
 
     public init(from decoder: Decoder) throws {
@@ -92,6 +95,8 @@ public struct Preferences: Codable, Equatable, Sendable {
             WorkspaceStyle.self, forKey: .workspaceStyle) ?? .classic
         classicChrome = try values.decodeIfPresent(
             ClassicChromeOptions.self, forKey: .classicChrome) ?? .allVisible
+        highlightCurrentLine = try values.decodeIfPresent(
+            Bool.self, forKey: .highlightCurrentLine) ?? true
     }
 }
 

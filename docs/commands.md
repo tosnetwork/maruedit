@@ -257,6 +257,7 @@ significantly, replace this with a small script that generates it from
 | `view.toggleVerticalLayout` | Vertical Writing Mode | View | — | Switches between AppKit horizontal and native vertical glyph layout |
 | `view.toggleColumnLayout` | Column Layout Mode | View | — | Flows one TextKit storage continuously through ordered editable columns |
 | `view.toggleLineNumbers` | Show Line Numbers | View | — | Shows or hides the editor gutter |
+| `view.toggleCurrentLineHighlight` | Highlight Current Line | View | — | `AppCoordinator.toggleCurrentLineHighlight()` |
 | `view.toggleHeading` | Show Heading Bar | View | — | Shows or hides the classic outline/current-document heading |
 | `view.toggleFunctionKeys` | Show Function-Key Bar | View | — | Shows or hides the twelve-slot classic function-key strip |
 | `view.toggleStatusBar` | Show Status Bar | View | — | Shows or hides the interactive status fields |

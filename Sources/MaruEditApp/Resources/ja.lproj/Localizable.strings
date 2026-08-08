@@ -79,6 +79,7 @@
 "command.navigate.tagJump" = "タグジャンプ";
 "command.highlight.outlineAnalysis" = "アウトライン解析…";
 "command.view.toggleLineNumbers" = "行番号表示";
+"command.view.toggleCurrentLineHighlight" = "カレント行の強調表示";
 "find.placeholder" = "検索";
 "find.replacePlaceholder" = "置換";
 "find.accessibility.search" = "検索";

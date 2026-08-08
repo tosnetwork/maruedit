@@ -16,6 +16,9 @@ final class MaruTextView: NSTextView {
     var freeCursorEnabled = false {
         didSet { if !freeCursorEnabled { virtualSpaceColumns = 0 }; needsDisplay = true }
     }
+    var highlightsCurrentLine = true {
+        didSet { needsDisplay = true }
+    }
     private(set) var virtualSpaceColumns = 0
     var isInvisibleRenderingSuppressedForLargeFile: Bool {
         (textStorage?.length ?? 0) > Self.invisibleMarkerLargeFileThreshold
@@ -26,7 +29,48 @@ final class MaruTextView: NSTextView {
 
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
+        // Painted after the background/glyphs (rather than under them) because
+        // NSTextView's own draw(_:) unconditionally repaints its background,
+        // which would otherwise erase a highlight drawn first. The low alpha
+        // keeps text underneath fully legible.
+        drawCurrentLineHighlight()
         drawInvisibleMarkers(in: dirtyRect)
+    }
+
+    /// Paints a subtle band behind the line(s) holding the caret, so the
+    /// editing position stays visible even without a selection — matching
+    /// Hidemaru's "highlight the current line" behavior.
+    private func drawCurrentLineHighlight() {
+        guard highlightsCurrentLine, let layoutManager, let storage = textStorage else { return }
+        let string = storage.string as NSString
+        let numberOfGlyphs = layoutManager.numberOfGlyphs
+        var paintedLineStarts = Set<Int>()
+        Theme.currentLineHighlight.setFill()
+        for value in selectedRanges {
+            let range = value.rangeValue
+            guard range.length == 0 else { continue }
+            let location = min(range.location, string.length)
+            let lineRange = string.lineRange(for: NSRange(location: location, length: 0))
+            guard paintedLineStarts.insert(lineRange.location).inserted else { continue }
+
+            let fragmentRect: NSRect
+            if numberOfGlyphs == 0 {
+                fragmentRect = layoutManager.extraLineFragmentRect
+            } else if location < string.length,
+                      case let glyphIndex = layoutManager.glyphIndexForCharacter(at: location),
+                      glyphIndex < numberOfGlyphs {
+                fragmentRect = layoutManager.lineFragmentRect(
+                    forGlyphAt: glyphIndex, effectiveRange: nil, withoutAdditionalLayout: true)
+            } else if layoutManager.extraLineFragmentRect.height > 0 {
+                fragmentRect = layoutManager.extraLineFragmentRect
+            } else {
+                fragmentRect = layoutManager.lineFragmentRect(
+                    forGlyphAt: numberOfGlyphs - 1, effectiveRange: nil, withoutAdditionalLayout: true)
+            }
+
+            let y = fragmentRect.origin.y + textContainerOrigin.y
+            NSRect(x: 0, y: y, width: bounds.width, height: fragmentRect.height).fill()
+        }
     }
 
     private func drawInvisibleMarkers(in dirtyRect: NSRect) {
