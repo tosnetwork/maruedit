@@ -99,6 +99,15 @@ final class Document: @unchecked Sendable {
     }
 
     var displayName: String { displayNameOverride ?? fileURL?.lastPathComponent ?? "Untitled" }
+    /// Whether this document has never been given a name — no override and
+    /// no backing file. Used to decide when `displayName`'s canonical
+    /// "Untitled" placeholder should be localized for display.
+    var isUntitled: Bool { displayNameOverride == nil && fileURL == nil }
+    /// `displayName` localized for UI presentation (tabs, headings, window
+    /// title, dialogs). `displayName` itself stays the canonical English
+    /// "Untitled" sentinel so identity checks and tests are language-
+    /// independent; only this property should reach user-facing text.
+    var localizedDisplayName: String { isUntitled ? AppLocalization.string("window.untitled") : displayName }
     var title: String { isModified ? "\(displayName) •" : displayName }
     var isEditingDisabled: Bool { isReadOnly || isViewMode }
 

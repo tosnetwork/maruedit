@@ -856,7 +856,7 @@ final class MainWindowController: NSWindowController,
     ) {
         editorVC.document = result.document
         refreshTabs(); refreshStatus()
-        window?.title = AppLocalization.string("window.document.title", [result.document.displayName])
+        window?.title = AppLocalization.string("window.document.title", [result.document.localizedDisplayName])
         // Report after the document model, text storage, tabs, and status are
         // installed. AppKit may lay out additional offscreen glyphs later;
         // deferred highlighting and ancillary history/sidebar/session work
@@ -937,7 +937,7 @@ final class MainWindowController: NSWindowController,
     private func presentReadOnlySaveBlocked(_ doc: Document) {
         let a = NSAlert()
         a.alertStyle = .warning
-        a.messageText = AppLocalization.string("dialog.readOnly.title", [doc.displayName])
+        a.messageText = AppLocalization.string("dialog.readOnly.title", [doc.localizedDisplayName])
         a.informativeText = doc.isOverwriteProhibited
             ? AppLocalization.string("dialog.readOnly.protected")
             : AppLocalization.string("dialog.readOnly.disk")
@@ -1014,7 +1014,7 @@ final class MainWindowController: NSWindowController,
         do {
             try doc.save(to: url)
             refreshTabs(); refreshStatus()
-            window?.title = AppLocalization.string("window.document.title", [doc.displayName])
+            window?.title = AppLocalization.string("window.document.title", [doc.localizedDisplayName])
             RecentItems.addFile(url)
             if wasUnnamed {
                 // This document now has a real file, which is its own
@@ -1129,7 +1129,7 @@ final class MainWindowController: NSWindowController,
 
         let a = NSAlert()
         a.messageText = AppLocalization.string("dialog.lineEndings.title")
-        a.informativeText = AppLocalization.string("dialog.lineEndings.explanation", [doc.displayName])
+        a.informativeText = AppLocalization.string("dialog.lineEndings.explanation", [doc.localizedDisplayName])
         a.addButton(withTitle: AppLocalization.string("lineEnding.lfLong"))
         a.addButton(withTitle: AppLocalization.string("lineEnding.crlfLong"))
         a.addButton(withTitle: AppLocalization.string("lineEnding.crLong"))
@@ -1176,7 +1176,7 @@ final class MainWindowController: NSWindowController,
         case .deletedOrMoved:
             let a = NSAlert()
             a.alertStyle = .warning
-            a.messageText = AppLocalization.string("dialog.externalChange.missingTitle", [doc.displayName])
+            a.messageText = AppLocalization.string("dialog.externalChange.missingTitle", [doc.localizedDisplayName])
             a.informativeText = AppLocalization.string("dialog.externalChange.missingExplanation")
             a.addButton(withTitle: AppLocalization.string(.commonOK))
             a.runModal()
@@ -1184,7 +1184,7 @@ final class MainWindowController: NSWindowController,
         case .modified:
             let a = NSAlert()
             a.alertStyle = .warning
-            a.messageText = AppLocalization.string("dialog.externalChange.changedTitle", [doc.displayName])
+            a.messageText = AppLocalization.string("dialog.externalChange.changedTitle", [doc.localizedDisplayName])
             if doc.isModified {
                 a.informativeText = AppLocalization.string("dialog.externalChange.conflictExplanation")
                 a.addButton(withTitle: AppLocalization.string("common.reloadFromDisk"))
@@ -1224,7 +1224,7 @@ final class MainWindowController: NSWindowController,
         if doc.isModified {
             let alert = NSAlert()
             alert.alertStyle = .warning
-            alert.messageText = AppLocalization.string("dialog.reload.title", [doc.displayName])
+            alert.messageText = AppLocalization.string("dialog.reload.title", [doc.localizedDisplayName])
             alert.informativeText = AppLocalization.string("dialog.reload.explanation")
             alert.addButton(withTitle: AppLocalization.string(.commonReload))
             alert.addButton(withTitle: AppLocalization.string(.commonCancel))
@@ -1242,7 +1242,7 @@ final class MainWindowController: NSWindowController,
     func showFileProperties() {
         guard let doc = curDoc, let window else { return }
         let alert = NSAlert()
-        alert.messageText = doc.displayName
+        alert.messageText = doc.localizedDisplayName
         alert.informativeText = doc.propertiesSummary
         alert.addButton(withTitle: AppLocalization.string(.commonOK))
         alert.beginSheetModal(for: window)
@@ -1316,7 +1316,7 @@ final class MainWindowController: NSWindowController,
             do {
                 try doc.rename(to: destination)
                 self.refreshTabs(); self.refreshStatus()
-                self.window?.title = AppLocalization.string("window.document.title", [doc.displayName])
+                self.window?.title = AppLocalization.string("window.document.title", [doc.localizedDisplayName])
                 RecentItems.addFile(destination)
                 self.scheduleSessionSave()
             } catch { NSAlert(error: error).beginSheetModal(for: window) }
@@ -1329,7 +1329,7 @@ final class MainWindowController: NSWindowController,
         let indexToClose = curIdx
         if doc.isModified {
             let a = NSAlert()
-            a.messageText = AppLocalization.string("dialog.close.saveTitle", [doc.displayName])
+            a.messageText = AppLocalization.string("dialog.close.saveTitle", [doc.localizedDisplayName])
             a.informativeText = AppLocalization.string("dialog.close.explanation")
             a.addButton(withTitle: AppLocalization.string(.commonSave))
             a.addButton(withTitle: AppLocalization.string(.commonDontSave))
@@ -1369,7 +1369,7 @@ final class MainWindowController: NSWindowController,
         documentController.replaceCurrentDocument(with: document)
         editorVC.document = document
         refreshTabs(); refreshStatus(); layoutContentViews()
-        window?.title = AppLocalization.string("window.document.title", [document.displayName])
+        window?.title = AppLocalization.string("window.document.title", [document.localizedDisplayName])
     }
 
     @discardableResult
@@ -1454,11 +1454,11 @@ final class MainWindowController: NSWindowController,
     func showTabList() {
         let documents = documentController.documents
         guard documents.count > 1 else {
-            showStatusMessage(curDoc?.displayName ?? AppLocalization.string("status.noOpenDocument")); return
+            showStatusMessage(curDoc?.localizedDisplayName ?? AppLocalization.string("status.noOpenDocument")); return
         }
         let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 420, height: 26))
         popup.addItems(withTitles: documents.enumerated().map { index, document in
-            "\(index + 1). \(document.isModified ? "● " : "")\(document.displayName)"
+            "\(index + 1). \(document.isModified ? "● " : "")\(document.localizedDisplayName)"
         })
         popup.selectItem(at: curIdx)
         let alert = NSAlert()
@@ -2369,10 +2369,10 @@ final class MainWindowController: NSWindowController,
     // MARK: - Refresh
 
     private func refreshTabs() {
-        let items = documentController.documents.map { TabItem(title: $0.displayName, isModified: $0.isModified) }
+        let items = documentController.documents.map { TabItem(title: $0.localizedDisplayName, isModified: $0.isModified) }
         classicChrome.setDocumentCount(items.count)
         tabBar.setTabs(items, selectedIndex: curIdx)
-        classicChrome.updateHeading(curDoc?.displayName ?? "Untitled")
+        classicChrome.updateHeading(curDoc?.localizedDisplayName ?? AppLocalization.string("window.untitled"))
         layoutContentViews()
     }
 
@@ -2489,7 +2489,7 @@ final class MainWindowController: NSWindowController,
         guard let doc = curDoc, doc.fileURL != nil else { return }
         if doc.isModified {
             let alert = NSAlert()
-            alert.messageText = AppLocalization.string("dialog.reload.title", [doc.displayName])
+            alert.messageText = AppLocalization.string("dialog.reload.title", [doc.localizedDisplayName])
             alert.informativeText = AppLocalization.string("dialog.encoding.autoReloadExplanation")
             alert.addButton(withTitle: AppLocalization.string(.commonReload))
             alert.addButton(withTitle: AppLocalization.string(.commonCancel))
@@ -2809,7 +2809,7 @@ final class MainWindowController: NSWindowController,
 
         if doc.isModified {
             let a = NSAlert()
-            a.messageText = AppLocalization.string("dialog.encoding.saveBeforeReopen", [doc.displayName])
+            a.messageText = AppLocalization.string("dialog.encoding.saveBeforeReopen", [doc.localizedDisplayName])
             a.informativeText = AppLocalization.string("dialog.encoding.reopenExplanation")
             a.addButton(withTitle: AppLocalization.string(.commonSave))
             a.addButton(withTitle: AppLocalization.string(.commonDontSave))
@@ -2863,7 +2863,7 @@ final class MainWindowController: NSWindowController,
     func editorTextDidChange(_ vc: EditorViewController) {
         if let doc = curDoc {
             doc.cachedTextStorage = vc.textView.textStorage
-            tabBar.updateTab(at: curIdx, item: TabItem(title: doc.displayName, isModified: doc.isModified))
+            tabBar.updateTab(at: curIdx, item: TabItem(title: doc.localizedDisplayName, isModified: doc.isModified))
             scheduleRecoverySaveIfUnnamed(doc)
             refreshOutline(for: doc)
             statusBar.updateDocumentMetrics(
@@ -2883,7 +2883,7 @@ final class MainWindowController: NSWindowController,
         if let title = sidebarVC.selectOutlineSymbol(containingLine: state.lineNumber - 1) {
             classicChrome.updateHeading(title)
         } else {
-            classicChrome.updateHeading(curDoc?.displayName ?? "Untitled")
+            classicChrome.updateHeading(curDoc?.localizedDisplayName ?? AppLocalization.string("window.untitled"))
         }
     }
     func editorDidChooseFont(_ vc: EditorViewController, font: NSFont) {
@@ -2902,7 +2902,7 @@ final class MainWindowController: NSWindowController,
         editorVC.document = doc
         tabBar.selectTab(at: index)
         refreshStatus()
-        window?.title = AppLocalization.string("window.document.title", [doc.displayName])
+        window?.title = AppLocalization.string("window.document.title", [doc.localizedDisplayName])
         if let url = doc.fileURL { sidebarVC.revealFile(url) }
         deferredRestoreCursor()
         scheduleSessionSave()
@@ -3506,7 +3506,7 @@ final class MainWindowController: NSWindowController,
         }
         refreshTabs()
         refreshStatus()
-        if let name = curDoc?.displayName {
+        if let name = curDoc?.localizedDisplayName {
             window?.title = AppLocalization.string("window.document.title", [name])
         }
 

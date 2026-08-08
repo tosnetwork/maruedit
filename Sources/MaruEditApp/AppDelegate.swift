@@ -1286,8 +1286,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             for item in menu.items {
                 guard let window = item.target as? NSWindow else { continue }
                 let rawTitle = window.title
-                let name = rawTitle.components(separatedBy: " — ").last ?? rawTitle
-                let displayName = name == "Untitled" ? AppLocalization.string("window.untitled") : name
+                let displayName = rawTitle.components(separatedBy: " — ").last ?? rawTitle
                 let modified = window.isDocumentEdited ? AppLocalization.string("window.modifiedSuffix") : ""
                 item.title = AppLocalization.string("window.menu.document", [index, displayName, modified])
                 index += 1

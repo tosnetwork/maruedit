@@ -3,7 +3,7 @@ set -euo pipefail
 
 APP="MaruEdit"
 BUNDLE="${APP}.app"
-VERSION="${VERSION:-0.1.3}"
+VERSION="${VERSION:-0.1.4}"
 DMG="${APP}-${VERSION}.dmg"
 STAGING="dmg-staging"
 VOLUME_NAME="MaruEdit"

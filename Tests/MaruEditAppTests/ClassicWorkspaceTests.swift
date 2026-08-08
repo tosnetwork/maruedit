@@ -141,6 +141,15 @@ final class ClassicWorkspaceTests: XCTestCase {
         XCTAssertEqual(controller.macroEditor.textView.string, "classic content")
     }
 
+    func testClassicHeadingShowsJapaneseUntitledPlaceholderInJapaneseLanguage() async {
+        AppLocalization.language = .japanese
+        defer { AppLocalization.language = .english }
+
+        let controller = MainWindowController()
+        controller.applyPreferences(.defaults)
+        XCTAssertEqual(controller.classicHeadingForTesting, "無題")
+    }
+
     func testClassicChromeAndStatusExposeAccessibilityInformation() async {
         let controller = MainWindowController()
         controller.applyPreferences(.defaults)

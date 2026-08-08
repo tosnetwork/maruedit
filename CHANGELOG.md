@@ -6,6 +6,16 @@ semantic version tags.
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-08-08
+
+### Fixed
+
+- Fixed the placeholder name shown for a brand-new, never-saved document:
+  the tab label, the classic heading, the window title, and related dialogs
+  now correctly show the localized untitled placeholder (e.g. 無題 when the
+  app language is set to Japanese) instead of always showing the English
+  "Untitled" text regardless of language.
+
 ## [0.1.3] - 2026-08-08
 
 ### Added

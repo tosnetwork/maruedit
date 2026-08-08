@@ -18,6 +18,25 @@ final class DocumentTests: XCTestCase {
         XCTAssertEqual(doc.lineEnding, .lf)
     }
 
+    func testLocalizedDisplayNameTracksLanguageForUnnamedDocumentsOnly() async {
+        let priorLanguage = AppLocalization.language
+        defer { AppLocalization.language = priorLanguage }
+
+        let untitled = Document()
+        XCTAssertTrue(untitled.isUntitled)
+        AppLocalization.language = .english
+        XCTAssertEqual(untitled.localizedDisplayName, "Untitled")
+        AppLocalization.language = .japanese
+        XCTAssertEqual(untitled.localizedDisplayName, "無題")
+        // Canonical displayName never changes with language — it's the
+        // language-independent identity used by tests and internal checks.
+        XCTAssertEqual(untitled.displayName, "Untitled")
+
+        let named = Document(fileURL: URL(fileURLWithPath: "/tmp/notes.txt"))
+        XCTAssertFalse(named.isUntitled)
+        XCTAssertEqual(named.localizedDisplayName, "notes.txt")
+    }
+
     func testMarkModifiedAndSaved() async {
         let doc = Document(content: "hello")
         XCTAssertFalse(doc.isModified)
