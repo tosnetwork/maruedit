@@ -146,20 +146,40 @@ execution errors exist so models can self-correct.
 Undo granularity and diff review are not polish; they are what make it safe to
 let a non-deterministic process write into a document.
 
-**P7 — Interop only counts at zero client cost.**
-If integrating MaruEdit requires writing a client, it will not happen. The
-measure of success is a single `claude mcp add` / `codex` config block /
-`openfox mcp add` line.
+**P7 — Interop only counts at zero client *code*.**
+If integrating MaruEdit requires anyone to write a client, it will not happen.
+The measure of success is that a stock agent binary works with configuration
+alone. Configuration is not free — §4.3's pairing adds a one-time
+`maruedit-mcp --pair` step before the usual `claude mcp add` / `codex` block /
+`openfox mcp add` — and an earlier draft of this principle said "a single config
+line", which pairing then quietly contradicted. Setup may cost the human a
+minute; it may not cost anyone a line of code. MaruEdit shortens the minute by
+offering, right after pairing, a copyable ready-made config block for each
+supported agent.
 
 **P8 — Tokens are the budget.**
 Every byte returned is paid for twice — money and latency — and re-reading a
 50,000-line file to change one line is the dominant waste in agent editing.
 Ranges, outlines, and search results are first-class, not conveniences.
 
-**P9 — Same user is not same trust, and same binary is not same client.**
-Unchanged from ADR-011, with one addition this design forced into the open:
-every target agent launches the *same* bridge executable, so the connecting
-program's path, name, and pid identify nothing at all.
+**P9 — Same user is one trust domain; say so instead of pretending otherwise.**
+ADR-011 wanted to distinguish the intended automation client from another
+process running as the same user. After several attempts, this profile concludes
+that it cannot, and that claiming otherwise is worse than admitting it. Every
+target agent launches the *same* bridge executable, so path, name, and pid
+identify nothing; a `0600` token or credential is readable by any unsandboxed
+process running as that user; and macOS offers a non-sandboxed app no way to
+attest who is on the other end of a Unix socket beyond its uid.
+
+So the boundary this design actually defends is **the human's attention and the
+document's integrity, against mistakes** — an agent doing more than the person
+meant, an old snapshot overwriting new work, an edit nobody can see or undo.
+Grants are configuration-scoped, revocable, and auditable because those are
+worth having on their own: they make behavior legible, attributable, and
+stoppable. They are not an isolation boundary against a hostile same-user
+process, and no amount of pairing turns them into one. A real boundary would
+need sandboxing or code-signature attestation, which is a different product
+decision (OQ-1).
 
 **P10 — Document text is untrusted input.**
 An agent reading a MaruEdit document may read text that tries to instruct it.
@@ -187,7 +207,7 @@ Derived from §2, in the order they must be satisfied.
 | R10 | The public protocol is MCP, usable with no MaruEdit-specific client code | P7 |
 | R11 | Partial reads (line ranges, search, outline) are cheaper than full reads | P8 |
 | R12 | Protocol text is canonical LF; the document's encoding, line-ending style, and BOM are never changed by an edit | P2 |
-| R13 | Off by default; per-client, object-scoped, revocable grants; no TCP | P9 |
+| R13 | Off by default; configuration-scoped, object-scoped, revocable grants; no TCP | P9 |
 | R14 | No general filesystem, shell, or subprocess primitive is exposed | P9, P10 |
 | R15 | Every agent operation is auditable in the app | P9 |
 | R16 | Selections are addressed per editor pane, with their own revision | P1 |
@@ -392,16 +412,19 @@ consequence concrete.
   window-modal and would stop the human editing in that window, which R9 forbids
   and which would let a background agent's connection attempt interrupt someone
   mid-sentence. Unapproved connections are rate-limited so that a loop cannot
-  flood the indicator.
+  flood the indicator. A pending entry has exactly five states — `pending`,
+  `approved`, `denied`, `disconnected`, `expired` — and no code path in the
+  pairing or approval flow may call `beginSheet` or `runModal()`.
 - **Approval never blocks a call** (R17). The private `control.hello` returns
   `authorization.pending` immediately, and every MCP tool call from an
   unapproved connection returns a retryable tool error naming that state and how
   long to wait. Modern MCP has no handshake in which to park an indefinite wait —
   every request is self-describing — so a bridge that held the first request
-  until a human clicked would look like a hung server. Dismissing the sheet is a
-  denial: the connection is told `authorization.denied` and closed. A client that
-  disconnects while the sheet is open cancels it, and reconnecting starts a fresh
-  approval rather than resuming the old one.
+  until a human clicked would look like a hung server. Declining moves the entry
+  to `denied`: the connection is told `authorization.denied` and closed. A client
+  that disconnects while its entry is pending moves it to `disconnected`, and
+  reconnecting starts a fresh approval rather than resuming the old one. An entry
+  nobody answers `expires`.
 - **Pairing is required before Phase 1 discloses anything**, not deferred to a
   later phase. Approving an anonymous connection cannot distinguish the intended
   agent from any other same-user process that read the token file and ran the
@@ -410,7 +433,8 @@ consequence concrete.
   configuration:
 
   1. The human runs `maruedit-mcp --pair`. The bridge asks MaruEdit to start a
-     pairing, and MaruEdit shows a short verification code in its indicator.
+     pairing, and MaruEdit shows a short verification code in its indicator —
+     the same non-modal surface described below, never a sheet.
   2. The human confirms the same code in the terminal. On match, MaruEdit issues
      a credential for that configuration and writes it to a `0600` file.
   3. The agent's MCP server config points at that file — `--credential <path>` —
@@ -420,18 +444,13 @@ consequence concrete.
   Every later connection presents the credential, and grants are keyed to it.
 
   **Be precise about what this buys.** The credential is a *revocable bearer
-  capability*, not proof of identity. Any unsandboxed process running as this
-  user can read the credential file just as it can read the session token, so
-  possession does not prove which agent launched the shared bridge. What pairing
-  adds is provenance at issuance — a human deliberately introduced this
-  configuration, once, with a code they saw in both places — plus an
-  individually revocable handle to attribute and cut off. Claiming a `0600` file
-  solves same-user client identity would contradict P9 and ADR-011 §9.2, and it
-  does not. That is why human approval still gates first use, why grants stay
-  connection-scoped in Phase 1, and why unattended persistent grants (Phase 5)
-  need a real isolation boundary — a signed helper with a Keychain ACL bound to
-  its code signature, or user-presence-bound keys — rather than a longer-lived
-  secret in a file.
+  capability*, not proof of identity, exactly as P9 says. Any unsandboxed process
+  running as this user can read it, so possession does not prove which agent
+  launched the shared bridge. What pairing adds is provenance at issuance — a
+  human deliberately introduced this configuration once, with a code they saw in
+  both places — plus an individually revocable handle for attribution and for
+  cutting access off. That is genuinely useful and it is not authentication;
+  the document says so rather than implying more.
 
 ---
 
@@ -463,6 +482,7 @@ table in the bridge, tested by transcript:
 | Internal outcome | 2026-07-28 | 2025-06-18 |
 |---|---|---|
 | success | `resultType: "complete"` + `content` + `structuredContent` | same result body, no `resultType` |
+| success, compatibility mirror | bounded JSON serialization of `structuredContent` in a `TextContent` block | same — the 2025 era recommends it, and a client that ignores `outputSchema` sees nothing otherwise |
 | tool failure | `resultType: "complete"` **and** `isError: true` | `isError: true` |
 | input required | `resultType: "input_required"` + `inputRequests`, resumed by a retry carrying `inputResponses` and `requestState` | the legacy era does have server-initiated `elicitation/create`; MaruEdit **chooses** not to use it and returns a tool failure naming what to supply, because R17 forbids a tool call that waits on a human — a design decision, not a protocol limitation |
 | cancellation (client → server) | `notifications/cancelled` for the request id | `notifications/cancelled` for the request id |
@@ -561,11 +581,21 @@ A document displayed in two panes has two selections (R16).
 `{ editorId, documentId, windowId, isActive, isPrimaryPane, selectionRevision }`.
 
 **`get_outline`** — read-only. The existing `OutlineModel` structure: heading
-text, level, one-based line. A 40-line map of a 40,000-line document.
+text, level, and line. `OutlineSymbol.line` is **zero-based** internally — the
+sidebar adds one for display — so the tool maps `line + 1` onto §5.0's
+one-based convention, and its tests cover the first and last line of a
+document explicitly. A 40-line map of a 40,000-line document.
 
 **`search_documents`** — read-only. Search over one document or all open
-documents, returning `{ documentId, line, column, offset, lineText,
-contextBefore, contextAfter }`. This is the tool that prevents "read the whole
+documents, returning `{ documentId, revision, metadataRevision, line, column,
+offset, lineText, contextBefore, contextAfter }`. The revisions are the snapshot
+the off-main search actually ran against, and they are mandatory: an offset is
+meaningless without the version it indexes, and by the time results arrive the
+buffer may have moved. A caller may pass a search offset straight to
+`apply_edits` **only** with that same `baseRevision`; otherwise it re-reads the
+range first. If the document changes while a result set is being paginated, the
+remaining pages are refused with `state.text_revision_conflict` rather than
+mixing snapshots. This is the tool that prevents "read the whole
 file to find one function" (P8, R11). It runs off the main actor with hard
 bounds (§6.4).
 
@@ -764,11 +794,16 @@ Semantics, each one traceable to a failure mode in §1.1:
 **`review_status`** — read-only. `{ proposalId }` → `pending` / `applied` /
 `rejected` / `conflicted` / `expired`, with the resulting revision when applied.
 
-**`set_selection`** / **`reveal`** — `{ editorId, baseSelectionRevision, … }`.
-Move the human's cursor and scroll to a line. Small tools with outsized value:
-"here is what I changed" is a selection, not a paragraph of prose. The selection
-revision precondition exists so an agent cannot yank a cursor the human just
-moved (R9, R16).
+**`set_selection`** — `{ editorId, baseRevision, baseSelectionRevision, … }`.
+Both preconditions, because the target is expressed in document coordinates: a
+human editing *elsewhere* shifts those coordinates without moving the selection,
+so `selectionRevision` alone would let a stale target through. **`reveal`** —
+`{ editorId, baseRevision, line }` — scrolls without moving the cursor and so
+carries the text precondition only.
+Small tools with outsized value: "here is what I changed" is a selection, not a
+paragraph of prose. The selection-revision precondition exists so an agent
+cannot yank a cursor the human just moved (R9, R16); the text-revision one
+exists so it cannot aim at a line number that stopped meaning what it meant.
 
 **`save_document`** — `{ documentId, expectRevision, expectMetadataRevision }`,
 split into preflight and commit because the existing save path can present modal
@@ -1143,10 +1178,22 @@ tool result and one audit record:
 | `failed_before_irreversible` | revalidation, encoding, or plan failure | untouched; disk untouched |
 | `failed_after_irreversible` | backup or write failed once the commit began | dirty; disk state reported as `unknown` until the next observation, and the backup left in place rather than cleaned up behind the human's back |
 | `superseded` | a human save won before the irreversible point | untouched; the human save proceeds |
-| `abandoned_on_shutdown` | the app terminated mid-commit | recovery data preserved; the next launch reports an unfinished save rather than assuming either outcome |
+| `abandoned_on_shutdown` | the app terminated mid-commit | see the limitation below |
 
-A pending human save runs after any terminal state, against fresh state, never
-silently dropped. The coordinator outlives document and window close while a
+**The shutdown row is a narrower promise than it looks, deliberately.** An
+in-memory coordinator cannot outlive process death, and there is no intent
+journal today — saving is `Data.write(…, .atomic)` followed by a metadata read.
+So this profile promises only what atomic replacement already gives: the file on
+disk is either the old bytes or the new ones, never a mixture, and the existing
+unsaved-work recovery data is what the next launch offers the human. It does
+**not** promise to report which save was in flight, to finish it, or to roll a
+backup back. Making that promise would require a durable write-ahead journal —
+generation, target identity, source and serialized digests, backup state —
+fsynced before the irreversible point and reconciled at next launch. That is a
+real feature, not a paragraph, and it is out of scope here.
+
+A pending human save runs after any terminal state reached while the app is
+alive, against fresh state, never silently dropped. The coordinator outlives document and window close while a
 filesystem operation is in flight — closing a document during commit detaches
 the UI but not the machine, and its finalizer must tolerate the document being
 gone by writing the audit record and releasing the fence without touching model
@@ -1259,14 +1306,13 @@ ADR-011 §9 and §16 carry over in full and are not restated here.
    credential it issues is bound to the installation it was issued by, so a
    second instance cannot inherit it. Selecting by pid alone is never
    acceptable — pids are reused.
-4. **Identity.** ADR-011 §9.4's "process names are not identities" is extended:
-   because every agent launches the same bundled bridge, *no* property of the
-   connecting process may key a grant. Phase 1 pairs each agent configuration
-   (§4.3) and keys grants to that credential, but the credential is a bearer
-   capability, so grants remain **connection-scoped** and human approval still
-   gates first use. Phase 5 adds *persistent* grants that survive restarts, and
-   that step — not pairing itself — is what needs the stronger isolation
-   boundary.
+4. **Identity.** ADR-011 §9.2–9.4 required distinguishing the intended client
+   from another same-user process. This profile concludes that is not achievable
+   here and narrows the claim instead of faking it (P9): same-UID is one trust
+   domain, grants are configuration-scoped rather than client-authenticated, and
+   the value delivered is attribution, revocation, and legibility. Phase 1 pairs
+   each configuration (§4.3), keys grants to that credential, keeps them
+   connection-scoped, and still gates first use on human approval.
 5. **Grant scope.** ADR-011's capabilities were per-client only. This profile
    requires them to be object-scoped as well: a grant names the documents,
    window, or authorized directory roots it covers. A blanket `documents.read`
@@ -1409,9 +1455,9 @@ mode, the non-modal approval surface, rate limiting, the connected-client
 indicator, and the audit log. Ship `list_documents`, `list_editors`, `read_document`, `get_outline`,
 `search_documents` (literal, open buffers only), and `get_selection`, all
 executing off-main with bounds and all filtered to the caller's grant.
-*Exit:* `claude mcp add maruedit -- …`, the equivalent Codex `config.toml` block,
-and `openfox mcp add` each produce a working read-only integration with no
-MaruEdit-specific client code; and with a full-document literal search running
+*Exit:* the full pair → configure → approve → connect workflow, run end to end
+against stock Claude Code, Codex CLI, and OpenFox binaries, produces a working
+read-only integration with no MaruEdit-specific client code; and with a full-document literal search running
 against a 10 MB buffer, p99 **edit-handler** latency stays under **8 ms** and
 within **10%** of the same measurement with no client connected.
 
@@ -1455,8 +1501,13 @@ focus when the human switches tabs mid-call.
 
 **Phase 4 — Change awareness.**
 The §5.5 resource surface — document URIs, `resources/list`, `resources/read` —
-followed by coalesced document-change events carrying revisions, so a long-lived
-agent can invalidate its cache instead of re-reading (P8). Delivery follows §5's era table
+followed by coalesced change notifications, so a long-lived agent can invalidate
+its cache instead of polling (P8). A notification carries **only the URI**, in
+both eras, exactly as §5.5 says: the client learns *that* a document changed and
+re-reads to get text and revision together. An earlier draft promised "events
+carrying revisions", which the protocol's notification shape does not allow;
+pushing revisions would need a named, capability-negotiated extension and is not
+worth one. Delivery follows §5's era table
 exactly: content changes are `notifications/resources/updated` in **both** eras,
 established through `subscriptions/listen` with `resourceSubscriptions` in the
 modern era and through `resources/subscribe` per URI in the legacy one.
@@ -1571,10 +1622,16 @@ oversized frames, invalid tokens, stale sockets):
   outside every authorized root is refused, including via a symlink that resolves
   outside one, and including when a path component is replaced between check and
   open.
-- **Pairing tests.** An unpaired connection is refused before any document
-  metadata is returned; a revoked credential stops working on its next call; a
+- **Pairing tests.** The pending-entry state machine covers all five states and
+  no path calls `beginSheet` or `runModal()`; an unpaired connection is refused
+  before any document metadata is returned; a revoked credential stops working on its next call; a
   second MaruEdit instance gets its own endpoint and neither instance reclaims
   the other's live socket.
+- **Coordinate-mapping tests.** `get_outline` reports one-based lines for the
+  first and last line of a document, against a zero-based model.
+- **Stale-target tests.** A `set_selection` whose text revision moved is refused
+  even when the selection revision did not; a search offset used after an
+  intervening edit is refused rather than applied.
 - **Range and truncation tests.** Half-open line ranges, an `endLine` past end of
   file, a `maxBytes` cut that would land inside a grapheme cluster, and an edit
   carrying both an anchor and offsets.
