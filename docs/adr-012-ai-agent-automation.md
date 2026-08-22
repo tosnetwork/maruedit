@@ -402,10 +402,26 @@ consequence concrete.
   denial: the connection is told `authorization.denied` and closed. A client that
   disconnects while the sheet is open cancels it, and reconnecting starts a fresh
   approval rather than resuming the old one.
-- Persistent, per-agent grants require an explicit pairing step that issues a
-  distinct credential per agent configuration — the agent stores it in its own
-  MCP server config, and it is revocable individually. Designing that is
-  **OQ-1**, and it blocks any persistent grant, not just convenience.
+- **Pairing is required before Phase 1 discloses anything**, not deferred to a
+  later phase. Approving an anonymous connection cannot distinguish the intended
+  agent from any other same-user process that read the token file and ran the
+  same bridge, and "approve whoever asked at the moment you happened to click"
+  is not an authorization decision. The flow is a one-time setup step per agent
+  configuration:
+
+  1. The human runs `maruedit-mcp --pair`. The bridge asks MaruEdit to start a
+     pairing, and MaruEdit shows a short verification code in its indicator.
+  2. The human confirms the same code in the terminal. On match, MaruEdit issues
+     a credential for that configuration and writes it to a `0600` file.
+  3. The agent's MCP server config points at that file — `--credential <path>` —
+     rather than carrying the secret itself, because config files get committed
+     and `argv` is world-readable.
+
+  Every later connection presents the credential, which identifies the
+  *configuration*; grants are keyed to it and it is revocable individually. The
+  non-modal approval above still gates the first use of a newly paired
+  configuration, but it now approves something identifiable rather than an
+  anonymous connection that happened to arrive.
 
 ---
 
@@ -462,6 +478,19 @@ unstated choice here is an off-by-one in every client.
   always alongside the corresponding offset.
 - **Digests** are SHA-256 over the UTF-8 encoding of the LF-normalized region
   text, printed as `sha256:` plus lowercase hex.
+- **Line ranges are half-open**: `startLine` is included, `endLine` is not, both
+  one-based. A range's text includes the LF that terminates each included line
+  except at end of file, where the buffer may not have one; `endLine` past the
+  last line is clamped and the response reports what it actually returned.
+- **Truncation is byte-bounded and boundary-safe.** `maxBytes` counts UTF-8
+  bytes and truncation moves back to the nearest grapheme-cluster boundary, never
+  splitting a code point or a combining sequence. A truncated response reports
+  `truncated: true` and the offsets and line numbers it actually covers, not the
+  ones that were asked for. `get_selection` bounds selected text the same way,
+  with the same flag.
+- **One address per edit.** An edit carrying both `anchorId` and `start`/`end`
+  is rejected with `edit.ambiguous_address` rather than silently preferring
+  one.
 
 ### 5.1 Orientation
 
@@ -531,8 +560,11 @@ Two scope restrictions are normative rather than incidental:
   read, not an exception to R14 — see §5.4 and §8.
 
 **Enumeration is scoped too.** `list_documents` returns only documents inside
-the caller's grant, and `list_editors` returns an editor pane if and only if its
-document is granted, or its owning window is itself explicitly granted.
+the caller's grant, and `list_editors` returns an editor pane **only if its
+document is granted**. A window-level grant authorizes window-level operations
+and never implies access to the documents that window holds, now or later —
+otherwise it quietly undoes §8.1(4)'s frozen document grant by leaking the
+identity, activity, and association of every document the human opens there.
 Documents outside the grant are omitted entirely, not returned redacted, and the
 response does not disclose how many were hidden — a path and a display name are
 exactly the kind of thing a document the human did not authorize should not be
@@ -668,7 +700,13 @@ Semantics, each one traceable to a failure mode in §1.1:
      meaningful. The error carries the current text at each failed range and a
      fresh anchor for it, and the agent can retry immediately (P5).
 - **One undo entry**, named `"claude-code: fix typo in section 3"` (R7). ⌘Z is
-  the universal reject button. This requires a new transaction primitive; the
+  the universal reject button. The name shown is the *claimed* client name, and
+  §4.3 says that is unverified, so the UI marks it as claimed and the audit log
+  records the trusted pairing and connection identity alongside it — an
+  attribution nobody can spoof by naming themselves after someone else. Labels
+  are sanitized for display: single line, bounded length, no control or
+  bidirectional characters. The raw value survives only in structured audit
+  fields. This requires a new transaction primitive; the
   existing `batchReplace` silently drops out-of-bounds ranges, merges overlaps,
   and hard-codes its undo action name, so it cannot back this contract (§9,
   Phase 0).
@@ -739,8 +777,16 @@ policy:
   symlinks at every component with `O_NOFOLLOW`, and verifying the final file's
   identity and type before use. String comparison after `resolvingSymlinksInPath`
   passes a review and loses a race.
-- Opening routes through the normal document lifecycle, so encoding detection,
-  profile resolution, and large-file mode behave exactly as they do for a human.
+- **The verified descriptor is the authority, not the path.** Today's lifecycle
+  reopens a URL by path, and folder search enumerates and reads by path
+  throughout, so verifying a path and then reopening it hands the race straight
+  back. Phase 3 therefore owes an fd-based loader — size check, decode, identity
+  capture, and document construction from the already-open descriptor — and
+  descriptor-relative enumeration for folder search. Until that exists,
+  `open_document` and folder scope do not ship.
+- Opening otherwise routes through the normal document lifecycle, so encoding
+  detection, profile resolution, and large-file mode behave exactly as they do
+  for a human.
 - A successfully opened document joins the caller's grant, for that document
   only. This is the one sanctioned way a frozen grant grows, and it grows by an
   object the human's own authorization already covered by root.
@@ -776,7 +822,11 @@ the one that applies: `apply_edits` needs `editable`, `save_document` needs
 The states that make a document non-editable, rejected before any other
 validation:
 
-- **Binary mode.** A binary document's buffer holds a hex *rendering*, and
+- **Binary mode**, reported as `contentKind: "hex"` on both `list_documents`
+  and `read_document`, with `encoding` and `lineEnding` reported as inapplicable,
+  so an agent cannot mistake a hex rendering for the file's text. Text documents
+  report `contentKind: "text"`. A binary document's buffer holds a hex
+  *rendering*, and
   saving parses that rendering back through `BinaryDocumentCodec` rather than
   the policy → line-ending → encoding pipeline that §6.5 describes. An agent
   editing hex text through a text API is a corruption engine, so binary
@@ -983,6 +1033,16 @@ current code arrives at its bug:
 - **`diskBaseline`** — file identity, modification date, and POSIX permissions
   as observed at plan time.
 
+**One coordinator owns saving, or none of this holds.** The protocol below is
+worthless if only `save_document` follows it: today `Document.save()` mutates
+file state and calls `markSaved()` synchronously, and Save, Save As, and
+save-on-close each invoke it independently. A per-document `SaveCoordinator`
+becomes the sole filesystem-save authority, and every entry point — human Save,
+Save As, save-on-close, agent save, and any future autosave — goes through the
+same plan → prepare → fence → commit → finalize machine. Phase 2 does that
+migration *before* enabling agent saves, because a fence only one participant
+respects is not a fence.
+
 The commit protocol is normative:
 
 1. **Plan, on the main actor.** Capture an immutable `SavePlan`: text revision,
@@ -1110,8 +1170,9 @@ does not exist before Phase 4 and an agent that cares learns it from its next
   shippable.
 - A review banner with a real diff, per pending proposal, keyboard-operable, and
   showing the proposal's base revision so a conflicted proposal is legible.
-- A session log — timestamp, client, tool, document, revisions, outcome —
-  visible in the app, not only in a file (R15).
+- A session log — timestamp, pairing and connection identity, claimed client
+  name marked as claimed, tool, document, revisions, outcome — visible in the
+  app, not only in a file (R15).
 - Revocation that takes effect on in-flight calls via the grant generation
   counter (§6.3), not just on new connections.
 
@@ -1135,6 +1196,15 @@ ADR-011 §9 and §16 carry over in full and are not restated here.
 2. **Peer credentials.** Connections are additionally checked with
    `LOCAL_PEERCRED` for uid equality, as a precondition and not an
    authorization.
+2a. **One endpoint per instance.** ADR-011 assumes a single `endpoint.json` and
+   `control.sock`, and reclaims a stale one after checking ownership and object
+   type. MaruEdit has no single-instance lock — `main.swift` starts the event
+   loop directly — so a second instance can overwrite the first's discovery file
+   or unlink a live socket. Endpoints are therefore per instance, in a directory
+   keyed by pid and process start time, listed through a lock-protected registry
+   file that discovery reads. Reclaiming an entry requires the recorded start
+   time to match a dead pid, or a probe of the existing listener to fail;
+   ownership and socket type alone are not enough.
 3. **Identity.** ADR-011 §9.4's "process names are not identities" is extended:
    because every agent launches the same bundled bridge, *no* property of the
    connecting process may key a persistent grant. Phase 1 is per-connection
@@ -1189,10 +1259,17 @@ ADR-011 §9 and §16 carry over in full and are not restated here.
 ### 8.2 Capabilities
 
 `documents.read`, `documents.write`, `documents.open`, `documents.save`,
-`selection.read`, `selection.write`, `search.folder`, `commands.run`,
-`clipboard.read`, `clipboard.write` — each scoped per §8.1(4), each revocable
-individually in Settings, each surfaced in plain language when approval is
-requested.
+`selection.read`, `selection.write`, `search.folder`, `commands.run` — each
+scoped per §8.1(4), each revocable individually in Settings, each surfaced in
+plain language when approval is requested.
+
+Clipboard access is **not** in v1. Earlier drafts listed `clipboard.read` and
+`clipboard.write` as capabilities and Phase 3 listed "clipboard" as a
+deliverable, but neither ever acquired a tool name, schema, size bound, or error
+model — and on inspection it earns none of that work. Every agent that will
+connect already has its own clipboard story, reading the human's clipboard is a
+pure exfiltration channel with no editing value, and writing it is
+surprise-at-a-distance nobody asked for. Removed rather than specified.
 
 ### 8.3 Residual risk
 
@@ -1257,9 +1334,10 @@ placement, nested code signing, notarization verification, and a CI launch test.
 Specify the bridge↔app internal protocol — request ids, cancellation, error
 model, caller credential propagation, reconnect — with framing and fuzz tests,
 and generate the bridge's static tool catalog from the same schema source as the
-app so the two cannot drift. Implement the socket, token file, peer-credential
-check, the non-modal per-connection approval surface, rate limiting, the
-connected-client indicator, and the audit log. Ship `list_documents`, `list_editors`, `read_document`, `get_outline`,
+app so the two cannot drift. Implement the socket, token file, the per-instance
+endpoint registry, the peer-credential check, the §4.3 pairing flow and `--pair`
+mode, the non-modal approval surface, rate limiting, the connected-client
+indicator, and the audit log. Ship `list_documents`, `list_editors`, `read_document`, `get_outline`,
 `search_documents` (literal, open buffers only), and `get_selection`, all
 executing off-main with bounds and all filtered to the caller's grant.
 *Exit:* `claude mcp add maruedit -- …`, the equivalent Codex `config.toml` block,
@@ -1283,8 +1361,9 @@ Bounded anchor minting per §5.2 and digest validation; `apply_edits` with stric
 snapshot semantics on both revision counters, atomic application, the **three**
 ordered conflict outcomes of §5.3, the non-writable document states of §5.3.1,
 undo labelling, LF enforcement, and edit-time encoding representability checks;
-`set_selection` and `reveal` with selection revisions; `save_document` preflight
-plus the §6.5 commit protocol, including the three-value split, the per-document
+`set_selection` and `reveal` with selection revisions; the `SaveCoordinator` migration that puts every
+existing save entry point on one machine; `save_document` preflight plus the
+§6.5 commit protocol, including the three-value split, the per-document
 save fence, a `markSaved`-equivalent that records `sourceSnapshot` rather than
 whatever the buffer holds when the write returns, and format-dirty preservation;
 the split-pane undo decision of §5.3, taken and implemented before any write
@@ -1298,8 +1377,8 @@ Authorized directory roots and their containment checks first, since both
 `open_document` and folder search depend on them; then `open_document` per §5.3,
 `run_command` behind the default-deny allow-list with modal-free screening and
 either explicit `CommandContext` targets or a document-independent-only command
-set, clipboard, and regular-expression search once §6.4's bounding problem has
-an answer.
+set, and regular-expression search once §6.4's bounding problem has an
+answer.
 *Exit:* no registry command is reachable merely because it was registered; no
 folder search and no `open_document` escapes its authorized root through a
 symlink; an exposed command run with an explicit target does not follow window
@@ -1420,7 +1499,15 @@ oversized frames, invalid tokens, stale sockets):
 - **Target-resolution tests.** An exposed command run with an explicit target
   acts on that target after the human switches tabs mid-call; `open_document`
   outside every authorized root is refused, including via a symlink that resolves
-  outside one.
+  outside one, and including when a path component is replaced between check and
+  open.
+- **Pairing tests.** An unpaired connection is refused before any document
+  metadata is returned; a revoked credential stops working on its next call; a
+  second MaruEdit instance gets its own endpoint and neither instance reclaims
+  the other's live socket.
+- **Range and truncation tests.** Half-open line ranges, an `endLine` past end of
+  file, a `maxBytes` cut that would land inside a grapheme cluster, and an edit
+  carrying both an anchor and offsets.
 - **Undo ownership tests.** After an agent edit, ⌘Z produces the same result in
   every pane showing that document — or, if the refusal route was taken, the
   write was refused with `document.multiple_panes` before mutating anything.
@@ -1458,10 +1545,11 @@ upstream.
 
 ## 12. Open questions
 
-- **OQ-1 — Agent pairing (blocking).** What issues a per-agent credential, how
-  does the human associate it with "the Claude Code on this machine", and where
-  does the agent store it? Blocks every persistent grant; Phase 1 ships
-  per-connection approval without it.
+- **OQ-1 — Pairing details (blocking Phase 1).** §4.3 fixes the shape:
+  verification code, per-configuration credential in a `0600` file, config points
+  at the path. What remains is credential format and rotation, behavior when the
+  file is missing or stale, and whether one configuration may hold credentials
+  for several MaruEdit installations.
 - **OQ-2 — Tracked anchors.** Should a later phase allow a write at a newer
   revision when every referenced anchor still validates? Requires boundary
   affinity, overlap semantics, lifetime, and memory bounds, and relates to
