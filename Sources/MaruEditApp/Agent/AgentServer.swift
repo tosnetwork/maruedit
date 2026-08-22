@@ -124,7 +124,13 @@ final class AgentServer {
             self.source = source
         }
 
+        private var closed = false
+
         func close() {
+            // Idempotent: several paths can decide a connection is over, and
+            // closing a descriptor twice can close somebody else's.
+            guard !closed else { return }
+            closed = true
             source.cancel()
             Foundation.close(descriptor)
         }
@@ -178,6 +184,24 @@ final class AgentServer {
 
     private func handle(_ value: JSONValue, on state: ConnectionState) {
         if let hello = AgentEnvelope.Hello.parse(value) {
+            guard state.connection == nil else {
+                // A second hello would orphan the first control connection and
+                // silently change who this socket belongs to.
+                send(AgentEnvelope.Reply(id: 0, outcome: .failure(
+                    code: "protocol.duplicate_hello",
+                    message: "control.hello may be sent once per connection.",
+                    details: nil)).json, on: state)
+                state.close()
+                return
+            }
+            guard hello.catalogVersion == AgentToolCatalog.version else {
+                send(AgentEnvelope.Reply(id: 0, outcome: .failure(
+                    code: "protocol.version_mismatch",
+                    message: "This bridge was built against tool catalog v\(hello.catalogVersion); MaruEdit ships v\(AgentToolCatalog.version).",
+                    details: nil)).json, on: state)
+                state.close()
+                return
+            }
             switch control.register(hello: hello) {
             case .success(let connection):
                 state.connection = connection
@@ -227,7 +251,16 @@ final class AgentServer {
         guard let payload = try? value.encoded(),
               let frame = try? AgentFraming.encode(payload)
         else { return }
-        try? UnixSocket.writeAll(state.descriptor, frame)
+        do {
+            try UnixSocket.writeAll(state.descriptor, frame)
+        } catch {
+            // A write that fails partway has already put a fragment of a
+            // length-prefixed frame on the wire. Sending anything else after
+            // that appends a new frame behind the fragment and desynchronises
+            // the stream permanently, so the connection ends here rather than
+            // continuing to look healthy.
+            state.close()
+        }
     }
 
     /// Tells approved clients that a document changed, so a long-lived agent

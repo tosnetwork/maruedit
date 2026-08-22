@@ -145,6 +145,7 @@ final class SaveCoordinator {
         requester: Requester,
         requiredTextRevision: UInt64? = nil,
         requiredMetadataRevision: UInt64? = nil,
+        commitGuard: (() -> Bool)? = nil,
         completion: @escaping (Outcome) -> Void
     ) {
         let id = document.automationID
@@ -191,7 +192,7 @@ final class SaveCoordinator {
             await MainActor.run {
                 self.commit(
                     document: document, plan: plan, prepared: prepared,
-                    requester: requester, completion: completion)
+                    requester: requester, commitGuard: commitGuard, completion: completion)
             }
         }
     }
@@ -240,9 +241,9 @@ final class SaveCoordinator {
         supersededDocuments.remove(id)
         let prepared = Self.prepare(plan)
         var outcome: Outcome = .failedBeforeIrreversible("unknown")
-        commit(document: document, plan: plan, prepared: prepared, requester: requester) {
-            outcome = $0
-        }
+        commit(
+            document: document, plan: plan, prepared: prepared, requester: requester
+        ) { outcome = $0 }
         return outcome
     }
 
@@ -296,6 +297,7 @@ final class SaveCoordinator {
         plan: SavePlan,
         prepared: Prepared,
         requester: Requester,
+        commitGuard: (() -> Bool)? = nil,
         completion: @escaping (Outcome) -> Void
     ) {
         let id = document.automationID
@@ -329,6 +331,12 @@ final class SaveCoordinator {
         }
         if let required = plan.requiredMetadataRevision, document.metadataRevision != required {
             return finish(.conflicted("metadata_revision"))
+        }
+        // The caller's own last word, checked here rather than after the fact:
+        // an agent whose access was revoked while its save prepared must not
+        // have the write happen and then be told about it.
+        if let commitGuard, !commitGuard() {
+            return finish(.conflicted("authorization"))
         }
         if plan.checksExternalChange {
             let status = ExternalChangeDetector.check(

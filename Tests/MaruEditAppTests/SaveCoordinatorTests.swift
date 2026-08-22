@@ -184,6 +184,32 @@ final class SaveCoordinatorTests: XCTestCase {
 
     // MARK: - Human priority
 
+    func testAHumanSaveArrivingMidFlightIsQueuedRatherThanDropped() async throws {
+        let (document, url) = try fileDocument("start\n")
+        document.content = "agent version\n"
+        document.markModified()
+
+        // The exact UI sequence: supersede, then call the synchronous path
+        // immediately — which is where the first version returned .inProgress
+        // and threw the human's ⌘S away.
+        let agentBox = beginSave(document, requester: .agent)
+        SaveCoordinator.shared.supersede(document)
+        document.content = "human version\n"
+        let immediate = SaveCoordinator.shared.saveSynchronously(document: document)
+        XCTAssertEqual(immediate, .queuedBehindAnotherSave)
+
+        let agentOutcome = await agentBox.value()
+        XCTAssertEqual(agentOutcome, .superseded)
+
+        // The queued save ran when the agent's unwound, and it wrote the
+        // human's text.
+        let deadline = Date().addingTimeInterval(2)
+        while document.isModified && Date() < deadline {
+            await Task.yield()
+        }
+        XCTAssertEqual(try String(contentsOf: url, encoding: .utf8), "human version\n")
+    }
+
     func testAnAgentSaveIsSupersededByTheHumanAndTheHumanNeverWaits() async throws {
         let (document, url) = try fileDocument("start\n")
         document.content = "agent version\n"

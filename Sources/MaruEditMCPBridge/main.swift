@@ -96,6 +96,25 @@ final class AppConnection {
         try UnixSocket.writeAll(descriptor, try AgentFraming.encode(try value.encoded()))
     }
 
+    /// Reads frames until the app answers the hello, so a refusal is seen at
+    /// connect time rather than being mistaken for a transport failure two
+    /// calls later.
+    func completeHandshake() throws -> AgentToolFailure? {
+        while let frame = try receive() {
+            if let state = AgentEnvelope.AuthorizationState.parse(frame) {
+                authorization = state.status
+                return nil
+            }
+            if let reply = AgentEnvelope.Reply.parse(frame), reply.id == 0,
+               case .failure(let code, let message, _) = reply.outcome {
+                return AgentToolFailure(code: code, message: message)
+            }
+        }
+        return AgentToolFailure(
+            code: "transport.closed",
+            message: "MaruEdit closed the connection during the handshake.")
+    }
+
     /// Blocks until one frame arrives, or the peer closes.
     func receive() throws -> JSONValue? {
         while true {
@@ -141,8 +160,13 @@ final class AppConnection {
                 return reply.outcome
             }
         }
+        // EOF: the socket is dead, and the caller must not keep it.
+        isClosed = true
         return .failure(code: "transport.closed", message: "MaruEdit closed the connection.", details: nil)
     }
+
+    /// Whether this connection has seen its peer go away.
+    private(set) var isClosed = false
 }
 
 func readTrimmed(_ url: URL) -> String? {
@@ -171,6 +195,9 @@ func openConnection() -> Result<AppConnection, BridgeFailure> {
                 credential: credential,
                 clientName: options.clientName ?? ProcessInfo.processInfo.environment["MARUEDIT_CLIENT_NAME"],
                 bridgePID: getpid()).json)
+            if let refusal = try connection.completeHandshake() {
+                return .failure(BridgeFailure(message: "\(refusal.code): \(refusal.message)"))
+            }
             return .success(connection)
         } catch {
             return .failure(BridgeFailure(message: "Could not connect to MaruEdit: \(error)"))
@@ -238,7 +265,12 @@ final class LazyConnection: @unchecked Sendable {
             return .failure(code: "editor.unavailable", message: "No connection.", details: nil)
         }
         do {
-            return try connection.call(tool: tool, arguments: arguments)
+            let outcome = try connection.call(tool: tool, arguments: arguments)
+            // A dead socket is dropped on the spot rather than kept until the
+            // next call fails too, which used to make a reconnect take three
+            // requests instead of two.
+            if connection.isClosed { self.connection = nil }
+            return outcome
         } catch {
             self.connection = nil
             return .failure(

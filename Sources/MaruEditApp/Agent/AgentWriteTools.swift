@@ -12,7 +12,9 @@ extension AgentToolExecutor {
     // MARK: - apply_edits
 
     func applyEdits(
-        _ arguments: JSONValue, _ connection: AgentControlService.Connection
+        _ arguments: JSONValue,
+        _ connection: AgentControlService.Connection,
+        _ grant: AgentControlService.GrantStamp
     ) -> AgentToolOutcome {
         // A client that lost a reply and retried used to get a second edit or a
         // duplicate proposal; the key was advertised and never read.
@@ -21,17 +23,19 @@ extension AgentToolExecutor {
                 connection, tool: "apply_edits", key: key, arguments: arguments) {
                 return remembered
             }
-            let outcome = applyEditsUnchecked(arguments, connection)
+            let outcome = applyEditsUnchecked(arguments, connection, grant)
             control.remember(
                 connection, tool: "apply_edits", key: key,
                 arguments: arguments, outcome: outcome)
             return outcome
         }
-        return applyEditsUnchecked(arguments, connection)
+        return applyEditsUnchecked(arguments, connection, grant)
     }
 
     private func applyEditsUnchecked(
-        _ arguments: JSONValue, _ connection: AgentControlService.Connection
+        _ arguments: JSONValue,
+        _ connection: AgentControlService.Connection,
+        _ grant: AgentControlService.GrantStamp
     ) -> AgentToolOutcome {
         let resolved = resolveForWrite(arguments, connection)
         guard case .success(let target) = resolved else {
@@ -193,6 +197,7 @@ extension AgentToolExecutor {
         if mode == "review" {
             let created = control.proposals.create(
                 connectionID: connection.id,
+                grantGeneration: grant.generation,
                 documentID: document.automationID,
                 baseRevision: baseRevision,
                 baseMetadataRevision: baseMetadataRevision,
@@ -212,7 +217,7 @@ extension AgentToolExecutor {
 
         // Re-check the grant immediately before mutating: it may have been
         // revoked while the edits were being validated.
-        guard control.isStillValid(control.stamp(connection)) else {
+        guard control.isStillValid(grant) else {
             return .failure(
                 code: "authorization.denied",
                 message: "This client's access was revoked before the edit was applied.",
@@ -266,8 +271,18 @@ extension AgentToolExecutor {
     static func applyProposal(
         _ proposal: AgentProposalStore.Proposal,
         target: AgentToolExecutor.Target,
-        store: AgentProposalStore
+        store: AgentProposalStore,
+        control: AgentControlService
     ) -> Bool {
+        // The grant that created it must still stand: revoking an agent's write
+        // access left its queued proposals applicable, so a human clicking
+        // Apply would carry out work from a client they had already cut off.
+        let stamp = AgentControlService.GrantStamp(
+            connectionID: proposal.connectionID, generation: proposal.grantGeneration)
+        guard control.isStillValid(stamp) else {
+            store.mark(proposal.id, .conflicted)
+            return false
+        }
         let document = target.document
         guard document.textRevision == proposal.baseRevision,
               document.metadataRevision == proposal.baseMetadataRevision
@@ -297,11 +312,17 @@ extension AgentToolExecutor {
 
     // MARK: - review_status
 
-    func reviewStatus(_ arguments: JSONValue) -> AgentToolOutcome {
+    func reviewStatus(
+        _ arguments: JSONValue, _ connection: AgentControlService.Connection
+    ) -> AgentToolOutcome {
         guard let id = arguments["proposalId"]?.stringValue else {
             return .failure(code: "argument.missing", message: "proposalId is required.", details: nil)
         }
-        guard let proposal = control.proposals.proposal(id) else {
+        // Scoped to its owner: a proposal id is not a capability, and another
+        // connection polling one would learn about work it was never granted.
+        guard let proposal = control.proposals.proposal(id),
+              proposal.connectionID == connection.id
+        else {
             return .failure(
                 code: "proposal.unknown",
                 message: "No such proposal. They expire after \(Int(AgentProposalStore.lifetime / 60)) minutes.",
@@ -411,7 +432,9 @@ extension AgentToolExecutor {
     /// that is still preparing, and one that arrives too late runs immediately
     /// afterwards — and nothing here can put a dialog on screen (R17).
     func saveDocument(
-        _ arguments: JSONValue, _ connection: AgentControlService.Connection
+        _ arguments: JSONValue,
+        _ connection: AgentControlService.Connection,
+        _ grant: AgentControlService.GrantStamp
     ) async -> AgentToolOutcome {
         let resolved = resolveForWrite(arguments, connection)
         guard case .success(let target) = resolved else {
@@ -420,28 +443,32 @@ extension AgentToolExecutor {
         }
         let document = target.document
 
+        // Both fences are required. Treating a missing or malformed value as
+        // "no precondition" let malformed input *weaken* the save rather than
+        // being refused.
+        guard let requiredText = arguments["expectRevision"]?.unsignedValue,
+              let requiredMetadata = arguments["expectMetadataRevision"]?.unsignedValue
+        else {
+            return .failure(
+                code: "argument.invalid",
+                message: "expectRevision and expectMetadataRevision are required, and must be non-negative integers.",
+                details: nil)
+        }
+
         // The preconditions are handed to the coordinator rather than checked
         // here, so they are revalidated atomically immediately before the
-        // commit rather than a few statements earlier.
-        let grant = control.stamp(connection)
+        // commit rather than a few statements earlier — and so is the grant,
+        // which previously was only inspected after the write had happened.
         let outcome = await withCheckedContinuation { continuation in
             SaveCoordinator.shared.save(
                 document: document,
                 requester: .agent,
-                requiredTextRevision: arguments["expectRevision"]?.unsignedValue,
-                requiredMetadataRevision: arguments["expectMetadataRevision"]?.unsignedValue
+                requiredTextRevision: requiredText,
+                requiredMetadataRevision: requiredMetadata,
+                commitGuard: { [control] in control.isStillValid(grant) }
             ) { result in
                 continuation.resume(returning: result)
             }
-        }
-
-        // A revocation that landed while the save was preparing arrives too
-        // late to stop the write, so it is reported rather than hidden.
-        if !control.isStillValid(grant), case .succeeded = outcome {
-            return .failure(
-                code: "authorization.revoked_after_write",
-                message: "Access was revoked while the save was in flight; the file was already written.",
-                details: nil)
         }
 
         switch outcome {

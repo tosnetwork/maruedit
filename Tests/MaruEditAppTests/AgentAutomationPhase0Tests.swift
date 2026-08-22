@@ -316,6 +316,11 @@ final class AgentAutomationPhase0Tests: XCTestCase {
         editor.setSelections([NSRange(location: 0, length: 5)])
         let bookmarksBefore = document.bookmarks.offsets
         let markersBefore = document.colorMarkers.markers
+        let editMarksBefore = document.editMarks.offsets
+        document.searchColorLayers = [SearchColorLayer(
+            query: "alpha", ranges: [NSRange(location: 0, length: 5)], color: .systemYellow)]
+        let searchLayersBefore = document.searchColorLayers.count
+        let temporaryMarkersBefore = editor.temporaryColorMarkers.count
 
         _ = editor.applyTransaction(
             [AutomationEdit(range: NSRange(location: 0, length: 5), replacement: "OMEGA-LONGER")],
@@ -327,6 +332,11 @@ final class AgentAutomationPhase0Tests: XCTestCase {
         XCTAssertEqual(document.content, "alpha beta")
         XCTAssertEqual(document.bookmarks.offsets, bookmarksBefore)
         XCTAssertEqual(document.colorMarkers.markers, markersBefore)
+        // Everything the transaction touches, not just the two sets the first
+        // version of this test happened to check.
+        XCTAssertEqual(document.editMarks.offsets, editMarksBefore)
+        XCTAssertEqual(document.searchColorLayers.count, searchLayersBefore)
+        XCTAssertEqual(editor.temporaryColorMarkers.count, temporaryMarkersBefore)
         XCTAssertEqual(editor.selectionSet.ranges, [NSRange(location: 0, length: 5)])
         XCTAssertEqual(editor.lineIndex.utf16Length, (document.content as NSString).length)
         NSApp.windows.filter { $0.windowController is MainWindowController }.forEach { $0.close() }

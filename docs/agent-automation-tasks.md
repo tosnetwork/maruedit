@@ -265,6 +265,56 @@ writes un-canonicalized text into storage. `AutomationEdit` canonicalizes at
 construction, so every replacement is LF before it reaches text storage; a test
 covers it.
 
+## Applied from the second implementation review (2026-08-23)
+
+The pass found no new crash, and instead found that several of the *fixes above*
+did not close the window they were written for. That is the more useful result.
+
+- **Grant re-checks were placed after the suspension they were meant to guard.**
+  `read_document` took a fresh stamp *after* its await and compared the current
+  generation with itself, which can never fail; `get_outline` had no check at
+  all; and the save re-check ran after `SaveCoordinator` had already written the
+  file, so revoking mid-save changed the error message and nothing else. One
+  stamp is now taken at dispatch, before anything suspends, threaded through the
+  call, and — for saves — handed to the coordinator as a guard it evaluates
+  before the irreversible point.
+- **A timed-out write left half a frame on the wire.** The error was discarded
+  and the connection kept, so the next send appended a new length-prefixed frame
+  behind the fragment and desynchronised the stream permanently. Any write
+  failure now ends the connection, and closing is idempotent.
+- **Proposals were not scoped to their grant.** Any connection could poll any
+  proposal id, and revoking an agent's write access left its queued edits
+  applicable — a human clicking Apply would carry out work from a client they
+  had already cut off. Proposals carry their grant generation, `review_status`
+  is owner-only and read-gated, and acceptance revalidates the originating
+  grant.
+- **`save_document` treated a missing or malformed fence as no fence**, so bad
+  input weakened the save instead of being refused. Both are required.
+- **The bridge never consumed the hello result**, so a refused handshake
+  surfaced two calls later as a generic transport error, and a dead socket was
+  kept until the next call failed too. The handshake completes before
+  `openConnection` returns, and EOF invalidates immediately. A duplicate hello
+  or a mismatched catalog version now ends the connection instead of silently
+  rebinding it.
+- **Pairing was still optional before disclosure.** Approval requires a paired
+  credential; an unpaired connection is told to pair and cannot be approved at
+  all.
+- **Transient failures were cached by idempotency key**, so `limit.pending_proposals`
+  or `document.multiple_panes` kept being returned for ten minutes after the
+  condition passed. Only successes and genuine conflicts are remembered, and
+  keys are length-bounded.
+- Temporary color markers are transformed by the transaction and are now
+  captured and restored by undo; edit marks are normalized against the resulting
+  text.
+
+**Four of my own tests asserted less than their names claimed**, and the review
+named each one. The save test awaited the agent before the human save, so it
+never exercised the sequence it was named for; the grant-stamp test called two
+methods without ever suspending; the undo test checked two of the six sets the
+transaction touches; and the socket changes had no test at all. All four are
+rewritten or added, including a test that would take the whole runner down with
+it if the `SIGPIPE` protection regressed.
+
 ---
 
 ## Open questions that gate work

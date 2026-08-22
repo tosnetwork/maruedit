@@ -126,6 +126,10 @@ extension EditorViewController {
 
         let newContent = textView.string
         document?.bookmarks.normalize(in: newContent as NSString)
+        // Edit marks are line anchors; after a multi-line deletion one can end
+        // up mid-line unless it is snapped back, exactly as the ordinary edit
+        // path does.
+        document?.editMarks.normalize(in: newContent as NSString)
         document?.content = newContent
         document?.markModified()
         delegate?.editorTextDidChange(self)
@@ -168,6 +172,8 @@ extension EditorViewController {
         let editMarks: Set<Int>
         let lastRecordedEditMark: Int?
         let searchLayers: [SearchColorLayer]
+        /// Transformed by the transaction, so undo has to put them back too.
+        let temporaryMarkers: [TemporaryColorMarker]
     }
 
     func transactionSnapshot() -> TransactionSnapshot {
@@ -179,7 +185,8 @@ extension EditorViewController {
             markers: document?.colorMarkers.markers ?? [:],
             editMarks: document?.editMarks.offsets ?? [],
             lastRecordedEditMark: document?.editMarks.lastRecordedOffset,
-            searchLayers: document?.searchColorLayers ?? []
+            searchLayers: document?.searchColorLayers ?? [],
+            temporaryMarkers: temporaryColorMarkers
         )
     }
 
@@ -205,6 +212,7 @@ extension EditorViewController {
         document?.colorMarkers.restore(snapshot.markers)
         document?.editMarks.restore(
             snapshot.editMarks, lastRecorded: snapshot.lastRecordedEditMark)
+        temporaryColorMarkers = snapshot.temporaryMarkers
         document?.searchColorLayers = snapshot.searchLayers
         document?.markModified()
         delegate?.editorTextDidChange(self)

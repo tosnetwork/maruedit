@@ -949,3 +949,4 @@
 "agent.capCommands" = "コマンドを実行";
 "agent.autoApply" = "確認なしで編集を適用";
 "agent.grantRoots" = "フォルダを許可";
+"agent.pairingRequired" = "未ペアリング — 先に maruedit-mcp --pair を実行";

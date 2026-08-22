@@ -11,7 +11,9 @@ extension AgentToolExecutor {
     // MARK: - open_document
 
     func openDocument(
-        _ arguments: JSONValue, _ connection: AgentControlService.Connection
+        _ arguments: JSONValue,
+        _ connection: AgentControlService.Connection,
+        _ grant: AgentControlService.GrantStamp
     ) -> AgentToolOutcome {
         guard let path = arguments["path"]?.stringValue else {
             return .failure(code: "argument.missing", message: "path is required.", details: nil)
@@ -56,7 +58,7 @@ extension AgentToolExecutor {
                 details: nil)
         }
 
-        guard control.isStillValid(control.stamp(connection)) else {
+        guard control.isStillValid(grant) else {
             return .failure(
                 code: "authorization.denied",
                 message: "This client's access was revoked while the file was being read.",

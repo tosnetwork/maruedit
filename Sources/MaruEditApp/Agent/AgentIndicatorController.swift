@@ -162,6 +162,15 @@ final class AgentIndicatorController: NSWindowController {
             label("\(connection.displayName) · pid \(connection.bridgePID) · \(connection.status.rawValue)"),
         ]
         switch connection.status {
+        case .pending where !server.control.canApprove(connection):
+            // Approving an anonymous connection would be approving whichever
+            // process happened to arrive, not a decision about anyone.
+            views.append(label(AppLocalization.string("agent.pairingRequired"), secondary: true))
+            let deny = NSButton(
+                title: AppLocalization.string("agent.deny"),
+                target: self, action: #selector(deny(_:)))
+            deny.identifier = NSUserInterfaceItemIdentifier(connection.id.rawValue)
+            views.append(deny)
         case .pending:
             let approve = NSButton(
                 title: AppLocalization.string("agent.approve"),
@@ -380,7 +389,8 @@ final class AgentIndicatorController: NSWindowController {
         _ = AgentToolExecutor.applyProposal(
             proposal,
             target: AgentToolExecutor.Target(document: target.document, editor: target.editor),
-            store: server.control.proposals)
+            store: server.control.proposals,
+            control: server.control)
     }
 
     @objc private func rejectProposal(_ sender: NSButton) {

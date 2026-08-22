@@ -77,7 +77,8 @@ final class AgentControlService: ObservableObject {
     final class Connection {
         let id: AutomationID
         /// The paired configuration this connection presented, if any.
-        let credentialID: String?
+        var credentialID: String? { pairedCredentialID }
+        fileprivate(set) var pairedCredentialID: String?
         /// Self-reported and therefore display-only, always labelled as such.
         let claimedName: String?
         let bridgePID: Int32
@@ -115,7 +116,7 @@ final class AgentControlService: ObservableObject {
 
         init(id: AutomationID, credentialID: String?, claimedName: String?, bridgePID: Int32) {
             self.id = id
-            self.credentialID = credentialID
+            self.pairedCredentialID = credentialID
             self.claimedName = claimedName
             self.bridgePID = bridgePID
         }
@@ -141,6 +142,18 @@ final class AgentControlService: ObservableObject {
 
     static let idempotencyRecordLimit = 64
     static let idempotencyLifetime: TimeInterval = 600
+    static let maximumIdempotencyKeyCharacters = 128
+
+    /// Failures that describe a passing condition rather than the request.
+    ///
+    /// Caching one would refuse the same operation for ten minutes after the
+    /// human cleared the queue or closed the split — the retry the agent is
+    /// supposed to make would keep getting the stale answer.
+    private static let transientFailureCodes: Set<String> = [
+        "limit.pending_proposals", "limit.proposal_bytes", "limit.rate",
+        "document.multiple_panes", "save.in_progress", "state.superseded",
+        "authorization.pending", "editor.unavailable", "transport.closed",
+    ]
 
     struct AuditEntry: Identifiable {
         let id = UUID()
@@ -264,12 +277,28 @@ final class AgentControlService: ObservableObject {
     /// Approval is granted in the non-modal indicator, never a sheet: a sheet is
     /// window-modal and would stop the human typing, which R9 forbids and which
     /// would let a background agent interrupt someone mid-sentence.
+    /// Whether this connection may be approved at all.
+    ///
+    /// ADR-012 requires pairing before anything is disclosed: approving an
+    /// anonymous connection means approving whichever process happened to
+    /// arrive at the moment the human clicked, which is not a decision about
+    /// anyone in particular.
+    func canApprove(_ connection: Connection) -> Bool {
+        connection.credentialID != nil
+    }
+
+    @discardableResult
     func approve(
         _ connection: Connection,
         documents: [AutomationID],
         capabilities: Capabilities = .readOnly,
         writeMode: WriteMode = .review
-    ) {
+    ) -> Bool {
+        guard canApprove(connection) else {
+            record(connection: connection, tool: "control.approve", document: nil,
+                   outcome: "refused: not paired")
+            return false
+        }
         connection.status = .approved
         connection.grantedDocuments = Set(documents)
         connection.capabilities = capabilities
@@ -278,6 +307,7 @@ final class AgentControlService: ObservableObject {
         record(connection: connection, tool: "control.approve", document: nil,
                outcome: "granted \(documents.count) document(s), \(capabilities.rawValue), \(writeMode.rawValue)")
         onChange?()
+        return true
     }
 
     func setCapabilities(_ connection: Connection, _ capabilities: Capabilities) {
@@ -369,6 +399,16 @@ final class AgentControlService: ObservableObject {
         case .approved:
             break
         case .pending:
+            guard canApprove(connection) else {
+                return .failure(
+                    code: "authorization.pairing_required",
+                    message: """
+                        This client is not paired with MaruEdit. Run \
+                        `maruedit-mcp --pair` once and point your MCP server \
+                        config at the credential it writes.
+                        """,
+                    details: nil)
+            }
             return .failure(
                 code: "authorization.pending",
                 message: "Waiting for approval in MaruEdit's agent indicator. Try again shortly.",
@@ -516,6 +556,13 @@ final class AgentControlService: ObservableObject {
         if !connections.contains(where: { $0 === connection }) {
             connections.append(connection)
         }
+        // Approval requires pairing, so a test connection is paired first
+        // rather than the rule being bypassed.
+        if connection.credentialID == nil {
+            let credential = Self.randomToken(bytes: 8)
+            pairedCredentials[credential] = "test"
+            connection.pairedCredentialID = credential
+        }
         approve(
             connection,
             documents: coordinator.agentVisibleTargets().map(\.document.automationID),
@@ -562,6 +609,12 @@ final class AgentControlService: ObservableObject {
     func rememberedOutcome(
         _ connection: Connection, tool: String, key: String, arguments: JSONValue
     ) -> AgentToolOutcome? {
+        guard key.count <= Self.maximumIdempotencyKeyCharacters else {
+            return .failure(
+                code: "argument.invalid",
+                message: "idempotencyKey must be at most \(Self.maximumIdempotencyKeyCharacters) characters.",
+                details: nil)
+        }
         prune(connection)
         let identifier = IdempotencyKey(tool: tool, key: key)
         guard let record = connection.idempotency[identifier] else { return nil }
@@ -580,6 +633,12 @@ final class AgentControlService: ObservableObject {
         _ connection: Connection, tool: String, key: String,
         arguments: JSONValue, outcome: AgentToolOutcome
     ) {
+        // Successes and genuine conflicts are worth remembering; a passing
+        // condition is not.
+        if case .failure(let code, _, _) = outcome,
+           Self.transientFailureCodes.contains(code) {
+            return
+        }
         let identifier = IdempotencyKey(tool: tool, key: key)
         if connection.idempotency[identifier] == nil {
             connection.idempotencyOrder.append(identifier)

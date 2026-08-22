@@ -372,7 +372,8 @@ final class AgentWriteTests: XCTestCase {
         XCTAssertTrue(AgentToolExecutor.applyProposal(
             proposal,
             target: AgentToolExecutor.Target(document: target.document, editor: target.editor),
-            store: server.control.proposals))
+            store: server.control.proposals,
+            control: server.control))
         XCTAssertEqual(doc.content, "REVIEW me")
 
         let outcome3 = await run("review_status", [
@@ -405,7 +406,8 @@ final class AgentWriteTests: XCTestCase {
         XCTAssertFalse(AgentToolExecutor.applyProposal(
             proposal,
             target: AgentToolExecutor.Target(document: target.document, editor: target.editor),
-            store: server.control.proposals))
+            store: server.control.proposals,
+            control: server.control))
         XCTAssertEqual(doc.content, "!review me", "stored ranges are never relocated to fit")
         XCTAssertEqual(
             server.control.proposals.proposal(proposalID)?.status, .conflicted)

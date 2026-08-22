@@ -73,9 +73,22 @@ final class AgentServerTests: XCTestCase {
         }
     }
 
-    private func startServerAndConnect(credential: String? = nil) throws -> Client {
+    /// Pairs a configuration the way `maruedit-mcp --pair` does, so tests
+    /// exercise the real approval path rather than bypassing it.
+    @discardableResult
+    private func pair() throws -> String {
+        guard case .success = server.control.beginPairing() else {
+            XCTFail("pairing should start")
+            return ""
+        }
+        XCTAssertTrue(server.control.confirmPairing(label: "test"))
+        return try XCTUnwrap(server.control.pairedCredentials.keys.first)
+    }
+
+    private func startServerAndConnect(paired: Bool = true) throws -> Client {
         server.start()
         XCTAssertTrue(server.isRunning)
+        let credential = paired ? try pair() : nil
         let socketPath = AgentEndpoint.socketURL(
             home: home, serverInstanceID: server.control.serverInstanceID).path
         let client = try Client(socketPath: socketPath)
@@ -135,7 +148,7 @@ final class AgentServerTests: XCTestCase {
 
     // MARK: - Authorization
 
-    func testAConnectionStartsPendingAndIsToldSoRatherThanBeingLeftWaiting() throws {
+    func testAPairedButUnapprovedConnectionIsToldToWaitRatherThanBeingLeftWaiting() throws {
         let client = try startServerAndConnect()
         pump()
 
@@ -151,6 +164,27 @@ final class AgentServerTests: XCTestCase {
         }
         // R17: the call returns promptly instead of blocking on a human.
         XCTAssertEqual(code, "authorization.pending")
+    }
+
+    func testAnUnpairedConnectionIsToldToPairAndCannotBeApproved() throws {
+        let client = try startServerAndConnect(paired: false)
+        pump()
+        _ = try client.receive()
+
+        try client.send(AgentEnvelope.Call(id: 1, tool: "list_documents", arguments: .object([:])).json)
+        pump()
+        let reply = try XCTUnwrap(AgentEnvelope.Reply.parse(try XCTUnwrap(client.receive())))
+        guard case .failure(let code, _, _) = reply.outcome else {
+            return XCTFail("an unpaired client must not read anything")
+        }
+        // Approving an anonymous connection would be approving whichever
+        // process happened to arrive when the human clicked.
+        XCTAssertEqual(code, "authorization.pairing_required")
+
+        let connection = try XCTUnwrap(server.control.connections.first)
+        XCTAssertFalse(server.control.canApprove(connection))
+        XCTAssertFalse(server.control.approve(connection, documents: []))
+        XCTAssertEqual(connection.status, .pending)
     }
 
     func testAWrongTokenIsRefused() throws {
@@ -180,7 +214,7 @@ final class AgentServerTests: XCTestCase {
 
         let connection = try XCTUnwrap(server.control.connections.first)
         let openNow = coordinator.agentVisibleTargets().map(\.document.automationID)
-        server.control.approve(connection, documents: openNow)
+        XCTAssertTrue(server.control.approve(connection, documents: openNow))
         server.notifyAuthorization(connection)
         pump()
 
@@ -621,5 +655,114 @@ final class AgentAuthorizationTests: XCTestCase {
         // Answering with someone else's result would be worse than refusing.
         let denied7 = await run("apply_edits", second)
         XCTAssertEqual(failureCode(denied7), "idempotency.mismatch")
+    }
+}
+
+/// Transport failures. None of this had coverage before the second review
+/// pointed out that the socket fixes were asserted only by inspection.
+@MainActor
+final class AgentTransportTests: XCTestCase {
+
+    private var home: URL!
+    private var coordinator: AppCoordinator!
+    private var server: AgentServer!
+
+    override func setUp() async throws {
+        try await super.setUp()
+        _ = NSApplication.shared
+        home = URL(fileURLWithPath: "/tmp/mt2-\(UUID().uuidString.prefix(8))")
+        try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
+        coordinator = AppCoordinator()
+        _ = coordinator.ensureWindowControllerReady(restoreSession: false)
+        server = AgentServer(coordinator: coordinator, home: home)
+        server.start()
+    }
+
+    override func tearDown() async throws {
+        server?.stop()
+        NSApp.windows.filter { $0.windowController is MainWindowController }.forEach { $0.close() }
+        try? FileManager.default.removeItem(at: home)
+        try await super.tearDown()
+    }
+
+    private var socketPath: String {
+        AgentEndpoint.socketURL(
+            home: home, serverInstanceID: server.control.serverInstanceID).path
+    }
+
+    private func pump(_ seconds: TimeInterval = 0.2) {
+        RunLoop.current.run(until: Date().addingTimeInterval(seconds))
+    }
+
+    func testAPeerThatVanishesBeforeTheReplyDoesNotKillTheApp() throws {
+        // Writing to a socket whose peer has gone raises SIGPIPE, which
+        // terminates the process by default. If that protection regressed, this
+        // test would not fail — the whole test runner would die.
+        for _ in 0..<5 {
+            let descriptor = try UnixSocket.connect(to: socketPath)
+            try UnixSocket.writeAll(descriptor, try AgentFraming.encode(
+                try AgentEnvelope.Hello(
+                    token: server.control.sessionToken, credential: nil,
+                    clientName: "vanishing", bridgePID: getpid()).json.encoded()))
+            // Gone before the app can answer.
+            close(descriptor)
+            pump(0.05)
+        }
+        XCTAssertTrue(server.isRunning, "the server survives peers disappearing mid-reply")
+    }
+
+    func testAFrameLargerThanTheLimitClosesTheConnectionRatherThanBeingParsed() throws {
+        let descriptor = try UnixSocket.connect(to: socketPath)
+        defer { close(descriptor) }
+
+        // A length header past the cap, with no body: the decoder must refuse
+        // before allocating anything.
+        var header = UInt32(AgentFraming.maximumFrameBytes + 1).bigEndian
+        var frame = Data(bytes: &header, count: 4)
+        frame.append(Data(repeating: 0x20, count: 16))
+        try? UnixSocket.writeAll(descriptor, frame)
+        pump()
+
+        XCTAssertTrue(server.isRunning)
+        XCTAssertTrue(server.control.connections.isEmpty, "a malformed frame ends the connection")
+    }
+
+    func testASecondHelloIsRefusedRatherThanReplacingTheFirst() throws {
+        let descriptor = try UnixSocket.connect(to: socketPath)
+        defer { close(descriptor) }
+        func sendHello() throws {
+            try UnixSocket.writeAll(descriptor, try AgentFraming.encode(
+                try AgentEnvelope.Hello(
+                    token: server.control.sessionToken, credential: nil,
+                    clientName: "twice", bridgePID: getpid()).json.encoded()))
+        }
+        try sendHello()
+        pump()
+        XCTAssertEqual(server.control.connections.count, 1)
+
+        // A second hello used to overwrite the first, orphaning it.
+        try? sendHello()
+        pump()
+        XCTAssertTrue(
+            server.control.connections.isEmpty,
+            "a duplicate hello ends the connection rather than silently rebinding it")
+    }
+
+    func testAMismatchedCatalogVersionIsRefusedAtTheHandshake() throws {
+        let descriptor = try UnixSocket.connect(to: socketPath)
+        defer { close(descriptor) }
+        let hello = AgentEnvelope.Hello(
+            envelopeVersion: AgentEnvelope.version,
+            catalogVersion: AgentToolCatalog.version + 99,
+            token: server.control.sessionToken, credential: nil,
+            clientName: "stale-bridge", bridgePID: getpid())
+        try UnixSocket.writeAll(descriptor, try AgentFraming.encode(try hello.json.encoded()))
+        pump()
+
+        // A bridge from another build is told so, rather than failing later in
+        // a confusing way.
+        XCTAssertTrue(server.control.connections.isEmpty)
+        let recorded = server.control.audit.map(\.tool)
+        XCTAssertFalse(recorded.contains("list_documents"))
     }
 }

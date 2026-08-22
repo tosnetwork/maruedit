@@ -29,6 +29,9 @@ final class AgentProposalStore {
     struct Proposal {
         let id: String
         let connectionID: AutomationID
+        /// The grant generation in force when it was queued. A proposal made
+        /// under a grant that has since changed is no longer applicable.
+        let grantGeneration: UInt64
         let documentID: AutomationID
         let baseRevision: UInt64
         let baseMetadataRevision: UInt64
@@ -57,6 +60,7 @@ final class AgentProposalStore {
 
     func create(
         connectionID: AutomationID,
+        grantGeneration: UInt64,
         documentID: AutomationID,
         baseRevision: UInt64,
         baseMetadataRevision: UInt64,
@@ -95,6 +99,7 @@ final class AgentProposalStore {
         let proposal = Proposal(
             id: "prp_\(String(counter, radix: 16))",
             connectionID: connectionID,
+            grantGeneration: grantGeneration,
             documentID: documentID,
             baseRevision: baseRevision,
             baseMetadataRevision: baseMetadataRevision,

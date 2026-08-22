@@ -949,3 +949,4 @@
 "agent.capCommands" = "Run commands";
 "agent.autoApply" = "Apply edits without review";
 "agent.grantRoots" = "Grant folders";
+"agent.pairingRequired" = "Not paired — run maruedit-mcp --pair first";

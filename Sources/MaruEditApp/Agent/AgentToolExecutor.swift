@@ -29,21 +29,28 @@ struct AgentToolExecutor {
             control.record(connection: connection, tool: tool, document: nil, outcome: "refused")
             return refusal
         }
+        // One stamp, taken here — before any snapshot is captured and before
+        // anything suspends.
+        //
+        // The first version of this took a fresh stamp *after* the await, which
+        // compared the current generation with itself and could never fail. A
+        // check placed after the window it is meant to close is not a check.
+        let grant = control.stamp(connection)
         let outcome: AgentToolOutcome
         switch tool {
         case "control.pair": outcome = pair()
         case "list_documents": outcome = listDocuments(connection)
         case "list_editors": outcome = listEditors(connection)
-        case "read_document": outcome = await readDocument(arguments, connection)
-        case "get_outline": outcome = await outline(arguments, connection)
-        case "search_documents": outcome = await search(arguments, connection)
+        case "read_document": outcome = await readDocument(arguments, connection, grant)
+        case "get_outline": outcome = await outline(arguments, connection, grant)
+        case "search_documents": outcome = await search(arguments, connection, grant)
         case "get_selection": outcome = selection(arguments, connection)
-        case "apply_edits": outcome = applyEdits(arguments, connection)
-        case "review_status": outcome = reviewStatus(arguments)
+        case "apply_edits": outcome = applyEdits(arguments, connection, grant)
+        case "review_status": outcome = reviewStatus(arguments, connection)
         case "set_selection": outcome = setSelection(arguments, connection)
         case "reveal": outcome = reveal(arguments, connection)
-        case "save_document": outcome = await saveDocument(arguments, connection)
-        case "open_document": outcome = openDocument(arguments, connection)
+        case "save_document": outcome = await saveDocument(arguments, connection, grant)
+        case "open_document": outcome = openDocument(arguments, connection, grant)
         case "run_command": outcome = runCommand(arguments, connection)
         default:
             outcome = .failure(
@@ -196,7 +203,9 @@ struct AgentToolExecutor {
     }
 
     private func readDocument(
-        _ arguments: JSONValue, _ connection: AgentControlService.Connection
+        _ arguments: JSONValue,
+        _ connection: AgentControlService.Connection,
+        _ grant: AgentControlService.GrantStamp
     ) async -> AgentToolOutcome {
         let resolved = resolve(arguments, connection)
         guard case .success(let target) = resolved else {
@@ -230,7 +239,7 @@ struct AgentToolExecutor {
                 message: "withAnchors and anchorRanges are mutually exclusive.",
                 details: nil)
         }
-        guard control.isStillValid(control.stamp(connection)) else {
+        guard control.isStillValid(grant) else {
             return .failure(
                 code: "authorization.denied",
                 message: "This client's access was revoked while the document was being read.",
@@ -302,7 +311,9 @@ struct AgentToolExecutor {
     }
 
     private func outline(
-        _ arguments: JSONValue, _ connection: AgentControlService.Connection
+        _ arguments: JSONValue,
+        _ connection: AgentControlService.Connection,
+        _ grant: AgentControlService.GrantStamp
     ) async -> AgentToolOutcome {
         let resolved = resolve(arguments, connection)
         guard case .success(let target) = resolved else {
@@ -326,11 +337,21 @@ struct AgentToolExecutor {
             }
         }.value
 
+        // An outline is document content; a grant revoked while it was being
+        // built must not still deliver it.
+        guard control.isStillValid(grant) else {
+            return .failure(
+                code: "authorization.denied",
+                message: "This client's access was revoked while the outline was being built.",
+                details: nil)
+        }
         return .success(.object(["symbols": .array(symbols)]))
     }
 
     private func search(
-        _ arguments: JSONValue, _ connection: AgentControlService.Connection
+        _ arguments: JSONValue,
+        _ connection: AgentControlService.Connection,
+        _ grant: AgentControlService.GrantStamp
     ) async -> AgentToolOutcome {
         guard let query = arguments["query"]?.stringValue, !query.isEmpty else {
             return .failure(code: "argument.missing", message: "query is required.", details: nil)
@@ -363,7 +384,6 @@ struct AgentToolExecutor {
         }
 
         let snapshot = scope
-        let grant = control.stamp(connection)
         let results = await Task.detached(priority: .userInitiated) {
             AgentTextSlicer.searchLiteral(
                 in: snapshot, query: query, ignoreCase: ignoreCase, limit: limit)
