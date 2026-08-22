@@ -112,7 +112,10 @@ PLIST
 # with an ad-hoc signature so local builds have internally consistent code and
 # resources. This is not a Developer ID signature and does not grant Gatekeeper
 # trust to downloaded builds.
-codesign --force --deep --sign - "${BUNDLE}"
+# Inside-out: the outer signature seals the inner binary, so the inner one has
+# to be final first.
+codesign --force --sign - "${BUNDLE}/Contents/MacOS/${BRIDGE}"
+codesign --force --sign - "${BUNDLE}"
 codesign --verify --deep --strict --verbose=2 "${BUNDLE}"
 
 echo ""

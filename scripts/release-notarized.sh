@@ -33,9 +33,20 @@ bash scripts/security-audit.sh
 bash scripts/beta-smoke.sh
 bash scripts/build-release.sh
 
+# Every Mach-O in the bundle needs the Developer ID identity, the hardened
+# runtime, and a secure timestamp — notarization rejects the submission if any
+# one of them is missing on any executable, and the nested bridge is an
+# executable. Signing runs inside-out because the outer signature seals what is
+# inside it.
+BRIDGE="$APP/Contents/MacOS/MaruEditMCPBridge"
+test -f "$BRIDGE" || { echo "error: $BRIDGE is missing from the bundle" >&2; exit 2; }
+codesign --force --timestamp --options runtime --sign "$SIGNING_IDENTITY" "$BRIDGE"
 codesign --force --timestamp --options runtime --sign "$SIGNING_IDENTITY" "$APP"
 codesign --verify --deep --strict --verbose=2 "$APP"
 codesign --display --verbose=4 "$APP" 2>&1 | grep -q 'flags=.*runtime'
+# Checked separately: a nested binary without the hardened runtime is the exact
+# failure this ordering exists to prevent, and the outer check cannot see it.
+codesign --display --verbose=4 "$BRIDGE" 2>&1 | grep -q 'flags=.*runtime'
 
 rm -rf "$DIST"
 mkdir -p "$DIST/dmg-root"

@@ -33,6 +33,18 @@ mkdir -p "${BUNDLE}/Contents/Resources"
 
 cp "${BUILD}/${PRODUCT}" "${BUNDLE}/Contents/MacOS/${APP}"
 
+# The MCP bridge ships inside the bundle. The app names its path when building
+# the Keychain ACL for agent credentials, so a bundle without it does not just
+# lose a feature — it leaves the credential store naming a path that does not
+# exist.
+BRIDGE="MaruEditMCPBridge"
+if [ ! -f "${BUILD}/${BRIDGE}" ]; then
+  echo "Missing ${BRIDGE}; the agent interface would ship unusable" >&2
+  exit 1
+fi
+cp "${BUILD}/${BRIDGE}" "${BUNDLE}/Contents/MacOS/${BRIDGE}"
+lipo -info "${BUNDLE}/Contents/MacOS/${BRIDGE}"
+
 RESOURCE_BUNDLE="MaruEdit_MaruEditApp.bundle"
 RESOURCE_BUNDLE_PATH="${BUILD}/${RESOURCE_BUNDLE}"
 if [ ! -d "${RESOURCE_BUNDLE_PATH}" ]; then
@@ -99,7 +111,11 @@ PLIST
 
 # Seal the complete bundle for integrity. A future Developer ID release will
 # replace this ad-hoc signature before notarization.
-codesign --force --deep --sign - "${BUNDLE}"
+# Nested code is signed before the bundle that contains it: signing the outer
+# bundle seals the inner binary's signature, so doing it the other way round
+# produces a bundle whose contents no longer match what was sealed.
+codesign --force --sign - "${BUNDLE}/Contents/MacOS/${BRIDGE}"
+codesign --force --sign - "${BUNDLE}"
 codesign --verify --deep --strict --verbose=2 "${BUNDLE}"
 
 echo ""
