@@ -583,7 +583,7 @@ Two scope restrictions are normative rather than incidental:
 the caller's grant, and `list_editors` returns an editor pane **only if its
 document is granted**. A window-level grant authorizes window-level operations
 and never implies access to the documents that window holds, now or later —
-otherwise it quietly undoes §8.1(4)'s frozen document grant by leaking the
+otherwise it quietly undoes §8.1(5)'s frozen document grant by leaking the
 identity, activity, and association of every document the human opens there.
 Documents outside the grant are omitted entirely, not returned redacted, and the
 response does not disclose how many were hidden — a path and a display name are
@@ -1244,7 +1244,7 @@ ADR-011 §9 and §16 carry over in full and are not restated here.
 2. **Peer credentials.** Connections are additionally checked with
    `LOCAL_PEERCRED` for uid equality, as a precondition and not an
    authorization.
-2a. **One endpoint per instance.** ADR-011 assumes a single `endpoint.json` and
+3. **One endpoint per instance.** ADR-011 assumes a single `endpoint.json` and
    `control.sock`, and reclaims a stale one after checking ownership and object
    type. MaruEdit has no single-instance lock — `main.swift` starts the event
    loop directly — so a second instance can overwrite the first's discovery file
@@ -1259,7 +1259,7 @@ ADR-011 §9 and §16 carry over in full and are not restated here.
    credential it issues is bound to the installation it was issued by, so a
    second instance cannot inherit it. Selecting by pid alone is never
    acceptable — pids are reused.
-3. **Identity.** ADR-011 §9.4's "process names are not identities" is extended:
+4. **Identity.** ADR-011 §9.4's "process names are not identities" is extended:
    because every agent launches the same bundled bridge, *no* property of the
    connecting process may key a grant. Phase 1 pairs each agent configuration
    (§4.3) and keys grants to that credential, but the credential is a bearer
@@ -1267,7 +1267,7 @@ ADR-011 §9 and §16 carry over in full and are not restated here.
    gates first use. Phase 5 adds *persistent* grants that survive restarts, and
    that step — not pairing itself — is what needs the stronger isolation
    boundary.
-4. **Grant scope.** ADR-011's capabilities were per-client only. This profile
+5. **Grant scope.** ADR-011's capabilities were per-client only. This profile
    requires them to be object-scoped as well: a grant names the documents,
    window, or authorized directory roots it covers. A blanket `documents.read`
    over everything now and in the future is a different and much larger grant
@@ -1284,11 +1284,11 @@ ADR-011 §9 and §16 carry over in full and are not restated here.
    lapses when the connection ends. Documents outside the grant are omitted from
    enumeration entirely (§5.1). OQ-3 covers whether a persistent grant may
    inherit more than that; it cannot be answered before OQ-1.
-5. **Writer lease and External Commands** are removed from this profile (§6.2,
+6. **Writer lease and External Commands** are removed from this profile (§6.2,
    §5.4).
-6. **No modal UI** may be reached from any agent-initiated call (R17), which
+7. **No modal UI** may be reached from any agent-initiated call (R17), which
    constrains both `save_document` and `run_command` exposure.
-7. **Public wire protocol.** ADR-011 §7 lists "MCP server" among its explicit v1
+8. **Public wire protocol.** ADR-011 §7 lists "MCP server" among its explicit v1
    exclusions; this profile reverses that for the public surface, which is now
    MCP and nothing else. ADR-011's `control.hello` handshake, request/response
    envelopes, notification and cancellation frames, and two-dimensional version
@@ -1307,7 +1307,7 @@ ADR-011 §9 and §16 carry over in full and are not restated here.
    second protocol negotiation, and that envelope carries the connection
    identity, grant generation, cancellation token, and error mapping the tools
    depend on.
-8. **Request ordering.** ADR-011 §8.2 requires strict per-connection FIFO
+9. **Request ordering.** ADR-011 §8.2 requires strict per-connection FIFO
    processing. That is superseded. A modern client holds a
    `subscriptions/listen` request open for the life of its subscription, so
    FIFO would park every later request behind a call that returns only at
@@ -1318,7 +1318,7 @@ ADR-011 §9 and §16 carry over in full and are not restated here.
    preconditions, and the save fence. Where an agent needs read-after-write
    ordering it gets it by reading the revision it just wrote, not by trusting
    the transport.
-9. **Actor boundary.** ADR-011 §8.1 places target resolution before main-actor
+10. **Actor boundary.** ADR-011 §8.1 places target resolution before main-actor
    dispatch. This profile puts target resolution *on* the main actor (§6.4),
    because resolving a `documentId` or `editorId` means reading live controller
    state; what moves off-main is everything after the snapshot is taken.
@@ -1329,7 +1329,7 @@ ADR-011 §9 and §16 carry over in full and are not restated here.
 
 `documents.read`, `documents.write`, `documents.open`, `documents.save`,
 `selection.read`, `selection.write`, `search.folder`, `commands.run` — each
-scoped per §8.1(4), each revocable individually in Settings, each surfaced in
+scoped per §8.1(5), each revocable individually in Settings, each surfaced in
 plain language when approval is requested.
 
 Clipboard access is **not** in v1. Earlier drafts listed `clipboard.read` and
@@ -1628,7 +1628,7 @@ upstream.
   tracking.
 - **OQ-3 — Persistent-grant inheritance.** Does a *persistent* grant, once OQ-1
   exists, cover documents opened in a later session? This does not reopen the
-  Phase 1 rule in §8.1(4), which is already decided: a grant **freezes at
+  Phase 1 rule in §8.1(5), which is already decided: a grant **freezes at
   approval** and covers only the documents open at that moment. Later-opened
   documents are excluded unless the human turns on the per-connection
   inheritance switch, which is default off and lapses with the connection.
