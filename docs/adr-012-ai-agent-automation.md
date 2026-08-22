@@ -1,8 +1,8 @@
 # ADR-012: AI Agent Automation Interface
 
 - Status: Proposed
-- Date: 2026-08-22
-- Supersedes: ADR-011 (External Control API)
+- Date: 2026-08-22 (revised 2026-08-22 after implementation review)
+- Relationship to ADR-011: **amends and profiles it, does not replace it**
 - Scope: How third-party AI coding agents drive a running MaruEdit process
 
 ## 0. What changed since ADR-011
@@ -15,9 +15,21 @@ already speaks a protocol. A bespoke JSON dialect on a Unix socket means every
 agent needs a MaruEdit-specific client before it can do anything, which is the
 one requirement none of them will satisfy.
 
-This ADR keeps ADR-011's security posture and its shared-automation-layer
-refactor, replaces its public wire protocol with MCP, and re-derives the method
-catalog from what agents actually get wrong when they edit text.
+This ADR therefore defines the **AI agent profile** of ADR-011: it re-derives
+the public method catalog from what agents actually get wrong when they edit
+text, and replaces the public wire protocol with MCP.
+
+ADR-011 remains normative for everything this document does not restate:
+transport selection and rejected alternatives (§3), endpoint layout and
+permissions (§3.1), framing and message limits (§4.1–4.2), main-actor boundary
+and cancellation semantics (§8), the trust-tier argument (§9.6), Command
+Registry exposure policy (§9.7), and the security invariants (§16). Where the
+two documents disagree, this one wins **only** on the points it explicitly
+names in §8.1.
+
+Three things from ADR-011 are dropped outright, with reasons in §6 and §5.4:
+the one-writer control lease, the `externalCommands.run` capability, and the
+bespoke public method catalog.
 
 ---
 
@@ -49,25 +61,27 @@ identity in `_meta`, servers implement `server/discover`, list results carry
 `ttlMs`/`cacheScope`, and servers that need cross-call state are told to mint
 explicit handles and accept them as ordinary tool arguments. Server-initiated
 requests (elicitation, sampling, roots) were replaced by Multi Round-Trip
-Requests: the server returns `resultType: "input_required"` and the client
-retries with `inputResponses`. Roots, Sampling, and Logging are deprecated.
-Transports are stdio and Streamable HTTP.
+Requests. Roots, Sampling, and Logging are deprecated. Transports are stdio and
+Streamable HTTP.
 
 All three named target agents are MCP clients today: Claude Code
 (`claude mcp add --transport stdio|http`), Codex CLI (`mcp_servers` in
 `~/.codex/config.toml`, stdio default plus remote Streamable HTTP), and OpenFox
-(`openfox mcp add`, `--transport stdio|http|sse`).
+(`openfox mcp add`, `--transport stdio|http|sse`). **Which protocol revision
+each of them actually speaks today is an unmeasured fact, and §4.2 makes
+measuring it a Phase 1 deliverable rather than an assumption.**
 
 **ACP** (Agent Client Protocol) is the editor → agent direction: the editor is
 the client, the agent runs as a subprocess, and the editor supplies the UI. It
 shipped in Zed 1.0 (April 2026), is built into JetBrains IDEs, and has a public
 agent registry with 50+ entries. Its `fs/read_text_file` and `fs/write_text_file`
-methods exist for exactly one reason: so the agent reads *unsaved buffer state*
-rather than disk, and so the editor can render the write as a reviewable inline
-diff.
+methods route file access through the client, which *permits* an editor to serve
+unsaved buffer state and to render a write as an inline diff. The protocol does
+not require either behavior; both are client implementation choices that the
+major clients have made.
 
-The two are complementary, not competing. MCP is how an agent reaches into an
-editor. ACP is how an editor hosts an agent.
+The two protocols are complementary, not competing. MCP is how an agent reaches
+into an editor. ACP is how an editor hosts an agent.
 
 ### 1.3 Editors already expose themselves over MCP
 
@@ -91,8 +105,8 @@ been modified since their last read." Neither MCP nor ACP defines optimistic
 concurrency for text. Nobody has standardised revisions, conflict rejection, or
 atomic multi-edit application.
 
-That gap is the design opportunity. It is also the part an editor — and only an
-editor — can actually fix, because the editor is the process that owns the text.
+That gap is the design opportunity, and it is the part an editor — and only an
+editor — can fix, because the editor is the process that owns the text.
 
 ---
 
@@ -141,10 +155,10 @@ Every byte returned is paid for twice — money and latency — and re-reading a
 50,000-line file to change one line is the dominant waste in agent editing.
 Ranges, outlines, and search results are first-class, not conveniences.
 
-**P9 — Same user is not same trust.**
-Unchanged from ADR-011, and the reasoning is stronger now: the connecting
-process is an autonomous agent acting on instructions that may have come from a
-web page, an issue tracker, or the very document it is editing.
+**P9 — Same user is not same trust, and same binary is not same client.**
+Unchanged from ADR-011, with one addition this design forced into the open:
+every target agent launches the *same* bridge executable, so the connecting
+program's path, name, and pid identify nothing at all.
 
 **P10 — Document text is untrusted input.**
 An agent reading a MaruEdit document may read text that tries to instruct it.
@@ -162,19 +176,21 @@ Derived from §2, in the order they must be satisfied.
 |---|---|---|
 | R1 | Agents reach documents through the editor, never through disk | P2 |
 | R2 | Reads report authoritative buffer text plus dirty/disk-divergence state | P2 |
-| R3 | Every document carries a monotonic revision; every write declares `baseRevision` | P3 |
+| R3 | Every document carries a monotonic text revision; every write declares `baseRevision` | P3 |
 | R4 | Stale writes fail without mutating anything, and return the fresh state | P3, P5 |
-| R5 | Reads hand back verifiable anchors; writes may address by anchor | P4 |
+| R5 | Reads hand back digest-verifiable anchors; writes may address by anchor | P4 |
 | R6 | A multi-part edit applies atomically or not at all | P6 |
 | R7 | One tool call is one undo entry, labelled with the calling client | P6 |
 | R8 | The human can require review of agent edits, and can revoke mid-session | P1, P6 |
-| R9 | Human edits always win; the agent is never allowed to block the UI | P1 |
+| R9 | Human edits always win; no agent call blocks typing or opens a modal | P1 |
 | R10 | The public protocol is MCP, usable with no MaruEdit-specific client code | P7 |
 | R11 | Partial reads (line ranges, search, outline) are cheaper than full reads | P8 |
-| R12 | Encoding, line endings, and BOM survive every agent edit unchanged | P2 |
-| R13 | Off by default; per-client, capability-scoped, revocable grants; no TCP | P9 |
-| R14 | No filesystem, shell, or subprocess primitive is exposed | P9, P10 |
+| R12 | Protocol text is canonical LF; the document's encoding, line-ending style, and BOM are never changed by an edit | P2 |
+| R13 | Off by default; per-client, object-scoped, revocable grants; no TCP | P9 |
+| R14 | No general filesystem, shell, or subprocess primitive is exposed | P9, P10 |
 | R15 | Every agent operation is auditable in the app | P9 |
+| R16 | Selections are addressed per editor pane, with their own revision | P1 |
+| R17 | No tool call may depend on a synchronous human decision to return | P1, R9 |
 
 R12 deserves emphasis in a MaruEdit-specific document. A large share of the
 target user base edits Shift_JIS and EUC-JP files with CRLF endings. An agent
@@ -182,38 +198,49 @@ that writes such a file through a naive UTF-8 filesystem write corrupts it
 silently. Routing the edit through MaruEdit is not merely more convenient — it
 is the difference between a correct and a destroyed document.
 
+R12 also states the contract precisely, because the obvious phrasing is wrong.
+`Document.content` is always LF-normalized internally and `save()` re-applies
+`Document.lineEnding` on write (`Sources/MaruEditApp/Document.swift`). The
+protocol therefore carries **LF only**; a payload containing CR is rejected, not
+translated, because silently inserting `\r` would put literal control characters
+into the buffer. Line-ending style is document metadata that an agent can read
+and that only `save` acts on. Mixed-ending documents (`LineEndingState.mixed`)
+still require the existing human choice before any save, so they are excluded
+from byte-identity guarantees (§10).
+
 ---
 
 ## 4. Decision
 
 MaruEdit exposes an **MCP server** as its public AI automation surface.
 
-1. The wire protocol is MCP, revision 2026-07-28, negotiating down to
-   2025-06-18 for older clients.
-2. The transport is stdio, provided by a small bridge executable shipped inside
-   `MaruEdit.app`. The bridge holds no protocol state and no business logic.
-3. The bridge reaches the running app over the local Unix domain socket
+1. The transport is stdio, provided by a small bridge executable shipped inside
+   `MaruEdit.app`.
+2. The bridge reaches the running app over the local Unix domain socket
    specified in ADR-011 §3, which becomes a private, versioned, authenticated
    internal channel rather than a public API.
-4. All editor semantics live in one `@MainActor` automation service, shared with
-   the existing macro engine, exactly as ADR-011 §12 proposed.
-5. The first shipped phase is read-only. Writes ship only once revisions,
-   anchors, atomic apply, undo boundaries, and the review gate exist.
-6. MaruEdit does **not** implement ACP in v1. It is revisited in §11 as the
+3. All editor semantics live in one `@MainActor` automation service, shared with
+   the existing macro engine, exactly as ADR-011 §12 proposed — but only the
+   parts that must touch the editor run there (§6.4).
+4. The first shipped phase is read-only. Writes ship only once revisions,
+   anchors, the atomic transaction primitive, undo boundaries, and the review
+   gate exist.
+5. MaruEdit does **not** implement ACP in v1. It is revisited in §11 as the
    second adapter over the same core.
 
 ```text
 Claude Code / Codex CLI / OpenFox            (MCP client)
-        │  stdio · JSON-RPC · MCP 2026-07-28
+        │  stdio · JSON-RPC · one protocol era per connection
         ▼
-maruedit-mcp                                  (stateless bridge, in the bundle)
-        │  AF_UNIX SOCK_STREAM · 0600 · length-prefixed JSON · session token
+maruedit-mcp                                  (bridge, in the bundle)
+        │  AF_UNIX SOCK_STREAM · 0600 · length-prefixed JSON · peer-cred + token
         ▼
 MaruEdit.app
         ├── AgentControlService                (auth, grants, rate limits, audit)
-        └── EditorAutomationService  @MainActor (the only place semantics live)
-                  ▲
-                  └── MacroCommandBridge        (existing maru.* JavaScript API)
+        ├── EditorAutomationService  @MainActor (the only place semantics live)
+        │        ▲
+        │        └── MacroCommandBridge         (existing maru.* JavaScript API)
+        └── off-main workers                   (search, outline, hashing, encode)
 ```
 
 ### 4.1 Why a bridge process rather than an in-app server
@@ -231,21 +258,57 @@ be the stdio server itself. The alternatives were:
   ask. Reconsider only if remote/containerised agents become a real requirement.
 - **Teach every agent a custom protocol.** Rejected under P7.
 
-The bridge must not receive the session token through `argv` — process
-arguments are readable by other processes on the machine. It reads the token
-from the `0600` endpoint file itself. If MaruEdit is not running, the bridge
-still starts and answers `tools/list` from a static catalog, and returns
-actionable tool errors ("MaruEdit is not running") rather than failing to
-launch, so the agent's tool list does not flicker in and out of existence.
+### 4.2 Protocol revision support is a measurement, not an assumption
 
-### 4.2 Statelessness
+MCP 2026-07-28 and MCP 2025-06-18 are different protocol eras, not dialects.
+The older era requires `initialize`/`notifications/initialized`, connection-scoped
+capability negotiation, and result envelopes without `resultType`; the newer era
+forbids the handshake and requires per-request `_meta`. A server that claims to
+"negotiate down" between them is really two servers.
 
-The 2026-07-28 revision removed protocol sessions. This fits the design rather
-than fighting it: the durable state — documents, revisions, anchors, pending
-reviews — lives in MaruEdit, and every handle MaruEdit mints (`documentId`,
-`anchorId`, `reviewId`) is passed back as an ordinary tool argument. Handles are
-opaque, process-lifetime-scoped, and validated against the caller's grant on
-every call, per the spec's own guidance on stateful tools.
+Therefore:
+
+- Phase 1 begins by **measuring** which revision each target client actually
+  sends today — a one-evening exercise with a logging stub server and the three
+  binaries — and records the result in this document.
+- The bridge implements **one complete era per connection**, selected on the
+  first frame (a `server/discover` or an `initialize` decides it). If two eras
+  must ship, they are two explicit adapters over one internal request model,
+  each with its own conformance transcript, not a set of conditionals.
+- If the measurement shows all three clients on one era, MaruEdit ships that era
+  alone and adds the second only when a real client needs it.
+
+This also corrects a claim in the first draft of this ADR: the bridge is **not**
+stateless. It holds per-connection protocol state (era, negotiated capabilities,
+in-flight request ids). What it holds no state of is *business* state —
+documents, revisions, anchors, and proposals live in MaruEdit, and every handle
+MaruEdit mints (`documentId`, `editorId`, `anchorId`, `proposalId`) travels back
+as an ordinary tool argument, opaque and re-authorized on every call.
+
+### 4.3 The bridge is not an identity
+
+Every target agent launches the same executable at the same path inside the app
+bundle. Any grant keyed to that path, or to a process name or pid, is therefore
+a grant to *every* agent on the machine and to anyone who runs the bridge by
+hand. ADR-011 §9.4 said process names are not identities; this design makes the
+consequence concrete.
+
+- The Unix socket path and `endpoint.json` remain **token-free**, exactly as
+  ADR-011 §3.1 requires. The session token lives in its own `0600` file inside
+  the `0700` endpoint directory. The bridge reads it from that file — never from
+  `argv`, which is world-readable via `ps`, and never from the environment.
+- On accept, MaruEdit verifies the peer's uid with `LOCAL_PEERCRED`. This proves
+  *same user* and nothing more, and is treated as a precondition rather than an
+  authorization.
+- **Phase 1 authorizes per connection, with no persistent identity.** A new
+  connection raises a native approval sheet; the executable path, pid, and any
+  client-supplied name are shown as *display only*, clearly labelled as
+  unverified. Unapproved connections are rate-limited so that a loop cannot spam
+  approval UI.
+- Persistent, per-agent grants require an explicit pairing step that issues a
+  distinct credential per agent configuration — the agent stores it in its own
+  MCP server config, and it is revocable individually. Designing that is
+  **OQ-1**, and it blocks any persistent grant, not just convenience.
 
 ---
 
@@ -259,37 +322,64 @@ Every tool declares an `outputSchema` and returns `structuredContent`. Every
 recoverable failure is a tool execution error (`isError: true`) whose text names
 the cause *and* the state needed to retry, never a bare JSON-RPC error (P5).
 
+### 5.0 Coordinate and text conventions (normative)
+
+These exist because the codebase currently uses both conventions —
+`LineIndex` is zero-based, `GrepService` output is one-based — and an
+unstated choice here is an off-by-one in every client.
+
+- **Text on the wire is LF-only Unicode.** A payload containing `\r` is rejected
+  with `text.carriage_return`. Documents report their `lineEnding` as metadata.
+- **Edit addressing is by anchor or by offset.** Offsets are zero-based UTF-16
+  code-unit indices into the LF-normalized buffer, half-open `[start, end)`.
+  Edits never use line/column, which removes an entire class of off-by-one.
+- **Human-facing positions are one-based lines** and one-based UTF-16 columns.
+  They appear in `read_document` ranges, search results, outlines, and `reveal`,
+  always alongside the corresponding offset.
+- **Digests** are SHA-256 over the UTF-8 encoding of the LF-normalized region
+  text, printed as `sha256:` plus lowercase hex.
+
 ### 5.1 Orientation
 
 **`list_documents`** — annotations: read-only.
 
 ```jsonc
-// → {}
 // ← structuredContent
 {
   "documents": [
     { "documentId": "doc_7f3a", "displayName": "notes.txt",
-      "path": "/Users/x/notes.txt", "windowId": "win_1",
-      "isActive": true, "dirty": true, "revision": 412,
-      "lines": 1840, "bytes": 96431,
+      "path": "/Users/x/notes.txt",
+      "dirty": true, "revision": 412,
+      "lines": 1840, "utf16Length": 96431,
       "encoding": "Shift_JIS", "lineEnding": "CRLF", "bom": false,
       "diskState": "divergent",
-      "selection": { "line": 220, "column": 5, "hasSelection": false } }
+      "editorIds": ["ed_1a", "ed_1b"] }
   ]
 }
 ```
 
-`diskState` is one of `clean`, `divergent` (buffer differs from disk),
-`missing`, `externallyChanged`. It is how an agent learns that reading the path
-with its own filesystem tool would give it the wrong text (P2).
+`diskState` is one of `clean`, `divergent`, `missing`, `externallyChanged`. It
+is how an agent learns that reading the path with its own filesystem tool would
+give it the wrong text (P2).
 
-**`get_outline`** — read-only. Returns the existing `OutlineModel` structure:
-heading text, level, line. A 40-line map of a 40,000-line document.
+Note what is *not* here: a selection. Selection belongs to an editor pane, not
+to a document — `MainWindowController` can hold a `secondaryEditorVC` whose
+`EditorViewController` owns separate TextKit storage and an independent cursor.
+A document displayed in two panes has two selections (R16).
+
+**`list_editors`** — read-only. One entry per open editor pane:
+`{ editorId, documentId, windowId, isActive, isPrimaryPane, selectionRevision }`.
+
+**`get_outline`** — read-only. The existing `OutlineModel` structure: heading
+text, level, one-based line. A 40-line map of a 40,000-line document.
 
 **`search_documents`** — read-only. Literal or regular-expression search over
-one document, all open documents, or (capability-gated) a folder, returning
-`{ documentId, line, column, lineText, contextBefore, contextAfter }`. This is
-the tool that prevents "read the whole file to find one function" (P8, R11).
+one document, all open documents, or an explicitly authorized folder root,
+returning `{ documentId, line, column, offset, lineText, contextBefore,
+contextAfter }`. This is the tool that prevents "read the whole file to find one
+function" (P8, R11). It runs off the main actor with hard bounds (§6.4), and the
+folder scope is an explicitly authorized filesystem read, not an exception to
+R14 — see §5.4 and §8.
 
 ### 5.2 Reading
 
@@ -303,22 +393,25 @@ the tool that prevents "read the whole file to find one function" (P8, R11).
   "documentId": "doc_7f3a", "revision": 412, "dirty": true,
   "encoding": "Shift_JIS", "lineEnding": "CRLF",
   "startLine": 200, "endLine": 260, "totalLines": 1840,
+  "startOffset": 8123, "endOffset": 11004,
   "truncated": false,
-  "text": "…",
-  "anchors": [ { "anchorId": "a_9c21", "startLine": 220, "endLine": 224,
+  "text": "…LF-only…",
+  "anchors": [ { "anchorId": "a_9c21", "revision": 412,
+                 "start": 9040, "end": 9210,
+                 "startLine": 220, "endLine": 224,
                  "digest": "sha256:8f2c…" } ]
 }
 ```
 
-Text is always the buffer, never disk (R1, R2). `revision` is mandatory in the
-response because it is the input to every subsequent write (R3). Omitting the
-line range reads the whole document, subject to `maxBytes` and an explicit
-`truncated` flag — a truncated read is never silently truncated (P5).
+Text is always the buffer, never disk (R1, R2), and always LF (R12). `revision`
+is mandatory in the response because it is the input to every subsequent write
+(R3). Omitting the line range reads the whole document, subject to `maxBytes`
+and an explicit `truncated` flag — a truncated read is never silently truncated
+(P5).
 
-**`get_selection`** — read-only. Returns each selection as line/column *and*
-UTF-16 offset, plus the selected text up to a bound. Line/column is what models
-reason well about; UTF-16 offsets are what `maru.*` and `NSRange` already use,
-and both are given so neither side has to convert.
+**`get_selection`** — read-only. `{ editorId }` → each selection as one-based
+line/column *and* zero-based UTF-16 offset, the document revision, the
+`selectionRevision`, and the selected text up to a bound.
 
 ### 5.3 Writing
 
@@ -330,56 +423,69 @@ not idempotent, destructive.
 {
   "documentId": "doc_7f3a",
   "baseRevision": 412,
+  "idempotencyKey": "cc-8f1e-0007",
   "label": "fix typo in section 3",
   "mode": "review",
   "edits": [
     { "anchorId": "a_9c21", "expectDigest": "sha256:8f2c…",
-      "text": "corrected paragraph\r\n" },
-    { "range": { "startLine": 900, "startColumn": 1,
-                 "endLine": 902, "endColumn": 1 },
-      "expectText": "old three lines…",
-      "text": "new text\r\n" }
+      "text": "corrected paragraph\n" },
+    { "start": 40210, "end": 40388,
+      "expectDigest": "sha256:11ab…",
+      "text": "new text\n" }
   ]
 }
 ```
 
 Semantics, each one traceable to a failure mode in §1.1:
 
-- **Atomic.** Edits are validated against the document as a whole, then applied
-  in one transaction. A single bad anchor fails the entire call and mutates
-  nothing (R6). No more half-applied patches.
-- **Revision-gated.** `baseRevision` mismatch fails before any validation (R3).
-- **Anchor- or range-addressed.** `anchorId` is the preferred form: MaruEdit
-  minted it, MaruEdit tracks it across intervening edits, and `expectDigest`
-  proves the region is still what the agent read. Ranges are accepted for
-  positions the agent computed itself, with `expectText` as the equivalent
-  guard. Neither form requires the model to reproduce surrounding text exactly
-  (P4).
+- **Strict snapshot.** `baseRevision` must *equal* the document's current
+  revision. There is no "apply anyway if the anchors still match" path in v1;
+  §6.2 explains why, and OQ-2 holds the door open for tracked anchors later.
+- **Anchors are snapshot handles, not tracked ranges.** An anchor is valid only
+  at the revision that minted it. Its value over a raw offset is that the agent
+  proves it is editing the region it read by echoing a 32-byte digest instead of
+  a paragraph of text (P8).
+- **Atomic.** Edits are validated as a set — bounds, overlap, digests, encoding
+  representability — and then applied in one transaction. Any failure fails the
+  entire call and mutates nothing (R6). Overlapping edits are rejected, not
+  merged.
 - **Teaching failures.** On conflict the error carries the current revision, the
   current text of each failed region, and fresh anchors for it — everything the
   agent needs to get it right on the next call without re-reading the file (P5).
 - **One undo entry**, named `"claude-code: fix typo in section 3"` (R7). ⌘Z is
-  the universal reject button.
-- **Line endings and encoding are the document's**, not the payload's. Submitted
-  `\n` is normalised to the document's ending; the document's encoding is never
-  changed by an edit (R12).
+  the universal reject button. This requires a new transaction primitive; the
+  existing `batchReplace` silently drops out-of-bounds ranges, merges overlaps,
+  and hard-codes its undo action name, so it cannot back this contract (§9,
+  Phase 0).
+- **Encoding is enforced at edit time.** If inserted text contains characters
+  not representable in the document's encoding, the call fails with
+  `encoding.unrepresentable` listing the offending scalars, rather than
+  producing a document that cannot be saved without a human conversion decision.
 - **`mode`** is `apply` or `review`, bounded by the client's grant. `review`
-  returns immediately with `{ "status": "pending", "reviewId": "rev_2b" }` and
-  shows a native diff in MaruEdit; it never blocks the agent's tool call while a
-  human decides (R9).
+  returns immediately with `{ "status": "pending", "proposalId": "prp_2b" }` and
+  never blocks the tool call while a human decides (R17).
+- **`idempotencyKey`** is optional but recommended: a repeated call with the same
+  key returns the original outcome instead of creating a second proposal or a
+  second edit.
 
-**`review_status`** — read-only. `{ reviewId }` → `pending` / `applied` /
-`rejected` / `expired`, with the resulting revision when applied. The
-server-minted-handle pattern the 2026-07-28 spec prescribes for cross-call
-state.
+**`review_status`** — read-only. `{ proposalId }` → `pending` / `applied` /
+`rejected` / `conflicted` / `expired`, with the resulting revision when applied.
 
-**`set_selection`** / **`reveal`** — move the human's cursor and scroll to a
-line. Small tools with outsized value: "here is what I changed" is a selection,
-not a paragraph of prose.
+**`set_selection`** / **`reveal`** — `{ editorId, baseSelectionRevision, … }`.
+Move the human's cursor and scroll to a line. Small tools with outsized value:
+"here is what I changed" is a selection, not a paragraph of prose. The selection
+revision precondition exists so an agent cannot yank a cursor the human just
+moved (R9, R16).
 
-**`save_document`** — `{ documentId, expectRevision }`. Never implicit. Saving
-runs the existing save path, which means existing external-change detection,
-encoding preservation, and conflict handling apply unchanged.
+**`save_document`** — `{ documentId, expectRevision }`, split into preflight and
+commit because the existing save path can present modal alerts for external
+modification, mixed line endings, and unrepresentable text, and a modal inside a
+tool call would violate R17 and can hang an MCP request indefinitely. Preflight
+returns a structured outcome — `ok`, `external_change`, `mixed_line_endings`,
+`unrepresentable`, `save_as_required`, `read_only` — and only `ok` proceeds to a
+non-interactive commit. Anything else is reported to the agent and, where a human
+decision is genuinely required, surfaced in MaruEdit as a pending item the human
+resolves on their own time.
 
 **`open_document`** — `{ path }`, capability-gated. Routes through the normal
 document lifecycle so the file arrives with correct encoding detection.
@@ -387,18 +493,30 @@ document lifecycle so the file arrives with correct encoding detection.
 **`run_command`** — `{ commandId }`, default-deny. A command is reachable only
 if its registry definition is explicitly marked agent-exposed and the client
 holds `commands.run`. Registering a command must never make it remotely
-invocable (unchanged from ADR-011 §9.7).
+invocable (unchanged from ADR-011 §9.7). Commands that can present modal UI are
+not eligible (R17).
 
 ### 5.4 Deliberately absent
 
-No `read_file`, `write_file`, `list_directory`, `run_shell`, `run_external_command`,
-or network tool. Every agent that will connect already has those, better. What no
-agent has is a correct view of an unsaved Shift_JIS buffer that a human is
-typing into — that, and only that, is what MaruEdit should sell (R14).
+No `read_file`, `write_file`, `list_directory`, `run_shell`,
+`run_external_command`, or network tool. Every agent that will connect already
+has better versions of those. What no agent has is a correct view of an unsaved
+Shift_JIS buffer that a human is typing into — that, and only that, is what
+MaruEdit should sell (R14).
 
-`external.*` commands stay unreachable in v1 even behind a capability. They
-would add no capability the agent lacks while making the audit trail ambiguous
-about which process did what.
+One honest exception: `search_documents` with a folder scope *is* a filesystem
+read primitive. It is bounded rather than general — an explicitly authorized
+root, canonicalized, containment re-checked after symlink resolution, symlinks
+not followed by default, and a hard cap on matches and bytes returned — and it
+is described that way in the approval sheet rather than hidden behind the
+phrase "search".
+
+`external.*` commands stay unreachable in v1. The reason is not that agents
+already have shell access — a sandboxed or remote agent may not — but that
+MaruEdit's curated external commands run with full user authority, and routing
+them through an automation grant makes the audit trail ambiguous about which
+process caused a subprocess to run. They are deferred and intentionally
+unsupported by this profile, not judged capability-equivalent.
 
 ---
 
@@ -406,23 +524,74 @@ about which process did what.
 
 One authority, optimistic concurrency, no locks.
 
-- Every document holds `revision: UInt64`, incremented by any mutation from any
-  source — human keystroke, macro, agent, reload, undo.
-- Reads return the revision. Writes declare `baseRevision`. Mismatch → rejection,
-  never a merge attempt (P3). Text merge is the agent's job; it has a model, and
-  MaruEdit's guess would be worse.
-- Anchors are invalidated by edits that destroy their range, and return
-  `anchor_stale` with the surrounding current text.
-- Operations are serialized on the main actor per document. Permission checks
-  happen before main-actor dispatch, so an unauthorized call never reaches the
-  editor at all.
-- **No writer lease.** ADR-011 proposed a one-writer control lease; it is
-  dropped. A lease adds a lifecycle to leak, blocks legitimate multi-agent use,
-  and solves nothing that `baseRevision` does not already solve. Two agents
-  racing is the same problem as one agent racing a human, and it has the same
-  answer: the loser is told exactly what changed.
-- The human is never blocked, never prompted synchronously by an agent call, and
-  never has an edit rejected because an agent was mid-flight (P1, R9).
+### 6.1 Revisions
+
+Three independent monotonic counters, because they answer different questions
+and conflating them makes every precondition either too strict or useless:
+
+- `revision` — document text. Incremented by any text mutation from any source.
+- `selectionRevision` — per editor pane. Incremented by cursor and selection
+  changes.
+- `metadataRevision` — encoding, line-ending style, BOM, file identity,
+  read-only state.
+
+Getting text-revision coverage right is Phase 0 work and is not free: today's
+mutation paths include the `NSTextView` delegate's `textDidChange`, the
+multi-cursor `batchReplace` (which deliberately bypasses that delegate), undo
+restoring a whole editor snapshot, reload, encoding change, and direct
+assignment to `Document.content` in several places. Phase 0 introduces one
+mutation-notification boundary that all of them go through, and audits every
+direct assignment.
+
+### 6.2 Writes
+
+- Reads return the revision. Writes declare `baseRevision`, which must be equal.
+  Mismatch → rejection, never a merge attempt (P3). Text merge is the agent's
+  job; it has a model, and MaruEdit's guess would be worse.
+- Strict equality is chosen over "newer revision is fine if the anchors still
+  match" because the second rule is only sound if anchors are tracked through
+  intervening edits, and tracked anchors need boundary affinity, overlap
+  behavior, lifetime, and memory bounds all specified and tested. That is a
+  feature, not a footnote (OQ-2). Until then, an agent that loses a race
+  re-reads the region it cares about — cheap, because §5.1 gives it search and
+  outline instead of a whole-file read.
+- Operations serialize on the main actor per document.
+- **No writer lease.** ADR-011 proposed a one-writer control lease. Revision
+  equality plus a single atomic check-and-apply on the main actor already
+  provides lost-update safety, which is what the lease was for. It is not that a
+  lease "solves nothing" — it would also give fairness and a clear ownership
+  indicator — but those are scheduling and UI problems, and §8's per-client rate
+  limits plus the connected-client indicator address them without a lifecycle
+  that can leak or block legitimate multi-agent use.
+
+### 6.3 Permission checking
+
+ADR-011 §8.1 requires permission checks before main-actor dispatch; §7 here
+requires revocation to affect in-flight calls. Both hold only if the check
+happens twice:
+
+1. A cheap authorization check off the main actor, which rejects unauthorized
+   calls before they can occupy the editor at all.
+2. An atomic re-validation on the main actor, immediately before commit, of the
+   credential, the grant generation counter, the target's continued existence,
+   and the revision precondition.
+
+The same re-validation runs when a human accepts a pending proposal, because the
+grant may have been revoked while the proposal sat in the queue.
+
+### 6.4 Where work runs
+
+`@MainActor` is for target resolution, snapshot capture, and mutation. Nothing
+else. Outline construction, regular-expression search, digest computation,
+encoding-representability checks, truncation, and JSON serialization run off the
+main actor against an immutable snapshot tagged with the revision it was taken
+at. In-memory search can scan up to ten million characters per document today,
+and `NSRegularExpression` has no execution timeout, so running it on the main
+actor would visibly stall typing and break R9.
+
+Every read tool therefore carries explicit bounds — document bytes, pattern
+length, match count, context bytes, wall-clock deadline — and returns a
+structured `limit.*` error rather than running long.
 
 ---
 
@@ -434,18 +603,36 @@ Four modes per granted client, chosen by the human, changeable at any time:
 |---|---|---|
 | `off` (default) | — | — |
 | `read` | yes | rejected |
-| `review` | yes | queued as a diff the human accepts or rejects |
+| `review` | yes | queued as a proposal the human accepts or rejects |
 | `auto` | yes | applied immediately, still one undo entry each |
 
-Surfaces required before writes ship:
+### 7.1 Proposal lifecycle
+
+A pending proposal is **immutable**: `{ proposalId, documentId, baseRevision,
+perEditDigests, normalizedEdits, client, label, createdAt }`. It is never
+rewritten, relocated, or merged.
+
+On acceptance, the same atomic check that guards a direct write runs again. If
+the document's revision moved while the proposal was pending — the human kept
+typing, which they are explicitly allowed to do (P1) — the proposal becomes
+`conflicted`, nothing is applied, and the agent must re-propose against the new
+revision. Silently applying stored ranges to a document that has moved is the
+exact lost-update bug this whole design exists to prevent.
+
+Proposals expire after a bounded time and on document close, and are dropped on
+revocation.
+
+### 7.2 Required surfaces
 
 - A status-bar indicator naming every connected client, with a one-click
   disconnect. If a user cannot tell an agent is attached, the feature is not
   shippable.
-- A review banner with a real diff, per pending `reviewId`, keyboard-operable.
+- A review banner with a real diff, per pending proposal, keyboard-operable, and
+  showing the proposal's base revision so a conflicted proposal is legible.
 - A session log — timestamp, client, tool, document, revisions, outcome —
   visible in the app, not only in a file (R15).
-- Revocation that takes effect on in-flight calls, not just new connections.
+- Revocation that takes effect on in-flight calls via the grant generation
+  counter (§6.3), not just on new connections.
 
 MCP's Multi Round-Trip Requests are deliberately *not* used for the review gate.
 MRTR asks the agent's user; MaruEdit's user is sitting in front of MaruEdit. The
@@ -456,73 +643,107 @@ buffer.
 
 ## 8. Security model
 
-ADR-011 §9 and §16 carry over. The invariants that change or sharpen:
+ADR-011 §9 and §16 carry over in full and are not restated here.
 
-1. Off by default; no socket exists until the user enables it; never a TCP
-   listener (unchanged).
-2. Endpoint directory `0700`, socket `0600`, token regenerated per app launch,
-   never passed in `argv` or environment (sharpened — the bridge makes this
-   concrete).
-3. Connecting is not authorization. The first connection from an unknown client
-   raises a native approval sheet showing the bridge's executable path and pid
-   and the capabilities requested, and the human grants a mode plus a capability
-   set that is revocable in Settings.
-4. Capabilities are per-client and fine-grained: `documents.read`,
-   `documents.write`, `documents.open`, `documents.save`, `selection.read`,
-   `selection.write`, `search.folder`, `commands.run`, `clipboard.read`,
-   `clipboard.write`.
-5. Commands are default-deny at the definition level.
-6. No filesystem, shell, subprocess, or network primitive (R14).
-7. Document content is untrusted input. MaruEdit never interprets returned text
-   as instruction, and no tool exists whose effect depends on document content
-   (P10).
-8. Rate limits and a frame-size cap apply per client, and exceeding them
-   throttles rather than disconnects, so a runaway agent degrades instead of
-   flapping.
-9. Everything is audited (R15).
+### 8.1 Where this profile amends ADR-011
+
+1. **Token location.** ADR-011 §3.1's rule stands — `endpoint.json` carries no
+   token. This profile adds that the token lives in a separate `0600` file, is
+   read by the bridge from that file only, and never appears in `argv` or the
+   environment (§4.3).
+2. **Peer credentials.** Connections are additionally checked with
+   `LOCAL_PEERCRED` for uid equality, as a precondition and not an
+   authorization.
+3. **Identity.** ADR-011 §9.4's "process names are not identities" is extended:
+   because every agent launches the same bundled bridge, *no* property of the
+   connecting process may key a persistent grant. Phase 1 is per-connection
+   approval only; persistent grants require the pairing design in OQ-1.
+4. **Grant scope.** ADR-011's capabilities were per-client only. This profile
+   requires them to be object-scoped as well: a grant names the documents,
+   window, or authorized directory roots it covers, and states explicitly
+   whether documents opened later inherit it. A blanket `documents.read` over
+   everything now and in the future is a different and much larger grant than it
+   appears.
+5. **Writer lease and External Commands** are removed from this profile (§6.2,
+   §5.4).
+6. **No modal UI** may be reached from any agent-initiated call (R17), which
+   constrains both `save_document` and `run_command` exposure.
+
+### 8.2 Capabilities
+
+`documents.read`, `documents.write`, `documents.open`, `documents.save`,
+`selection.read`, `selection.write`, `search.folder`, `commands.run`,
+`clipboard.read`, `clipboard.write` — each scoped per §8.1(4), each revocable
+individually in Settings, each surfaced in plain language in the approval sheet.
+
+### 8.3 Residual risk
 
 The threat that has no technical answer is a *legitimately granted* agent acting
-on instructions its operator did not intend. The mitigation is the review mode,
-the undo boundary, and the audit log — which is why they are requirements and
-not options.
+on instructions its operator did not intend — including instructions embedded in
+a document it was asked to edit (P10). The mitigation is review mode, the undo
+boundary, the object-scoped grant, and the audit log, which is why they are
+requirements and not options.
 
 ---
 
 ## 9. Phased rollout
 
-**Phase 0 — Shared automation core.** Extract `EditorAutomationService`
-(`@MainActor`, value-only) out of `MacroCommandBridge`; keep `maru.*` observably
-identical; add process-lifetime document/window IDs; add document revisions and
-prove that human edits, macro edits, and undo all bump them. No socket, no
-bridge, no protocol. *Exit:* macro tests pass unchanged against the extracted
-service.
+**Phase 0 — Shared automation core.**
+Extract `EditorAutomationService` (`@MainActor`, value-only) out of
+`MacroCommandBridge`; keep `maru.*` observably identical. Add process-lifetime
+`documentId` / `editorId` / `windowId`. Add the three revision counters and the
+single mutation-notification boundary, auditing every existing path that mutates
+`Document` — `textDidChange`, `batchReplace`, undo snapshot restore, reload,
+encoding change, direct assignment. Build the **validated transaction
+primitive** underneath both adapters: bounds and overlap rejection before any
+mutation, one undo snapshot, caller-supplied undo label, typed result. Keep the
+macro path's existing lenient behavior by adapting it, not by weakening the
+primitive. No socket, no bridge, no protocol.
+*Exit:* macro tests pass unchanged; revision-source tests cover every mutation
+path; the transaction primitive rejects a batch containing one invalid range
+without mutating the document.
 
-**Phase 1 — Read-only MCP.** Bridge executable; ADR-011 socket and token; the
-approval sheet; `list_documents`, `read_document`, `get_outline`,
-`search_documents`, `get_selection`; `server/discover` and version negotiation;
-status-bar indicator; audit log. *Exit:* `claude mcp add maruedit -- …`, the
-equivalent Codex `config.toml` block, and `openfox mcp add` each produce a
-working read-only integration with no MaruEdit-specific client code (R10).
+**Phase 1 — Read-only MCP.**
+Measure which MCP revision each target client sends (§4.2) and record it here.
+Add the SwiftPM executable target for the bridge, its universal build, bundle
+placement, nested code signing, notarization verification, and a CI launch test.
+Specify the bridge↔app internal protocol — request ids, cancellation, error
+model, caller credential propagation, reconnect — with framing and fuzz tests,
+and generate the bridge's static tool catalog from the same schema source as the
+app so the two cannot drift. Implement the socket, token file, peer-credential
+check, per-connection approval sheet, rate limiting, status-bar indicator, and
+audit log. Ship `list_documents`, `list_editors`, `read_document`, `get_outline`,
+`search_documents`, `get_selection`, all executing off-main with bounds.
+*Exit:* `claude mcp add maruedit -- …`, the equivalent Codex `config.toml` block,
+and `openfox mcp add` each produce a working read-only integration with no
+MaruEdit-specific client code, and a full-document regex search on a 10 MB
+buffer does not measurably affect typing latency.
 
-**Phase 2 — Anchors and revision-gated writes.** Anchor minting and tracking;
-`apply_edits` with atomic application, digest guards, teaching errors, undo
-labelling, encoding/line-ending preservation; `set_selection`, `reveal`,
-`save_document`; review mode and `review_status`; the diff banner. *Exit:* an
-agent can edit a dirty Shift_JIS CRLF document while a human types in it, and
-neither loses work (R3, R6, R12).
+**Phase 2 — Revision-gated writes.**
+Anchor minting and digest validation; `apply_edits` with strict snapshot
+semantics, atomic application, teaching errors, undo labelling, LF enforcement,
+and edit-time encoding representability checks; `set_selection` and `reveal`
+with selection revisions; `save_document` preflight/commit; review mode,
+immutable proposals, and the diff banner.
+*Exit:* an agent edits a dirty Shift_JIS CRLF document while a human types in
+it, and neither loses work; a proposal accepted after the human typed is
+reported `conflicted` rather than applied.
 
-**Phase 3 — Scoped app control.** `open_document`, `run_command` behind the
-default-deny allow-list, clipboard, folder search. *Exit:* no registry command
-is reachable merely because it was registered.
+**Phase 3 — Scoped app control.**
+`open_document`, `run_command` behind the default-deny allow-list with modal-free
+screening, clipboard, authorized folder search with containment checks.
+*Exit:* no registry command is reachable merely because it was registered.
 
-**Phase 4 — Change awareness.** Resources for open documents with `ttlMs` /
-`cacheScope`, `listChanged` notifications over `subscriptions/listen`, coalesced
-document-change events carrying revisions, so a long-lived agent can invalidate
-its cache instead of re-reading (P8).
+**Phase 4 — Change awareness.**
+Resources for open documents with `ttlMs` / `cacheScope`, `listChanged`
+notifications over `subscriptions/listen`, coalesced document-change events
+carrying revisions, so a long-lived agent can invalidate its cache instead of
+re-reading (P8).
 
-**Phase 5 — Hardening and second adapter.** Sandbox/App Group decision;
-revocation and stale-socket regression tests; then evaluate ACP client mode
-(§11).
+**Phase 5 — Persistent identity and second adapter.**
+The OQ-1 pairing design and persistent per-agent grants; sandbox/App Group
+decision; revocation and stale-socket regression tests; then evaluate ACP client
+mode (§11).
 
 ---
 
@@ -531,32 +752,46 @@ revocation and stale-socket regression tests; then evaluate ACP client mode
 Beyond ADR-011 §14's protocol-level tests (fragmented reads, malformed frames,
 oversized frames, invalid tokens, stale sockets):
 
-- **Live client conformance.** Automated smoke tests that configure and drive
-  real Claude Code, Codex CLI, and OpenFox binaries when present, skipping with
-  a clear message when absent. A protocol we only test against our own client is
-  a protocol we have not tested.
-- **Race tests.** Human edit interleaved between an agent's read and write must
-  produce a conflict, never a lost keystroke; concurrent `apply_edits` from two
-  clients must produce exactly one winner.
+- **Live client conformance, versioned.** Automated smoke tests that configure
+  and drive real Claude Code, Codex CLI, and OpenFox binaries, recording the
+  protocol revision each one negotiated. Skipping when a binary is absent is
+  acceptable; not recording the version is not.
+- **Race tests.** A human edit interleaved between an agent's read and write
+  must produce a conflict, never a lost keystroke; concurrent `apply_edits` from
+  two clients must produce exactly one winner; a proposal accepted after an
+  intervening edit must report `conflicted`.
 - **Atomicity tests.** A batch whose third edit fails leaves the document
-  byte-identical.
-- **Encoding fidelity.** Shift_JIS, EUC-JP, UTF-8-with-BOM, and CRLF documents
-  survive an agent edit round trip byte-identically outside the edited region.
+  byte-identical, including its undo stack.
+- **Encoding and line-ending fidelity.** Shift_JIS, EUC-JP, and UTF-8-with-BOM
+  documents survive an agent edit round trip byte-identically outside the edited
+  region. CRLF documents keep CRLF on save while the protocol only ever carries
+  LF. Payloads containing `\r` are rejected. Text unrepresentable in the target
+  encoding is rejected at edit time. Mixed-ending documents are explicitly
+  excluded from byte-identity and are covered by their own test asserting the
+  existing human choice still gates the save.
+- **Modal-freedom test.** No agent-initiated path reaches `runModal()`; asserted
+  structurally, not by inspection.
+- **Latency tests.** Typing latency under a concurrent full-document search and
+  under a large `read_document` stays within the existing input-latency budget.
 - **Undo tests.** One tool call is one ⌘Z; review rejection restores exactly.
-- **Revocation tests.** Grants revoked mid-call take effect on the in-flight
-  call.
+- **Authorization tests.** Grants revoked mid-call take effect on the in-flight
+  call; an unapproved connection cannot spam approval UI; a second bridge process
+  gets its own approval rather than inheriting the first one's grant.
 - **Token-cost regression.** A fixed task on a fixed large document has a
-  recorded byte budget for the tool results it returns; regressions are visible.
+  recorded byte budget for the tool results it returns.
 
 ---
 
 ## 11. ACP: the second adapter, not the first
 
 ACP is the right protocol for a different product decision: hosting an agent
-*inside* MaruEdit, with a conversation surface, permission pills, and inline
-diffs. It reuses this ADR's core — `fs/read_text_file` is `read_document` with a
-different envelope, `session/request_permission` is the review gate — so
-adopting it later costs an adapter, not a redesign.
+*inside* MaruEdit, with a conversation surface, permission prompts, and inline
+diffs. Adopting it later costs an adapter rather than a redesign, because the
+same core answers both — but the mapping is not free. ACP's file methods are
+path-addressed client callbacks, so MaruEdit would need path-to-buffer mapping,
+change notification, and the same revision checks applied underneath;
+`session/request_permission` authorizes a tool call and is not by itself the
+diff-review surface this ADR specifies.
 
 It is not v1 because it requires MaruEdit to ship agent-conversation UI, which
 is a product commitment far larger than an automation interface, and because it
@@ -566,27 +801,33 @@ they already live.
 Worth noting for later: the concurrency model in §6 is ahead of what ACP
 currently specifies. Unsaved-file synchronisation and "has this buffer changed
 since the agent read it" are both open questions in that ecosystem. If MaruEdit
-implements revisions and anchors first, it has something to contribute upstream.
+implements revisions and proposals first, it has something to contribute
+upstream.
 
 ---
 
 ## 12. Open questions
 
-- **OQ-1 — Grant persistence.** Does a grant survive app restart, keyed to the
-  bridge's executable path, or must the human re-approve each launch? Re-approval
-  is safer; a coding agent restarted twenty times a day makes it intolerable.
-- **OQ-2 — Anchor lifetime.** How long does an anchor survive intervening edits
-  before it is cheaper to invalidate it? Related to ADR-007's finding that stale
-  anchor handling is the hard part of position tracking.
-- **OQ-3 — Large documents.** What is the read budget, and does the answer need
+- **OQ-1 — Agent pairing (blocking).** What issues a per-agent credential, how
+  does the human associate it with "the Claude Code on this machine", and where
+  does the agent store it? Blocks every persistent grant; Phase 1 ships
+  per-connection approval without it.
+- **OQ-2 — Tracked anchors.** Should a later phase allow a write at a newer
+  revision when every referenced anchor still validates? Requires boundary
+  affinity, overlap semantics, lifetime, and memory bounds, and relates to
+  ADR-007's finding that stale-anchor handling is the hard part of position
+  tracking.
+- **OQ-3 — Grant inheritance.** Does a grant cover documents opened after it was
+  made? Inheriting is convenient and quietly enormous; not inheriting means an
+  approval sheet per file.
+- **OQ-4 — Large documents.** What is the read budget, and does the answer need
   chunking beyond line ranges plus outline plus search?
-- **OQ-4 — Folder search scope.** If `search.folder` exists, whose folder — the
-  agent's working directory, or MaruEdit's open documents' directories? The two
-  disagree more often than expected.
-- **OQ-5 — Multiple windows.** Do agents address windows at all, or only
-  documents? Documents-only is simpler and probably right.
-- **OQ-6 — Untitled documents.** An agent cannot open an untitled buffer by
-  path. Is `documentId`-only addressing sufficient, or is there a naming scheme?
+- **OQ-5 — Proposal expiry.** How long may a pending proposal sit before it is
+  dropped, and does an expired proposal notify the agent or only fail its next
+  poll?
+- **OQ-6 — Untitled documents.** An agent cannot address an untitled buffer by
+  path. Is `documentId`-only addressing sufficient in practice for the agents
+  that will call?
 - **OQ-7 — Streamable HTTP.** Does a containerised or remote agent ever need to
   reach MaruEdit? If yes, the answer is a separate ADR, not a flag.
 
@@ -600,8 +841,8 @@ correctness under concurrent human editing.
 The differentiator is not the protocol — the protocol should be as unremarkable
 as possible so that every agent works on day one. The differentiator is that
 MaruEdit is the only writer that knows the buffer is dirty, knows it is
-Shift_JIS with CRLF endings, knows the human's cursor is on line 220, can reject
-a stale write with a useful explanation, and can make the whole thing one press
-of ⌘Z.
+Shift_JIS with CRLF endings, knows which pane the human's cursor is in, can
+reject a stale write with a useful explanation, and can make the whole thing one
+press of ⌘Z.
 
 Build the shared core, ship read-only, then earn write access.

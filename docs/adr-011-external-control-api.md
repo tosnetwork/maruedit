@@ -1,15 +1,20 @@
 # ADR-011: External Control API
 
-**Status:** Superseded by [ADR-012](adr-012-ai-agent-automation.md)  
+**Status:** Active, amended and profiled by [ADR-012](adr-012-ai-agent-automation.md)  
 **Date:** 2026-08-08  
 **Scope:** Local, out-of-process control of a running MaruEdit process
 
-> ADR-012 re-derives this surface from its actual consumers — third-party AI
-> coding agents — and replaces the bespoke public wire protocol with MCP. The
-> transport, trust model, security invariants, and shared-automation-layer
-> refactor below remain the basis of that design; the public method catalog,
-> the writer lease, and the External Commands capability do not. Read this
-> document for the reasoning, ADR-012 for the decision.
+> This document remains normative for transport selection (§3), endpoint layout
+> and permissions (§3.1), framing and message limits (§4.1–4.2), the main-actor
+> boundary and cancellation semantics (§8), the trust-tier argument (§9.6),
+> Command Registry exposure policy (§9.7), and the security invariants (§16).
+>
+> ADR-012 defines the AI agent profile over that base: it replaces the public
+> wire protocol with MCP and re-derives the method catalog from how AI agents
+> actually fail at text editing. It amends this document on the points listed in
+> its §8.1, and removes the writer lease, the `externalCommands.run` capability,
+> and the public method catalog below. Read this document for the transport and
+> trust reasoning, ADR-012 for the interface.
 
 ## Biggest open design risk
 
