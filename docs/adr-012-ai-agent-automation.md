@@ -417,11 +417,21 @@ consequence concrete.
      rather than carrying the secret itself, because config files get committed
      and `argv` is world-readable.
 
-  Every later connection presents the credential, which identifies the
-  *configuration*; grants are keyed to it and it is revocable individually. The
-  non-modal approval above still gates the first use of a newly paired
-  configuration, but it now approves something identifiable rather than an
-  anonymous connection that happened to arrive.
+  Every later connection presents the credential, and grants are keyed to it.
+
+  **Be precise about what this buys.** The credential is a *revocable bearer
+  capability*, not proof of identity. Any unsandboxed process running as this
+  user can read the credential file just as it can read the session token, so
+  possession does not prove which agent launched the shared bridge. What pairing
+  adds is provenance at issuance — a human deliberately introduced this
+  configuration, once, with a code they saw in both places — plus an
+  individually revocable handle to attribute and cut off. Claiming a `0600` file
+  solves same-user client identity would contradict P9 and ADR-011 §9.2, and it
+  does not. That is why human approval still gates first use, why grants stay
+  connection-scoped in Phase 1, and why unattended persistent grants (Phase 5)
+  need a real isolation boundary — a signed helper with a Keychain ACL bound to
+  its code signature, or user-presence-bound keys — rather than a longer-lived
+  secret in a file.
 
 ---
 
@@ -434,6 +444,16 @@ at the call site.
 Every tool declares an `outputSchema` and returns `structuredContent`. Every
 recoverable failure is a tool execution error (`isError: true`) whose text names
 the cause *and* the state needed to retry, never a bare JSON-RPC error (P5).
+
+This section names each tool's arguments, results, and semantics; it does not
+inline their JSON Schemas, and it should not — a schema that lives in prose
+drifts from the one that ships. **Phase 1 owns a single versioned schema source**
+from which the bridge catalog, the Swift DTOs, request validation, and the
+conformance transcripts are all generated, so the two sides cannot disagree.
+That source is where required-versus-optional fields, defaults, per-field size
+caps, pagination and overflow behavior, the structured error shapes, the
+per-phase schema differences, and the modern era's `ttlMs` and `cacheScope`
+values are settled. Until it exists, no tool ships — including in Phase 1.
 
 The catalog is defined against an **era-neutral internal outcome model** —
 `success`, `toolFailure`, `inputRequired`, `cancelled`, plus list-cache and
@@ -839,17 +859,21 @@ place, exactly as it does for the human, who can still edit and then Save As.
 
 Excluding them is cheap; discovering them at commit time is not.
 
-**Writability must be an effective predicate, not a single flag.** Read-only has
-three independent sources today — filesystem permissions, large-file read-only
-mode, and the file-type profile's `opensReadOnly` load policy — and only
-`Document.open` consults all three. `refreshReadOnlyState()`, which runs every
-time the window becomes key, recomputes from permissions and large-file mode
-alone, so a profile-read-only document whose file is writable on disk silently
-becomes writable again on focus. That is a bug in the app today; this profile
+**Writability must be an effective predicate, not a single flag, and it must
+reach every pane.** Read-only has three independent sources today — filesystem
+permissions, large-file read-only mode, and the file-type profile's
+`opensReadOnly` load policy — and only `Document.open` consults all three.
+`refreshReadOnlyState()`, which runs every time the window becomes key,
+recomputes from permissions and large-file mode alone, so a profile-read-only
+document whose file is writable on disk silently becomes writable again on
+focus. Worse, split creation sets the secondary editor editable unconditionally,
+so a read-only or view-mode document is editable today in its second pane
+regardless of any of the three sources. That is a bug in the app today; this profile
 cannot inherit it, because `list_documents` would then advertise the document as
 writable and admit agent edits into a document the profile said to protect.
 Phase 0 introduces one effective-writability predicate that preserves every
-source, and tests each source being set and cleared independently.
+source, applies it to every pane including one created later by a split, and
+tests each source being set and cleared independently in both panes.
 
 ### 5.4 Deliberately absent
 
@@ -1028,8 +1052,12 @@ current code arrives at its bug:
 - **`serializedBytes`** — what actually reaches disk: `sourceSnapshot` after the
   file-type profile's save policy has transformed it (trailing-whitespace trim,
   final-newline insertion), after line-ending application, and after encoding.
-  These differ routinely: a buffer holding `"new  "` is written as `"new\n"`
-  under the default policy.
+  These differ whenever the resolved profile configures a transforming save
+  policy: a buffer holding `"new  "` is written as `"new\n"` under a profile
+  that trims trailing whitespace and ensures a final newline. Neither option is
+  on by default and no built-in profile installs a save policy, so with the
+  stock configuration the two values coincide — which is exactly why an
+  implementation that conflates them passes its first tests and fails later.
 - **`diskBaseline`** — file identity, modification date, and POSIX permissions
   as observed at plan time.
 
@@ -1103,6 +1131,26 @@ it preserves the existing clean-state semantics, under which a document whose
 save policy rewrote its text on the way out is still considered saved. A digest
 of `serializedBytes` is retained alongside `diskBaseline` for external-change
 detection.
+
+**Every path out of the machine is named, because the failure paths are where a
+fence leaks.** The coordinator has five terminal states, and each releases the
+fence exactly once, settles any pending human intent, and produces one stable
+tool result and one audit record:
+
+| Terminal state | When | Document left as |
+|---|---|---|
+| `succeeded` | finalization completed | clean against `sourceSnapshot`, or dirty/format-dirty per step 5 |
+| `failed_before_irreversible` | revalidation, encoding, or plan failure | untouched; disk untouched |
+| `failed_after_irreversible` | backup or write failed once the commit began | dirty; disk state reported as `unknown` until the next observation, and the backup left in place rather than cleaned up behind the human's back |
+| `superseded` | a human save won before the irreversible point | untouched; the human save proceeds |
+| `abandoned_on_shutdown` | the app terminated mid-commit | recovery data preserved; the next launch reports an unfinished save rather than assuming either outcome |
+
+A pending human save runs after any terminal state, against fresh state, never
+silently dropped. The coordinator outlives document and window close while a
+filesystem operation is in flight — closing a document during commit detaches
+the UI but not the machine, and its finalizer must tolerate the document being
+gone by writing the audit record and releasing the fence without touching model
+state.
 
 **One honest limitation.** Revalidating file identity and then writing leaves a
 TOCTOU window: `ExternalChangeDetector.check` is an observation, and the atomic
@@ -1204,11 +1252,21 @@ ADR-011 §9 and §16 carry over in full and are not restated here.
    keyed by pid and process start time, listed through a lock-protected registry
    file that discovery reads. Reclaiming an entry requires the recorded start
    time to match a dead pid, or a probe of the existing listener to fail;
-   ownership and socket type alone are not enough.
+   ownership and socket type alone are not enough. **Discovery fails closed when
+   more than one instance is live**: the bridge refuses rather than guessing
+   newest, first, or frontmost, and the human disambiguates with
+   `--instance <serverInstanceID>`. Pairing takes the same argument, and the
+   credential it issues is bound to the installation it was issued by, so a
+   second instance cannot inherit it. Selecting by pid alone is never
+   acceptable — pids are reused.
 3. **Identity.** ADR-011 §9.4's "process names are not identities" is extended:
    because every agent launches the same bundled bridge, *no* property of the
-   connecting process may key a persistent grant. Phase 1 is per-connection
-   approval only; persistent grants require the pairing design in OQ-1.
+   connecting process may key a grant. Phase 1 pairs each agent configuration
+   (§4.3) and keys grants to that credential, but the credential is a bearer
+   capability, so grants remain **connection-scoped** and human approval still
+   gates first use. Phase 5 adds *persistent* grants that survive restarts, and
+   that step — not pairing itself — is what needs the stronger isolation
+   boundary.
 4. **Grant scope.** ADR-011's capabilities were per-client only. This profile
    requires them to be object-scoped as well: a grant names the documents,
    window, or authorized directory roots it covers. A blanket `documents.read`
@@ -1249,7 +1307,18 @@ ADR-011 §9 and §16 carry over in full and are not restated here.
    second protocol negotiation, and that envelope carries the connection
    identity, grant generation, cancellation token, and error mapping the tools
    depend on.
-8. **Actor boundary.** ADR-011 §8.1 places target resolution before main-actor
+8. **Request ordering.** ADR-011 §8.2 requires strict per-connection FIFO
+   processing. That is superseded. A modern client holds a
+   `subscriptions/listen` request open for the life of its subscription, so
+   FIFO would park every later request behind a call that returns only at
+   teardown — a deadlock, not an ordering guarantee. A connection may have
+   several requests in flight; subscription streams are exempt from execution
+   ordering entirely; and consistency comes from where it actually comes from in
+   this design: main-actor serialization of commits per document, revision
+   preconditions, and the save fence. Where an agent needs read-after-write
+   ordering it gets it by reading the revision it just wrote, not by trusting
+   the transport.
+9. **Actor boundary.** ADR-011 §8.1 places target resolution before main-actor
    dispatch. This profile puts target resolution *on* the main actor (§6.4),
    because resolving a `documentId` or `editorId` means reading live controller
    state; what moves off-main is everything after the snapshot is taken.
@@ -1399,9 +1468,10 @@ converges on the same revision the app holds; golden transcripts exist for each
 supported era; a document closed while subscribed produces a clean unsubscribe
 rather than a dangling subscription.
 
-**Phase 5 — Persistent identity and second adapter.**
-The OQ-1 pairing design and persistent per-agent grants; sandbox/App Group
-decision; revocation and stale-socket regression tests; then evaluate ACP client
+**Phase 5 — Persistent grants and second adapter.**
+Persistent per-configuration grants that survive an app restart, built on the
+Phase 1 credential and on whatever isolation boundary §4.3 requires for
+unattended use; sandbox/App Group decision; revocation and stale-socket regression tests; then evaluate ACP client
 mode (§11).
 *Exit:* a paired agent reconnects across an app restart without a new approval
 sheet while an unpaired one still gets one; revoking a pairing takes effect on
@@ -1545,11 +1615,12 @@ upstream.
 
 ## 12. Open questions
 
-- **OQ-1 — Pairing details (blocking Phase 1).** §4.3 fixes the shape:
-  verification code, per-configuration credential in a `0600` file, config points
-  at the path. What remains is credential format and rotation, behavior when the
-  file is missing or stale, and whether one configuration may hold credentials
-  for several MaruEdit installations.
+- **OQ-1 — Credential format and persistent-grant binding.** §4.3 fixes the
+  pairing shape and Phase 1 implements it, so pairing itself is no longer open.
+  What remains: credential format and rotation, behavior when the file is missing
+  or stale, whether one configuration may hold credentials for several MaruEdit
+  installations, and — for Phase 5's unattended persistent grants — which
+  isolation boundary actually binds a credential to one program.
 - **OQ-2 — Tracked anchors.** Should a later phase allow a write at a newer
   revision when every referenced anchor still validates? Requires boundary
   affinity, overlap semantics, lifetime, and memory bounds, and relates to
