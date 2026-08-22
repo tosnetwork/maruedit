@@ -75,14 +75,17 @@ final class AgentServerTests: XCTestCase {
 
     /// Pairs a configuration the way `maruedit-mcp --pair` does, so tests
     /// exercise the real approval path rather than bypassing it.
+    ///
+    /// Returns the *secret*, which is what a bridge presents — not the id,
+    /// which is only a handle.
     @discardableResult
     private func pair() throws -> String {
-        guard case .success = server.control.beginPairing() else {
+        guard case .success(let request) = server.control.beginPairing() else {
             XCTFail("pairing should start")
             return ""
         }
-        XCTAssertTrue(server.control.confirmPairing(label: "test"))
-        return try XCTUnwrap(server.control.pairedCredentials.keys.first)
+        XCTAssertNotNil(server.control.confirmPairing(label: "test"))
+        return request.secret
     }
 
     private func startServerAndConnect(paired: Bool = true) throws -> Client {
@@ -390,50 +393,96 @@ final class AgentPersistenceTests: XCTestCase {
         try await super.tearDown()
     }
 
-    func testPairingWritesACredentialFileOnlyTheUserCanRead() throws {
-        let control = AgentControlService(home: home)
+    func testPairingWritesNothingSecretToDisk() throws {
+        let vault = AgentCredentialVault.inMemory()
+        let control = AgentControlService(home: home, vault: vault)
         guard case .success(let request) = control.beginPairing() else {
             return XCTFail("pairing should start")
         }
         XCTAssertEqual(request.verificationCode.count, 6)
-        XCTAssertTrue(control.confirmPairing(label: "Claude Code"))
+        XCTAssertNotNil(control.confirmPairing(label: "Claude Code"))
+        XCTAssertTrue(control.pairedCredentials.values.contains {
+            $0.label == "Claude Code"
+        })
 
-        let attributes = try FileManager.default.attributesOfItem(atPath: request.credentialPath)
-        XCTAssertEqual(attributes[.posixPermissions] as? Int, 0o600)
-        XCTAssertTrue(control.pairedCredentials.values.contains("Claude Code"))
+        // The point of the whole change: read everything MaruEdit wrote under
+        // the user's home and the bearer secret is not in any of it. The old
+        // scheme failed this — the credential id *was* the secret and sat in
+        // the registry as its own key.
+        let enumerator = FileManager.default.enumerator(atPath: home.path)
+        var filesRead = 0
+        while let relative = enumerator?.nextObject() as? String {
+            let url = home.appendingPathComponent(relative)
+            guard let data = try? Data(contentsOf: url),
+                  let text = String(data: data, encoding: .utf8)
+            else { continue }
+            filesRead += 1
+            XCTAssertFalse(
+                text.contains(request.secret),
+                "\(relative) contains the pairing secret in plain text")
+        }
+        XCTAssertGreaterThan(filesRead, 0, "the registry should have been written")
+
+        // And the secret still verifies, so nothing was traded away for it.
+        XCTAssertEqual(try vault.secret(request.credentialID), request.secret)
+    }
+
+    func testAWrongSecretDoesNotPairEvenWithTheRightIdentifier() throws {
+        let control = AgentControlService(home: home, vault: .inMemory())
+        guard case .success(let request) = control.beginPairing() else {
+            return XCTFail("pairing should start")
+        }
+        XCTAssertNotNil(control.confirmPairing(label: "Codex"))
+
+        // The identifier is public — it is printed by --pair and shown in the
+        // UI. Presenting it must not authenticate anything.
+        let asIdentifier = control.register(hello: AgentEnvelope.Hello(
+            token: control.sessionToken, credential: request.credentialID,
+            clientName: "codex", bridgePID: getpid()))
+        guard case .success(let unpaired) = asIdentifier else {
+            return XCTFail("the connection is allowed, just not paired")
+        }
+        XCTAssertNil(unpaired.credentialID)
+
+        let withSecret = control.register(hello: AgentEnvelope.Hello(
+            token: control.sessionToken, credential: request.secret,
+            clientName: "codex", bridgePID: getpid()))
+        guard case .success(let paired) = withSecret else { return XCTFail("expected success") }
+        XCTAssertEqual(paired.credentialID, request.credentialID)
     }
 
     func testAPairingSurvivesARestartButItsGrantDoesNot() throws {
-        let first = AgentControlService(home: home)
-        guard case .success = first.beginPairing() else { return XCTFail("pairing") }
-        XCTAssertTrue(first.confirmPairing(label: "Codex"))
-        let credential = try XCTUnwrap(first.pairedCredentials.keys.first)
+        let first = AgentControlService(home: home, vault: .inMemory())
+        guard case .success(let request) = first.beginPairing() else { return XCTFail("pairing") }
+        XCTAssertNotNil(first.confirmPairing(label: "Codex"))
+        let credential = request.credentialID
         first.setRemembered(credential, true)
 
         // A fresh service, as if the app relaunched.
-        let second = AgentControlService(home: home)
-        XCTAssertEqual(second.pairedCredentials[credential], "Codex")
+        let second = AgentControlService(home: home, vault: .inMemory())
+        XCTAssertEqual(second.pairedCredentials[credential]?.label, "Codex")
         XCTAssertTrue(second.rememberedCredentials.contains(credential))
 
         // The session token is new, so a bridge holding the old one is refused:
         // remembering a pairing is not remembering a session.
         XCTAssertNotEqual(first.sessionToken, second.sessionToken)
         let stale = second.register(hello: AgentEnvelope.Hello(
-            token: first.sessionToken, credential: credential,
+            token: first.sessionToken, credential: request.secret,
             clientName: "codex", bridgePID: getpid()))
         guard case .failure(let failure) = stale else { return XCTFail("expected refusal") }
         XCTAssertEqual(failure.code, "authorization.denied")
     }
 
     func testRevokingACredentialCutsOffItsConnectionsAndForgetsIt() throws {
-        let control = AgentControlService(home: home)
-        guard case .success = control.beginPairing() else { return XCTFail("pairing") }
-        XCTAssertTrue(control.confirmPairing(label: "Agent"))
-        let credential = try XCTUnwrap(control.pairedCredentials.keys.first)
+        let vault = AgentCredentialVault.inMemory()
+        let control = AgentControlService(home: home, vault: vault)
+        guard case .success(let request) = control.beginPairing() else { return XCTFail("pairing") }
+        XCTAssertNotNil(control.confirmPairing(label: "Agent"))
+        let credential = request.credentialID
         control.setRemembered(credential, true)
 
         guard case .success(let connection) = control.register(hello: AgentEnvelope.Hello(
-            token: control.sessionToken, credential: credential,
+            token: control.sessionToken, credential: request.secret,
             clientName: "agent", bridgePID: getpid()))
         else { return XCTFail("registration") }
         control.approve(connection, documents: [AutomationID.next(prefix: "doc")])
@@ -446,16 +495,26 @@ final class AgentPersistenceTests: XCTestCase {
         XCTAssertNil(control.pairedCredentials[credential])
         XCTAssertFalse(control.rememberedCredentials.contains(credential))
         XCTAssertNotNil(control.authorize(connection, tool: "list_documents"))
+
+        // The secret goes with the record. If it survived, "revoked" would
+        // mean "hidden from the list" while the bridge kept reading it.
+        XCTAssertThrowsError(try vault.secret(credential))
+
+        // And presenting it again pairs nothing.
+        guard case .success(let retry) = control.register(hello: AgentEnvelope.Hello(
+            token: control.sessionToken, credential: request.secret,
+            clientName: "agent", bridgePID: getpid()))
+        else { return XCTFail("registration") }
+        XCTAssertNil(retry.credentialID)
     }
 
     func testAnUnrememberedPairingStillWaitsForApproval() throws {
-        let control = AgentControlService(home: home)
-        guard case .success = control.beginPairing() else { return XCTFail("pairing") }
-        XCTAssertTrue(control.confirmPairing(label: "Agent"))
-        let credential = try XCTUnwrap(control.pairedCredentials.keys.first)
+        let control = AgentControlService(home: home, vault: .inMemory())
+        guard case .success(let request) = control.beginPairing() else { return XCTFail("pairing") }
+        XCTAssertNotNil(control.confirmPairing(label: "Agent"))
 
         guard case .success(let connection) = control.register(hello: AgentEnvelope.Hello(
-            token: control.sessionToken, credential: credential,
+            token: control.sessionToken, credential: request.secret,
             clientName: "agent", bridgePID: getpid()))
         else { return XCTFail("registration") }
         // Pairing establishes provenance; it is not a standing permission.

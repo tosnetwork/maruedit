@@ -179,13 +179,28 @@ Deliberately deferred out of Phase 0, with reasons:
 - [x] `open_document`, with an fd-based loader so a verified path is never
       reopened. Roots are empty by default, which makes it unavailable rather
       than permissive.
-- [x] `run_command`, default-deny per command definition. `CommandContext` still
-      carries no explicit target, so only commands whose effect does not depend
-      on which window is key are exposed, and the flag is named
-      `isSafeForAgentsRegardlessOfTarget` to keep that honest.
-- [ ] Explicit targets in `CommandContext` — a real refactor of every command,
-      deferred until more than a handful of commands need exposing.
-- [ ] Regular-expression search once it can be bounded (OQ-8).
+- [x] Descriptor authority carried through to the document: `fstat` on the
+      opened descriptor supplies identity, mtime, and permissions, and those
+      are what the adopted document keeps — so a later in-place save asks "is
+      this still the file I read?" rather than trusting a path. `read` uses
+      `pread` so a handle stays re-readable.
+- [x] `ExternalChangeDetector` distinguishes "no baseline" from "unchanged".
+      Reporting `.unchanged` for a file nobody read was an unearned claim that
+      let a save overwrite unseen content; it is `.unknownBaseline` now, and a
+      save refuses on it.
+- [x] `run_command`, default-deny per command definition.
+- [x] Explicit targets in `CommandContext`. Not the feared refactor of every
+      command: `ensureWindowControllerReady()` is the single point through
+      which every command reaches a window, so pinning a target there for the
+      duration of one command makes all commands targetable without touching
+      any command implementation. The flag is `isAgentExposed` now, and what it
+      guards is narrower — a command must act *synchronously*, because one that
+      defers work into a completion handler resolves a window again after the
+      pin is gone.
+- [x] Regular-expression search, bounded (OQ-8): conservative static rejection
+      of unbounded-backtracking shapes, then a capped abandonable thread for
+      what survives. Results are shaped by the same code as literal matches, so
+      a client never sees two formats.
 
 ## Phase 4 — Change awareness
 
@@ -205,10 +220,20 @@ Deliberately deferred out of Phase 0, with reasons:
       not remembering a session.
 - [x] Revocation and stale-endpoint regression tests, including that revoking a
       credential cuts off its live connections.
-- [ ] A real isolation boundary for unattended trust — signed helper plus a
-      Keychain ACL bound to its code signature, or user-presence-bound keys.
-      Blocked on OQ-1 and, as ADR-012 P9 says, on the fact that same-UID is one
-      trust domain no matter what this layer does.
+- [x] The pairing secret moved out of the filesystem: a public credential id
+      plus a Keychain-held secret under an ACL naming the editor and the
+      bridge, with only a SHA-256 digest kept on disk and a constant-time
+      comparison to verify it. Old-scheme credentials — where the id *was* the
+      secret, in plaintext — are discarded rather than migrated.
+- [x] Honest reporting of what that bought: `securityd` enforces the ACL by
+      code signature, which is a real boundary on a signed build and nothing
+      durable on a local one. The confirmation dialog states which case
+      happened instead of implying the stronger one.
+- [ ] The rest of OQ-1: the session token is still a same-user-readable file,
+      so a hostile local process can still connect and be offered for approval.
+      Closing that needs sandboxing, not another credential scheme — as
+      ADR-012 P9 says, same-UID is one trust domain no matter what this layer
+      does.
 - [ ] Sandbox/App Group decision — a product decision, not code.
 - [ ] Evaluate ACP client mode: it needs an agent-conversation UI inside
       MaruEdit, which is a far larger product commitment than an automation
@@ -319,8 +344,11 @@ it if the `SIGPIPE` protection regressed.
 
 ## Open questions that gate work
 
-- **OQ-1** — credential format, rotation, and what binds a credential to one
-  program for unattended persistent grants. Gates Phase 5, not Phase 1.
+- **OQ-1** — *credential format resolved* (public id + Keychain secret under a
+  code-signature ACL, digest-only on disk). What binds a credential to one
+  program remains open and rests on signing and sandboxing rather than on this
+  layer.
 - **OQ-2** — tracked anchors. Gates nothing; strict snapshot ships first.
-- **OQ-8** — how regular-expression search gets a real bound. Gates regex search
-  in Phase 3.
+- **OQ-8** — *resolved.* Static rejection of unbounded-backtracking shapes plus
+  a capped abandonable thread. See ADR-012 §6.4 for why no wall-clock deadline
+  could have been the answer on its own.

@@ -18,23 +18,26 @@ struct CommandDefinition {
     ///
     /// Default deny, and deliberately a property of the definition rather than
     /// a list somewhere else: registering a command must never be what makes it
-    /// remotely invocable (ADR-011 §9.7). `CommandContext` carries no explicit
-    /// target yet, so a command acts on whatever window is key — which means
-    /// only commands whose effect does not depend on that may be exposed at
-    /// all, and the flag says so in its name.
-    let isSafeForAgentsRegardlessOfTarget: Bool
+    /// remotely invocable (ADR-011 §9.7).
+    ///
+    /// Commands are targetable now — `CommandContext` carries a window and
+    /// resolution is pinned while the command runs — so what remains is
+    /// whether *this* command acts synchronously. One that defers its work into
+    /// a completion handler resolves the window again after the pin is gone,
+    /// and would act on whatever is key by then, so it stays unexposed.
+    let isAgentExposed: Bool
 
     init(
         id: CommandID,
         title: String,
         isEnabled: @escaping (CommandContext) -> Bool = { _ in true },
-        isSafeForAgentsRegardlessOfTarget: Bool = false,
+        isAgentExposed: Bool = false,
         execute: @escaping (CommandContext) -> Void
     ) {
         self.id = id
         self.title = title
         self.isEnabled = isEnabled
-        self.isSafeForAgentsRegardlessOfTarget = isSafeForAgentsRegardlessOfTarget
+        self.isAgentExposed = isAgentExposed
         self.execute = execute
     }
 }

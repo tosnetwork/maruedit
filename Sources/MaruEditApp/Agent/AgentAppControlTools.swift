@@ -50,7 +50,15 @@ extension AgentToolExecutor {
         // back the symlink race the walk just closed.
         guard let data = try? AgentFileAccess.read(file),
               let loaded = try? TextFileLoader.load(
-                  data: data, representing: URL(fileURLWithPath: path))
+                  data: data,
+                  representing: URL(fileURLWithPath: path),
+                  // From `fstat` on the descriptor the bytes came from. Letting
+                  // the loader resolve the path again would hand back the race
+                  // the walk just closed, one step later.
+                  metadata: TextFileLoader.SourceMetadata(
+                      identity: file.identity,
+                      modificationDate: file.modificationDate,
+                      posixPermissions: file.permissions))
         else {
             return .failure(
                 code: "file.unreadable",
@@ -126,23 +134,47 @@ extension AgentToolExecutor {
                 message: "No command with id \(raw).",
                 details: nil)
         }
-        guard definition.isSafeForAgentsRegardlessOfTarget else {
+        guard definition.isAgentExposed else {
             // Registering a command must never be what makes it remotely
-            // invocable, and `CommandContext` carries no explicit target, so a
-            // command whose effect depends on which window is key cannot be
-            // exposed at all yet.
+            // invocable.
             return .failure(
                 code: "command.not_exposed",
                 message: """
-                    \(raw) is not exposed to agents. Commands act on whichever \
-                    window is key, so only ones whose effect does not depend on \
-                    that are available until targets are explicit.
+                    \(raw) is not exposed to agents. A command must act \
+                    synchronously to be exposed, because one that defers its \
+                    work would resolve a window again after the caller's target \
+                    stops applying.
                     """,
                 details: nil)
         }
+
+        // The window this command acts on is named, not inherited from whatever
+        // happens to be focused when it runs — otherwise a human switching tabs
+        // mid-call could redirect it, and no authorization check could be made
+        // about a target nobody stated.
+        let target: MainWindowController?
+        if let rawDocument = arguments["documentId"]?.stringValue {
+            let id = AutomationID(rawValue: rawDocument)
+            guard control.mayAccess(connection, document: id),
+                  let controller = coordinator.agentWindowControllers().first(where: { controller in
+                      controller.agentTargets().contains { $0.document.automationID == id }
+                  })
+            else {
+                return .failure(
+                    code: "document.unknown",
+                    message: "No document with id \(rawDocument) is available to this client.",
+                    details: nil)
+            }
+            target = controller
+        } else {
+            target = coordinator.agentWindowControllers().first
+        }
+
         control.record(
             connection: connection, tool: "run_command", document: nil, outcome: raw)
-        let ran = registry.execute(CommandID(raw), context: CommandContext(coordinator: coordinator))
+        let ran = registry.execute(
+            CommandID(raw),
+            context: CommandContext(coordinator: coordinator, target: target))
         return .success(.object([
             "commandId": .string(raw),
             "ran": .bool(ran),

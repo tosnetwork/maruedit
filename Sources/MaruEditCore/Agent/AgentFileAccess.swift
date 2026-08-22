@@ -26,6 +26,16 @@ public enum AgentFileAccess {
         public let descriptor: Int32
         public let path: String
         public let size: Int
+        /// Identity of the file this descriptor actually names, taken from
+        /// `fstat` on the descriptor itself.
+        ///
+        /// A path is a name, not a thing: between naming a file and using it,
+        /// the binding can change. Carrying the identity forward is what lets a
+        /// later save ask "is this still the file I read?" instead of trusting
+        /// a string.
+        public let identity: FileIdentity
+        public let modificationDate: Date
+        public let permissions: Int
 
         public func close() { Foundation.close(descriptor) }
     }
@@ -62,7 +72,10 @@ public enum AgentFileAccess {
         }
         guard !components.isEmpty else { throw AccessError.notAFile(path) }
 
-        var directory = Foundation.open(root, O_RDONLY | O_DIRECTORY)
+        // The root is opened with `O_NOFOLLOW` too: a root that is itself a
+        // symlink, or has been replaced by one, would otherwise be followed
+        // before the per-component checks ever begin.
+        var directory = Foundation.open(root, O_RDONLY | O_DIRECTORY | O_NOFOLLOW)
         guard directory >= 0 else { throw AccessError.unreadable(errno) }
 
         for component in components.dropLast() {
@@ -98,7 +111,16 @@ public enum AgentFileAccess {
             close(descriptor)
             throw AccessError.tooLarge(Int(status.st_size))
         }
-        return VerifiedFile(descriptor: descriptor, path: path, size: Int(status.st_size))
+        return VerifiedFile(
+            descriptor: descriptor,
+            path: path,
+            size: Int(status.st_size),
+            identity: FileIdentity(
+                deviceID: Int32(status.st_dev), inodeNumber: UInt64(status.st_ino)),
+            modificationDate: Date(
+                timeIntervalSince1970: TimeInterval(status.st_mtimespec.tv_sec)
+                    + TimeInterval(status.st_mtimespec.tv_nsec) / 1_000_000_000),
+            permissions: Int(status.st_mode & 0o7777))
     }
 
     /// Says why a component could not be entered.
@@ -124,16 +146,29 @@ public enum AgentFileAccess {
     ///
     /// The descriptor is the authority: reopening by path here would hand back
     /// the race the walk just closed.
+    /// Reads the whole file from offset zero.
+    ///
+    /// `pread` rather than `read`, so the call does not depend on or disturb
+    /// the descriptor's position. A `VerifiedFile` is held as a handle to a
+    /// specific file — that is the point of opening it carefully — and a
+    /// handle whose second read silently returns nothing is a trap for every
+    /// later caller, including a retry after a decode failure.
     public static func read(_ file: VerifiedFile) throws -> Data {
         var data = Data()
         data.reserveCapacity(file.size)
         var buffer = [UInt8](repeating: 0, count: 64 * 1024)
+        var offset: off_t = 0
         while true {
             let count = buffer.withUnsafeMutableBytes { raw -> Int in
-                Foundation.read(file.descriptor, raw.baseAddress, raw.count)
+                Foundation.pread(file.descriptor, raw.baseAddress, raw.count, offset)
             }
             if count > 0 {
                 data.append(contentsOf: buffer.prefix(count))
+                offset += off_t(count)
+                // A file growing while it is read must not make this loop
+                // unbounded; the size limit was checked against the size at
+                // open, so that is the amount this call is entitled to.
+                if data.count >= file.size { break }
             } else if count == 0 {
                 break
             } else if errno == EINTR {

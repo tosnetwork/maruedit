@@ -171,6 +171,19 @@ identify nothing; a `0600` token or credential is readable by any unsandboxed
 process running as that user; and macOS offers a non-sandboxed app no way to
 attest who is on the other end of a Unix socket beyond its uid.
 
+**One part of this is now better than the principle's first statement, and one
+part is not.** The pairing secret no longer lives in a `0600` file (§4.3): it is
+a Keychain item whose ACL names the editor and the bridge, so the decision about
+who may read it is made by `securityd` from the asking process's code signature
+— outside this process, and not bypassable by reading a file. That is a real
+boundary *when the build is signed with a stable identity*; on an unsigned local
+build no such identity exists, and the ACL binds to nothing durable. MaruEdit
+therefore reports which case a pairing got rather than implying the stronger
+one. The session token remains a `0600` file and remains readable by any
+same-user process, so a hostile local process can still connect and be *offered*
+to the human for approval. P9 stands as the description of the interface as a
+whole.
+
 So the boundary this design actually defends is **the human's attention and the
 document's integrity, against mistakes** — an agent doing more than the person
 meant, an old snapshot overwriting new work, an edit nobody can see or undo.
@@ -450,11 +463,23 @@ consequence concrete.
   1. The human runs `maruedit-mcp --pair`. The bridge asks MaruEdit to start a
      pairing, and MaruEdit shows a short verification code in its indicator —
      the same non-modal surface described below, never a sheet.
-  2. The human confirms the same code in the terminal. On match, MaruEdit issues
-     a credential for that configuration and writes it to a `0600` file.
-  3. The agent's MCP server config points at that file — `--credential <path>` —
-     rather than carrying the secret itself, because config files get committed
-     and `argv` is world-readable.
+  2. The human confirms the same code in the terminal. On match, MaruEdit mints
+     a public credential **id** and a separate secret, stores the secret in the
+     login Keychain under an ACL naming the editor and the bridge, and keeps
+     only the secret's SHA-256 digest in its own registry.
+  3. The agent's MCP server config carries the id — `--credential-id <id>` —
+     which is not a secret. The bridge reads the secret from the Keychain at
+     connect time, so it never appears in a config file, in `argv`, in shell
+     history, or in a backup of the support directory.
+
+  Splitting the id from the secret is not cosmetic. The earlier scheme used the
+  id *as* the secret and stored it in the registry as its own key, so anything
+  that could read the registry held every credential in it. Reading everything
+  MaruEdit writes to disk now yields digests, and a digest authenticates
+  nothing. Credentials written under the old scheme are discarded on load
+  rather than migrated, because migrating a secret that has been world-readable
+  for its whole life would preserve exactly the weakness being removed; the
+  human re-pairs once.
 
   Every later connection presents the credential, and grants are keyed to it.
 
@@ -616,9 +641,10 @@ bounds (§6.4).
 
 Two scope restrictions are normative rather than incidental:
 
-- **Phase 1 ships literal search only.** Regular-expression search is deferred
-  to a phase that can enforce a bound on it; §6.4 explains why a wall-clock
-  deadline around `NSRegularExpression` is not a bound at all.
+- **Search is literal by default and regular expressions are opt-in and
+  bounded.** §6.4 records what the bound is and, more importantly, what it is
+  not: no wall-clock deadline can interrupt `NSRegularExpression`, so the first
+  half of the bound is refusing patterns that can blow up at all.
 - **Phase 1 ships open-buffer scope only.** The folder scope arrives in Phase 3,
   and until then the Phase 1 schema rejects it rather than accepting a parameter
   it silently ignores. Folder search is an explicitly authorized filesystem
@@ -1080,12 +1106,28 @@ engine makes one synchronous `NSRegularExpression.matches` call with no
 cancellation point, so a catastrophically backtracking pattern cannot be stopped
 by any timer this process owns: moving it off the main actor protects typing but
 still burns a core until it finishes, and a client that repeats the request has
-a denial-of-service primitive. Phase 1 therefore ships **literal search only**.
-Regular-expression search returns when one of these exists, in preference order:
-a regex engine with enforceable resource limits, execution in a killable helper
-process, or a tested conservative rejection policy for unbounded-backtracking
-patterns (OQ-8). Until then the ADR promises no regex deadline, because it could
-not keep one.
+a denial-of-service primitive.
+
+**Resolution of OQ-8: static rejection first, an abandonable thread second.**
+Because a started match cannot be interrupted, the bound has to be established
+before anything starts. Catastrophic backtracking requires an unbounded
+quantifier wrapped around something that can match the same text more than one
+way — `(a+)+`, `(a|ab)*`, `(a?)*` — and that is a syntactic property, decidable
+without running the pattern. MaruEdit rejects those shapes and says how to
+rewrite (bound the repetition, or use a character class). The analysis is
+deliberately conservative and rejects some patterns that would have been fine;
+that is the correct direction to err when the failure mode is an unkillable
+loop.
+
+Syntactic analysis is a heuristic, so a surviving pattern still runs on a plain
+thread the caller is willing to **abandon** — not a `Task`, which cannot be
+abandoned without permanently costing a cooperative-pool thread. Past the
+deadline the caller returns a timeout and walks away. The ADR does not pretend
+the work stops: the abandoned thread keeps burning a core until ICU returns on
+its own, so abandonment itself is capped, and past the cap regex search is
+refused until the earlier runs drain. That turns the worst case from "the editor
+hangs" into "one feature is briefly unavailable while literal search keeps
+working" — which is the most this design can honestly promise.
 
 ### 6.5 Saving
 
@@ -1707,7 +1749,15 @@ upstream.
 
 ## 12. Open questions
 
-- **OQ-1 — Credential format and persistent-grant binding.** §4.3 fixes the
+- **OQ-1 — Credential format and persistent-grant binding. Partly resolved.**
+  The credential format is settled: a public id plus a Keychain-held secret
+  under a code-signature ACL, with only a digest on disk (§4.3, P9). What
+  remains open is the isolation question — the ACL is enforceable only on a
+  signed build, and the session token is still a same-user-readable file — so
+  unattended trust for anything stronger than provenance still depends on
+  signing and, for a real boundary, sandboxing. Retained below.
+
+  §4.3 fixes the
   pairing shape and Phase 1 implements it, so pairing itself is no longer open.
   What remains: credential format and rotation, behavior when the file is missing
   or stale, whether one configuration may hold credentials for several MaruEdit
@@ -1733,7 +1783,11 @@ upstream.
   that will call?
 - **OQ-7 — Streamable HTTP.** Does a containerised or remote agent ever need to
   reach MaruEdit? If yes, the answer is a separate ADR, not a flag.
-- **OQ-8 — Regex bounding.** Which of the three options in §6.4 does MaruEdit
+- **OQ-8 — Regex bounding. Resolved.** §6.4 records the answer: conservative
+  static rejection of unbounded-backtracking shapes, plus a capped, abandonable
+  thread for what survives. Retained below for the reasoning that led there.
+
+  Which of the three options in §6.4 does MaruEdit
   take, and does a killable helper process justify its complexity for a text
   editor's search? This gates regex search in Phase 3, not Phase 0 or 1.
 

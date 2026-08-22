@@ -25,6 +25,18 @@ mkdir -p "${BUNDLE}/Contents/Resources"
 # the process name, Activity Monitor, etc. stay user-facing as "MaruEdit".
 cp "${BUILD}/${PRODUCT}" "${BUNDLE}/Contents/MacOS/${APP}"
 
+# The MCP bridge ships beside the app rather than being installed separately.
+# Being inside the bundle is what lets the app name it in the Keychain ACL for
+# agent credentials: an ACL can only trust a binary at a path that exists, and
+# a separately-installed copy the app cannot find would leave the bridge
+# prompting on every credential read.
+BRIDGE="MaruEditMCPBridge"
+if [ ! -f "${BUILD}/${BRIDGE}" ]; then
+  echo "Missing ${BRIDGE}; the agent interface would ship unusable" >&2
+  exit 1
+fi
+cp "${BUILD}/${BRIDGE}" "${BUNDLE}/Contents/MacOS/${BRIDGE}"
+
 # SwiftPM's generated Bundle.module accessor first looks below
 # Bundle.main.resourceURL. Keep the generated name intact and package it in
 # the standard Contents/Resources location.

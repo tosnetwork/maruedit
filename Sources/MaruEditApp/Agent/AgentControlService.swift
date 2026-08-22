@@ -168,7 +168,10 @@ final class AgentControlService: ObservableObject {
     struct PairingRequest {
         let verificationCode: String
         let credentialID: String
-        let credentialPath: String
+        /// The secret the agent presents. Shown once, at pairing, and never
+        /// written anywhere the editor can read it back.
+        let secret: String
+        let protection: AgentCredentialStore.Protection
         let requestedAt: Date
     }
 
@@ -186,17 +189,31 @@ final class AgentControlService: ObservableObject {
     private(set) var pendingPairing: PairingRequest?
     /// Credential id → human-readable label, persisted so a paired config is
     /// recognized after a restart.
-    private(set) var pairedCredentials: [String: String] = [:]
+    /// Paired credentials by public id.
+    ///
+    /// The editor keeps a label and the secret's digest — never the secret. A
+    /// reader of everything MaruEdit writes to disk therefore gets no usable
+    /// credential, which was not true when the id *was* the bearer token and
+    /// sat in this file as its own key.
+    struct PairedCredential: Equatable {
+        let label: String
+        let secretDigest: String
+    }
+
+    private(set) var pairedCredentials: [String: PairedCredential] = [:]
 
     /// Credentials the human chose to trust across restarts.
     ///
     /// This is the whole of "persistent grants" at the level this trust model
     /// supports, and the limit is worth naming: the credential is a bearer
-    /// capability any same-user process can read, so remembering it skips the
-    /// approval click and buys nothing else. It does not become authentication
-    /// by being remembered. Unattended trust for something stronger would need
-    /// a real isolation boundary — a signed helper with a Keychain ACL bound to
-    /// its code signature — which is a different product decision (OQ-1).
+    /// capability, so remembering it skips the approval click; it does not
+    /// become authentication by being remembered.
+    ///
+    /// How much the secret is protected depends on whether this build is
+    /// signed — see `AgentCredentialStore`. On a signed build `securityd`
+    /// enforces which code may read it, so unattended trust rests on something
+    /// real; on a local build it does not, and the indicator says so rather
+    /// than implying otherwise.
     private(set) var rememberedCredentials: Set<String> = []
     let proposals = AgentProposalStore()
 
@@ -205,6 +222,7 @@ final class AgentControlService: ObservableObject {
     private(set) var offeredRoots: [String] = []
 
     private let home: URL
+    private let vault: AgentCredentialVault
     let sessionToken: String
     let serverInstanceID: String
 
@@ -212,8 +230,12 @@ final class AgentControlService: ObservableObject {
     /// without polling.
     var onChange: (() -> Void)?
 
-    init(home: URL = URL(fileURLWithPath: NSHomeDirectory())) {
+    init(
+        home: URL = URL(fileURLWithPath: NSHomeDirectory()),
+        vault: AgentCredentialVault = .keychain
+    ) {
         self.home = home
+        self.vault = vault
         self.sessionToken = Self.randomToken()
         self.serverInstanceID = Self.randomToken(bytes: 8)
         loadCredentials()
@@ -247,7 +269,7 @@ final class AgentControlService: ObservableObject {
         }
         let connection = Connection(
             id: AutomationID.next(prefix: "conn"),
-            credentialID: hello.credential.flatMap { pairedCredentials[$0] != nil ? $0 : nil },
+            credentialID: hello.credential.flatMap(resolveCredential),
             claimedName: hello.clientName,
             bridgePID: hello.bridgePID)
         connections.append(connection)
@@ -457,6 +479,20 @@ final class AgentControlService: ObservableObject {
         return true
     }
 
+    /// Finds which paired credential a presented secret belongs to.
+    ///
+    /// Every candidate is compared, and the comparison itself is constant
+    /// time, so neither the number of matched characters nor which credential
+    /// matched is observable from how long the answer took.
+    private func resolveCredential(_ presented: String) -> String? {
+        var matched: String?
+        for (id, credential) in pairedCredentials
+        where AgentCredentialStore.matches(presented: presented, digest: credential.secretDigest) {
+            matched = id
+        }
+        return matched
+    }
+
     // MARK: - Pairing
 
     /// Issues a verification code the human confirms in MaruEdit.
@@ -467,37 +503,56 @@ final class AgentControlService: ObservableObject {
     func beginPairing() -> Result<PairingRequest, AgentToolFailure> {
         let code = (0..<6).map { _ in String(Int.random(in: 0...9)) }.joined()
         let credentialID = Self.randomToken(bytes: 16)
-        let path = AgentEndpoint.supportDirectory(home: home)
-            .appendingPathComponent("credential-\(credentialID).txt")
+        // The id is a public handle — it appears in the registry, the audit
+        // trail, and the revoke button. The secret is separate, so knowing how
+        // a credential is named never means holding it.
+        guard let secret = try? AgentCredentialStore.randomSecret() else {
+            return .failure(AgentToolFailure(
+                code: "internal",
+                message: "The system refused to provide randomness, so no credential was issued."))
+        }
         let request = PairingRequest(
             verificationCode: code,
             credentialID: credentialID,
-            credentialPath: path.path,
+            secret: secret,
+            protection: .keychainOnly,
             requestedAt: Date())
         pendingPairing = request
         onChange?()
         return .success(request)
     }
 
-    /// Confirms the pending pairing and writes the credential file `0600`.
+    /// Confirms the pending pairing, putting the secret in the Keychain and
+    /// keeping only its digest.
+    ///
+    /// Returns the protection actually achieved, or nil if the Keychain
+    /// refused. Failing loudly is deliberate: quietly falling back to a file
+    /// would give the human a stronger-sounding pairing than they got.
     @discardableResult
-    func confirmPairing(label: String) -> Bool {
-        guard let request = pendingPairing else { return false }
-        let directory = AgentEndpoint.supportDirectory(home: home)
-        try? FileManager.default.createDirectory(
-            at: directory, withIntermediateDirectories: true,
-            attributes: [.posixPermissions: 0o700])
-        let url = URL(fileURLWithPath: request.credentialPath)
-        guard (try? Data(request.credentialID.utf8).write(to: url, options: .atomic)) != nil else {
-            return false
-        }
-        try? FileManager.default.setAttributes(
-            [.posixPermissions: 0o600], ofItemAtPath: url.path)
-        pairedCredentials[request.credentialID] = label
+    func confirmPairing(label: String) -> AgentCredentialStore.Protection? {
+        guard let request = pendingPairing else { return nil }
+        guard let protection = try? vault.store(
+            request.secret, request.credentialID, label, Self.trustedExecutablePaths())
+        else { return nil }
+
+        pairedCredentials[request.credentialID] = PairedCredential(
+            label: label,
+            secretDigest: AgentCredentialStore.digest(of: request.secret))
         saveCredentials()
         pendingPairing = nil
         onChange?()
-        return true
+        return protection
+    }
+
+    /// The binaries allowed to read a credential without prompting: this app
+    /// and the bridge it ships.
+    private static func trustedExecutablePaths() -> [String] {
+        var paths: [String] = []
+        if let executable = Bundle.main.executablePath { paths.append(executable) }
+        let bridge = Bundle.main.bundleURL
+            .appendingPathComponent("Contents/MacOS/MaruEditMCPBridge")
+        if FileManager.default.fileExists(atPath: bridge.path) { paths.append(bridge.path) }
+        return paths
     }
 
     func cancelPairing() {
@@ -506,6 +561,9 @@ final class AgentControlService: ObservableObject {
     }
 
     func revokeCredential(_ credentialID: String) {
+        // The secret goes with the record. Leaving it in the Keychain would
+        // make "revoked" mean "hidden from this list".
+        try? vault.remove(credentialID)
         pairedCredentials.removeValue(forKey: credentialID)
         rememberedCredentials.remove(credentialID)
         saveCredentials()
@@ -523,9 +581,27 @@ final class AgentControlService: ObservableObject {
               let value = try? JSONValue.decode(data),
               let members = value["credentials"]?.objectValue
         else { return }
-        pairedCredentials = members.compactMapValues(\.stringValue)
+        // New-format entries only. The earlier scheme used the credential id
+        // as the bearer secret and stored it here in plaintext, so any such
+        // entry is a secret that has been readable by every same-user process
+        // for as long as it existed. Carrying it forward would preserve
+        // exactly the weakness this store exists to remove, so those entries
+        // are dropped and the human re-pairs once.
+        pairedCredentials = members.compactMapValues { entry in
+            guard let object = entry.objectValue,
+                  let label = object["label"]?.stringValue,
+                  let digest = object["secretDigest"]?.stringValue
+            else { return nil }
+            return PairedCredential(label: label, secretDigest: digest)
+        }
+        if members.count > pairedCredentials.count {
+            // Rewritten immediately so the plaintext secrets stop existing on
+            // disk, rather than lingering until the next pairing.
+            saveCredentials()
+        }
         rememberedCredentials = Set(
-            (value["remembered"]?.arrayValue ?? []).compactMap(\.stringValue))
+            (value["remembered"]?.arrayValue ?? []).compactMap(\.stringValue)
+        ).intersection(pairedCredentials.keys)
     }
 
     private func saveCredentials() {
@@ -534,7 +610,12 @@ final class AgentControlService: ObservableObject {
             at: directory, withIntermediateDirectories: true,
             attributes: [.posixPermissions: 0o700])
         let payload = JSONValue.object([
-            "credentials": .object(pairedCredentials.mapValues(JSONValue.string)),
+            "credentials": .object(pairedCredentials.mapValues { credential in
+                JSONValue.object([
+                    "label": .string(credential.label),
+                    "secretDigest": .string(credential.secretDigest),
+                ])
+            }),
             "remembered": .array(rememberedCredentials.sorted().map(JSONValue.string)),
         ])
         try? payload.encoded().write(to: AgentEndpoint.credentialsURL(home: home), options: .atomic)
@@ -560,7 +641,8 @@ final class AgentControlService: ObservableObject {
         // rather than the rule being bypassed.
         if connection.credentialID == nil {
             let credential = Self.randomToken(bytes: 8)
-            pairedCredentials[credential] = "test"
+            pairedCredentials[credential] = PairedCredential(
+                label: "test", secretDigest: AgentCredentialStore.digest(of: credential))
             connection.pairedCredentialID = credential
         }
         approve(

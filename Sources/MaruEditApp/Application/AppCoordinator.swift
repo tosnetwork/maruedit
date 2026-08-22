@@ -67,8 +67,37 @@ final class AppCoordinator {
         commandRegistry.didExecute = { [weak self] id in self?.commandDidExecute(id) }
     }
 
+    /// A window an explicit caller named, honoured for the duration of one
+    /// command execution.
+    ///
+    /// Every command reaches a window through `ensureWindowControllerReady`,
+    /// which reads ambient state — whichever window is key. That is right for a
+    /// human, who is looking at the window they mean, and wrong for anything
+    /// else: an agent naming a document cannot also guarantee the human will
+    /// not switch tabs before the command runs, and an authorization check
+    /// cannot be made about a target nobody stated. Since the resolution
+    /// already lives in one function, an override here makes every command
+    /// targetable without touching any of them.
+    private var targetedWindowController: MainWindowController?
+
+    /// Runs `body` with window resolution pinned to `controller`.
+    ///
+    /// Strictly scoped to the synchronous execution: a command that defers work
+    /// into a completion handler resolves the window again later and is
+    /// therefore *not* covered, which is why only commands that act
+    /// synchronously may be exposed to agents.
+    func withTargetedWindow<T>(
+        _ controller: MainWindowController, _ body: () -> T
+    ) -> T {
+        let previous = targetedWindowController
+        targetedWindowController = controller
+        defer { targetedWindowController = previous }
+        return body()
+    }
+
     @discardableResult
     func ensureWindowControllerReady(restoreSession: Bool = true) -> MainWindowController {
+        if let targeted = targetedWindowController { return targeted }
         if let wc = windowController {
             let candidates = [wc] + additionalWindowControllers
             if let key = NSApp.keyWindow?.windowController as? MainWindowController,

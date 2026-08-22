@@ -18,7 +18,7 @@ import MaruEditCore
 struct Options {
     var pair = false
     var instanceID: String?
-    var credentialPath: String?
+    var credentialID: String?
     var clientName: String?
 
     static func parse(_ arguments: [String]) -> Options {
@@ -31,9 +31,9 @@ struct Options {
             case "--instance":
                 index += 1
                 options.instanceID = index < arguments.count ? arguments[index] : nil
-            case "--credential":
+            case "--credential-id":
                 index += 1
-                options.credentialPath = index < arguments.count ? arguments[index] : nil
+                options.credentialID = index < arguments.count ? arguments[index] : nil
             case "--client-name":
                 index += 1
                 options.clientName = index < arguments.count ? arguments[index] : nil
@@ -187,7 +187,21 @@ func openConnection() -> Result<AppConnection, BridgeFailure> {
         guard let token = readTrimmed(
             AgentEndpoint.tokenURL(home: home, serverInstanceID: instance.serverInstanceID))
         else { return .failure(BridgeFailure(message: "MaruEdit's session token could not be read.")) }
-        let credential = options.credentialPath.flatMap { readTrimmed(URL(fileURLWithPath: $0)) }
+        // Read from the Keychain, not from a file this process was pointed
+        // at. The secret therefore never exists as a path that can be copied
+        // into a config, a shell history, or a backup — and on a signed build
+        // `securityd` decides whether this binary may have it at all.
+        var credential: String?
+        if let id = options.credentialID {
+            do {
+                credential = try AgentCredentialStore.secret(id: id)
+            } catch {
+                return .failure(BridgeFailure(message: """
+                    The credential \(id) could not be read from the Keychain: \(error). \
+                    Pair again in MaruEdit if it was revoked.
+                    """))
+            }
+        }
         do {
             let connection = try AppConnection(socketPath: instance.socketPath)
             try connection.send(AgentEnvelope.Hello(
@@ -217,16 +231,19 @@ if options.pair {
             switch outcome {
             case .success(let payload):
                 let code = payload["verificationCode"]?.stringValue ?? "?"
-                let path = payload["credentialPath"]?.stringValue ?? "?"
+                let id = payload["credentialId"]?.stringValue ?? "?"
                 print("""
                     MaruEdit is showing this verification code:
 
                         \(code)
 
-                    Confirm it in MaruEdit's agent indicator. Once you do, point your \
-                    agent's MCP server config at:
+                    Confirm it in MaruEdit's agent indicator. Once you do, add this \
+                    to your agent's MCP server config:
 
-                        --credential \(path)
+                        --credential-id \(id)
+
+                    That is an identifier, not a secret. The secret is kept in your \
+                    Keychain and read directly by this bridge.
                     """)
             case .failure(let code, let message, _):
                 fail("\(code): \(message)")

@@ -106,7 +106,28 @@ public enum TextFileLoader {
     /// hand it to the ordinary loader would give back the symlink race that
     /// walk just closed. So the bytes come in, and the URL is used only for
     /// naming and file-type resolution.
-    public static func load(data: Data, representing url: URL) throws -> LoadedText {
+    /// Metadata taken from the same open file the bytes came from.
+    ///
+    /// Passed in rather than looked up, because a caller that opened a
+    /// descriptor deliberately — walking each component with `O_NOFOLLOW` to
+    /// close a symlink race — must not have this loader quietly resolve the
+    /// path again. A second lookup can land on a different file, and the
+    /// document would then carry a baseline describing bytes it never read.
+    public struct SourceMetadata: Sendable, Equatable {
+        public let identity: FileIdentity?
+        public let modificationDate: Date?
+        public let posixPermissions: Int
+
+        public init(identity: FileIdentity?, modificationDate: Date?, posixPermissions: Int) {
+            self.identity = identity
+            self.modificationDate = modificationDate
+            self.posixPermissions = posixPermissions
+        }
+    }
+
+    public static func load(
+        data: Data, representing url: URL, metadata: SourceMetadata? = nil
+    ) throws -> LoadedText {
         let result = EncodingDetector.detect(data)
         guard result.confidence != .failed else {
             throw TextFileLoaderError.couldNotDecode(
@@ -121,7 +142,8 @@ public enum TextFileLoader {
             confidence: result.confidence,
             diagnostics: result.diagnostics,
             data: data,
-            url: url
+            url: url,
+            metadata: metadata
         )
     }
 
@@ -191,11 +213,16 @@ public enum TextFileLoader {
         confidence: DetectionConfidence,
         diagnostics: [EncodingDiagnostic],
         data: Data,
-        url: URL
+        url: URL,
+        metadata: SourceMetadata? = nil
     ) -> LoadedText {
-        let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
-        let modificationDate = attributes?[.modificationDate] as? Date
-        let permissions = (attributes?[.posixPermissions] as? NSNumber)?.intValue ?? 0
+        let attributes = metadata == nil
+            ? try? FileManager.default.attributesOfItem(atPath: url.path)
+            : nil
+        let modificationDate = metadata?.modificationDate
+            ?? attributes?[.modificationDate] as? Date
+        let permissions = metadata?.posixPermissions
+            ?? (attributes?[.posixPermissions] as? NSNumber)?.intValue ?? 0
 
         return LoadedText(
             content: content,
@@ -205,7 +232,7 @@ public enum TextFileLoader {
             fileSize: Int64(data.count),
             modificationDate: modificationDate,
             posixPermissions: permissions,
-            fileIdentity: FileIdentity.of(url),
+            fileIdentity: metadata?.identity ?? FileIdentity.of(url),
             diagnostics: diagnostics
         )
     }

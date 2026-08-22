@@ -134,14 +134,22 @@ public enum AgentToolCatalog {
             name: "search_documents",
             title: "Search open documents",
             summary: """
-                Literal search across one document or every granted document, \
-                with surrounding context. Use this instead of reading a whole \
-                file to find something. Results carry the revisions of the \
-                snapshot they were computed against.
+                Search one document or every granted document, with \
+                surrounding context. Use this instead of reading a whole file \
+                to find something. Results carry the revisions of the snapshot \
+                they were computed against.
                 """,
             phase: 1, isReadOnly: true, isDestructive: false,
             inputSchema: schema(properties: [
-                ("query", property("string", "Literal text to find. Regular expressions are not supported yet.")),
+                ("query", property("string", "Text to find, literal unless regex is true.")),
+                ("regex", property("boolean", """
+                    Treat query as an ICU regular expression. Defaults to \
+                    false. Patterns that can backtrack exponentially — an \
+                    unbounded quantifier around another one, or around a \
+                    group containing | — are refused with an explanation, \
+                    because they cannot be interrupted once started. Bound \
+                    the repetition (a{1,64}) or use a character class.
+                    """)),
                 ("documentId", documentIDProperty),
                 ("ignoreCase", property("boolean", "Defaults to false.")),
                 ("maxResults", property("integer", "Defaults to 100.")),
@@ -260,11 +268,19 @@ public enum AgentToolCatalog {
             name: "run_command",
             title: "Run an editor command",
             summary: """
-                Run one of MaruEdit's own commands. Default-deny: only commands                 whose effect does not depend on which window is focused are                 available, because commands carry no explicit target yet.
+                Run one of MaruEdit's own commands. Default-deny: a command is \
+                available only if it was explicitly exposed. Name a document \
+                to say which window the command acts on; without one it acts \
+                on the first window this client can see.
                 """,
             phase: 3, isReadOnly: false, isDestructive: true,
             inputSchema: schema(properties: [
                 ("commandId", property("string", "Stable command identifier, e.g. file.new.")),
+                ("documentId", property("string", """
+                    Optional. The window showing this document is the one the \
+                    command acts on, so a person switching tabs mid-call \
+                    cannot redirect it.
+                    """)),
             ], required: ["commandId"]),
             outputSchema: schema(properties: [
                 ("commandId", property("string", "")),

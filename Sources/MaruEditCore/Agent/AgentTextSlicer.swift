@@ -119,13 +119,86 @@ public enum AgentTextSlicer {
         public let truncated: Bool
     }
 
-    /// Literal search only.
+    /// Regular-expression search across the same scope as `searchLiteral`.
     ///
-    /// Regular expressions wait for a phase that can bound them: the existing
-    /// engine makes one synchronous `NSRegularExpression` call with no
-    /// cancellation point, so a catastrophically backtracking pattern cannot be
-    /// stopped by any timer this process owns, and a client that repeats it has
-    /// a denial-of-service primitive.
+    /// The pattern must already have passed `AgentRegexGuard.validate`, and
+    /// this call must already be running somewhere it can be abandoned — see
+    /// `AgentRegexGuard.runBounded`. Neither is checked here, because the
+    /// bound has to be established by whoever owns the thread, not by the
+    /// code running on it.
+    public static func searchRegularExpression(
+        in documents: [(id: String, revision: UInt64, metadataRevision: UInt64, text: String)],
+        expression: NSRegularExpression,
+        limit: Int,
+        contextCharacters: Int = 80
+    ) -> SearchResults {
+        var matches: [JSONValue] = []
+        var truncated = false
+
+        for document in documents {
+            let ns = document.text as NSString
+            let starts = lineStarts(ns)
+            var stop = false
+
+            expression.enumerateMatches(
+                in: document.text, range: NSRange(location: 0, length: ns.length)
+            ) { result, _, shouldStop in
+                guard let found = result?.range, found.location != NSNotFound else { return }
+                if matches.count >= limit {
+                    truncated = true
+                    stop = true
+                    shouldStop.pointee = true
+                    return
+                }
+                matches.append(
+                    match(found, in: ns, starts: starts, document: document,
+                          contextCharacters: contextCharacters))
+            }
+            if stop { break }
+        }
+
+        return SearchResults(matches: matches, truncated: truncated)
+    }
+
+    /// One match, shaped identically whether it came from a literal or a
+    /// pattern — a client must not have to parse two result formats.
+    private static func match(
+        _ found: NSRange,
+        in ns: NSString,
+        starts: [Int],
+        document: (id: String, revision: UInt64, metadataRevision: UInt64, text: String),
+        contextCharacters: Int
+    ) -> JSONValue {
+        var line = 0
+        var low = 0, high = starts.count - 1
+        while low <= high {
+            let mid = (low + high) / 2
+            if starts[mid] <= found.location { line = mid; low = mid + 1 } else { high = mid - 1 }
+        }
+        let lineStart = starts[line]
+        let lineEnd = line + 1 < starts.count ? starts[line + 1] : ns.length
+        let lineText = ns.substring(with: NSRange(location: lineStart, length: lineEnd - lineStart))
+
+        let beforeStart = max(0, found.location - contextCharacters)
+        let afterEnd = min(ns.length, NSMaxRange(found) + contextCharacters)
+
+        return .object([
+            "documentId": .string(document.id),
+            "revision": .int(Int(document.revision)),
+            "metadataRevision": .int(Int(document.metadataRevision)),
+            "line": .int(line + 1),
+            "column": .int(found.location - lineStart + 1),
+            "offset": .int(found.location),
+            "length": .int(found.length),
+            "lineText": .string(bounded(lineText.trimmingCharacters(in: .newlines), limit: 400)),
+            "contextBefore": .string(ns.substring(
+                with: NSRange(location: beforeStart, length: found.location - beforeStart))),
+            "contextAfter": .string(ns.substring(
+                with: NSRange(location: NSMaxRange(found), length: afterEnd - NSMaxRange(found)))),
+        ])
+    }
+
+    /// Literal search.
     public static func searchLiteral(
         in documents: [(id: String, revision: UInt64, metadataRevision: UInt64, text: String)],
         query: String,
@@ -150,33 +223,9 @@ public enum AgentTextSlicer {
                     break
                 }
 
-                var line = 0
-                var low = 0, high = starts.count - 1
-                while low <= high {
-                    let mid = (low + high) / 2
-                    if starts[mid] <= found.location { line = mid; low = mid + 1 } else { high = mid - 1 }
-                }
-                let lineStart = starts[line]
-                let lineEnd = line + 1 < starts.count ? starts[line + 1] : ns.length
-                let lineText = ns.substring(with: NSRange(location: lineStart, length: lineEnd - lineStart))
-
-                let beforeStart = max(0, found.location - contextCharacters)
-                let afterEnd = min(ns.length, NSMaxRange(found) + contextCharacters)
-
-                matches.append(.object([
-                    "documentId": .string(document.id),
-                    "revision": .int(Int(document.revision)),
-                    "metadataRevision": .int(Int(document.metadataRevision)),
-                    "line": .int(line + 1),
-                    "column": .int(found.location - lineStart + 1),
-                    "offset": .int(found.location),
-                    "length": .int(found.length),
-                    "lineText": .string(bounded(lineText.trimmingCharacters(in: .newlines), limit: 400)),
-                    "contextBefore": .string(ns.substring(
-                        with: NSRange(location: beforeStart, length: found.location - beforeStart))),
-                    "contextAfter": .string(ns.substring(
-                        with: NSRange(location: NSMaxRange(found), length: afterEnd - NSMaxRange(found)))),
-                ]))
+                matches.append(
+                    match(found, in: ns, starts: starts, document: document,
+                          contextCharacters: contextCharacters))
 
                 let next = NSMaxRange(found)
                 searchRange = NSRange(location: next, length: ns.length - next)

@@ -90,8 +90,9 @@ final class AgentIndicatorController: NSWindowController {
 
         if !server.control.pairedCredentials.isEmpty {
             stack.addArrangedSubview(heading(AppLocalization.string("agent.paired")))
-            for (id, name) in server.control.pairedCredentials.sorted(by: { $0.value < $1.value }) {
-                stack.addArrangedSubview(credentialRow(id: id, name: name))
+            for (id, credential) in server.control.pairedCredentials
+                .sorted(by: { $0.value.label < $1.value.label }) {
+                stack.addArrangedSubview(credentialRow(id: id, name: credential.label))
             }
         }
 
@@ -261,7 +262,14 @@ final class AgentIndicatorController: NSWindowController {
             title: AppLocalization.string("agent.revokeCredential"),
             target: self, action: #selector(revokeCredential(_:)))
         revoke.identifier = NSUserInterfaceItemIdentifier(id)
-        return row([label(name), remember, revoke])
+        let copyID = NSButton(
+            title: AppLocalization.string("agent.copyCredentialID"),
+            target: self, action: #selector(copyCredentialID(_:)))
+        copyID.identifier = NSUserInterfaceItemIdentifier(id)
+        // The identifier is shown here as well as in the confirmation dialog,
+        // so a human who dismissed that dialog before configuring their agent
+        // is not stuck re-pairing to recover a value that was never secret.
+        return row([label(name), copyID, remember, revoke])
     }
 
     /// One pending edit, with the diff the human is actually deciding about.
@@ -373,7 +381,42 @@ final class AgentIndicatorController: NSWindowController {
     }
 
     @objc private func confirmPairing() {
-        server.control.confirmPairing(label: AppLocalization.string("agent.pairedClient"))
+        guard let pairing = server.control.pendingPairing else { return }
+        let id = pairing.credentialID
+        guard let protection = server.control.confirmPairing(
+            label: AppLocalization.string("agent.pairedClient"))
+        else {
+            let alert = NSAlert()
+            alert.alertStyle = .warning
+            alert.messageText = AppLocalization.string("agent.pairingFailedTitle")
+            alert.informativeText = AppLocalization.string("agent.pairingFailedExplanation")
+            alert.addButton(withTitle: AppLocalization.string(.commonOK))
+            alert.runModal()
+            return
+        }
+
+        // The human is told what to configure, and what the pairing is
+        // actually worth on this build — a claim of enforced code identity
+        // would be false on an unsigned one.
+        let alert = NSAlert()
+        alert.messageText = AppLocalization.string("agent.pairingDoneTitle")
+        alert.informativeText = AppLocalization.string(
+            protection == .codeIdentityEnforced
+                ? "agent.pairingDoneEnforced"
+                : "agent.pairingDoneUnsigned",
+            [id])
+        alert.addButton(withTitle: AppLocalization.string("agent.copyCredentialID"))
+        alert.addButton(withTitle: AppLocalization.string(.commonOK))
+        if alert.runModal() == .alertFirstButtonReturn {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(id, forType: .string)
+        }
+    }
+
+    @objc private func copyCredentialID(_ sender: NSButton) {
+        guard let id = sender.identifier?.rawValue else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(id, forType: .string)
     }
 
     @objc private func cancelPairing() {

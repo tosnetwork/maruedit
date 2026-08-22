@@ -416,12 +416,11 @@ enum AppCommands {
         registry.register(CommandDefinition(id: .otherCorrectSpelling, title: "Correct Spelling…") { $0.coordinator.showSpellingCorrections() })
         registry.register(CommandDefinition(id: .toolsOpenFinder, title: "Show in Finder") { $0.coordinator.openCurrentFolderInFinder() })
         registry.register(CommandDefinition(id: .toolsConfigureUserMenus, title: "Configure User Menus…") { $0.coordinator.showUserMenuConfiguration() })
-        // Agent-exposed because a new empty document does not depend on which
-        // window is key: whichever it lands in, the result is the same and
-        // nothing existing is touched.
+        // Agent-exposed: it acts synchronously, so the caller's target holds
+        // for its whole execution.
         registry.register(CommandDefinition(
             id: .fileNew, title: "New File",
-            isSafeForAgentsRegardlessOfTarget: true
+            isAgentExposed: true
         ) { ctx in
             ctx.coordinator.newDocument()
         })

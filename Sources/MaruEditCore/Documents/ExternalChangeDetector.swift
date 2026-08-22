@@ -14,6 +14,15 @@ public enum ExternalChangeStatus: Sendable, Equatable {
     /// reported the same way so callers can react without crashing or
     /// silently pretending nothing happened).
     case deletedOrMoved
+    /// A file exists but there is no baseline to compare it against, so
+    /// whether it changed is unknowable.
+    ///
+    /// Distinct from `.unchanged` on purpose. Reporting "unchanged" for a
+    /// file nobody ever read is an unearned claim, and a caller that acts on
+    /// it overwrites content it has never seen. Callers that ask a question
+    /// ("should I warn the human?") may treat this as "nothing to say";
+    /// callers about to destroy data must treat it as a refusal.
+    case unknownBaseline
 }
 
 /// Compares a file's current on-disk state against a previously-known
@@ -33,10 +42,13 @@ public enum ExternalChangeDetector {
             return .deletedOrMoved
         }
 
-        // No baseline to compare against (e.g. a document that was never
-        // actually loaded from this exact path with metadata captured) —
-        // nothing to call "changed" relative to.
-        guard let knownModificationDate else { return .unchanged }
+        // No baseline is not the same as no change. A document with no
+        // captured metadata cannot be compared, and reporting `.unchanged`
+        // means a save will happily overwrite a file it never read. Callers
+        // that genuinely have no baseline — a brand-new document being saved
+        // for the first time — do not reach here, because they have no URL to
+        // compare either.
+        guard let knownModificationDate else { return .unknownBaseline }
 
         let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
         let currentModificationDate = attributes?[.modificationDate] as? Date

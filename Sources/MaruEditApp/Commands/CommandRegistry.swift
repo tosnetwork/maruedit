@@ -43,7 +43,10 @@ final class CommandRegistry {
         guard let definition = definitionsByID[id], definition.isEnabled(context) else {
             return false
         }
-        definition.execute(context)
+        // Window resolution is pinned for exactly as long as the command runs,
+        // so a command with an explicit target acts on what the caller named
+        // rather than on whichever window happens to be key at that moment.
+        context.resolvingTarget { definition.execute(context) }
         didExecute?(id)
         return true
     }

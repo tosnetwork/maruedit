@@ -1217,6 +1217,12 @@ final class MainWindowController: NSWindowController,
         case .unchanged:
             return
 
+        case .unknownBaseline:
+            // Nothing is known about the file, which is not the same as
+            // knowing it changed. There is no true statement to put in front
+            // of the human here; the refusal that matters happens at save.
+            return
+
         case .deletedOrMoved:
             let a = NSAlert()
             a.alertStyle = .warning
@@ -1424,6 +1430,13 @@ final class MainWindowController: NSWindowController,
         document.hasByteOrderMark = loaded.hasByteOrderMark
         document.lineEnding = LineEndingDetector.detect(loaded.content)
         document.markSaved()
+        // The baseline comes from the file that was actually read, so a later
+        // save can ask "is this still that file?" instead of trusting a path.
+        // Without it the document has no baseline at all, and every
+        // external-change check would be a question it cannot answer.
+        document.fileIdentity = loaded.fileIdentity
+        document.lastKnownModificationDate = loaded.modificationDate
+        document.posixPermissions = loaded.posixPermissions
         _ = documentController.addDocument(document)
         editorVC.document = document
         refreshTabs(); refreshStatus(); layoutContentViews()

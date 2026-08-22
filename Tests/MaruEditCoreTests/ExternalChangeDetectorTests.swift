@@ -97,7 +97,10 @@ final class ExternalChangeDetectorTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: url) }
 
         let status = ExternalChangeDetector.check(url: url, knownIdentity: nil, knownModificationDate: nil)
-        XCTAssertEqual(status, .unchanged, "nothing to compare against must not be treated as a conflict")
+        XCTAssertEqual(
+            status, .unknownBaseline,
+            "no baseline is not the same as no change; claiming 'unchanged' about a file "
+                + "nobody read is what lets a save overwrite unseen content")
     }
 
     func testOwnSaveUpdatingTheBaselineIsNotFlaggedAsExternal() throws {

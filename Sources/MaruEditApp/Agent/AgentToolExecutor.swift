@@ -72,7 +72,11 @@ struct AgentToolExecutor {
         case .success(let request):
             return .success(.object([
                 "verificationCode": .string(request.verificationCode),
-                "credentialPath": .string(request.credentialPath),
+                // The id, not the secret. The secret goes to the Keychain when
+                // the human confirms, and the bridge reads it from there — so
+                // it never crosses this socket and never lands in a config
+                // file or a shell history.
+                "credentialId": .string(request.credentialID),
             ]))
         case .failure(let failure):
             return failure.outcome
@@ -384,10 +388,56 @@ struct AgentToolExecutor {
         }
 
         let snapshot = scope
-        let results = await Task.detached(priority: .userInitiated) {
-            AgentTextSlicer.searchLiteral(
-                in: snapshot, query: query, ignoreCase: ignoreCase, limit: limit)
-        }.value
+        let useRegex = arguments["regex"]?.boolValue ?? false
+
+        let results: AgentTextSlicer.SearchResults
+        if useRegex {
+            // Validated on the calling actor and before any thread is started:
+            // a pattern that cannot be bounded must cost nothing to refuse.
+            let expression: NSRegularExpression
+            do {
+                try AgentRegexGuard.validate(query)
+                var options: NSRegularExpression.Options = []
+                if ignoreCase { options.insert(.caseInsensitive) }
+                expression = try NSRegularExpression(pattern: query, options: options)
+            } catch let rejection as AgentRegexGuard.Rejection {
+                return .failure(code: rejection.code, message: rejection.message, details: nil)
+            } catch {
+                return .failure(
+                    code: "regex.invalid",
+                    message: (error as NSError).localizedDescription,
+                    details: nil)
+            }
+
+            // Not `Task.detached`: a Swift task cannot be abandoned, and a
+            // structured concurrency thread that never returns takes a
+            // cooperative-pool thread with it permanently.
+            do {
+                results = try await withCheckedThrowingContinuation { continuation in
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        do {
+                            let found = try AgentRegexGuard.runBounded {
+                                AgentTextSlicer.searchRegularExpression(
+                                    in: snapshot, expression: expression, limit: limit)
+                            }
+                            continuation.resume(returning: found)
+                        } catch {
+                            continuation.resume(throwing: error)
+                        }
+                    }
+                }
+            } catch let rejection as AgentRegexGuard.Rejection {
+                return .failure(code: rejection.code, message: rejection.message, details: nil)
+            } catch {
+                return .failure(
+                    code: "internal", message: "\(error)", details: nil)
+            }
+        } else {
+            results = await Task.detached(priority: .userInitiated) {
+                AgentTextSlicer.searchLiteral(
+                    in: snapshot, query: query, ignoreCase: ignoreCase, limit: limit)
+            }.value
+        }
 
         // Revoked mid-search means these results are no longer this client's
         // to see.

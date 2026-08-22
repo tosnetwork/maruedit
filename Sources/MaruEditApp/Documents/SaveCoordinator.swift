@@ -349,7 +349,12 @@ final class SaveCoordinator {
             switch status {
             case .unchanged: break
             case .modified: return finish(.conflicted("external_change"))
-            default: return finish(.conflicted("external_missing"))
+            case .deletedOrMoved: return finish(.conflicted("external_missing"))
+            case .unknownBaseline:
+                // A file is there and this save has no idea what is in it.
+                // Writing anyway is the lost-update this whole check exists
+                // to prevent, so it is refused rather than assumed benign.
+                return finish(.conflicted("external_unknown"))
             }
         }
 
