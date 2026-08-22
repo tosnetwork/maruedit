@@ -140,16 +140,26 @@ Deliberately deferred out of Phase 0, with reasons:
 
 ## Phase 2 — Revision-gated writes
 
-- [ ] Bounded anchor minting and digest validation.
-- [ ] `apply_edits`: strict snapshot on both counters, atomic application, three
+- [x] Bounded anchor minting and digest validation: mutually exclusive request
+      forms, 32 per call, 256 per connection, invalidated by any text revision
+      change and by disconnect.
+- [x] `apply_edits`: strict snapshot on both counters, atomic application, three
       ordered conflict outcomes, undo labelling, LF enforcement, edit-time
       encoding representability.
-- [ ] Non-writable document states; the split-pane undo ownership decision.
-- [ ] `set_selection` and `reveal` with both preconditions.
-- [ ] `SaveCoordinator` migration of every existing save entry point, then
-      `save_document` preflight and the §6.5 commit protocol with its five
-      terminal states.
-- [ ] Review mode, immutable proposals, retained-state budgets, diff banner.
+- [x] Non-writable document states — binary, read-only, view mode.
+- [x] Split-pane undo ownership: writes to a document shown in more than one
+      pane are refused with `document.multiple_panes`, which is the honest half
+      of the ADR's choice. Coordinated per-document undo history remains the
+      alternative if the refusal proves annoying in practice.
+- [x] `set_selection` and `reveal` with both preconditions.
+- [x] Review mode, immutable proposals, retained-state budgets, diff banner.
+- [x] `save_document` **preflight**, reporting `ok`, `read_only`,
+      `overwrite_prohibited`, `save_as_required`, `mixed_line_endings`, or
+      `unrepresentable`.
+- [ ] `SaveCoordinator` migration and the §6.5 commit protocol. **Agent-initiated
+      saving does not ship until this lands**: a fence only one participant
+      respects is not a fence, and every existing save entry point still calls
+      `Document.save()` synchronously on its own. Agents edit; the human saves.
 
 ## Phase 3 — Scoped app control
 

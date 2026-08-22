@@ -37,6 +37,10 @@ final class AgentControlService: ObservableObject {
         /// Bumped on revoke so an in-flight call can notice before it commits.
         var grantGeneration: UInt64 = 0
         var requestTimestamps: [Date] = []
+        /// Anchors belong to the connection, not to a "client": Phase 1 has no
+        /// persistent identity to hang them on, and a self-declared name would
+        /// make the quota spoofable.
+        let anchors = AgentAnchorStore()
 
         init(id: AutomationID, credentialID: String?, claimedName: String?, bridgePID: Int32) {
             self.id = id
@@ -82,6 +86,7 @@ final class AgentControlService: ObservableObject {
     /// Credential id → human-readable label, persisted so a paired config is
     /// recognized after a restart even though its *grant* is not.
     private(set) var pairedCredentials: [String: String] = [:]
+    let proposals = AgentProposalStore()
 
     private let home: URL
     let sessionToken: String
@@ -130,6 +135,8 @@ final class AgentControlService: ObservableObject {
     }
 
     func disconnect(_ connection: Connection) {
+        connection.anchors.removeAll()
+        proposals.dropAll(for: connection.id)
         connection.status = .disconnected
         connections.removeAll { $0 === connection }
         record(connection: connection, tool: "control.disconnect", document: nil, outcome: "closed")
@@ -157,6 +164,8 @@ final class AgentControlService: ObservableObject {
     }
 
     func revoke(_ connection: Connection) {
+        connection.anchors.removeAll()
+        proposals.dropAll(for: connection.id)
         connection.status = .denied
         connection.grantedDocuments = []
         connection.inheritsNewDocuments = false
@@ -305,6 +314,17 @@ final class AgentControlService: ObservableObject {
         try? payload.encoded().write(to: AgentEndpoint.credentialsURL(home: home), options: .atomic)
         try? FileManager.default.setAttributes(
             [.posixPermissions: 0o600], ofItemAtPath: AgentEndpoint.credentialsURL(home: home).path)
+    }
+
+    /// Test seam: registers and approves a connection over everything open.
+    ///
+    /// Only the approval path is short-circuited; the grant is still frozen to
+    /// what exists at the moment it is called, exactly as the UI does it.
+    func approveForTesting(_ connection: Connection, coordinator: AppCoordinator) {
+        if !connections.contains(where: { $0 === connection }) {
+            connections.append(connection)
+        }
+        approve(connection, documents: coordinator.agentVisibleTargets().map(\.document.automationID))
     }
 
     // MARK: - Audit

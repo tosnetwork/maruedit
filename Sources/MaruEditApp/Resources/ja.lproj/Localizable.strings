@@ -934,3 +934,6 @@
 "agent.menuItem" = "エージェント接続…";
 "settings.agentInterface" = "AIエージェントの接続を許可";
 "settings.agentInterfaceHelp" = "初期状態は無効です。有効にするとMaruEditはローカル専用ソケットで待ち受けます。どのクライアントもここで許可するまで何も参照できません。";
+"agent.pendingEdits" = "確認待ちの編集";
+"agent.applyEdit" = "適用";
+"agent.rejectEdit" = "却下";

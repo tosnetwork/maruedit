@@ -934,3 +934,6 @@
 "agent.menuItem" = "Agent Connections…";
 "settings.agentInterface" = "Allow AI agents to connect";
 "settings.agentInterfaceHelp" = "Off by default. When on, MaruEdit listens on a private local socket; every client must be approved here before it sees anything.";
+"agent.pendingEdits" = "Edits waiting for your review";
+"agent.applyEdit" = "Apply";
+"agent.rejectEdit" = "Reject";

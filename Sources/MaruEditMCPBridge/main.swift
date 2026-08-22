@@ -242,8 +242,8 @@ final class LazyConnection: @unchecked Sendable {
 
 let connection = LazyConnection()
 
-// Only what is actually wired up is advertised. Phase 2 raises this.
-let advertisedPhase = 1
+// Only what is actually wired up is advertised.
+let advertisedPhase = 2
 
 let server = MCPServer(
     info: MCPServer.ServerInfo(name: "maruedit", version: AgentBridgeVersion.current),

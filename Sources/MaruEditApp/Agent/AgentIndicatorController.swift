@@ -42,6 +42,7 @@ final class AgentIndicatorController: NSWindowController {
         ])
 
         server.control.onChange = { [weak self] in self?.scheduleRefresh() }
+        server.control.proposals.onChange = { [weak self] in self?.scheduleRefresh() }
         refresh()
     }
 
@@ -91,6 +92,14 @@ final class AgentIndicatorController: NSWindowController {
             stack.addArrangedSubview(heading(AppLocalization.string("agent.paired")))
             for (id, name) in server.control.pairedCredentials.sorted(by: { $0.value < $1.value }) {
                 stack.addArrangedSubview(credentialRow(id: id, name: name))
+            }
+        }
+
+        let pending = server.control.proposals.pending
+        if !pending.isEmpty {
+            stack.addArrangedSubview(heading(AppLocalization.string("agent.pendingEdits")))
+            for proposal in pending {
+                stack.addArrangedSubview(proposalRow(proposal))
             }
         }
 
@@ -185,6 +194,49 @@ final class AgentIndicatorController: NSWindowController {
         return row([label(name), revoke])
     }
 
+    /// One pending edit, with the diff the human is actually deciding about.
+    ///
+    /// Showing the label alone would ask them to approve a sentence rather than
+    /// a change, which is not review.
+    private func proposalRow(_ proposal: AgentProposalStore.Proposal) -> NSView {
+        let apply = NSButton(
+            title: AppLocalization.string("agent.applyEdit"),
+            target: self, action: #selector(applyProposal(_:)))
+        apply.identifier = NSUserInterfaceItemIdentifier(proposal.id)
+        let reject = NSButton(
+            title: AppLocalization.string("agent.rejectEdit"),
+            target: self, action: #selector(rejectProposal(_:)))
+        reject.identifier = NSUserInterfaceItemIdentifier(proposal.id)
+
+        let column = NSStackView(views: [
+            label(proposal.label),
+            label(diffPreview(proposal), secondary: true, monospaced: true),
+            row([apply, reject]),
+        ])
+        column.orientation = .vertical
+        column.alignment = .leading
+        column.spacing = 4
+        return column
+    }
+
+    private func diffPreview(_ proposal: AgentProposalStore.Proposal) -> String {
+        guard let target = AppDelegate.sharedCoordinator?.agentVisibleTargets()
+            .first(where: { $0.document.automationID == proposal.documentID })
+        else { return "(document closed)" }
+        let text = target.document.content as NSString
+        return proposal.edits.prefix(4).map { edit -> String in
+            let before = NSMaxRange(edit.range) <= text.length
+                ? text.substring(with: edit.range) : "?"
+            let position = AgentTextSlicer.position(ofOffset: edit.range.location, in: text)
+            return "line \(position.line): −\(oneLine(before))  +\(oneLine(edit.replacement))"
+        }.joined(separator: "\n")
+    }
+
+    private func oneLine(_ text: String) -> String {
+        let flattened = text.replacingOccurrences(of: "\n", with: "⏎")
+        return flattened.count > 60 ? String(flattened.prefix(60)) + "…" : flattened
+    }
+
     // MARK: - Actions
 
     private func connection(for sender: NSButton) -> AgentControlService.Connection? {
@@ -226,6 +278,23 @@ final class AgentIndicatorController: NSWindowController {
 
     @objc private func cancelPairing() {
         server.control.cancelPairing()
+    }
+
+    @objc private func applyProposal(_ sender: NSButton) {
+        guard let id = sender.identifier?.rawValue,
+              let proposal = server.control.proposals.proposal(id),
+              let target = AppDelegate.sharedCoordinator?.agentVisibleTargets()
+                  .first(where: { $0.document.automationID == proposal.documentID })
+        else { return }
+        _ = AgentToolExecutor.applyProposal(
+            proposal,
+            target: AgentToolExecutor.Target(document: target.document, editor: target.editor),
+            store: server.control.proposals)
+    }
+
+    @objc private func rejectProposal(_ sender: NSButton) {
+        guard let id = sender.identifier?.rawValue else { return }
+        server.control.proposals.mark(id, .rejected)
     }
 
     @objc private func revokeCredential(_ sender: NSButton) {

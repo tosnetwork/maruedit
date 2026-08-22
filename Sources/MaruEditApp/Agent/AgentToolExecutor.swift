@@ -38,6 +38,11 @@ struct AgentToolExecutor {
         case "get_outline": outcome = await outline(arguments, connection)
         case "search_documents": outcome = await search(arguments, connection)
         case "get_selection": outcome = selection(arguments, connection)
+        case "apply_edits": outcome = applyEdits(arguments, connection)
+        case "review_status": outcome = reviewStatus(arguments)
+        case "set_selection": outcome = setSelection(arguments, connection)
+        case "reveal": outcome = reveal(arguments, connection)
+        case "save_document": outcome = saveDocument(arguments, connection)
         default:
             outcome = .failure(
                 code: "tool.unknown",
@@ -67,14 +72,58 @@ struct AgentToolExecutor {
 
     // MARK: - Document resolution
 
-    private struct Target {
+    struct Target {
         let document: Document
         let editor: EditorViewController
     }
 
     /// Every open document, paired with a pane that shows it.
-    private var visibleTargets: [Target] {
+    var visibleTargets: [Target] {
         coordinator.agentVisibleTargets().map { Target(document: $0.document, editor: $0.editor) }
+    }
+
+    /// Resolution for a write, which additionally refuses documents this
+    /// profile will not write and documents shown in more than one pane.
+    func resolveForWrite(
+        _ arguments: JSONValue, _ connection: AgentControlService.Connection
+    ) -> Result<Target, AgentToolFailure> {
+        let resolved = resolve(arguments, connection)
+        guard case .success(let target) = resolved else { return resolved }
+        let document = target.document
+        if document.isBinaryMode {
+            // The buffer is a hex rendering, and saving parses it back through
+            // a codec rather than the text pipeline. An agent editing hex text
+            // through a text API is a corruption engine.
+            return .failure(AgentToolFailure(
+                code: "document.unsupported_kind",
+                message: "This document is a binary file shown as hex; MaruEdit will not let an agent edit it."))
+        }
+        if document.isEditingDisabled {
+            return .failure(AgentToolFailure(
+                code: "document.not_editable",
+                message: "This document is read-only or in view mode."))
+        }
+        let panes = visibleTargets.filter { $0.document.automationID == document.automationID }
+        if panes.count > 1 {
+            // Split panes hold separate text storage and register undo on the
+            // initiating view, so "one call is one undo" would silently mean
+            // "one undo in whichever pane you were last in". Refusing is the
+            // honest half of ADR-012 section 5.3's choice.
+            return .failure(AgentToolFailure(
+                code: "document.multiple_panes",
+                message: "This document is open in more than one pane, where a single undo entry cannot be guaranteed. Close the split and retry."))
+        }
+        return .success(target)
+    }
+
+    func editorTarget(
+        _ rawEditorID: String, _ connection: AgentControlService.Connection
+    ) -> Target? {
+        let id = AutomationID(rawValue: rawEditorID)
+        guard let target = visibleTargets.first(where: { $0.editor.automationID == id }),
+              control.mayAccess(connection, document: target.document.automationID)
+        else { return nil }
+        return target
     }
 
     private func resolve(
@@ -167,10 +216,51 @@ struct AgentToolExecutor {
                 text: text, startLine: startLine, endLine: endLine, maxBytes: maxBytes)
         }.value
 
+        // Anchors are minted only when asked for, and bounded: an unbounded
+        // anchor set is both a token cost and a memory leak.
+        var anchors: [JSONValue] = []
+        let wantsAnchor = arguments["withAnchors"]?.boolValue ?? false
+        let anchorRanges = arguments["anchorRanges"]?.arrayValue
+        if wantsAnchor && anchorRanges != nil {
+            return .failure(
+                code: "argument.conflict",
+                message: "withAnchors and anchorRanges are mutually exclusive.",
+                details: nil)
+        }
+        let full = document.content as NSString
+        if let anchorRanges {
+            guard anchorRanges.count <= AgentAnchorStore.maximumPerCall else {
+                return .failure(
+                    code: "limit.anchors",
+                    message: "At most \(AgentAnchorStore.maximumPerCall) anchors per call.",
+                    details: nil)
+            }
+            for raw in anchorRanges {
+                guard let start = raw["start"]?.intValue, let end = raw["end"]?.intValue,
+                      start >= slice.startOffset, end <= slice.endOffset, end >= start
+                else {
+                    return .failure(
+                        code: "edit.range_invalid",
+                        message: "anchorRanges must be document-relative offsets inside the returned range.",
+                        details: nil)
+                }
+                let region = full.substring(with: NSRange(location: start, length: end - start))
+                anchors.append(connection.anchors.mint(
+                    revision: revision, start: start, end: end, text: region).json)
+            }
+        } else if wantsAnchor {
+            anchors.append(connection.anchors.mint(
+                revision: revision,
+                start: slice.startOffset,
+                end: slice.endOffset,
+                text: slice.text).json)
+        }
+
         return .success(.object([
             "documentId": .string(document.automationID.rawValue),
             "revision": .int(Int(revision)),
             "metadataRevision": .int(Int(metadataRevision)),
+            "anchors": .array(anchors),
             "startLine": .int(slice.startLine),
             "endLine": .int(slice.endLine),
             "totalLines": .int(slice.totalLines),
@@ -289,7 +379,7 @@ struct AgentToolExecutor {
 
     // MARK: - Helpers
 
-    private static func lineCount(_ text: String) -> Int {
+    static func lineCount(_ text: String) -> Int {
         text.isEmpty ? 1 : text.reduce(1) { $1 == "\n" ? $0 + 1 : $0 }
     }
 

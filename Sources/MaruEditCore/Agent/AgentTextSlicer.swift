@@ -50,6 +50,8 @@ public enum AgentTextSlicer {
         return starts
     }
 
+    public static func lineStartsForTesting(_ text: NSString) -> [Int] { lineStarts(text) }
+
     public static func position(ofOffset offset: Int, in text: NSString) -> Position {
         let starts = lineStarts(text)
         var low = 0, high = starts.count - 1, line = 0
