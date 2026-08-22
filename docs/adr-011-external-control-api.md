@@ -12,8 +12,11 @@
 > ADR-012 defines the AI agent profile over that base: it replaces the public
 > wire protocol with MCP and re-derives the method catalog from how AI agents
 > actually fail at text editing. It amends this document on the points listed in
-> its §8.1, and removes the writer lease, the `externalCommands.run` capability,
-> and the public method catalog below. Read this document for the transport and
+> its §8.1 — which include reversing §7's exclusion of an MCP server, and
+> narrowing the handshake, envelopes, method catalog (§6), and version
+> negotiation (§11) below to the **private bridge↔app channel** rather than
+> anything an agent sees. It also removes the writer lease and the
+> `externalCommands.run` capability. Read this document for the transport and
 > trust reasoning, ADR-012 for the interface.
 
 ## Biggest open design risk
