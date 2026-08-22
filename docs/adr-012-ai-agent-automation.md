@@ -342,9 +342,20 @@ Therefore:
 - If the measurement shows all three clients on one era, MaruEdit ships that era
   alone and adds the second only when a real client needs it.
 
+The two adapters differ in what they may remember, and getting this wrong fails
+conformance:
+
+- **Legacy adapter.** Capabilities are negotiated once in `initialize` and are
+  legitimately connection-scoped.
+- **Modern adapter.** Protocol version and client capabilities arrive in
+  `_meta` on *every* request and must be read from the request being served.
+  Inheriting them from an earlier request is not an optimization, it is a
+  conformance bug — and client identity there is self-reported, so it is display
+  material, never an authorization input (§4.3).
+
 This also corrects a claim in the first draft of this ADR: the bridge is **not**
-stateless. It holds per-connection protocol state (era, negotiated capabilities,
-in-flight request ids). What it holds no state of is *business* state —
+stateless. It holds per-connection state — the selected era, in-flight request
+ids, transport authorization, anchors, and rate-limit accounting. What it holds no state of is *business* state —
 documents, revisions, anchors, and proposals live in MaruEdit, and every handle
 MaruEdit mints (`documentId`, `editorId`, `anchorId`, `proposalId`) travels back
 as an ordinary tool argument, opaque and re-authorized on every call.
@@ -671,19 +682,52 @@ the human resolves on their own time. The commit protocol itself is §6.5, and i
 is the one place in this design where getting the ordering wrong silently marks
 unsaved work as saved.
 
-**`open_document`** — `{ path }`, capability-gated. Routes through the normal
-document lifecycle so the file arrives with correct encoding detection.
+**`open_document`** — `{ path, windowId }`, capability-gated, and Phase 3 at the
+earliest, because an arbitrary path plus a frozen grant is a contradiction: read
+it one way and `documents.open` becomes broad filesystem-read authority, read it
+the other and the opened document is invisible to its own caller. The normative
+policy:
 
-**`run_command`** — `{ commandId }`, default-deny. A command is reachable only
-if its registry definition is explicitly marked agent-exposed and the client
-holds `commands.run`. Registering a command must never make it remotely
-invocable (unchanged from ADR-011 §9.7). Commands that can present modal UI are
-not eligible (R17).
+- The path must resolve inside a directory root the human authorized for this
+  connection — the same roots that gate folder search — canonicalized, with
+  symlinks resolved and containment re-checked afterwards. Without such a root,
+  the tool is unavailable rather than permissive.
+- Opening routes through the normal document lifecycle, so encoding detection,
+  profile resolution, and large-file mode behave exactly as they do for a human.
+- A successfully opened document joins the caller's grant, for that document
+  only. This is the one sanctioned way a frozen grant grows, and it grows by an
+  object the human's own authorization already covered by root.
+
+**`run_command`** — `{ commandId, windowId, editorId | documentId }`,
+default-deny. A command is reachable only if its registry definition is
+explicitly marked agent-exposed and the client holds `commands.run`. Registering
+a command must never make it remotely invocable (unchanged from ADR-011 §9.7).
+Commands that can present modal UI are not eligible (R17).
+
+**The target is required, and today it cannot be honoured.** `CommandContext`
+currently carries only the coordinator, so a command runs against whatever
+window happens to be key — meaning a human switching tabs between authorization
+and execution could redirect an agent's command to another document, and an
+object-scoped grant could not be enforced for a command whose target is unknown.
+ADR-011 §12.6 already identified this as a real refactor rather than a detail.
+Phase 3 therefore either lands explicit targets in `CommandContext` and resolves
+exposed commands exclusively through them, or exposes only commands proven to be
+process-global and document-independent. Stealing focus to manufacture a target
+is not an option.
 
 ### 5.3.1 Documents this profile will not write
 
-Three document states are reported by `list_documents` as `writable: false` with
-a reason, and every write tool rejects them before any other validation:
+"Writable" is three different questions, and MaruEdit already answers them
+separately: editing is disabled only by read-only or view mode, while overwrite
+protection is checked at save time and leaves the buffer perfectly editable.
+`list_documents` therefore reports three predicates, not one flag —
+`editable`, `savableInPlace`, and `saveAsRequired` — and the write tools consult
+the one that applies: `apply_edits` needs `editable`, `save_document` needs
+`savableInPlace` and otherwise returns `overwrite_prohibited` or
+`save_as_required`.
+
+The states that make a document non-editable, rejected before any other
+validation:
 
 - **Binary mode.** A binary document's buffer holds a hex *rendering*, and
   saving parses that rendering back through `BinaryDocumentCodec` rather than
@@ -692,8 +736,9 @@ a reason, and every write tool rejects them before any other validation:
   documents are excluded from `apply_edits` and `save_document` in v1 and are
   readable only.
 - **View mode** and **read-only**, which already disable editing in the app.
-- **Overwrite-prohibited**, which disallows the save even when the edit itself
-  would be fine.
+
+**Overwrite-prohibited** is different: it does not block editing, only saving in
+place, exactly as it does for the human, who can still edit and then Save As.
 
 Excluding them is cheap; discovering them at commit time is not.
 
@@ -904,12 +949,23 @@ The commit protocol is normative:
    `diskBaseline` must still match. If either moved, the save fails with the
    matching conflict from §5.3 and nothing is written. This is the last
    cancellation point. In the same transaction, reserve a **per-document save
-   generation**: while it is held, any other save of that document — a second
-   agent, the human's ⌘S, or Save As — is refused with `save.in_progress`
-   rather than queued, because a queue would hide the ordering question instead
-   of answering it. Typing is never refused. Releasing the main actor for step 4
-   is precisely what makes this fence necessary; today's synchronous save avoids
-   the race only by never yielding.
+   generation**. Releasing the main actor for step 4 is what makes this fence
+   necessary; today's synchronous save avoids the race only by never yielding.
+
+   The fence is deliberately asymmetric, because P1 is:
+
+   - **Another agent's save** of the same document is refused with
+     `save.in_progress`. A queue there would hide the ordering question rather
+     than answer it.
+   - **The human's ⌘S or Save As** always wins. Before the irreversible point it
+     supersedes the agent save, which is abandoned and reported as
+     `state.superseded`. After the irreversible point it cannot cancel a write
+     already in flight, so it is recorded as pending human intent and runs
+     automatically the moment finalization completes, against fresh state. It is
+     never refused and never silently dropped — a human pressing ⌘S and getting
+     an error because a background agent was mid-save is exactly the failure P1
+     exists to prevent.
+   - **Typing** is never affected at all.
 4. **Commit, off the main actor.** Backup creation and rotation run first — they
    copy the previous file and may delete an older backup, so the irreversible
    point begins *there*, not at the destination write — followed by the existing
@@ -975,8 +1031,30 @@ explicitly allowed to do (P1) — the proposal becomes `conflicted`, nothing is
 applied, and the agent must re-propose against the new state. Silently applying stored ranges to a document that has moved is the
 exact lost-update bug this whole design exists to prevent.
 
-Proposals expire after a bounded time and on document close, and are dropped on
-revocation.
+**Retained state needs its own budget, because request-rate limiting does not
+bound it.** A proposal holds all of its edit text, and the inherited transport
+allows 16 MiB frames and dozens of in-flight requests, so an authorized but
+buggy agent could otherwise pin hundreds of megabytes of proposal text inside
+the editor without ever exceeding a rate limit. Before Phase 2 ships:
+
+| Bound | Value |
+|---|---|
+| Edit bytes per `apply_edits` call | 1 MiB |
+| Pending proposals per connection | 8 |
+| Pending proposals per document | 4 |
+| Proposal bytes per connection | 4 MiB |
+| Proposal bytes per process | 32 MiB |
+| Proposal lifetime | 10 minutes |
+| Label length | 200 characters |
+| Idempotency key length | 128 characters |
+
+Exceeding a count or byte bound is a structured `limit.pending_proposals` or
+`limit.proposal_bytes` failure, and rate limiting is byte-weighted rather than
+request-counted so a few enormous calls cost what they actually cost. Proposals
+also expire on document close and are dropped on revocation. The 10-minute
+lifetime settles OQ-5: expiry is not announced, because a notification channel
+does not exist before Phase 4 and an agent that cares learns it from its next
+`review_status` poll.
 
 ### 7.2 Required surfaces
 
@@ -1154,11 +1232,16 @@ it, and neither loses work; a proposal accepted after the human typed is
 reported `conflicted` rather than applied.
 
 **Phase 3 — Scoped app control.**
-`open_document`, `run_command` behind the default-deny allow-list with modal-free
-screening, clipboard, authorized folder search with containment checks, and
-regular-expression search once §6.4's bounding problem has an answer.
-*Exit:* no registry command is reachable merely because it was registered, and
-no folder-scoped search escapes its authorized root through a symlink.
+Authorized directory roots and their containment checks first, since both
+`open_document` and folder search depend on them; then `open_document` per §5.3,
+`run_command` behind the default-deny allow-list with modal-free screening and
+either explicit `CommandContext` targets or a document-independent-only command
+set, clipboard, and regular-expression search once §6.4's bounding problem has
+an answer.
+*Exit:* no registry command is reachable merely because it was registered; no
+folder search and no `open_document` escapes its authorized root through a
+symlink; an exposed command run with an explicit target does not follow window
+focus when the human switches tabs mid-call.
 
 **Phase 4 — Change awareness.**
 The §5.5 resource surface — document URIs, `resources/list`, `resources/read` —
@@ -1205,7 +1288,12 @@ oversized frames, invalid tokens, stale sockets):
   byte-identical, including its undo stack.
 - **Encoding and line-ending fidelity.** Shift_JIS, EUC-JP, and UTF-8-with-BOM
   documents survive an agent edit round trip byte-identically outside the edited
-  region. CRLF documents keep CRLF on save while the protocol only ever carries
+  region **under a profile whose save policy does not transform content**. Under
+  a transforming profile — trailing-whitespace trimming and final-newline
+  insertion apply to the whole buffer, not the edited part — the expected result
+  is the edited buffer put through that profile's full save transformation, and
+  the test asserts that instead. Byte identity outside the edit is a property of
+  the agent's edit, not a promise the save policy makes. CRLF documents keep CRLF on save while the protocol only ever carries
   LF. Payloads containing `\r` are rejected. Text unrepresentable in the target
   encoding is rejected at edit time. Mixed-ending documents are explicitly
   excluded from byte-identity and are covered by their own test asserting the
@@ -1252,10 +1340,19 @@ oversized frames, invalid tokens, stale sockets):
   from an unapproved connection returns promptly with a retryable error rather
   than waiting on the sheet; a document opened after approval is invisible until
   the human either approves it or turns on the opt-in inheritance switch.
-- **Save fence tests.** A second save of the same document during an in-flight
-  commit is refused with `save.in_progress`; a Save As during the fence cannot
-  make a stale finalizer stamp identity from the wrong file; typing during the
-  fence is never refused.
+- **Save fence tests.** A second *agent* save of the same document during an
+  in-flight commit is refused with `save.in_progress`; a *human* ⌘S before the
+  irreversible point supersedes the agent save, and after it runs automatically
+  once finalization completes; a Save As during the fence cannot make a stale
+  finalizer stamp identity from the wrong file; typing during the fence is never
+  refused.
+- **Retained-state tests.** Each bound in §7.1 fails with its structured error
+  at the limit and not before; proposals expire at 10 minutes; rate limiting
+  charges by bytes, not by request count.
+- **Target-resolution tests.** An exposed command run with an explicit target
+  acts on that target after the human switches tabs mid-call; `open_document`
+  outside every authorized root is refused, including via a symlink that resolves
+  outside one.
 - **Undo ownership tests.** After an agent edit, ⌘Z produces the same result in
   every pane showing that document — or, if the refusal route was taken, the
   write was refused with `document.multiple_panes` before mutating anything.
@@ -1309,9 +1406,8 @@ upstream.
   client connected.
 - **OQ-4 — Large documents.** What is the read budget, and does the answer need
   chunking beyond line ranges plus outline plus search?
-- **OQ-5 — Proposal expiry.** How long may a pending proposal sit before it is
-  dropped, and does an expired proposal notify the agent or only fail its next
-  poll?
+- **OQ-5 — ~~Proposal expiry~~.** Resolved in §7.1: 10 minutes, no notification;
+  the agent learns it from its next `review_status` poll.
 - **OQ-6 — Untitled documents.** An agent cannot address an untitled buffer by
   path. Is `documentId`-only addressing sufficient in practice for the agents
   that will call?
