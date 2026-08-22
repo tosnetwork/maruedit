@@ -3,7 +3,7 @@ set -euo pipefail
 
 APP="MaruEdit"
 BUNDLE="${APP}.app"
-VERSION="${VERSION:-0.1.5}"
+VERSION="${VERSION:-0.1.6}"
 DMG="${APP}-${VERSION}.dmg"
 STAGING="dmg-staging"
 VOLUME_NAME="MaruEdit"
@@ -26,6 +26,14 @@ test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "${PLIST}
 test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "${PLIST}")" = "${VERSION}"
 ARCHS="$(lipo -archs "${EXECUTABLE}")"
 [[ " ${ARCHS} " == *" arm64 "* && " ${ARCHS} " == *" x86_64 "* ]]
+
+# The MCP bridge is a shipped executable, so it gets the same checks as the app
+# binary. Without them a bundle missing the bridge, or carrying a single-arch
+# one, would pass every gate and fail only on a user's machine.
+BRIDGE="${BUNDLE}/Contents/MacOS/MaruEditMCPBridge"
+test -f "${BRIDGE}"
+BRIDGE_ARCHS="$(lipo -archs "${BRIDGE}")"
+[[ " ${BRIDGE_ARCHS} " == *" arm64 "* && " ${BRIDGE_ARCHS} " == *" x86_64 "* ]]
 test -f "${RESOURCE_BUNDLE}/Contents/Resources/maruedit.pdf"
 test -f "${RESOURCE_BUNDLE}/Contents/Resources/en.lproj/Localizable.strings"
 test -f "${RESOURCE_BUNDLE}/Contents/Resources/ja.lproj/Localizable.strings"

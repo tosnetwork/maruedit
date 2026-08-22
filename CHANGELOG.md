@@ -6,6 +6,51 @@ semantic version tags.
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-08-23
+
+### Added
+
+- An automation interface that lets an external AI agent read and edit open
+  documents over the Model Context Protocol, through a bridge shipped inside
+  the app bundle. Off by default. Each agent configuration pairs once through a
+  verification code, and every connection receives a grant frozen to the
+  documents already open, separable by capability and revocable at any time.
+- Optimistic concurrency on every write: an edit carries the revisions it was
+  computed against, and one that is out of date is refused and told the current
+  state instead of overwriting intervening work. One agent call is one undo
+  entry.
+- Regular-expression search in `search_documents`. Patterns whose shape permits
+  exponential backtracking are refused with an explanation of how to rewrite
+  them, since a started match has no cancellation point; what runs is bounded
+  and the number of abandoned runs is capped.
+- Explicit window targets for agent-invoked commands, so a person switching
+  tabs mid-call cannot redirect one.
+
+### Changed
+
+- A document opened by an agent records the identity of the file it actually
+  read, taken from the descriptor rather than by resolving the path a second
+  time. An in-place save is refused if the file was replaced underneath.
+- `ExternalChangeDetector` distinguishes "no baseline" from "unchanged". A file
+  nobody has read is no longer reported as unmodified, which previously allowed
+  a save to overwrite unseen content.
+- Nested code in the app bundle is signed inside-out. The release build also
+  ships the MCP bridge, which it previously omitted.
+
+### Security
+
+- An agent credential's public identifier is no longer its bearer secret, and
+  the registry stores only a SHA-256 digest of the secret, compared in constant
+  time. Previously the identifier was the secret and was stored in plain text
+  as its own key, so anything that could read the registry held every
+  credential. Credentials written under the previous scheme are discarded
+  rather than migrated, and affected configurations pair again.
+- The credential backend is chosen from the build's code identity: the Keychain
+  where a stable Team Identifier makes its access control enforceable, a
+  `0600` file otherwise. An ad-hoc-signed build cannot read back its own
+  Keychain items after an update, so a Keychain-backed credential would break
+  on every release. Pairing states which backend was used.
+
 ### Release engineering
 
 - Moved the release workflow off the deprecated Node 20 action runtime:
