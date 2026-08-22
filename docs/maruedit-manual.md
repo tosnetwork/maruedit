@@ -25,6 +25,12 @@ A single document does not show the tab row by default. Opening a second
 document reveals tabs. Tab placement and single-tab visibility can be changed
 in Settings. Tabs can be reordered, detached, or selected from Window.
 
+The tab you are editing in is emphasized several ways at once: it carries the
+editor's own face color, an accent line on its outer edge, a bold label, full
+row height, and it breaks the rule that divides the tab row from the text area.
+Right-clicking the tab row toggles the accent line and the active face color
+independently if a plainer row is preferred.
+
 ## 2. The Maru Classic Workspace
 
 Maru Classic is the default workspace. It contains a compact command toolbar,

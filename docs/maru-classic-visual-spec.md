@@ -22,7 +22,7 @@ the checked-in specification records only independently observed behavior.
 | Region | Classic metric | Behavior |
 |---|---:|---|
 | Command toolbar | 32 pt | 27 pt icon cells, six separated command groups |
-| Tab row | 32 pt | compact rectangular tabs, modification and close indicators |
+| Tab row | 32 pt | compact rectangular tabs, modification and close indicators; the active tab takes the full 32 pt, inactive tabs recess by 3 pt |
 | Current heading | 22 pt | active outline/document heading |
 | Character ruler | 20 pt | columns, five-column ticks, ten-column labels |
 | Function strip | 24 pt | F1–F6 labels; implemented commands are clickable |
@@ -42,6 +42,8 @@ subtle rounded highlight without changing its command color.
 
 ## Acceptance
 
+- The active tab is separated from inactive tabs by face color, an accent
+  edge, label weight, and height, and it interrupts the rule below the row.
 - The system titlebar contains no large icon-and-label toolbar.
 - The compact command bar appears above tabs in Classic mode only.
 - At 1100 pt window width every default command remains visible.

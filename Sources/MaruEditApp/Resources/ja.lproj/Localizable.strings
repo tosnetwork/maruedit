@@ -356,6 +356,8 @@
 "tab.positionTop" = "タブバーを上に表示";
 "tab.positionBottom" = "タブバーを下に表示";
 "tab.hideSingle" = "タブが1つなら隠す";
+"tab.activeLine" = "アクティブなタブに線";
+"tab.activeFace" = "アクティブなタブの面に色";
 "online.title" = "オンラインリソースを開きますか？";
 "online.explanation" = "%@ は既定のブラウザで %@ を開きます。続行しない限り MaruEdit は開きません。";
 "online.openWebsite" = "Webサイトを開く";

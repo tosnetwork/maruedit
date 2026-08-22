@@ -6,6 +6,20 @@ semantic version tags.
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-08-22
+
+### Changed
+
+- Made the active tab obvious in tab mode, following the emphasis options
+  Hidemaru offers for its tab bar: the selected tab now gets its own face
+  color (the editor surface), an accent line along its outer edge, a bold
+  full-contrast label, and full row height, while unselected tabs sit
+  recessed with a dimmed label and a visible divider. The rule separating
+  the bar from the document breaks under the active tab so it reads as one
+  surface with the text area, in both top and bottom bar positions. The
+  accent line and the active face color can each be turned off from the tab
+  bar context menu.
+
 ## [0.1.4] - 2026-08-08
 
 ### Fixed

@@ -23,8 +23,20 @@ enum Theme {
     static var sidebarBg: NSColor { light ? .windowBackgroundColor : NSColor(srgbRed: 0.141, green: 0.145, blue: 0.122, alpha: 1) }
     static var sidebarText: NSColor { light ? .labelColor : NSColor(srgbRed: 0.800, green: 0.800, blue: 0.780, alpha: 1) }
     static var tabBarBg: NSColor { light ? .windowBackgroundColor : NSColor(srgbRed: 0.130, green: 0.133, blue: 0.114, alpha: 1) }
+    /// The active tab shares the editor surface so it reads as the page in front.
     static var tabActive: NSColor { background }
-    static var tabInactive: NSColor { tabBarBg }
+    /// Inactive tabs sit recessed behind the bar instead of matching it.
+    static var tabInactive: NSColor {
+        light
+            ? (NSColor.windowBackgroundColor.blended(withFraction: 0.13, of: .black) ?? .windowBackgroundColor)
+            : NSColor(srgbRed: 0.098, green: 0.102, blue: 0.086, alpha: 1)
+    }
+    /// Hover sits between the recessed and the active face.
+    static var tabHover: NSColor {
+        light
+            ? (NSColor.windowBackgroundColor.blended(withFraction: 0.05, of: .black) ?? .windowBackgroundColor)
+            : NSColor(srgbRed: 0.169, green: 0.173, blue: 0.149, alpha: 1)
+    }
     static var tabText: NSColor { light ? .secondaryLabelColor : NSColor(srgbRed: 0.550, green: 0.545, blue: 0.520, alpha: 1) }
     static var tabTextActive: NSColor { foreground }
     static var border: NSColor { light ? .separatorColor : NSColor(srgbRed: 0.180, green: 0.184, blue: 0.161, alpha: 1) }

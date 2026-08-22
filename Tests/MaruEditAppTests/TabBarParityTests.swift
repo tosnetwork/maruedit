@@ -21,6 +21,8 @@ final class TabBarParityTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: "MaruTabBarPosition")
         UserDefaults.standard.removeObject(forKey: "MaruTabBarHideSingle")
         UserDefaults.standard.removeObject(forKey: "MaruTabModeEnabled")
+        UserDefaults.standard.removeObject(forKey: "MaruTabActiveLine")
+        UserDefaults.standard.removeObject(forKey: "MaruTabActiveFace")
         super.tearDown()
     }
 
@@ -111,6 +113,71 @@ final class TabBarParityTests: XCTestCase {
         XCTAssertTrue(controls[1].close.accessibilityPerformPress())
         XCTAssertEqual(delegate.selected, [0])
         XCTAssertEqual(delegate.closed, [1])
+    }
+
+    func testActiveTabIsDistinguishedByFaceLineWeightAndHeight() {
+        let bar = TabBarView(frame: NSRect(x: 0, y: 0, width: 500, height: 32))
+        bar.setTabs([
+            TabItem(title: "one", isModified: false),
+            TabItem(title: "two", isModified: false),
+        ], selectedIndex: 1)
+        bar.layoutSubtreeIfNeeded()
+
+        XCTAssertTrue(bar.isActiveLineVisibleForTesting(at: 1))
+        XCTAssertFalse(bar.isActiveLineVisibleForTesting(at: 0))
+
+        let activeFace = try? XCTUnwrap(bar.tabFaceColorForTesting(at: 1))
+        let inactiveFace = try? XCTUnwrap(bar.tabFaceColorForTesting(at: 0))
+        XCTAssertNotEqual(activeFace, inactiveFace)
+
+        let activeWeight = bar.titleFontForTesting(at: 1)?.fontDescriptor.symbolicTraits.contains(.bold)
+        let inactiveWeight = bar.titleFontForTesting(at: 0)?.fontDescriptor.symbolicTraits.contains(.bold)
+        XCTAssertEqual(activeWeight, true)
+        XCTAssertEqual(inactiveWeight, false)
+
+        let active = try? XCTUnwrap(bar.tabFrameForTesting(at: 1))
+        let inactive = try? XCTUnwrap(bar.tabFrameForTesting(at: 0))
+        XCTAssertGreaterThan(active?.height ?? 0, inactive?.height ?? 0)
+        XCTAssertEqual(active?.height, 32)
+    }
+
+    func testActiveTabCoversTheDocumentEdgeOnBothBarPositions() {
+        let bar = TabBarView(frame: NSRect(x: 0, y: 0, width: 500, height: 32))
+        bar.setTabs([
+            TabItem(title: "one", isModified: false),
+            TabItem(title: "two", isModified: false),
+        ], selectedIndex: 0)
+
+        bar.position = .top
+        bar.needsLayout = true
+        bar.layoutSubtreeIfNeeded()
+        // Top bar: the document is below, so the active tab reaches the bottom edge.
+        XCTAssertEqual(bar.tabFrameForTesting(at: 0)?.maxY, 32)
+        XCTAssertLessThan(bar.tabFrameForTesting(at: 1)?.maxY ?? 32, 32)
+
+        bar.position = .bottom
+        bar.needsLayout = true
+        bar.layoutSubtreeIfNeeded()
+        // Bottom bar: the document is above, so the active tab reaches the top edge.
+        XCTAssertEqual(bar.tabFrameForTesting(at: 0)?.minY, 0)
+        XCTAssertGreaterThan(bar.tabFrameForTesting(at: 1)?.minY ?? 0, 0)
+    }
+
+    func testActiveTabEmphasisOptionsPersistAndCanBeTurnedOff() {
+        let bar = TabBarView(frame: NSRect(x: 0, y: 0, width: 500, height: 32))
+        bar.setTabs([
+            TabItem(title: "one", isModified: false),
+            TabItem(title: "two", isModified: false),
+        ], selectedIndex: 0)
+        bar.layoutSubtreeIfNeeded()
+        XCTAssertTrue(bar.showsActiveLine)
+        XCTAssertTrue(bar.showsActiveFace)
+
+        bar.showsActiveLine = false
+        XCTAssertFalse(bar.isActiveLineVisibleForTesting(at: 0))
+
+        bar.showsActiveFace = false
+        XCTAssertEqual(bar.tabFaceColorForTesting(at: 0), NSColor(cgColor: Theme.tabBarBg.cgColor))
     }
 
     func testRelativeTabSelectionWrapsInBothDirections() {

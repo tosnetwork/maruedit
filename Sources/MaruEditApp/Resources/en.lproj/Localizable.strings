@@ -356,6 +356,8 @@
 "tab.positionTop" = "Tab Bar at Top";
 "tab.positionBottom" = "Tab Bar at Bottom";
 "tab.hideSingle" = "Hide When One Tab";
+"tab.activeLine" = "Line on Active Tab";
+"tab.activeFace" = "Color the Active Tab";
 "online.title" = "Open an Online Resource?";
 "online.explanation" = "%@ will open %@ in your default browser. MaruEdit will not open it unless you continue.";
 "online.openWebsite" = "Open Website";

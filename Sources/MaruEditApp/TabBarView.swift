@@ -57,6 +57,9 @@ final class TabBarView: NSView {
     private(set) var selectedIndex: Int = 0
 
     private let tabHeight: CGFloat = 32
+    /// How far inactive tabs are pushed away from the document edge.
+    private let inactiveInset: CGFloat = 3
+    private let activeLineThickness: CGFloat = 3
     private var tabWidth: CGFloat = 180
     var compactStyle = false { didSet { needsLayout = true; updateAppearance() } }
     var position: TabBarPosition {
@@ -82,6 +85,22 @@ final class TabBarView: NSView {
             UserDefaults.standard.set(newValue, forKey: "MaruTabModeEnabled")
             delegate?.tabBarLayoutOptionsDidChange()
         }
+    }
+    /// Accent edge drawn along the outer side of the active tab.
+    var showsActiveLine: Bool {
+        get {
+            UserDefaults.standard.object(forKey: "MaruTabActiveLine") == nil
+                ? true : UserDefaults.standard.bool(forKey: "MaruTabActiveLine")
+        }
+        set { UserDefaults.standard.set(newValue, forKey: "MaruTabActiveLine"); updateAppearance() }
+    }
+    /// Distinct face color for the active tab instead of the plain bar color.
+    var showsActiveFace: Bool {
+        get {
+            UserDefaults.standard.object(forKey: "MaruTabActiveFace") == nil
+                ? true : UserDefaults.standard.bool(forKey: "MaruTabActiveFace")
+        }
+        set { UserDefaults.standard.set(newValue, forKey: "MaruTabActiveFace"); updateAppearance() }
     }
     var effectiveHeight: CGFloat {
         guard isTabModeEnabled else { return 0 }
@@ -113,7 +132,7 @@ final class TabBarView: NSView {
     func applyTheme() {
         layer?.backgroundColor = Theme.tabBarBg.cgColor
         bottomBorder.layer?.backgroundColor = Theme.border.cgColor
-        separators.forEach { $0.layer?.backgroundColor = Theme.tabBarBg.cgColor }
+        separators.forEach { $0.layer?.backgroundColor = Theme.border.cgColor }
         updateAppearance()
     }
 
@@ -131,6 +150,8 @@ final class TabBarView: NSView {
             rebuildTabs()
         } else {
             updateLabels()
+            // Tab geometry depends on which tab is active, so relayout as well.
+            needsLayout = true
             updateAppearance()
         }
         if effectiveHeight != previousHeight {
@@ -141,6 +162,7 @@ final class TabBarView: NSView {
     func selectTab(at index: Int) {
         guard index != selectedIndex else { return }
         selectedIndex = index
+        needsLayout = true
         updateAppearance()
     }
 
@@ -157,15 +179,27 @@ final class TabBarView: NSView {
         // Maru's automatic-width mode keeps every tab in the available
         // row instead of introducing a horizontal scroller.
         tabWidth = tabs.isEmpty ? 180 : min(220, max(1, floor(b.width / CGFloat(tabs.count))))
-        bottomBorder.frame = NSRect(x: 0, y: tabHeight - 1, width: b.width, height: 1)
+        // The document sits on the far side of the bar; the active tab is the only
+        // one that reaches that edge, so the separating rule breaks underneath it.
+        let documentEdgeAtTop = position == .bottom
+        bottomBorder.frame = NSRect(x: 0, y: documentEdgeAtTop ? 0 : tabHeight - 1, width: b.width, height: 1)
 
         for (i, bg) in bgLayers.enumerated() {
             let x = CGFloat(i) * tabWidth
-            bg.frame = NSRect(x: x, y: 0, width: tabWidth, height: tabHeight)
-            accentLayers[i].frame = NSRect(x: x, y: 0, width: tabWidth, height: 2)
-            titleLabels[i].frame = NSRect(x: x + (compactStyle ? 8 : 14), y: 8, width: max(0, tabWidth - (compactStyle ? 34 : 42)), height: 16)
-            closeLabels[i].frame = NSRect(x: x + tabWidth - 24, y: 8, width: 14, height: 16)
-            separators[i].frame = NSRect(x: x + tabWidth - 1, y: 4, width: 1, height: tabHeight - 8)
+            let active = (i == selectedIndex)
+            let top: CGFloat = active ? 0 : (documentEdgeAtTop ? 1 : inactiveInset)
+            let height = active ? tabHeight : tabHeight - inactiveInset - 1
+            bg.frame = NSRect(x: x, y: top, width: tabWidth, height: height)
+            accentLayers[i].frame = NSRect(
+                x: x,
+                y: documentEdgeAtTop ? tabHeight - activeLineThickness : 0,
+                width: tabWidth,
+                height: activeLineThickness
+            )
+            let textY = top + (height - 16) / 2
+            titleLabels[i].frame = NSRect(x: x + (compactStyle ? 8 : 14), y: textY, width: max(0, tabWidth - (compactStyle ? 34 : 42)), height: 16)
+            closeLabels[i].frame = NSRect(x: x + tabWidth - 24, y: textY, width: 14, height: 16)
+            separators[i].frame = NSRect(x: x + tabWidth - 1, y: top + 4, width: 1, height: max(0, height - 8))
         }
     }
 
@@ -208,7 +242,7 @@ final class TabBarView: NSView {
 
             let sep = NSView()
             sep.wantsLayer = true
-            sep.layer?.backgroundColor = Theme.tabBarBg.cgColor
+            sep.layer?.backgroundColor = Theme.border.cgColor
             addSubview(sep)
             separators.append(sep)
 
@@ -239,7 +273,8 @@ final class TabBarView: NSView {
             closeLabels.append(close)
         }
 
-        addSubview(bottomBorder)
+        // Keep the rule behind the tabs so the active face can cover it.
+        addSubview(bottomBorder, positioned: .below, relativeTo: nil)
         needsLayout = true
         updateAppearance()
     }
@@ -256,17 +291,22 @@ final class TabBarView: NSView {
     private func updateAppearance() {
         for i in 0..<bgLayers.count {
             let active = (i == selectedIndex)
-            bgLayers[i].layer?.backgroundColor = compactStyle
-                ? (active ? NSColor.controlBackgroundColor : NSColor.windowBackgroundColor).cgColor
-                : (active ? Theme.background : Theme.tabInactive).cgColor
-            accentLayers[i].isHidden = compactStyle || !active
-            titleLabels[i].textColor = compactStyle
-                ? NSColor.labelColor : (active ? Theme.tabTextActive : Theme.tabText)
-            titleLabels[i].font = NSFont.systemFont(ofSize: 12, weight: active ? .medium : .regular)
+            let face: NSColor
+            if active {
+                face = showsActiveFace ? Theme.tabActive : Theme.tabBarBg
+            } else {
+                face = i == hoveredIndex ? Theme.tabHover : Theme.tabInactive
+            }
+            bgLayers[i].layer?.backgroundColor = face.cgColor
+            accentLayers[i].layer?.backgroundColor = Theme.accent.cgColor
+            accentLayers[i].isHidden = !active || !showsActiveLine
+            titleLabels[i].textColor = active ? Theme.tabTextActive : Theme.tabText
+            titleLabels[i].font = NSFont.systemFont(ofSize: 12, weight: active ? .bold : .regular)
             titleLabels[i].accessibilitySelectionValue = active
             closeLabels[i].isHidden = tabWidth < 42 || (i != hoveredIndex && !active)
-            closeLabels[i].textColor = active ? Theme.tabText : Theme.tabText.withAlphaComponent(0.75)
-            separators[i].isHidden = active
+            closeLabels[i].textColor = active ? Theme.tabTextActive : Theme.tabText.withAlphaComponent(0.75)
+            // The rule between two inactive tabs only; the active tab keeps clean edges.
+            separators[i].isHidden = active || (i + 1 == selectedIndex)
         }
     }
 
@@ -318,6 +358,11 @@ final class TabBarView: NSView {
         bottom.target = self; bottom.state = position == .bottom ? .on : .off; menu.addItem(bottom)
         let single = NSMenuItem(title: AppLocalization.string("tab.hideSingle"), action: #selector(toggleHideSingle), keyEquivalent: "")
         single.target = self; single.state = hidesForSingleTab ? .on : .off; menu.addItem(single)
+        menu.addItem(.separator())
+        let line = NSMenuItem(title: AppLocalization.string("tab.activeLine"), action: #selector(toggleActiveLine), keyEquivalent: "")
+        line.target = self; line.state = showsActiveLine ? .on : .off; menu.addItem(line)
+        let face = NSMenuItem(title: AppLocalization.string("tab.activeFace"), action: #selector(toggleActiveFace), keyEquivalent: "")
+        face.target = self; face.state = showsActiveFace ? .on : .off; menu.addItem(face)
         NSMenu.popUpContextMenu(menu, with: event, for: self)
     }
 
@@ -360,6 +405,23 @@ final class TabBarView: NSView {
     var accessibilityTabControlsForTesting: [(tab: NSView, close: NSView)] {
         zip(titleLabels, closeLabels).map { ($0.0, $0.1) }
     }
+    var activeTabFrameForTesting: NSRect? {
+        bgLayers.indices.contains(selectedIndex) ? bgLayers[selectedIndex].frame : nil
+    }
+    func tabFaceColorForTesting(at index: Int) -> NSColor? {
+        guard bgLayers.indices.contains(index), let color = bgLayers[index].layer?.backgroundColor else { return nil }
+        return NSColor(cgColor: color)
+    }
+    func tabFrameForTesting(at index: Int) -> NSRect? {
+        bgLayers.indices.contains(index) ? bgLayers[index].frame : nil
+    }
+    func isActiveLineVisibleForTesting(at index: Int) -> Bool {
+        accentLayers.indices.contains(index) ? !accentLayers[index].isHidden : false
+    }
+    func titleFontForTesting(at index: Int) -> NSFont? {
+        titleLabels.indices.contains(index) ? titleLabels[index].font : nil
+    }
+
     var keyboardFocusableViews: [NSView] {
         titleLabels + closeLabels.filter { !$0.isHidden }
     }
@@ -367,4 +429,6 @@ final class TabBarView: NSView {
     @objc private func placeAtTop() { position = .top }
     @objc private func placeAtBottom() { position = .bottom }
     @objc private func toggleHideSingle() { hidesForSingleTab.toggle() }
+    @objc private func toggleActiveLine() { showsActiveLine.toggle() }
+    @objc private func toggleActiveFace() { showsActiveFace.toggle() }
 }
