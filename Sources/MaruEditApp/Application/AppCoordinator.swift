@@ -13,6 +13,10 @@ import MaruEditCore
 final class AppCoordinator {
     private var windowController: MainWindowController?
     private var additionalWindowControllers: [MainWindowController] = []
+    /// Read-only views for the agent interface, which must enumerate windows
+    /// without being able to reorder or replace them.
+    var windowControllerForAgents: MainWindowController? { windowController }
+    var additionalWindowControllersForAgents: [MainWindowController] { additionalWindowControllers }
     private var settingsWindowController: SettingsWindowController?
     private var externalHelpWindowController: ExternalHelpWindowController?
     private var conversionDialogWindowController: ConversionDialogWindowController?
@@ -841,5 +845,22 @@ final class AppCoordinator {
     /// encoding stay current every time the submenu opens).
     func reopenWithEncodingMenu() -> NSMenu {
         ensureWindowControllerReady().buildEncodingMenu()
+    }
+}
+
+// MARK: - Agent automation
+
+extension AppCoordinator {
+    /// Every open document paired with a pane that shows it.
+    ///
+    /// A document open in two panes appears twice, because selections belong to
+    /// panes: automation that collapsed them would have no way to say which
+    /// cursor it meant.
+    func agentVisibleTargets() -> [(document: Document, editor: EditorViewController)] {
+        agentWindowControllers().flatMap { $0.agentTargets() }
+    }
+
+    func agentWindowControllers() -> [MainWindowController] {
+        ([windowControllerForAgents] + additionalWindowControllersForAgents).compactMap { $0 }
     }
 }

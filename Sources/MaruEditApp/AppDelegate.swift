@@ -8,6 +8,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         super.init()
     }
     private let coordinator = AppCoordinator()
+    /// Agent interface. Off by default; nothing is created until the user
+    /// switches it on, so "disabled" means no socket, no token, no registry
+    /// entry.
+    private(set) lazy var agentServer = AgentServer(coordinator: coordinator)
+    private lazy var agentIndicator = AgentIndicatorController(server: agentServer)
+    /// The indicator needs the coordinator to enumerate what a grant covers.
+    static private(set) weak var sharedCoordinator: AppCoordinator?
     private let keyBindings = KeyBindingManager(profile: .macOSStandard)
     private lazy var macroPermissionStore: MacroPermissionStore = {
         guard isUITestMode else { return MacroPermissionStore() }
@@ -118,6 +125,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         classicDefaultMenuPlacements.values.flatMap { $0 })
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        Self.sharedCoordinator = coordinator
+        agentServer.startIfEnabled()
         languageObserver = NotificationCenter.default.addObserver(
             forName: AppLocalization.didChange, object: nil, queue: .main
         ) { [weak self] _ in
@@ -192,7 +201,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
+    @objc func showAgentConnections() {
+        agentIndicator.show()
+    }
+
+    /// Called when the setting changes, so switching the interface off actually
+    /// removes the endpoint rather than only stopping new work.
+    func agentInterfaceSettingChanged() {
+        if AgentServer.isEnabledInSettings {
+            agentServer.start()
+        } else {
+            agentServer.stop()
+        }
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
+        // The socket, token, and registry entry go with the process; leaving
+        // any of them behind invites the next launch to reclaim a live endpoint.
+        agentServer.stop()
         clipboardTimer?.invalidate()
         benchmarkCommandTimer?.invalidate()
         if let languageObserver { NotificationCenter.default.removeObserver(languageObserver) }
@@ -737,6 +763,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         otherMenu.addItem(commandItem(.otherToggleFreeCursor))
         otherMenu.addItem(commandItem(.viewToggleVerticalLayout))
         otherMenu.addItem(commandItem(.viewToggleColumnLayout))
+        otherMenu.addItem(.separator())
+        let agentItem = NSMenuItem(
+            title: AppLocalization.string("agent.menuItem"),
+            action: #selector(showAgentConnections), keyEquivalent: "")
+        agentItem.target = self
+        otherMenu.addItem(agentItem)
         let settingsTransferItem = NSMenuItem(title: AppLocalization.string("menu.other.settingsTransferHeading"), action: nil, keyEquivalent: "")
         let settingsTransferMenu = NSMenu(title: AppLocalization.string("menu.other.settingsTransferHeading"))
         settingsTransferMenu.addItem(commandItem(.otherExportSettings))

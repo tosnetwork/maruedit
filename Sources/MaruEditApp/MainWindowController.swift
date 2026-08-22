@@ -3250,6 +3250,21 @@ final class MainWindowController: NSWindowController,
     var isLinkedEditorScrollingForTesting: Bool { linkedEditorScrolling }
     var secondaryEditorForTesting: EditorViewController? { secondaryEditorVC }
 
+    /// Documents in this window paired with the panes showing them.
+    func agentTargets() -> [(document: Document, editor: EditorViewController)] {
+        var targets: [(Document, EditorViewController)] = []
+        for document in documentController.documents {
+            // The primary pane always shows the current document; other
+            // documents are represented by it too, since switching tabs is what
+            // makes them visible.
+            targets.append((document, editorVC))
+        }
+        if let secondary = secondaryEditorVC, let current = curDoc {
+            targets.append((current, secondary))
+        }
+        return targets.map { (document: $0.0, editor: $0.1) }
+    }
+
     func compareWithNextDocument() {
         guard documentController.documents.count > 1, let current = curDoc else { return }
         let nextIndex = (curIdx + 1) % documentController.documents.count

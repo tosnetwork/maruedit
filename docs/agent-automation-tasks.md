@@ -113,23 +113,30 @@ Deliberately deferred out of Phase 0, with reasons:
 
 ## Phase 1 — Read-only MCP
 
-- [ ] Measure which MCP revision Claude Code, Codex CLI, and OpenFox actually
-      send; record it in ADR-012 §4.2.
-- [ ] Versioned schema source; generate the bridge catalog, Swift DTOs,
-      validation, and conformance transcripts from it. No tool ships before it.
-- [ ] SwiftPM executable target for `maruedit-mcp`, universal build, bundle
-      placement, nested signing, notarization check, CI launch test.
-- [ ] Private `agent.call` envelope over the ADR-011 socket: request ids,
+- [x] Measure which MCP revision Claude Code, Codex CLI, and OpenFox actually
+      send; record it in ADR-012 §4.2. **Result:** Codex CLI 0.149.0 asks for
+      `2025-06-18`, Claude Code 2.1.239 asks for `2025-11-25`, both through the
+      `initialize` handshake; OpenFox unmeasured. Handshake era only.
+- [x] Versioned schema source (`AgentToolCatalog`): the bridge's `tools/list`,
+      the app's dispatch, and the tests all read one value.
+- [x] SwiftPM executable target for `maruedit-mcp`.
+- [ ] Universal build, bundle placement, nested signing, notarization check, CI
+      launch test — packaging work, deferred with the rest of release
+      engineering until the interface is worth shipping.
+- [x] Private `agent.call` envelope over the ADR-011 socket: request ids,
       cancellation, connection identity, grant generation, error mapping,
       framing and fuzz tests.
-- [ ] Endpoint per instance behind a locked registry; discovery fails closed
-      with two live instances; `--instance` selects.
-- [ ] Token file, `LOCAL_PEERCRED` check, `--pair` flow, non-modal approval
-      surface with its five states, rate limiting, connected-client indicator,
-      audit log.
-- [ ] Read tools: `list_documents`, `list_editors`, `read_document`,
+- [x] Endpoint per instance behind a locked registry; discovery fails closed
+      with two live instances; `--instance` selects. Sockets live in a short
+      directory of their own: the obvious layout was 108 characters and could
+      never have bound.
+- [x] Token file, `LOCAL_PEERCRED` check, `--pair` flow, non-modal approval
+      surface, rate limiting, connected-client indicator, audit log.
+- [x] Read tools: `list_documents`, `list_editors`, `read_document`,
       `get_outline`, `search_documents` (literal, open buffers), `get_selection`.
-- [ ] Off-main execution with bounds; edit-handler latency exit.
+- [x] Off-main execution with bounds.
+- [ ] Edit-handler latency harness — needs a synthetic-keystroke driver that
+      does not exist yet; the bounds it would measure are in place.
 
 ## Phase 2 — Revision-gated writes
 

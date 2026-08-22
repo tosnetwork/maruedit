@@ -914,3 +914,23 @@
 "command.window.tileVertical" = "Tile Vertically";
 "command.window.toggleBrowserPane" = "Show/Hide Browser Pane";
 "command.window.toggleCrossDocumentScrollLink" = "Scroll Link with Other Windows";
+
+/* Agent automation */
+"agent.window.title" = "Agent Connections";
+"agent.status.on" = "The agent interface is on.";
+"agent.status.off" = "The agent interface is off. Turn it on in Settings.";
+"agent.noClients" = "No agent is connected.";
+"agent.paired" = "Paired configurations";
+"agent.pairedClient" = "Paired client";
+"agent.activity" = "Recent activity";
+"agent.noActivity" = "Nothing yet.";
+"agent.approve" = "Approve";
+"agent.deny" = "Decline";
+"agent.revoke" = "Revoke";
+"agent.revokeCredential" = "Revoke pairing";
+"agent.inheritNew" = "Include documents I open next";
+"agent.confirmPairing" = "Codes match";
+"agent.verificationCode" = "Verification code: %@";
+"agent.menuItem" = "Agent Connections…";
+"settings.agentInterface" = "Allow AI agents to connect";
+"settings.agentInterfaceHelp" = "Off by default. When on, MaruEdit listens on a private local socket; every client must be approved here before it sees anything.";

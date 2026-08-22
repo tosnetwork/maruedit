@@ -349,8 +349,23 @@ forbids the handshake and requires per-request `_meta`. A server that claims to
 Therefore:
 
 - Phase 1 begins by **measuring** which revision each target client actually
-  sends today — a one-evening exercise with a logging stub server and the three
-  binaries — and records the result in this document.
+  sends today, with a logging stub server and the real binaries, and records the
+  result here.
+
+  **Measured 2026-08-22**, against a stub that offered both eras:
+
+  | Client | Opening frame | `protocolVersion` |
+  |---|---|---|
+  | Codex CLI 0.149.0 | `initialize` + `notifications/initialized` | `2025-06-18` |
+  | Claude Code 2.1.239 | `initialize` + `notifications/initialized` | `2025-11-25` |
+  | OpenFox | not measured — no binary on the test machine | unknown |
+
+  Neither measured client speaks 2026-07-28, and neither tried `server/discover`.
+  **MaruEdit therefore ships the handshake era only**, negotiating whichever
+  handshake revision the client asks for, and adds the modern adapter when a
+  real client needs it. The era table in §5 stays as the specification of what
+  the second adapter must do; it is not built yet, which is the whole point of
+  measuring first rather than building both.
 - The bridge implements **one complete era per connection**, selected on the
   first frame. Selection is by envelope, not by method name: a frame carrying
   the modern protocol-version `_meta` selects the modern adapter whatever the

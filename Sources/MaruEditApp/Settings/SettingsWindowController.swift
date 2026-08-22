@@ -26,6 +26,9 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
     private let lineNumbersButton = NSButton(checkboxWithTitle: "", target: nil, action: nil)
     private let freeCursorButton = NSButton(checkboxWithTitle: "Free cursor beyond line endings", target: nil, action: nil)
     private let currentLineHighlightButton = NSButton(checkboxWithTitle: "Highlight current line", target: nil, action: nil)
+    /// Agent interface master switch. Off by default: while it is off no socket
+    /// exists at all, which is the only meaning of "disabled" worth shipping.
+    private let agentInterfaceButton = NSButton(checkboxWithTitle: "", target: nil, action: nil)
     private let wrapModePopup = NSPopUpButton()
     private let wrapColumnField = NSTextField()
     private let workspacePopup = NSPopUpButton()
@@ -204,6 +207,19 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
             }
             stack.addArrangedSubview(NSTextField(wrappingLabelWithString: SettingsLocalization.text("immediate")))
         case .advanced:
+            agentInterfaceButton.title = AppLocalization.string("settings.agentInterface")
+            agentInterfaceButton.state = AgentServer.isEnabledInSettings ? .on : .off
+            agentInterfaceButton.target = self
+            agentInterfaceButton.action = #selector(agentInterfaceToggled)
+            agentInterfaceButton.identifier = NSUserInterfaceItemIdentifier("settings.agentInterface")
+            stack.addArrangedSubview(agentInterfaceButton)
+            let agentHelp = NSTextField(
+                wrappingLabelWithString: AppLocalization.string("settings.agentInterfaceHelp"))
+            agentHelp.font = .systemFont(ofSize: 11)
+            agentHelp.textColor = .secondaryLabelColor
+            stack.addArrangedSubview(agentHelp)
+            stack.addArrangedSubview(NSBox())
+
             stack.addArrangedSubview(NSTextField(
                 wrappingLabelWithString: SettingsLocalization.text("settingsTransfer")))
             let export = NSButton(
@@ -302,6 +318,12 @@ final class SettingsWindowController: NSWindowController, NSSearchFieldDelegate 
         }
         onChange(preferences)
         select(selectedGroup)
+    }
+
+    @objc private func agentInterfaceToggled() {
+        UserDefaults.standard.set(
+            agentInterfaceButton.state == .on, forKey: AgentServer.enabledDefaultsKey)
+        (NSApp.delegate as? AppDelegate)?.agentInterfaceSettingChanged()
     }
 
     @objc private func showExportPanel() {

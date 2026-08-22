@@ -19,6 +19,11 @@ let package = Package(
             resources: [.process("Resources")],
             linkerSettings: [.linkedFramework("WebKit")]
         ),
+        .executableTarget(
+            name: "MaruEditMCPBridge",
+            dependencies: ["MaruEditCore"],
+            path: "Sources/MaruEditMCPBridge"
+        ),
         .target(
             name: "MaruEditTextKit2Spike",
             dependencies: ["MaruEditCore"],
@@ -33,6 +38,11 @@ let package = Package(
             name: "MaruEditAppTests",
             dependencies: ["MaruEditApp"],
             path: "Tests/MaruEditAppTests"
+        ),
+        .testTarget(
+            name: "MaruEditAgentTests",
+            dependencies: ["MaruEditCore"],
+            path: "Tests/MaruEditAgentTests"
         ),
         .testTarget(
             name: "MaruEditTextKit2SpikeTests",

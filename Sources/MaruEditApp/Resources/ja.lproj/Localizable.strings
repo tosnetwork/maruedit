@@ -914,3 +914,23 @@
 "command.window.tileVertical" = "Tile Vertically";
 "command.window.toggleBrowserPane" = "Show/Hide Browser Pane";
 "command.window.toggleCrossDocumentScrollLink" = "Scroll Link with Other Windows";
+
+/* Agent automation */
+"agent.window.title" = "エージェント接続";
+"agent.status.on" = "エージェントインターフェースは有効です。";
+"agent.status.off" = "エージェントインターフェースは無効です。設定で有効にできます。";
+"agent.noClients" = "接続中のエージェントはありません。";
+"agent.paired" = "ペアリング済みの設定";
+"agent.pairedClient" = "ペアリング済みクライアント";
+"agent.activity" = "最近の動作";
+"agent.noActivity" = "まだありません。";
+"agent.approve" = "許可";
+"agent.deny" = "拒否";
+"agent.revoke" = "取り消す";
+"agent.revokeCredential" = "ペアリングを取り消す";
+"agent.inheritNew" = "この後で開く文書も含める";
+"agent.confirmPairing" = "コードが一致";
+"agent.verificationCode" = "確認コード: %@";
+"agent.menuItem" = "エージェント接続…";
+"settings.agentInterface" = "AIエージェントの接続を許可";
+"settings.agentInterfaceHelp" = "初期状態は無効です。有効にするとMaruEditはローカル専用ソケットで待ち受けます。どのクライアントもここで許可するまで何も参照できません。";
