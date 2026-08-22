@@ -227,9 +227,18 @@ That decision has **two** visible consequences, and both are deliberate:
    "observably identical" rule carves this out rather than blocking on it.
 2. The Insert Control Code command currently offers `CR 0D` in its picker. A
    buffer that cannot hold a CR cannot honestly offer to insert one, so that
-   entry is removed. The inconsistency already exists today: a file containing
+   entry goes away. The inconsistency already exists today: a file containing
    lone CRs is normalized on load, so the code point survives typing but not a
    round trip.
+
+   **Removing the row is not the change — the picker maps a row *index* to a
+   byte value**, special-casing only the last row as `DEL`. Deleting a row would
+   make `SO` insert CR, shift every C0 value after it, and make the final row
+   insert `US`. The command must be converted to value-backed entries first, and
+   `insertControlCode(_:)`, which today accepts `0x0D` from any caller, must
+   reject it. Phase 0 tests the mapping of `SO`, `US`, and `DEL` explicitly,
+   because a silent off-by-one here would corrupt user data in a command whose
+   entire purpose is byte precision.
 
 The alternative — keeping CR insertion as an exception — was rejected because a
 buffer invariant with an exception is not an invariant, and every offset,
@@ -659,6 +668,18 @@ a reason, and every write tool rejects them before any other validation:
 
 Excluding them is cheap; discovering them at commit time is not.
 
+**Writability must be an effective predicate, not a single flag.** Read-only has
+three independent sources today — filesystem permissions, large-file read-only
+mode, and the file-type profile's `opensReadOnly` load policy — and only
+`Document.open` consults all three. `refreshReadOnlyState()`, which runs every
+time the window becomes key, recomputes from permissions and large-file mode
+alone, so a profile-read-only document whose file is writable on disk silently
+becomes writable again on focus. That is a bug in the app today; this profile
+cannot inherit it, because `list_documents` would then advertise the document as
+writable and admit agent edits into a document the profile said to protect.
+Phase 0 introduces one effective-writability predicate that preserves every
+source, and tests each source being set and cleared independently.
+
 ### 5.4 Deliberately absent
 
 No `read_file`, `write_file`, `list_directory`, `run_shell`,
@@ -998,7 +1019,10 @@ callback that user edits arrive through, so a counter wired only to
 `textViewDidChangeSelection` would miss every macro and agent selection change,
 while a counter wired naively would also count the duplicate assignment
 `batchReplace` makes after rehighlighting. Introduce the **pre-mutation
-canonicalizer** of §3 and route every ingress in that table through it. Build the
+canonicalizer** of §3 and route every ingress in that table through it,
+including the value-backed rewrite of Insert Control Code that §3 requires.
+Introduce the **effective-writability predicate** of §5.3.1 so that read-only
+stops depending on which code path last recomputed it. Build the
 **validated transaction primitive** underneath both adapters: bounds and overlap
 rejection before any mutation, one undo snapshot, caller-supplied undo label,
 typed result. Keep the macro path's existing lenient overlap behavior by adapting
@@ -1009,6 +1033,9 @@ concurrency checking — `Document` is `@unchecked Sendable` and owns an
 `NSTextStorage`, so the compiler will not catch that mistake for us. No socket,
 no bridge, no protocol.
 *Exit:* macro tests pass unchanged apart from the documented CR carve-out;
+Insert Control Code maps `SO`, `US`, and `DEL` to the same bytes as before the
+rewrite and no longer offers CR; every read-only source survives a
+window-focus refresh;
 revision-source tests cover every text and selection mutation path and every row
 of §6.1's event table; a CR inserted through every row of §3's ingress table is
 normalized; the transaction primitive rejects a batch containing one invalid
@@ -1029,10 +1056,18 @@ executing off-main with bounds and all filtered to the caller's grant.
 *Exit:* `claude mcp add maruedit -- …`, the equivalent Codex `config.toml` block,
 and `openfox mcp add` each produce a working read-only integration with no
 MaruEdit-specific client code; and with a full-document literal search running
-against a 10 MB buffer, p99 keystroke-to-glyph latency measured on the existing
-input-latency signpost stays under **16 ms** and within **10%** of the same
-measurement with no client connected. `docs/performance.md` records no keystroke
-budget today, so this ADR sets one rather than leaving the exit untestable.
+against a 10 MB buffer, p99 **edit-handler** latency stays under **8 ms** and
+within **10%** of the same measurement with no client connected.
+
+The metric is named precisely because the existing signpost measures precisely
+that: it opens in `textView(_:shouldChangeTextIn:replacementString:)` and closes
+at the end of `textDidChange`, which covers model update, line-index
+maintenance, and highlight scheduling but stops before AppKit layout and glyph
+presentation. Calling it keystroke-to-glyph would be a claim the instrument
+cannot support. `docs/performance.md` records no keystroke budget at all today,
+so this ADR sets one; Phase 1 also has to add the harness that drives synthetic
+keystrokes and collects the p99 interval under concurrent load, because no such
+harness exists either.
 
 **Phase 2 — Revision-gated writes.**
 Bounded anchor minting per §5.2 and digest validation; `apply_edits` with strict
@@ -1125,8 +1160,9 @@ oversized frames, invalid tokens, stale sockets):
   success, tool failure, cancellation, list invalidation, and document-content
   update — including that a modern-era failure carries both
   `resultType: "complete"` and `isError: true`.
-- **Anchor bound tests.** Minting past the per-client quota evicts oldest-first;
-  an anchor does not survive a text revision change or document close;
+- **Anchor bound tests.** Minting past the **per-connection** quota evicts
+  oldest-first; an anchor does not survive a text revision change, a document
+  close, or the connection ending; reconnecting does not inherit anchors;
   `withAnchors` and `anchorRanges` together are rejected.
 - **Enumeration-scope tests.** Documents outside the grant appear in no listing,
   and the response does not reveal that anything was hidden.
