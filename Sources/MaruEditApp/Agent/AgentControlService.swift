@@ -232,10 +232,14 @@ final class AgentControlService: ObservableObject {
 
     init(
         home: URL = URL(fileURLWithPath: NSHomeDirectory()),
-        vault: AgentCredentialVault = .keychain
+        vault: AgentCredentialVault? = nil
     ) {
         self.home = home
+        // Chosen from this build's own code identity, because that is what
+        // decides whether the Keychain can enforce anything — see
+        // `AgentCredentialVault.automatic`.
         self.vault = vault
+            ?? .automatic(directory: AgentEndpoint.supportDirectory(home: home))
         self.sessionToken = Self.randomToken()
         self.serverInstanceID = Self.randomToken(bytes: 8)
         loadCredentials()
@@ -515,7 +519,7 @@ final class AgentControlService: ObservableObject {
             verificationCode: code,
             credentialID: credentialID,
             secret: secret,
-            protection: .keychainOnly,
+            protection: .fileOnly,
             requestedAt: Date())
         pendingPairing = request
         onChange?()

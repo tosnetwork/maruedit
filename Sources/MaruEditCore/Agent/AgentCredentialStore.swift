@@ -26,9 +26,24 @@ import Security
 ///   secret is still out of the filesystem, the human still gets a prompt when
 ///   something unexpected asks for it, but no code-identity guarantee exists.
 ///
-/// Either way one thing improves unconditionally: the secret is no longer
-/// sitting in a file next to its own label, which is what the previous scheme
-/// did.
+/// **The Keychain is not usable without that stable identity, and not merely
+/// less useful.** Measured, not assumed: a binary that stores an item and is
+/// then rebuilt — an ordinary app update — cannot read its own item back. The
+/// request returns `errSecUserCanceled` because macOS raises an authorization
+/// prompt, and it does so whether or not an explicit ACL was set, since the
+/// default ACL also names the creating code. For an ad-hoc-signed build, whose
+/// signature changes with every release, that means every update would break
+/// every pairing, and an agent running unattended would simply fail.
+///
+/// So the backend follows the code identity: Keychain where the guarantee can
+/// hold, a `0600` file where it cannot. The file is honest about what it is —
+/// P9 already says a same-user process can read it — and it does not degrade
+/// on update.
+///
+/// One improvement is unconditional and independent of the backend: the secret
+/// is no longer the credential's own id, and the registry keeps only a digest.
+/// The previous scheme stored every bearer token in plaintext under its own
+/// name, so anything that could read the registry held all of them.
 public enum AgentCredentialStore {
 
     public static let service = "MaruEdit Agent Credential"
@@ -37,6 +52,7 @@ public enum AgentCredentialStore {
         case keychainFailed(OSStatus)
         case notFound
         case randomnessUnavailable
+        case noStableCodeIdentity
     }
 
     /// How much protection the stored item actually got.
@@ -46,9 +62,34 @@ public enum AgentCredentialStore {
     public enum Protection: String, Sendable {
         /// `securityd` will enforce which signed binaries may read the secret.
         case codeIdentityEnforced
-        /// The secret is in the Keychain, but no stable code identity exists to
-        /// bind it to — a local build.
-        case keychainOnly
+        /// The secret is in a `0600` file, because this build has no stable
+        /// code identity for the Keychain to bind to. Readable by any process
+        /// running as this user, exactly as P9 describes.
+        case fileOnly
+    }
+
+    /// Whether this build has a code identity durable enough for the Keychain
+    /// to enforce anything.
+    ///
+    /// A Team Identifier is the right signal precisely because it is the thing
+    /// that survives a rebuild: ad-hoc signatures are content hashes and change
+    /// with every release, which is what makes a Keychain ACL bound to one
+    /// useless the moment the app updates.
+    public static var hasStableCodeIdentity: Bool {
+        var code: SecCode?
+        guard SecCodeCopySelf(SecCSFlags(), &code) == errSecSuccess, let code else { return false }
+        var staticCode: SecStaticCode?
+        guard SecCodeCopyStaticCode(code, SecCSFlags(), &staticCode) == errSecSuccess,
+              let staticCode
+        else { return false }
+        var information: CFDictionary?
+        guard SecCodeCopySigningInformation(
+                staticCode, SecCSFlags(rawValue: kSecCSSigningInformation), &information)
+                == errSecSuccess,
+              let details = information as? [String: Any]
+        else { return false }
+        let team = details[kSecCodeInfoTeamIdentifier as String] as? String
+        return !(team?.isEmpty ?? true)
     }
 
     public struct StoredCredential: Sendable, Equatable {
@@ -94,17 +135,17 @@ public enum AgentCredentialStore {
     /// Stores `secret` under `id`, replacing any previous item.
     ///
     /// `trustedExecutables` are the binaries allowed to read it without a
-    /// prompt — normally the editor and the bridge. An empty list, or a system
-    /// that refuses to build the ACL, degrades to `.keychainOnly` rather than
-    /// failing: refusing to pair at all on an unsigned build would make the
-    /// feature undeliverable for exactly the people building it.
+    /// prompt — normally the editor and the bridge. If no ACL can be built,
+    /// this throws rather than storing an unprotected item: a Keychain item
+    /// with no enforceable ACL has the update problem *and* none of the
+    /// benefit, so the caller should be using the file backend instead.
     @discardableResult
     public static func store(
         secret: String, id: String, label: String, trustedExecutables: [String]
     ) throws -> Protection {
         try? remove(id: id)
 
-        var protection = Protection.keychainOnly
+        var protection = Protection.codeIdentityEnforced
         var attributes: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,
             kSecAttrService: service,
@@ -113,10 +154,10 @@ public enum AgentCredentialStore {
             kSecValueData: Data(secret.utf8),
         ]
 
-        if let access = accessControl(label: label, trustedExecutables: trustedExecutables) {
-            attributes[kSecAttrAccess] = access
-            protection = .codeIdentityEnforced
-        }
+        guard let access = accessControl(label: label, trustedExecutables: trustedExecutables)
+        else { throw StoreError.noStableCodeIdentity }
+        attributes[kSecAttrAccess] = access
+        protection = .codeIdentityEnforced
 
         let status = SecItemAdd(attributes as CFDictionary, nil)
         guard status == errSecSuccess else { throw StoreError.keychainFailed(status) }
@@ -191,6 +232,61 @@ public enum AgentCredentialStore {
     }
 }
 
+/// The `0600`-file backend, used when the Keychain cannot enforce anything.
+///
+/// This is not a weaker version of the Keychain path pretending to be the same
+/// thing. It is the storage that matches what P9 already says about same-UID
+/// trust, and the pairing UI states plainly which one a credential got. What it
+/// does have over the scheme it replaced is that the file holds a secret that
+/// is *not* the credential's public id, and the registry holds only a digest.
+public enum AgentCredentialFile {
+
+    public static func url(directory: URL, id: String) -> URL {
+        directory.appendingPathComponent("credential-\(id).secret")
+    }
+
+    public static func store(secret: String, id: String, directory: URL) throws {
+        try FileManager.default.createDirectory(
+            at: directory, withIntermediateDirectories: true,
+            attributes: [.posixPermissions: 0o700])
+        let destination = url(directory: directory, id: id)
+        // Written through a mode-restricted descriptor rather than written and
+        // then chmodded: the second form leaves a window in which the secret
+        // exists at the default umask.
+        let descriptor = open(destination.path, O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW, 0o600)
+        guard descriptor >= 0 else { throw AgentCredentialStore.StoreError.keychainFailed(errno) }
+        defer { close(descriptor) }
+        let bytes = Array(secret.utf8)
+        var written = 0
+        while written < bytes.count {
+            let count = bytes.withUnsafeBytes { raw -> Int in
+                write(descriptor, raw.baseAddress!.advanced(by: written), bytes.count - written)
+            }
+            if count > 0 { written += count }
+            else if count < 0 && errno == EINTR { continue }
+            else { throw AgentCredentialStore.StoreError.keychainFailed(errno) }
+        }
+        // A pre-existing file could have been created with looser permissions
+        // by something else, and O_CREAT does not narrow an existing one.
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o600], ofItemAtPath: destination.path)
+    }
+
+    public static func secret(id: String, directory: URL) throws -> String {
+        let source = url(directory: directory, id: id)
+        guard let data = try? Data(contentsOf: source),
+              let secret = String(data: data, encoding: .utf8)
+        else { throw AgentCredentialStore.StoreError.notFound }
+        return secret.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    public static func remove(id: String, directory: URL) throws {
+        let target = url(directory: directory, id: id)
+        guard FileManager.default.fileExists(atPath: target.path) else { return }
+        try FileManager.default.removeItem(at: target)
+    }
+}
+
 /// The credential store as a value, so a caller can say which one it means.
 ///
 /// The Keychain is process-wide and shared with everything else the human
@@ -216,6 +312,27 @@ public struct AgentCredentialVault: Sendable {
         self.remove = remove
     }
 
+    /// Picks the backend this build can actually honour.
+    ///
+    /// The choice is made once, from the running code's own identity, rather
+    /// than by attempting the Keychain and catching a failure: the Keychain
+    /// failure mode that matters here is not an error at write time but a
+    /// prompt at read time, weeks later, after an update — which no `try?`
+    /// around the write would ever see.
+    public static func automatic(directory: URL) -> AgentCredentialVault {
+        AgentCredentialStore.hasStableCodeIdentity ? .keychain : .file(directory: directory)
+    }
+
+    public static func file(directory: URL) -> AgentCredentialVault {
+        AgentCredentialVault(
+            store: { secret, id, _, _ in
+                try AgentCredentialFile.store(secret: secret, id: id, directory: directory)
+                return .fileOnly
+            },
+            secret: { try AgentCredentialFile.secret(id: $0, directory: directory) },
+            remove: { try AgentCredentialFile.remove(id: $0, directory: directory) })
+    }
+
     public static let keychain = AgentCredentialVault(
         store: { secret, id, label, trusted in
             try AgentCredentialStore.store(
@@ -226,8 +343,8 @@ public struct AgentCredentialVault: Sendable {
 
     /// A vault that keeps secrets for the lifetime of the process only.
     ///
-    /// Reports `.keychainOnly`, because claiming enforced code identity from
-    /// a dictionary would let a test assert a protection that does not exist.
+    /// Reports `.fileOnly`, because claiming enforced code identity from a
+    /// dictionary would let a test assert a protection that does not exist.
     public static func inMemory() -> AgentCredentialVault {
         final class Storage: @unchecked Sendable {
             private let lock = NSLock()
@@ -240,7 +357,7 @@ public struct AgentCredentialVault: Sendable {
         return AgentCredentialVault(
             store: { secret, id, _, _ in
                 storage.set(secret, id)
-                return .keychainOnly
+                return .fileOnly
             },
             secret: { id in
                 guard let secret = storage.get(id) else {

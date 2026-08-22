@@ -171,18 +171,27 @@ identify nothing; a `0600` token or credential is readable by any unsandboxed
 process running as that user; and macOS offers a non-sandboxed app no way to
 attest who is on the other end of a Unix socket beyond its uid.
 
-**One part of this is now better than the principle's first statement, and one
-part is not.** The pairing secret no longer lives in a `0600` file (§4.3): it is
-a Keychain item whose ACL names the editor and the bridge, so the decision about
-who may read it is made by `securityd` from the asking process's code signature
-— outside this process, and not bypassable by reading a file. That is a real
-boundary *when the build is signed with a stable identity*; on an unsigned local
-build no such identity exists, and the ACL binds to nothing durable. MaruEdit
-therefore reports which case a pairing got rather than implying the stronger
-one. The session token remains a `0600` file and remains readable by any
-same-user process, so a hostile local process can still connect and be *offered*
-to the human for approval. P9 stands as the description of the interface as a
-whole.
+**An attempt to do better than this ran into a hard limit, and the limit is
+worth recording.** A Keychain item whose ACL names the editor and the bridge
+would move the decision to `securityd`, which judges the asking process by its
+code signature — outside this process, and not bypassable by reading a file.
+That is a real boundary, but only where the code signature is *stable*.
+
+Measured rather than assumed: a binary that stores a Keychain item and is then
+rebuilt cannot read its own item back. The request returns
+`errSecUserCanceled`, because macOS raises an authorization prompt, and it does
+so with or without an explicit ACL — the default ACL names the creating code
+too. An ad-hoc signature is a content hash, so it changes with every release.
+For a build distributed ad-hoc, a Keychain-backed credential would therefore
+break on **every update**, and an agent running unattended would simply fail.
+
+So the backend follows the code identity, decided once from the running code's
+Team Identifier: Keychain where the guarantee can hold, a `0600` file where it
+cannot, and the pairing UI states which one happened. MaruEdit ships ad-hoc
+signed today, so today it is the file, and P9 stands unchanged as the
+description of what that is worth. What did improve unconditionally is
+independent of the backend — see §4.3: the secret is no longer the credential's
+own id, and the registry keeps only a digest.
 
 So the boundary this design actually defends is **the human's attention and the
 document's integrity, against mistakes** — an agent doing more than the person
@@ -464,13 +473,15 @@ consequence concrete.
      pairing, and MaruEdit shows a short verification code in its indicator —
      the same non-modal surface described below, never a sheet.
   2. The human confirms the same code in the terminal. On match, MaruEdit mints
-     a public credential **id** and a separate secret, stores the secret in the
-     login Keychain under an ACL naming the editor and the bridge, and keeps
-     only the secret's SHA-256 digest in its own registry.
+     a public credential **id** and a separate secret, stores the secret in
+     whichever backend this build can honour (P9: Keychain under a
+     code-signature ACL when a stable Team Identifier exists, a `0600` file
+     otherwise), and keeps only the secret's SHA-256 digest in its own
+     registry.
   3. The agent's MCP server config carries the id — `--credential-id <id>` —
-     which is not a secret. The bridge reads the secret from the Keychain at
-     connect time, so it never appears in a config file, in `argv`, in shell
-     history, or in a backup of the support directory.
+     which is not a secret. The bridge resolves the secret the same way the app
+     stored it, so the config is identical either way and the secret never
+     appears in a config file, in `argv`, or in shell history.
 
   Splitting the id from the secret is not cosmetic. The earlier scheme used the
   id *as* the secret and stored it in the registry as its own key, so anything

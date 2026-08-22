@@ -923,10 +923,10 @@
 "agent.paired" = "Paired configurations";
 "agent.pairedClient" = "Paired client";
 "agent.pairingFailedTitle" = "Pairing could not be completed";
-"agent.pairingFailedExplanation" = "The credential could not be stored in your Keychain, so no pairing was created. MaruEdit does not fall back to a file: that would give this agent a credential weaker than the one you were shown.";
+"agent.pairingFailedExplanation" = "The credential could not be stored, so no pairing was created. Check that MaruEdit can write to its application support folder, then try again.";
 "agent.pairingDoneTitle" = "Paired";
 "agent.pairingDoneEnforced" = "Add --credential-id %@ to this agent's MaruEdit MCP server configuration. That is an identifier, not a secret; the secret is in your Keychain and macOS will only release it to MaruEdit and its bridge.";
-"agent.pairingDoneUnsigned" = "Add --credential-id %@ to this agent's MaruEdit MCP server configuration. That is an identifier, not a secret. The secret is in your Keychain, but this build of MaruEdit is not signed with a stable identity, so macOS cannot restrict which programs may read it.";
+"agent.pairingDoneUnsigned" = "Add --credential-id %@ to this agent's MaruEdit MCP server configuration. That is an identifier, not a secret. This build of MaruEdit has no stable code signature, so the secret is kept in a file only your account can read rather than in your Keychain — a Keychain item would stop working every time MaruEdit updates. Any program running as you can read that file, so treat the pairing as a record of what you approved, not as a lock.";
 "agent.copyCredentialID" = "Copy identifier";
 "agent.activity" = "Recent activity";
 "agent.noActivity" = "Nothing yet.";

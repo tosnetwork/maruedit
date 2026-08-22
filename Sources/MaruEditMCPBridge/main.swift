@@ -194,10 +194,14 @@ func openConnection() -> Result<AppConnection, BridgeFailure> {
         var credential: String?
         if let id = options.credentialID {
             do {
-                credential = try AgentCredentialStore.secret(id: id)
+                // The same choice the app made when it stored the secret, made
+                // the same way, so the two never disagree about where it lives.
+                credential = try AgentCredentialVault
+                    .automatic(directory: AgentEndpoint.supportDirectory(home: home))
+                    .secret(id)
             } catch {
                 return .failure(BridgeFailure(message: """
-                    The credential \(id) could not be read from the Keychain: \(error). \
+                    The credential \(id) could not be read: \(error). \
                     Pair again in MaruEdit if it was revoked.
                     """))
             }
@@ -242,8 +246,19 @@ if options.pair {
 
                         --credential-id \(id)
 
-                    That is an identifier, not a secret. The secret is kept in your \
-                    Keychain and read directly by this bridge.
+                    That is an identifier, not a secret.
+
+                    \(AgentCredentialStore.hasStableCodeIdentity
+                        ? """
+                          The secret is kept in your Keychain, and macOS releases it only \
+                          to MaruEdit and this bridge.
+                          """
+                        : """
+                          This build of MaruEdit has no stable code signature, so the \
+                          secret is kept in a file only your account can read rather than \
+                          in your Keychain — a Keychain item would stop working every time \
+                          MaruEdit updates. Any program running as you can read that file.
+                          """)
                     """)
             case .failure(let code, let message, _):
                 fail("\(code): \(message)")

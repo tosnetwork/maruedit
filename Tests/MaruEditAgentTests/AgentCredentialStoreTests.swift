@@ -44,7 +44,7 @@ final class AgentCredentialStoreTests: XCTestCase {
         let vault = AgentCredentialVault.inMemory()
         let secret = try AgentCredentialStore.randomSecret()
 
-        XCTAssertEqual(try vault.store(secret, "id_1", "Agent", []), .keychainOnly)
+        XCTAssertEqual(try vault.store(secret, "id_1", "Agent", []), .fileOnly)
         XCTAssertEqual(try vault.secret("id_1"), secret)
 
         try vault.remove("id_1")
@@ -63,6 +63,107 @@ final class AgentCredentialStoreTests: XCTestCase {
         XCTAssertThrowsError(try second.secret("id"))
     }
 
+    // MARK: - Choosing a backend
+
+    func testTheBackendFollowsWhetherTheKeychainCouldEnforceAnything() throws {
+        let directory = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("maruedit-vault-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let automatic = AgentCredentialVault.automatic(directory: directory)
+        let secret = try AgentCredentialStore.randomSecret()
+
+        // Whichever backend this build gets, the contract is the same: what was
+        // stored comes back, and removal is idempotent.
+        let protection = try automatic.store(secret, "id_a", "Agent", [])
+        XCTAssertEqual(try automatic.secret("id_a"), secret)
+        try automatic.remove("id_a")
+        XCTAssertNoThrow(try automatic.remove("id_a"))
+
+        // And the reported protection matches the identity that decided it,
+        // rather than being an aspiration.
+        XCTAssertEqual(
+            protection,
+            AgentCredentialStore.hasStableCodeIdentity ? .codeIdentityEnforced : .fileOnly)
+    }
+
+    func testAnAdHocBuildDoesNotClaimAStableCodeIdentity() {
+        // The test bundle is ad-hoc signed, like the shipping app. If this ever
+        // reports true here, the Keychain path would be selected for a build
+        // whose signature changes on every release — which is precisely the
+        // configuration that cannot read its own items back after an update.
+        XCTAssertFalse(
+            AgentCredentialStore.hasStableCodeIdentity,
+            "an ad-hoc build has no Team Identifier to bind a Keychain ACL to")
+    }
+
+    func testTheKeychainRefusesToStoreWithoutAnEnforceableACL() {
+        // Storing an unprotected Keychain item would combine the update
+        // problem with none of the benefit, so it is refused rather than
+        // quietly written.
+        XCTAssertThrowsError(
+            try AgentCredentialStore.store(
+                secret: "s", id: "id_never", label: "L", trustedExecutables: [])
+        ) { error in
+            XCTAssertEqual(
+                error as? AgentCredentialStore.StoreError, .noStableCodeIdentity)
+        }
+    }
+
+    // MARK: - The file backend
+
+    func testTheFileBackendKeepsTheSecretReadableOnlyByThisAccount() throws {
+        let directory = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("maruedit-credfile-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let secret = try AgentCredentialStore.randomSecret()
+        try AgentCredentialFile.store(secret: secret, id: "id_f", directory: directory)
+
+        let url = AgentCredentialFile.url(directory: directory, id: "id_f")
+        let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+        XCTAssertEqual(attributes[.posixPermissions] as? Int, 0o600)
+        XCTAssertEqual(
+            try FileManager.default.attributesOfItem(
+                atPath: directory.path)[.posixPermissions] as? Int,
+            0o700)
+
+        XCTAssertEqual(try AgentCredentialFile.secret(id: "id_f", directory: directory), secret)
+    }
+
+    func testTheFileBackendNarrowsPermissionsOnAFileThatAlreadyExisted() throws {
+        let directory = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("maruedit-credfile-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        // Something else got there first with loose permissions. `O_CREAT` does
+        // not narrow an existing file, so writing alone would leave it open.
+        let url = AgentCredentialFile.url(directory: directory, id: "id_g")
+        FileManager.default.createFile(
+            atPath: url.path, contents: Data("old".utf8),
+            attributes: [.posixPermissions: 0o644])
+
+        try AgentCredentialFile.store(secret: "new-secret", id: "id_g", directory: directory)
+        XCTAssertEqual(
+            try FileManager.default.attributesOfItem(atPath: url.path)[.posixPermissions] as? Int,
+            0o600)
+        XCTAssertEqual(try AgentCredentialFile.secret(id: "id_g", directory: directory), "new-secret")
+    }
+
+    func testAMissingCredentialFileReportsNotFoundRatherThanEmpty() throws {
+        let directory = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("maruedit-credfile-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        XCTAssertThrowsError(try AgentCredentialFile.secret(id: "absent", directory: directory)) {
+            XCTAssertEqual($0 as? AgentCredentialStore.StoreError, .notFound)
+        }
+        // An empty string would sail through as a credential and match nothing,
+        // which is a confusing failure rather than a clear one.
+        XCTAssertNoThrow(try AgentCredentialFile.remove(id: "absent", directory: directory))
+    }
+
     // MARK: - The real Keychain
 
     /// Opt-in, because it writes into the login keychain of whoever runs it.
@@ -79,18 +180,20 @@ final class AgentCredentialStoreTests: XCTestCase {
         let secret = try AgentCredentialStore.randomSecret()
         defer { try? AgentCredentialStore.remove(id: id) }
 
-        // No trusted executables: an ACL cannot be built, so the honest report
-        // is reduced protection rather than a success that claims more.
+        // A real ACL naming this test binary, which is the only configuration
+        // the store now accepts.
         let protection = try AgentCredentialStore.store(
-            secret: secret, id: id, label: "MaruEdit test", trustedExecutables: [])
-        XCTAssertEqual(protection, .keychainOnly)
+            secret: secret, id: id, label: "MaruEdit test",
+            trustedExecutables: [CommandLine.arguments[0]])
+        XCTAssertEqual(protection, .codeIdentityEnforced)
         XCTAssertEqual(try AgentCredentialStore.secret(id: id), secret)
 
         // Storing again under the same id replaces rather than duplicating, or
         // re-pairing would leave an unreachable item behind every time.
         let replacement = try AgentCredentialStore.randomSecret()
         _ = try AgentCredentialStore.store(
-            secret: replacement, id: id, label: "MaruEdit test", trustedExecutables: [])
+            secret: replacement, id: id, label: "MaruEdit test",
+            trustedExecutables: [CommandLine.arguments[0]])
         XCTAssertEqual(try AgentCredentialStore.secret(id: id), replacement)
 
         try AgentCredentialStore.remove(id: id)

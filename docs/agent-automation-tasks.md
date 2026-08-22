@@ -220,15 +220,17 @@ Deliberately deferred out of Phase 0, with reasons:
       not remembering a session.
 - [x] Revocation and stale-endpoint regression tests, including that revoking a
       credential cuts off its live connections.
-- [x] The pairing secret moved out of the filesystem: a public credential id
-      plus a Keychain-held secret under an ACL naming the editor and the
-      bridge, with only a SHA-256 digest kept on disk and a constant-time
-      comparison to verify it. Old-scheme credentials — where the id *was* the
-      secret, in plaintext — are discarded rather than migrated.
-- [x] Honest reporting of what that bought: `securityd` enforces the ACL by
-      code signature, which is a real boundary on a signed build and nothing
-      durable on a local one. The confirmation dialog states which case
-      happened instead of implying the stronger one.
+- [x] The credential's public id split from its bearer secret, with only a
+      SHA-256 digest kept on disk and a constant-time comparison to verify it.
+      This is the half that matters and it holds on every build: the old scheme
+      used the id *as* the secret and stored it in the registry under its own
+      name. Old-scheme credentials are discarded rather than migrated.
+- [x] Backend chosen from the build's code identity. A Keychain ACL is a real
+      boundary only where the signature is stable; measured, an ad-hoc build
+      cannot read back its own Keychain item after a rebuild, so a
+      Keychain-backed credential would break on every update. Keychain when a
+      Team Identifier exists, `0600` file otherwise, and both the pairing
+      dialog and `--pair` say which one happened.
 - [ ] The rest of OQ-1: the session token is still a same-user-readable file,
       so a hostile local process can still connect and be offered for approval.
       Closing that needs sandboxing, not another credential scheme — as

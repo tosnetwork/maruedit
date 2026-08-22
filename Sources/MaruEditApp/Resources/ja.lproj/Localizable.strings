@@ -923,10 +923,10 @@
 "agent.paired" = "ペアリング済みの設定";
 "agent.pairedClient" = "ペアリング済みクライアント";
 "agent.pairingFailedTitle" = "ペアリングを完了できませんでした";
-"agent.pairingFailedExplanation" = "資格情報をキーチェーンに保存できなかったため、ペアリングは作成されていません。MaruEdit はファイル保存にフォールバックしません。表示したものより弱い資格情報を渡すことになるためです。";
+"agent.pairingFailedExplanation" = "資格情報を保存できなかったため、ペアリングは作成されていません。MaruEdit がアプリケーションサポートフォルダに書き込めるか確認してから、もう一度お試しください。";
 "agent.pairingDoneTitle" = "ペアリングしました";
 "agent.pairingDoneEnforced" = "このエージェントの MaruEdit MCP サーバー設定に --credential-id %@ を追加してください。これは識別子であって秘密情報ではありません。秘密情報はキーチェーンにあり、macOS は MaruEdit とそのブリッジにのみ渡します。";
-"agent.pairingDoneUnsigned" = "このエージェントの MaruEdit MCP サーバー設定に --credential-id %@ を追加してください。これは識別子であって秘密情報ではありません。秘密情報はキーチェーンにありますが、このビルドは安定した署名がないため、macOS は読み取れるプログラムを制限できません。";
+"agent.pairingDoneUnsigned" = "このエージェントの MaruEdit MCP サーバー設定に --credential-id %@ を追加してください。これは識別子であって秘密情報ではありません。このビルドには安定した署名がないため、秘密情報はキーチェーンではなく自分のアカウントだけが読めるファイルに保存されます。キーチェーンに入れると MaruEdit を更新するたびに使えなくなるためです。同じユーザーで動くプログラムはそのファイルを読めるので、このペアリングは「何を承認したかの記録」であって錠前ではありません。";
 "agent.copyCredentialID" = "識別子をコピー";
 "agent.activity" = "最近の動作";
 "agent.noActivity" = "まだありません。";
