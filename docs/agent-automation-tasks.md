@@ -55,7 +55,9 @@ both the existing macro engine and any future agent surface sit on.
 
 - [x] `Document.profileForcesReadOnly` retains the profile load policy source
       that `refreshReadOnlyState()` used to drop.
-- [x] `refreshReadOnlyState()` recomputes from all three sources.
+- [x] `refreshReadOnlyState()` recomputes from all three sources — and so do
+      both `reopen` paths, which had the same defect and were missed the first
+      time through.
 - [x] Split creation applies the same predicate instead of setting the secondary
       pane editable unconditionally.
 
@@ -153,13 +155,20 @@ Deliberately deferred out of Phase 0, with reasons:
       alternative if the refusal proves annoying in practice.
 - [x] `set_selection` and `reveal` with both preconditions.
 - [x] Review mode, immutable proposals, retained-state budgets, diff banner.
-- [x] `save_document` **preflight**, reporting `ok`, `read_only`,
-      `overwrite_prohibited`, `save_as_required`, `mixed_line_endings`, or
-      `unrepresentable`.
-- [ ] `SaveCoordinator` migration and the §6.5 commit protocol. **Agent-initiated
-      saving does not ship until this lands**: a fence only one participant
-      respects is not a fence, and every existing save entry point still calls
-      `Document.save()` synchronously on its own. Agents edit; the human saves.
+- [x] `SaveCoordinator`: one machine, every entry point on it — human Save,
+      Save As, Save All, save-and-close, agent save. Plan / prepare / fence /
+      commit / finalize, with the human superseding an agent save that is still
+      preparing and a late human save running immediately after.
+- [x] `save_document` commits for real, with revision preconditions checked
+      atomically before the write.
+- [x] The false-clean bug is gone: what is recorded as saved is the snapshot
+      that was written, and metadata that moved after planning leaves the
+      document format-dirty.
+
+  Two clauses of ADR-012 §6.5 were falsified by implementing them, and the ADR
+  now records both: revision preconditions belong to the requester rather than
+  the machine, and the commit runs off-main only where nothing is sequenced
+  behind it.
 
 ## Phase 3 — Scoped app control
 

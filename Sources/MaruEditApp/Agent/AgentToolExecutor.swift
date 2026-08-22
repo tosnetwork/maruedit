@@ -42,7 +42,7 @@ struct AgentToolExecutor {
         case "review_status": outcome = reviewStatus(arguments)
         case "set_selection": outcome = setSelection(arguments, connection)
         case "reveal": outcome = reveal(arguments, connection)
-        case "save_document": outcome = saveDocument(arguments, connection)
+        case "save_document": outcome = await saveDocument(arguments, connection)
         case "open_document": outcome = openDocument(arguments, connection)
         case "run_command": outcome = runCommand(arguments, connection)
         default:

@@ -362,44 +362,82 @@ extension AgentToolExecutor {
 
     // MARK: - save_document
 
-    /// Preflight only, deliberately.
+    /// Saves, through the same coordinator every other save path uses.
     ///
-    /// ADR-012 §6.5 requires every save entry point — human Save, Save As,
-    /// save-on-close, agent save — to go through one coordinator before agent
-    /// saves are enabled, because a fence only one participant respects is not
-    /// a fence. That migration is not done, so this reports what a save *would*
-    /// do and stops there. Agents edit; the human still owns saving.
+    /// This only became safe once human Save, Save As, and save-on-close moved
+    /// onto that coordinator: a fence only one participant respects is not a
+    /// fence. The human still wins every race — a ⌘S supersedes an agent save
+    /// that is still preparing, and one that arrives too late runs immediately
+    /// afterwards — and nothing here can put a dialog on screen (R17).
     func saveDocument(
         _ arguments: JSONValue, _ connection: AgentControlService.Connection
-    ) -> AgentToolOutcome {
+    ) async -> AgentToolOutcome {
         let resolved = resolveForWrite(arguments, connection)
         guard case .success(let target) = resolved else {
             if case .failure(let failure) = resolved { return failure.outcome }
             return .failure(code: "internal", message: "unreachable", details: nil)
         }
         let document = target.document
-        let status: String
-        if document.isEditingDisabled {
-            status = "read_only"
-        } else if document.isOverwriteProhibited {
-            status = "overwrite_prohibited"
-        } else if document.fileURL == nil {
-            status = "save_as_required"
-        } else if case .mixed = document.lineEnding {
-            status = "mixed_line_endings"
-        } else if !document.preflightSave().isRepresentable {
-            status = "unrepresentable"
-        } else {
-            status = "ok"
+
+        // The preconditions are handed to the coordinator rather than checked
+        // here, so they are revalidated atomically immediately before the
+        // commit rather than a few statements earlier.
+        let outcome = await withCheckedContinuation { continuation in
+            SaveCoordinator.shared.save(
+                document: document,
+                requester: .agent,
+                requiredTextRevision: arguments["expectRevision"]?.intValue.map(UInt64.init),
+                requiredMetadataRevision: arguments["expectMetadataRevision"]?.intValue.map(UInt64.init)
+            ) { result in
+                continuation.resume(returning: result)
+            }
         }
-        return .success(.object([
-            "status": .string(status),
-            "committed": .bool(false),
-            "message": .string("""
-                MaruEdit reports what a save would do but does not save on an \
-                agent's behalf yet: every save path has to move onto one \
-                coordinator first. Ask the person at the keyboard to save.
-                """),
-        ]))
+
+        switch outcome {
+        case .succeeded:
+            return .success(.object([
+                "status": .string("saved"),
+                "revision": .int(Int(document.textRevision)),
+                "metadataRevision": .int(Int(document.metadataRevision)),
+                "stillDirty": .bool(document.isModified),
+            ]))
+        case .inProgress:
+            return .failure(
+                code: "save.in_progress",
+                message: "Another save of this document is running. Try again shortly.",
+                details: nil)
+        case .superseded:
+            return .failure(
+                code: "state.superseded",
+                message: "The person at the keyboard saved instead; nothing was written on your behalf.",
+                details: nil)
+        case .conflicted("text_revision"):
+            return .failure(
+                code: "state.text_revision_conflict",
+                message: "The document changed since you read it; nothing was written.",
+                details: .object(["revision": .int(Int(document.textRevision))]))
+        case .conflicted("metadata_revision"):
+            return .failure(
+                code: "state.metadata_conflict",
+                message: "The encoding or line ending changed since you read it; nothing was written.",
+                details: .object(["metadataRevision": .int(Int(document.metadataRevision))]))
+        case .conflicted(let reason):
+            return .failure(
+                code: "state.conflict",
+                message: "The save was refused: \(reason). Nothing was written.",
+                details: .object(["reason": .string(reason)]))
+        case .failedBeforeIrreversible(let reason):
+            return .failure(
+                code: "save.\(reason)",
+                message: "The document cannot be saved as it stands (\(reason)). Nothing was written.",
+                details: nil)
+        case .failedAfterIrreversible(let reason):
+            // The file is either the old bytes or the new ones, never a
+            // mixture, but which one is not knowable from here.
+            return .failure(
+                code: "save.failed_after_write_began",
+                message: "The write had already begun when it failed (\(reason)). Check the file.",
+                details: nil)
+        }
     }
 }

@@ -1121,6 +1121,26 @@ same plan → prepare → fence → commit → finalize machine. Phase 2 does th
 migration *before* enabling agent saves, because a fence only one participant
 respects is not a fence.
 
+**Two corrections from building it.** The protocol below was written before
+the code existed, and implementing it falsified two of its clauses:
+
+1. *Revision preconditions belong to the requester, not to the machine.* §6.5
+   originally revalidated both revisions for every save. That is right for an
+   agent, which acted on a read that may have expired. It is wrong for a human:
+   pressing ⌘S and then typing a character while a large file encodes would
+   turn "I saved" into a silent no-op. So the plan carries *optional* required
+   revisions — set from an agent's `expectRevision`, absent for a human — and
+   the human's save writes what was there when they pressed the key, leaving
+   the newer character unsaved.
+2. *The commit runs off the main actor only where nothing is sequenced behind
+   it.* Save All, save-and-close, and termination each do something immediately
+   after saving, and an asynchronous write let a tab close before the bytes
+   landed — caught by existing tests, not by inspection. Human saves therefore
+   prepare and commit inline; agent saves, which await their result and have
+   nothing sequenced behind them, keep the off-main prepare. Both go through
+   the same plan, fence, commit, and finalize. The defect this section exists
+   to prevent is fixed by recording the planned snapshot, not by the hop.
+
 The commit protocol is normative:
 
 1. **Plan, on the main actor.** Capture an immutable `SavePlan`: text revision,
@@ -1130,10 +1150,10 @@ The commit protocol is normative:
 2. **Prepare, off the main actor.** Policy transformation, line-ending
    application, encoding, and representability checking run against the plan,
    never against the live document, producing `serializedBytes`.
-3. **Revalidate and fence, on the main actor.** Both revisions and
-   `diskBaseline` must still match. If either moved, the save fails with the
-   matching conflict from §5.3 and nothing is written. This is the last
-   cancellation point. In the same transaction, reserve a **per-document save
+3. **Revalidate and fence, on the main actor.** `diskBaseline` must still
+   match, and so must any revision the *caller* required. If either moved, the
+   save fails with the matching conflict from §5.3 and nothing is written. This
+   is the last cancellation point. In the same transaction, reserve a **per-document save
    generation**. Releasing the main actor for step 4 is what makes this fence
    necessary; today's synchronous save avoids the race only by never yielding.
 

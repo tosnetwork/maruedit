@@ -903,7 +903,7 @@ final class MainWindowController: NSWindowController,
                 presentReadOnlySaveBlocked(document); return
             }
             guard resolveMixedLineEndingIfNeeded(for: document) else { return }
-            performSave(document)
+            performSaveSynchronously(document)
             guard !document.isModified else { return }
             saveDocuments(Array(documents.dropFirst()))
             return
@@ -982,39 +982,41 @@ final class MainWindowController: NSWindowController,
     /// represented in `doc.encoding`, shows the ROADMAP.md M2-04
     /// unrepresentable-character alert (with line/column detail) and
     /// offers to convert to UTF-8 and retry, rather than a bare error.
+    /// Human Save.
+    ///
+    /// Synchronous, and deliberately so. Moving the encode off the main actor
+    /// would keep typing smooth on a very large file, but Save All, save-and-
+    /// close, and app termination all sequence something immediately after the
+    /// save, and an asynchronous write let a tab close before the bytes landed.
+    /// The defect this work set out to fix — a document reported clean in a
+    /// state it was never saved in — is fixed by recording the planned
+    /// snapshot, not by the hop. Agents get the off-main path, because they
+    /// await their result and nothing is sequenced behind them.
     private func performSave(_ doc: Document) {
-        // Revalidate before writing: an external editor's changes must
-        // never be silently overwritten (ROADMAP.md M2-06 acceptance).
-        // Scoped to same-file Save only — Save As already gets its own
-        // protection from NSSavePanel's native overwrite confirmation
-        // (M2-05), and doc's known baseline describes the *old* path, not
-        // whatever new location the user might pick there.
-        if let url = doc.fileURL {
-            let status = ExternalChangeDetector.check(url: url, knownIdentity: doc.fileIdentity, knownModificationDate: doc.lastKnownModificationDate)
-            if status == .modified {
-                presentExternalChangeConflict(status, for: doc)
-                return
-            }
-        }
-        do {
-            try doc.save()
-            refreshTabs(); refreshStatus()
-        } catch let DocumentSaveError.unrepresentable(encoding, characters) {
-            offerUTF8Conversion(for: doc, encoding: encoding, characters: characters) { [weak self] in
-                self?.performSave(doc)
-            }
-        } catch {
-            NSAlert(error: error).runModal()
-        }
+        _ = performSaveSynchronously(doc)
     }
 
+    /// Human Save As.
+    ///
+    /// Reports synchronously because callers branch on the result — closing a
+    /// tab, for one — and the coordinator's completion runs on the main actor
+    /// before `save` returns whenever the prepare step is short. When it is
+    /// not, the result is reported through the same completion and the caller
+    /// sees `false` until it lands.
+    /// Human Save As.
+    ///
+    /// Synchronous, because every caller branches on the result — closing a
+    /// tab, advancing Save All — and an asynchronous write would let that next
+    /// step run before the bytes landed.
     @discardableResult
     private func performSaveAs(_ doc: Document, to url: URL) -> Bool {
         let wasUnnamed = doc.fileURL == nil
-        do {
-            try doc.save(to: url)
+        SaveCoordinator.shared.supersede(doc)
+        switch SaveCoordinator.shared.saveSynchronously(document: doc, as: url) {
+        case .succeeded:
             refreshTabs(); refreshStatus()
-            window?.title = AppLocalization.string("window.document.title", [doc.localizedDisplayName])
+            window?.title = AppLocalization.string(
+                "window.document.title", [doc.localizedDisplayName])
             RecentItems.addFile(url)
             if wasUnnamed {
                 // This document now has a real file, which is its own
@@ -1023,13 +1025,49 @@ final class MainWindowController: NSWindowController,
                 recoveryStore.delete(doc.recoveryID)
             }
             return true
-        } catch let DocumentSaveError.unrepresentable(encoding, characters) {
-            offerUTF8Conversion(for: doc, encoding: encoding, characters: characters) { [weak self] in
-                self?.performSaveAs(doc, to: url)
-            }
+        case .failedBeforeIrreversible("unrepresentable"):
+            let preflight = doc.preflightSave()
+            offerUTF8Conversion(
+                for: doc, encoding: doc.encoding,
+                characters: preflight.unrepresentableCharacters
+            ) { [weak self] in self?.performSaveAs(doc, to: url) }
             return !doc.isModified
-        } catch {
-            NSAlert(error: error).runModal()
+        case .failedAfterIrreversible(let reason):
+            NSAlert(error: DocumentSaveError.policyFailed(reason)).runModal()
+            return false
+        case .failedBeforeIrreversible(let reason), .conflicted(let reason):
+            showStatusMessage(reason, duration: 3)
+            return false
+        case .superseded, .inProgress:
+            return false
+        }
+    }
+
+    /// Saves without yielding, for callers that sequence something after it.
+    @discardableResult
+    private func performSaveSynchronously(_ doc: Document) -> Bool {
+        SaveCoordinator.shared.supersede(doc)
+        switch SaveCoordinator.shared.saveSynchronously(document: doc) {
+        case .succeeded:
+            refreshTabs(); refreshStatus()
+            return true
+        case .conflicted("external_change"):
+            presentExternalChangeConflict(.modified, for: doc)
+            return false
+        case .failedBeforeIrreversible("unrepresentable"):
+            let preflight = doc.preflightSave()
+            offerUTF8Conversion(
+                for: doc, encoding: doc.encoding,
+                characters: preflight.unrepresentableCharacters
+            ) { [weak self] in _ = self?.performSaveSynchronously(doc) }
+            return false
+        case .failedAfterIrreversible(let reason):
+            NSAlert(error: DocumentSaveError.policyFailed(reason)).runModal()
+            return false
+        case .failedBeforeIrreversible(let reason), .conflicted(let reason):
+            showStatusMessage(reason, duration: 3)
+            return false
+        case .superseded, .inProgress:
             return false
         }
     }

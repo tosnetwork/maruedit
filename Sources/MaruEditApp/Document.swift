@@ -176,9 +176,21 @@ final class Document: @unchecked Sendable {
     }
 
     func markSaved() {
-        savedContent = content
-        isFormatModified = false
-        isModified = false
+        markSaved(snapshot: content, metadataChangedSincePlan: false)
+    }
+
+    /// Records what was actually written.
+    ///
+    /// `snapshot` is the text the save serialized, which is not necessarily
+    /// what the buffer holds now: with encoding moved off the main actor, a
+    /// human can type while a save is in flight, and the old code's
+    /// `savedContent = content` would then report that newer text as saved.
+    /// Format dirtiness works the same way — a document whose encoding changed
+    /// after the plan was captured was never saved in that form.
+    func markSaved(snapshot: String, metadataChangedSincePlan: Bool) {
+        savedContent = snapshot
+        isFormatModified = metadataChangedSincePlan
+        isModified = content != snapshot || isFormatModified
     }
 
     static func open(
@@ -297,8 +309,7 @@ final class Document: @unchecked Sendable {
         fileIdentity = loaded.fileIdentity
         lastKnownModificationDate = loaded.modificationDate
         posixPermissions = loaded.posixPermissions
-        isReadOnly = largeFileMode == .readOnly
-            || !FileManager.default.isWritableFile(atPath: url.path)
+        isReadOnly = effectiveReadOnlyState(for: url)
         cursorPosition = 0
         scrollOffset = .zero
         cachedTextStorage = nil
@@ -322,8 +333,7 @@ final class Document: @unchecked Sendable {
         fileIdentity = loaded.fileIdentity
         lastKnownModificationDate = loaded.modificationDate
         posixPermissions = loaded.posixPermissions
-        isReadOnly = largeFileMode == .readOnly
-            || !FileManager.default.isWritableFile(atPath: url.path)
+        isReadOnly = effectiveReadOnlyState(for: url)
         cursorPosition = 0
         scrollOffset = .zero
         cachedTextStorage = nil

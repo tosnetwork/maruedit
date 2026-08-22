@@ -469,19 +469,68 @@ final class AgentWriteTests: XCTestCase {
         XCTAssertEqual(failureCode(outcome), "state.text_revision_conflict")
     }
 
-    func testSavePreflightReportsWithoutSaving() async throws {
+    func testSavingAnUntitledDocumentIsRefusedRatherThanGuessingAPath() async {
         let doc = document("unsaved")
-        let outcome5 = await run("save_document", [
+        let outcome = await run("save_document", [
             "documentId": .string(doc.automationID.rawValue),
             "expectRevision": .int(Int(doc.textRevision)),
             "expectMetadataRevision": .int(Int(doc.metadataRevision)),
         ])
-        let outcome = try XCTUnwrap(value(outcome5))
-        // An untitled document cannot be saved in place at all.
-        XCTAssertEqual(outcome["status"], .string("save_as_required"))
-        // Saving on an agent's behalf waits for every save path to move onto
-        // one coordinator; until then the human owns saving.
-        XCTAssertEqual(outcome["committed"], .bool(false))
+        // Picking a filename on the human's behalf is not this tool's job.
+        XCTAssertEqual(failureCode(outcome), "save.save_as_required")
+    }
+
+    func testAnAgentSaveWritesTheFileAndReportsTheResultingState() async throws {
+        let directory = URL(fileURLWithPath: "/tmp/mas-\(UUID().uuidString.prefix(8))")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("agent.txt")
+        try "before\n".write(to: url, atomically: true, encoding: .utf8)
+
+        controller.adoptAgentOpenedDocument(url: url, loaded: try TextFileLoader.load(contentsOf: url))
+        server.control.approveForTesting(connection, coordinator: coordinator)
+        let doc = try XCTUnwrap(controller.macroEditor.document)
+
+        let edited = await run("apply_edits", [
+            "documentId": .string(doc.automationID.rawValue),
+            "baseRevision": .int(Int(doc.textRevision)),
+            "baseMetadataRevision": .int(Int(doc.metadataRevision)),
+            "edits": .array([edit(0, 6, "after")]),
+        ])
+        XCTAssertEqual(value(edited)?["status"], .string("applied"))
+
+        let saveOutcome = await run("save_document", [
+            "documentId": .string(doc.automationID.rawValue),
+            "expectRevision": .int(Int(doc.textRevision)),
+            "expectMetadataRevision": .int(Int(doc.metadataRevision)),
+        ])
+        let saved = try XCTUnwrap(value(saveOutcome))
+        XCTAssertEqual(saved["status"], .string("saved"))
+        XCTAssertEqual(saved["stillDirty"], .bool(false))
+        XCTAssertEqual(try String(contentsOf: url, encoding: .utf8), "after\n")
+    }
+
+    func testAnAgentSaveOnAStaleRevisionWritesNothing() async throws {
+        let directory = URL(fileURLWithPath: "/tmp/mas-\(UUID().uuidString.prefix(8))")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("stale.txt")
+        try "before\n".write(to: url, atomically: true, encoding: .utf8)
+        controller.adoptAgentOpenedDocument(url: url, loaded: try TextFileLoader.load(contentsOf: url))
+        server.control.approveForTesting(connection, coordinator: coordinator)
+        let doc = try XCTUnwrap(controller.macroEditor.document)
+
+        let stale = doc.textRevision
+        controller.macroEditor.textView.insertText(
+            "!", replacementRange: NSRange(location: 0, length: 0))
+
+        let outcome = await run("save_document", [
+            "documentId": .string(doc.automationID.rawValue),
+            "expectRevision": .int(Int(stale)),
+            "expectMetadataRevision": .int(Int(doc.metadataRevision)),
+        ])
+        XCTAssertEqual(failureCode(outcome), "state.text_revision_conflict")
+        XCTAssertEqual(try String(contentsOf: url, encoding: .utf8), "before\n")
     }
 }
 
