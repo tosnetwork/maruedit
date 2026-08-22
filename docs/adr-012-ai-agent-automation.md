@@ -209,16 +209,41 @@ still require the existing human choice before any save, so they are excluded
 from byte-identity guarantees (§10).
 
 **The LF invariant is currently a loading invariant, not a model invariant, and
-Phase 0 has to close that gap before any of this is true.** `Document.init`
-stores its `content` argument verbatim, `Document.fromTemplate` passes template
-text through unchanged, the macro host's `setDocumentText` replaces the whole
-buffer with an arbitrary JavaScript string, and the multi-cursor `batchReplace`
-inserts replacement strings without normalizing them. A CR can therefore already
+Phase 0 has to close that gap before any of this is true.** A CR can already
 exist in a buffer today. Rejecting CR on the write path does not by itself let
 `read_document` promise LF-only text, and normalizing text on the *response*
 path is not an option, because it would invalidate the UTF-16 offsets and
-anchors returned alongside it. Phase 0 enumerates every ingress and normalizes
-there; OQ-8 covers the one compatibility question that creates.
+digests returned alongside it.
+
+**Decision.** MaruEdit canonicalizes CRLF and lone CR to LF at every ingress,
+*before* the mutation reaches text storage — not in `textDidChange`, which runs
+after offsets and undo state already reflect the unnormalized text. The MCP
+boundary is stricter: it *rejects* CR rather than normalizing it, so an agent is
+told its payload was wrong instead of having it silently rewritten. This makes
+one deliberate, documented change to macro behavior — `maru.document.setText`
+with a CRLF string now stores LF — which Phase 0's "observably identical" rule
+explicitly carves out rather than blocks on.
+
+The ingress inventory Phase 0 must cover, from the current code:
+
+| Ingress | Today | Path |
+|---|---|---|
+| File open | normalized | `Document.open` → `LineEndingDetector.normalize` |
+| Insert File | normalized | `Document.normalizedText(contentsOf:)` |
+| `Document.init` / recovery restore | **raw** | content stored verbatim |
+| New document from template | **raw** | `Document.fromTemplate` → `ProfileFilePolicy.loadTemplate` |
+| Insert Template command | **raw** | `insertTemplateContents` → `NSTextView` insertion |
+| Macro `setDocumentText` | **raw** | `MacroCommandBridge` → `batchReplace` |
+| Multi-cursor paste, box paste, conversion pipeline | **raw** | `EditorSelectionCommands` → `batchReplace` |
+| Typing, standard paste, IME commit, text drop | **raw** | `NSTextView` mutation → `textDidChange` copies verbatim |
+| Find / Replace and Replace All | **raw** | `EditorSearch` writes `NSTextStorage` directly, bypassing `batchReplace` |
+| External command `replaceSelection` / new document | **raw** | `ExternalCommandController` → `batchReplace` |
+| Generated grep-result document | **raw** | direct assignment to `Document.content` |
+
+There is no snippet-expansion feature to cover; completion is word completion
+and inserts no multi-line text. Phase 0 introduces one pre-mutation
+canonicalizer that both the AppKit-originated paths and the programmatic
+transaction primitive call, and §10 tests every row above.
 
 ---
 
@@ -341,15 +366,22 @@ table in the bridge, tested by transcript:
 
 | Internal outcome | 2026-07-28 | 2025-06-18 |
 |---|---|---|
-| success | `resultType: "complete"` + `structuredContent` | result without `resultType` |
-| tool failure | `isError: true` | `isError: true` (unchanged) |
-| input required | `resultType: "input_required"` + `inputRequests` | not available; the tool returns a `toolFailure` telling the caller to retry |
-| list caching | `ttlMs` / `cacheScope` | omitted |
-| change notification | `subscriptions/listen` | `listChanged` notifications on the connection |
+| success | `resultType: "complete"` + `content` + `structuredContent` | same result body, no `resultType` |
+| tool failure | `resultType: "complete"` **and** `isError: true` | `isError: true` |
+| input required | `resultType: "input_required"` + `inputRequests`, resumed by a retry carrying `inputResponses` and `requestState` | not available; the tool returns a tool failure that tells the caller what to supply and to call again |
+| cancellation (client → server) | `notifications/cancelled` for the request id | `notifications/cancelled` for the request id |
+| cancellation (server behavior) | abandon the in-flight call; ADR-011 §8.5's rules on what is and is not revocable apply unchanged | same |
+| tool list invalidation | `notifications/tools/list_changed`, delivered on a `subscriptions/listen` stream the client opened with `toolsListChanged` | `notifications/tools/list_changed` on the connection |
+| document content change | `notifications/resources/updated` for the document's resource URI, delivered on a `subscriptions/listen` stream opened with `resourceSubscriptions` | `resources/subscribe` per URI, then `notifications/resources/updated` |
+| list caching | `ttlMs` / `cacheScope` on every list result | omitted |
 
-`isError` is the one part that is genuinely era-neutral. Everything else is
-era-specific, which is why §4.2 treats the two eras as two adapters rather than
-one code path with conditionals.
+Two mistakes are easy to make here and both were made in an earlier draft of
+this document. A modern-era tool failure carries `resultType: "complete"` *and*
+`isError: true` — `resultType` is mandatory on every result, and a failed tool
+call is still a complete result. And a *list*-changed notification is not a
+*content*-changed notification: document changes ride
+`notifications/resources/updated` in both eras, and only the mechanism for
+establishing the notification stream differs.
 
 ### 5.0 Coordinate and text conventions (normative)
 
@@ -421,11 +453,13 @@ Two scope restrictions are normative rather than incidental:
   it silently ignores. Folder search is an explicitly authorized filesystem
   read, not an exception to R14 — see §5.4 and §8.
 
-**Enumeration is scoped too.** `list_documents` and `list_editors` return only
-objects inside the caller's grant. Documents outside it are omitted entirely,
-not returned redacted, and the response does not disclose how many were hidden —
-a path and a display name are exactly the kind of thing a document the human did
-not authorize should not be leaking.
+**Enumeration is scoped too.** `list_documents` returns only documents inside
+the caller's grant, and `list_editors` returns an editor pane if and only if its
+document is granted, or its owning window is itself explicitly granted.
+Documents outside the grant are omitted entirely, not returned redacted, and the
+response does not disclose how many were hidden — a path and a display name are
+exactly the kind of thing a document the human did not authorize should not be
+leaking.
 
 ### 5.2 Reading
 
@@ -443,21 +477,35 @@ not authorize should not be leaking.
   "truncated": false,
   "text": "…LF-only…",
   "anchors": [ { "anchorId": "a_9c21", "revision": 412,
-                 "start": 9040, "end": 9210,
-                 "startLine": 220, "endLine": 224,
+                 "start": 8123, "end": 11004,
+                 "startLine": 200, "endLine": 260,
                  "digest": "sha256:8f2c…" } ]
 }
 ```
 
-**Anchor minting is bounded and explicit.** `withAnchors: true` mints exactly
-one anchor covering the returned range. A caller that wants finer handles passes
-`anchorRanges: [{ start, end }, …]`, capped in count and required to lie inside
-the returned range; MaruEdit never mints an anchor per line on its own initiative,
-because an unbounded anchor set is both a token cost and a memory leak.
+**Anchor minting is bounded and explicit, and arrives in Phase 2.** Phase 1's
+`read_document` schema has no anchor fields at all — nothing can consume an
+anchor before `apply_edits` exists, and shipping dead parameters invites clients
+to depend on them.
+
+From Phase 2 the two request fields are **mutually exclusive**:
+
+- `withAnchors: true` mints exactly one anchor covering the returned range.
+- `anchorRanges: [{ start, end }, …]` mints one anchor per entry. Offsets are
+  document-relative, not response-relative, must lie inside the returned range,
+  must not overlap, and are capped at **32 per call**.
+
+MaruEdit never mints an anchor per line on its own initiative. Each client holds
+at most **256 live anchors**; minting past that evicts the oldest. An anchor is
+invalidated by any text revision change and by document close, so an anchor set
+cannot outlive the snapshot that gave it meaning — which is also why no separate
+expiry timer is needed.
 
 Text is always the buffer, never disk (R1, R2), and always LF (R12). `revision`
-and `metadataRevision` are mandatory in the response because they are the inputs
-to every subsequent write (R3). Omitting the line range reads the whole
+and `metadataRevision` are mandatory in the response because they are the
+preconditions for every text edit, proposal acceptance, and save (R3). Selection
+writes take `selectionRevision` instead and do not carry a metadata
+precondition. Omitting the line range reads the whole
 document, subject to `maxBytes` and an explicit `truncated` flag — a truncated
 read is never silently truncated (P5).
 
@@ -507,18 +555,26 @@ Semantics, each one traceable to a failure mode in §1.1:
   representability — and then applied in one transaction. Any failure fails the
   entire call and mutates nothing (R6). Overlapping edits are rejected, not
   merged.
-- **Teaching failures, without lying about what is knowable.** Two failures are
-  distinguishable and are reported differently:
-  - *Digest mismatch at the same revision* — the offsets are still meaningful,
-    so the error carries the current text at each failed range and a fresh
-    anchor for it. The agent can retry immediately (P5).
-  - *Revision mismatch* — the document moved and, because anchors are not
-    tracked, MaruEdit does **not** know where the old regions went or whether
-    they still exist. The error carries the new revision, metadata revision,
-    line count, and length, and says plainly that the agent must re-read or
-    search. It must never present text found at the old numeric offsets as
-    though it were the same region; that is the fuzzy-match failure of §1.1 in
-    a new costume.
+- **Teaching failures, without lying about what is knowable.** Three outcomes
+  are distinguishable, and when more than one precondition fails they are
+  reported in this precedence order:
+  1. `state.text_revision_conflict` — the text moved. Because anchors are not
+     tracked, MaruEdit does **not** know where the old regions went or whether
+     they still exist, so the error carries only the new text and metadata
+     revisions, the line count, and the length, and says plainly that the agent
+     must re-read or search. It must never present text found at the old numeric
+     offsets as though it were the same region; that is the fuzzy-match failure
+     of §1.1 in a new costume.
+  2. `state.metadata_conflict` — the text revision matches but the metadata
+     revision does not, so the offsets are still valid while the assumptions
+     underneath them are not. The error carries the current metadata and the
+     unchanged text revision; the agent re-runs whatever depended on it —
+     encoding representability, above all — and resubmits the same offsets
+     against the new `baseMetadataRevision`. Forcing a full re-read here would
+     be a lie in the other direction.
+  3. `state.digest_mismatch` — both revisions match, so the offsets are exactly
+     meaningful. The error carries the current text at each failed range and a
+     fresh anchor for it, and the agent can retry immediately (P5).
 - **One undo entry**, named `"claude-code: fix typo in section 3"` (R7). ⌘Z is
   the universal reject button. This requires a new transaction primitive; the
   existing `batchReplace` silently drops out-of-bounds ranges, merges overlaps,
@@ -601,13 +657,32 @@ and conflating them makes every precondition either too strict or useless:
 - `revision` — document text. Incremented by any text mutation from any source.
 - `selectionRevision` — per editor pane. Incremented by cursor and selection
   changes.
-- `metadataRevision` — encoding, line-ending style, BOM, file identity,
-  read-only state.
+- `metadataRevision` — everything else about the document that can change what
+  an edit is allowed to contain or how a save serializes it.
 
-A reload increments both `revision` and `metadataRevision`, because it can
-change text and identity together. A successful save increments
-`metadataRevision` only, since it refreshes file identity and modification date
-without touching a character.
+`metadataRevision`'s domain is enumerated rather than described, because "the
+metadata" is exactly the kind of phrase two engineers read differently:
+encoding, BOM presence, line-ending style, file identity and modification date,
+target URL, POSIX permissions, read-only state, the resolved file-type profile,
+and that profile's save policy. The last two matter more than they look — a
+profile change can replace the save policy, which rewrites text on the way to
+disk, without touching any field named earlier in that list.
+
+| Event | `revision` | `selectionRevision` | `metadataRevision` |
+|---|---|---|---|
+| Text mutation from any source | ✓ | ✓ if selections moved | — |
+| Selection or cursor change | — | ✓ | — |
+| Assignment that changes nothing | — | — | — |
+| Encoding / BOM / line-ending change | — | — | ✓ |
+| Profile or save-policy change | — | — | ✓ |
+| Save As to a new URL | — | — | ✓ |
+| Successful save | — | — | ✓ (identity and modification date) |
+| Reload from disk | ✓ | ✓ | ✓ |
+| Undo / redo | ✓ | ✓ | ✓ if it restores metadata |
+
+A no-op assignment increments nothing: revisions exist to answer "did the thing
+I read change", and a counter that ticks on identical values makes every
+precondition spuriously fail.
 
 Getting text-revision coverage right is Phase 0 work and is not free: today's
 mutation paths include the `NSTextView` delegate's `textDidChange`, the
@@ -683,8 +758,8 @@ a denial-of-service primitive. Phase 1 therefore ships **literal search only**.
 Regular-expression search returns when one of these exists, in preference order:
 a regex engine with enforceable resource limits, execution in a killable helper
 process, or a tested conservative rejection policy for unbounded-backtracking
-patterns. Until then the ADR promises no regex deadline, because it could not
-keep one.
+patterns (OQ-8). Until then the ADR promises no regex deadline, because it could
+not keep one.
 
 ### 6.5 Saving
 
@@ -694,25 +769,54 @@ ordering mistake marks unsaved work as saved. The existing path calls
 records the document's *current* content as the saved baseline — correct when
 nothing can change in between, wrong the moment encoding and I/O move off-main.
 
-The commit protocol is therefore normative:
+Three values must be named separately, because conflating them is how the
+current code arrives at its bug:
+
+- **`sourceSnapshot`** — the buffer text as captured, in LF form.
+- **`serializedBytes`** — what actually reaches disk: `sourceSnapshot` after the
+  file-type profile's save policy has transformed it (trailing-whitespace trim,
+  final-newline insertion), after line-ending application, and after encoding.
+  These differ routinely: a buffer holding `"new  "` is written as `"new\n"`
+  under the default policy.
+- **`diskBaseline`** — file identity, modification date, and POSIX permissions
+  as observed at plan time.
+
+The commit protocol is normative:
 
 1. **Plan, on the main actor.** Capture an immutable `SavePlan`: text revision,
-   metadata revision, the exact content snapshot, encoding, BOM, line-ending
-   style, save policy, target URL, POSIX permissions, and the external-change
-   baseline (file identity and modification date).
-2. **Prepare, off the main actor.** Line-ending application, encoding, and
-   policy transformation run against the plan, never against the live document.
-3. **Revalidate, on the main actor.** Both revisions and the disk baseline must
-   still match. If either moved, the save fails with `state.conflict` and
-   nothing is written.
-4. **Commit.** The existing atomic write runs. This is the irreversible point;
-   cancellation after it is not offered, and the tool result reports what
-   happened rather than pretending it can be undone.
-5. **Record what was actually written.** The saved baseline is the plan's
-   snapshot, not the document's content at completion. If the buffer changed
-   during I/O, the document's disk identity and modification date are updated
-   and the document **stays dirty** — the newer text is genuinely unsaved, and
-   `markSaved()` as it stands today would claim otherwise.
+   metadata revision, `sourceSnapshot`, encoding, BOM, line-ending style,
+   resolved profile and save policy, target URL, POSIX permissions, and
+   `diskBaseline`.
+2. **Prepare, off the main actor.** Policy transformation, line-ending
+   application, encoding, and representability checking run against the plan,
+   never against the live document, producing `serializedBytes`.
+3. **Revalidate, on the main actor.** Both revisions and `diskBaseline` must
+   still match. If either moved, the save fails with the matching conflict from
+   §5.3 and nothing is written. This is the last cancellation point.
+4. **Commit, off the main actor.** Backup creation and rotation run first — they
+   copy the previous file and may delete an older backup, so the irreversible
+   point begins *there*, not at the destination write — followed by the existing
+   atomic write.
+5. **Finalize, on the main actor, in one transaction.** Record `sourceSnapshot`
+   as the saved baseline, refresh file identity, modification date, and
+   permissions from what was written, bump `metadataRevision`, and recompute
+   dirty state by comparing the live buffer against `sourceSnapshot`. If the
+   human typed during step 4, that comparison leaves the document **dirty**,
+   which is correct: the newer text is genuinely unsaved. Today's `markSaved()`
+   copies whatever `content` holds at completion and would claim the opposite.
+
+The saved baseline is `sourceSnapshot` rather than `serializedBytes` on purpose:
+it preserves the existing clean-state semantics, under which a document whose
+save policy rewrote its text on the way out is still considered saved. A digest
+of `serializedBytes` is retained alongside `diskBaseline` for external-change
+detection.
+
+**One honest limitation.** Revalidating file identity and then writing leaves a
+TOCTOU window: `ExternalChangeDetector.check` is an observation, and the atomic
+replacement that follows is not a compare-and-swap. External-change protection
+here is best-effort revalidation, materially better than no check and not a
+guarantee. Closing it properly needs a conditional-replacement mechanism, which
+is out of scope for this ADR.
 
 ---
 
@@ -833,18 +937,32 @@ requirements and not options.
 
 **Phase 0 — Shared automation core.**
 Extract `EditorAutomationService` (`@MainActor`, value-only) out of
-`MacroCommandBridge`; keep `maru.*` observably identical. Add process-lifetime
-`documentId` / `editorId` / `windowId`. Add the three revision counters and the
-single mutation-notification boundary, auditing every existing path that mutates
-`Document` — `textDidChange`, `batchReplace`, undo snapshot restore, reload,
-encoding change, direct assignment. Build the **validated transaction
-primitive** underneath both adapters: bounds and overlap rejection before any
-mutation, one undo snapshot, caller-supplied undo label, typed result. Keep the
-macro path's existing lenient behavior by adapting it, not by weakening the
-primitive. No socket, no bridge, no protocol.
-*Exit:* macro tests pass unchanged; revision-source tests cover every mutation
-path; the transaction primitive rejects a batch containing one invalid range
-without mutating the document.
+`MacroCommandBridge`; keep `maru.*` observably identical except for the one
+carve-out §3 decides: a macro that inserts CR now gets LF. Add process-lifetime
+`documentId` / `editorId` / `windowId`. Add the three revision counters of §6.1
+and the single mutation-notification boundary, auditing every existing path that
+mutates `Document` — `textDidChange`, `batchReplace`, undo snapshot restore,
+reload, encoding change, direct assignment. Run a **separate selection-boundary
+audit**: programmatic `setSelections` deliberately bypasses the AppKit selection
+callback that user edits arrive through, so a counter wired only to
+`textViewDidChangeSelection` would miss every macro and agent selection change,
+while a counter wired naively would also count the duplicate assignment
+`batchReplace` makes after rehighlighting. Introduce the **pre-mutation
+canonicalizer** of §3 and route every ingress in that table through it. Build the
+**validated transaction primitive** underneath both adapters: bounds and overlap
+rejection before any mutation, one undo snapshot, caller-supplied undo label,
+typed result. Keep the macro path's existing lenient overlap behavior by adapting
+it, not by weakening the primitive. Define the `Sendable` snapshot and result
+DTOs the off-main workers will use, forbid `Document`, controller, and AppKit
+references in worker closures, and build the new targets under strict
+concurrency checking — `Document` is `@unchecked Sendable` and owns an
+`NSTextStorage`, so the compiler will not catch that mistake for us. No socket,
+no bridge, no protocol.
+*Exit:* macro tests pass unchanged apart from the documented CR carve-out;
+revision-source tests cover every text and selection mutation path and every row
+of §6.1's event table; a CR inserted through every row of §3's ingress table is
+normalized; the transaction primitive rejects a batch containing one invalid
+range without mutating the document.
 
 **Phase 1 — Read-only MCP.**
 Measure which MCP revision each target client sends (§4.2) and record it here.
@@ -868,10 +986,10 @@ Bounded anchor minting and digest validation; `apply_edits` with strict snapshot
 semantics on both revision counters, atomic application, the two distinguishable
 conflict reports of §5.3, undo labelling, LF enforcement, and edit-time encoding
 representability checks; `set_selection` and `reveal` with selection revisions;
-`save_document` preflight plus the §6.5 commit protocol, including a
-`markSaved`-equivalent that records the snapshot actually written rather than
-whatever the buffer holds when the write returns; review mode, immutable
-proposals, and the diff banner.
+`save_document` preflight plus the §6.5 commit protocol, including the
+three-value split and a `markSaved`-equivalent that records `sourceSnapshot`
+rather than whatever the buffer holds when the write returns; bounded anchor
+minting per §5.2; review mode, immutable proposals, and the diff banner.
 *Exit:* an agent edits a dirty Shift_JIS CRLF document while a human types in
 it, and neither loses work; a proposal accepted after the human typed is
 reported `conflicted` rather than applied.
@@ -923,12 +1041,27 @@ oversized frames, invalid tokens, stale sockets):
 - **Save-race tests.** Text changed during the off-main prepare step fails at
   revalidation with nothing written. Text changed during the write itself leaves
   the document dirty, with disk identity refreshed and the saved baseline equal
-  to the bytes actually written — never to the newer buffer.
+  to `sourceSnapshot` — never to the newer buffer. A document whose save policy
+  rewrote its text on the way out is still reported clean, matching today's
+  behavior.
 - **Metadata-precondition tests.** An encoding, BOM, or line-ending change with
   no text change invalidates a pending proposal and a stale `apply_edits`.
-- **Ingress normalization tests.** A CR arriving through the initializer, a
-  template, `maru.document.setText`, the transaction primitive, paste, drop, and
-  recovery restore is normalized; `read_document` never returns a CR.
+- **Ingress normalization tests.** One test per row of §3's ingress table — the
+  initializer, recovery restore, new-from-template, the Insert Template command,
+  `maru.document.setText`, multi-cursor and box paste, the conversion pipeline,
+  typing, standard paste, IME commit, text drop, Find/Replace and Replace All,
+  external-command output, and the generated grep-result document. Each stores
+  LF; `read_document` never returns a CR.
+- **Conflict precedence tests.** A call that violates two preconditions at once
+  reports the §5.3 outcome with the higher precedence, and a metadata-only
+  conflict does not force a re-read.
+- **Era transcript tests.** For each supported era, golden transcripts for
+  success, tool failure, cancellation, list invalidation, and document-content
+  update — including that a modern-era failure carries both
+  `resultType: "complete"` and `isError: true`.
+- **Anchor bound tests.** Minting past the per-client quota evicts oldest-first;
+  an anchor does not survive a text revision change or document close;
+  `withAnchors` and `anchorRanges` together are rejected.
 - **Enumeration-scope tests.** Documents outside the grant appear in no listing,
   and the response does not reveal that anything was hidden.
 - **Modal-freedom test.** No agent-initiated path reaches `runModal()`; asserted
@@ -983,9 +1116,11 @@ upstream.
   affinity, overlap semantics, lifetime, and memory bounds, and relates to
   ADR-007's finding that stale-anchor handling is the hard part of position
   tracking.
-- **OQ-3 — Grant inheritance.** Does a grant cover documents opened after it was
-  made? Inheriting is convenient and quietly enormous; not inheriting means an
-  approval sheet per file.
+- **OQ-3 — Persistent-grant inheritance.** Does a *persistent* grant, once OQ-1
+  exists, cover documents opened in a later session? This does not reopen the
+  Phase 1 rule in §8.1(4), which is already decided: a live grant covers what was
+  open when it was made plus what the human opens while the indicator shows the
+  client connected.
 - **OQ-4 — Large documents.** What is the read budget, and does the answer need
   chunking beyond line ranges plus outline plus search?
 - **OQ-5 — Proposal expiry.** How long may a pending proposal sit before it is
@@ -996,15 +1131,15 @@ upstream.
   that will call?
 - **OQ-7 — Streamable HTTP.** Does a containerised or remote agent ever need to
   reach MaruEdit? If yes, the answer is a separate ADR, not a flag.
-- **OQ-8 — Macro CR compatibility.** Making LF a model invariant changes what
-  `maru.document.setText("a\r\nb")` does today, which collides with Phase 0's
-  "observably identical" rule. Normalize and document the change, keep CR only
-  on the macro path and accept that the buffer invariant has an exception, or
-  reject CR from macros with an error? The first is the honest default; it needs
-  a call before Phase 0 lands.
-- **OQ-9 — Regex bounding.** Which of the three options in §6.4 does MaruEdit
+- **OQ-8 — Regex bounding.** Which of the three options in §6.4 does MaruEdit
   take, and does a killable helper process justify its complexity for a text
-  editor's search?
+  editor's search? This gates regex search in Phase 3, not Phase 0 or 1.
+
+Resolved while writing this revision, and recorded here so the reasoning is not
+lost: whether macros may keep inserting CR once LF becomes a model invariant.
+They may not — §3 normalizes at every ingress and carves the macro behavior
+change out of Phase 0's "observably identical" rule, because a buffer invariant
+with one exception is not an invariant.
 
 ---
 
