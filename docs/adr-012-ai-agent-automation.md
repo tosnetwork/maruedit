@@ -369,6 +369,15 @@ consequence concrete.
   client-supplied name are shown as *display only*, clearly labelled as
   unverified. Unapproved connections are rate-limited so that a loop cannot spam
   approval UI.
+- **Approval never blocks a call** (R17). The private `control.hello` returns
+  `authorization.pending` immediately, and every MCP tool call from an
+  unapproved connection returns a retryable tool error naming that state and how
+  long to wait. Modern MCP has no handshake in which to park an indefinite wait —
+  every request is self-describing — so a bridge that held the first request
+  until a human clicked would look like a hung server. Dismissing the sheet is a
+  denial: the connection is told `authorization.denied` and closed. A client that
+  disconnects while the sheet is open cancels it, and reconnecting starts a fresh
+  approval rather than resuming the old one.
 - Persistent, per-agent grants require an explicit pairing step that issues a
   distinct credential per agent configuration — the agent stores it in its own
   MCP server config, and it is revocable individually. Designing that is
@@ -399,7 +408,7 @@ table in the bridge, tested by transcript:
 | cancellation (client → server) | `notifications/cancelled` for the request id | `notifications/cancelled` for the request id |
 | cancellation (server behavior) | abandon the in-flight call; ADR-011 §8.5's rules on what is and is not revocable apply unchanged | same |
 | tool list invalidation | `notifications/tools/list_changed`, delivered on a `subscriptions/listen` stream the client opened with `toolsListChanged` | `notifications/tools/list_changed` on the connection |
-| document content change | `notifications/resources/updated` for the document's resource URI, delivered on a `subscriptions/listen` stream opened with `resourceSubscriptions` | `resources/subscribe` per URI, then `notifications/resources/updated` |
+| document content change | `notifications/resources/updated` for the document's resource URI (§5.5), delivered on a `subscriptions/listen` stream opened with `resourceSubscriptions` | `resources/subscribe` on that URI, then `notifications/resources/updated` |
 | list caching | `ttlMs` / `cacheScope` on every list result | omitted |
 
 Two mistakes are easy to make here and both were made in an earlier draft of
@@ -610,6 +619,17 @@ Semantics, each one traceable to a failure mode in §1.1:
   existing `batchReplace` silently drops out-of-bounds ranges, merges overlaps,
   and hard-codes its undo action name, so it cannot back this contract (§9,
   Phase 0).
+
+  It also requires deciding who *owns* that undo entry. Split panes hold
+  separate `NSTextStorage` instances and undo is registered on the initiating
+  text view, so a document shown in two panes has two undo histories and ⌘Z
+  after an agent edit would depend on which pane has focus. Phase 2 resolves
+  this one of two ways, and must pick before it ships: route undo and redo for
+  every pane showing a document through one coordinated per-document history,
+  or — if that proves too invasive for the current architecture — **refuse agent
+  writes to a document displayed in more than one pane**, with a structured
+  `document.multiple_panes` error. Shipping "one ⌘Z" while it silently means
+  "one ⌘Z in whichever pane you were last in" is the worse option than refusing.
 - **Encoding is enforced at edit time.** If inserted text contains characters
   not representable in the document's encoding, the call fails with
   `encoding.unrepresentable` listing the offending scalars, rather than
@@ -617,9 +637,18 @@ Semantics, each one traceable to a failure mode in §1.1:
 - **`mode`** is `apply` or `review`, bounded by the client's grant. `review`
   returns immediately with `{ "status": "pending", "proposalId": "prp_2b" }` and
   never blocks the tool call while a human decides (R17).
-- **`idempotencyKey`** is optional but recommended: a repeated call with the same
-  key returns the original outcome instead of creating a second proposal or a
-  second edit.
+- **`idempotencyKey`** is optional but recommended: a repeated call with the
+  same key returns the original outcome instead of creating a second proposal or
+  a second edit. The record is keyed by *(connection, tool name, key)* and
+  stores a canonical digest of the arguments. Reusing a key with different
+  arguments is refused with `idempotency.mismatch` rather than silently
+  returning someone else's result. Conflict outcomes are cached alongside
+  successes, so a blind retry after a conflict returns the same conflict instead
+  of re-running the validation. Records are bounded — 64 per connection, evicted
+  oldest-first, and dropped after 10 minutes — and, because Phase 1 has no
+  persistent identity (§4.3), **deduplication does not survive a reconnect**. An
+  agent that loses a response and reconnects must re-read and decide for itself,
+  which is safe precisely because writes are revision-gated.
 
 **`review_status`** — read-only. `{ proposalId }` → `pending` / `applied` /
 `rejected` / `conflicted` / `expired`, with the resulting revision when applied.
@@ -701,6 +730,26 @@ MaruEdit's curated external commands run with full user authority, and routing
 them through an automation grant makes the audit trail ambiguous about which
 process caused a subprocess to run. They are deferred and intentionally
 unsupported by this profile, not judged capability-equivalent.
+
+### 5.5 Resources
+
+Resource notifications need something to name. Phases 1 through 3 expose no MCP
+resources at all — the tools are self-sufficient and a second way to read the
+same text is a second thing to keep consistent. Phase 4, which introduces change
+notification, adds exactly enough to make subscription meaningful:
+
+- A document's resource URI is `maruedit://document/<documentId>` — opaque,
+  process-lifetime-scoped like every other handle, and returned by
+  `list_documents` so a client never has to construct one.
+- `resources/list` enumerates the caller's granted documents, and
+  `resources/read` returns the same authoritative buffer text `read_document`
+  would, with the same revisions in `_meta`.
+- An update notification carries only the URI. It is an invalidation hint, not a
+  payload: the client re-reads to get text and revision together, which is the
+  only way it can be sure the two agree.
+
+Without this, the notification rows in §5's table name a URI that does not
+exist, and no client could subscribe to anything.
 
 ---
 
@@ -851,14 +900,24 @@ The commit protocol is normative:
 2. **Prepare, off the main actor.** Policy transformation, line-ending
    application, encoding, and representability checking run against the plan,
    never against the live document, producing `serializedBytes`.
-3. **Revalidate, on the main actor.** Both revisions and `diskBaseline` must
-   still match. If either moved, the save fails with the matching conflict from
-   §5.3 and nothing is written. This is the last cancellation point.
+3. **Revalidate and fence, on the main actor.** Both revisions and
+   `diskBaseline` must still match. If either moved, the save fails with the
+   matching conflict from §5.3 and nothing is written. This is the last
+   cancellation point. In the same transaction, reserve a **per-document save
+   generation**: while it is held, any other save of that document — a second
+   agent, the human's ⌘S, or Save As — is refused with `save.in_progress`
+   rather than queued, because a queue would hide the ordering question instead
+   of answering it. Typing is never refused. Releasing the main actor for step 4
+   is precisely what makes this fence necessary; today's synchronous save avoids
+   the race only by never yielding.
 4. **Commit, off the main actor.** Backup creation and rotation run first — they
    copy the previous file and may delete an older backup, so the irreversible
    point begins *there*, not at the destination write — followed by the existing
    atomic write.
-5. **Finalize, on the main actor, in one transaction.** Record `sourceSnapshot`
+5. **Finalize, on the main actor, in one transaction.** Verify the save
+   generation is still the one this commit reserved and that the target URL has
+   not changed — a Save As that slipped through would otherwise let a stale
+   finalizer stamp identity from the wrong file. Then record `sourceSnapshot`
    as the saved baseline, refresh file identity, modification date, and
    permissions from what was written, bump `metadataRevision`, and recompute
    dirty state by comparing the live buffer against `sourceSnapshot`. If the
@@ -961,13 +1020,17 @@ ADR-011 §9 and §16 carry over in full and are not restated here.
    over everything now and in the future is a different and much larger grant
    than it appears.
 
-   Phase 1's default is deliberately the narrow one: a grant covers the
-   documents open at the moment it was made, plus any document the human
-   subsequently opens **while that client is connected and the indicator shows
-   it**, which the human can turn off in the indicator. Documents outside the
-   grant are omitted from enumeration entirely (§5.1). OQ-3 covers whether a
-   persistent grant may inherit more than that; it cannot be answered before
-   OQ-1.
+   **A grant freezes at approval.** It covers exactly the documents open when
+   the human approved it. A document opened afterwards is not covered, is
+   omitted from enumeration, and needs its own approval — because the alternative
+   silently converts "you may read what I have open" into "you may read anything
+   I open later", which is how an unrelated secret ends up in an agent's context
+   because someone opened a file. That inheritance is available as a separate,
+   conspicuously labelled *"include documents I open while this client is
+   connected"* switch in the connected-client indicator, **default off**, and it
+   lapses when the connection ends. Documents outside the grant are omitted from
+   enumeration entirely (§5.1). OQ-3 covers whether a persistent grant may
+   inherit more than that; it cannot be answered before OQ-1.
 5. **Writer lease and External Commands** are removed from this profile (§6.2,
    §5.4).
 6. **No modal UI** may be reached from any agent-initiated call (R17), which
@@ -1018,7 +1081,13 @@ audit**: programmatic `setSelections` deliberately bypasses the AppKit selection
 callback that user edits arrive through, so a counter wired only to
 `textViewDidChangeSelection` would miss every macro and agent selection change,
 while a counter wired naively would also count the duplicate assignment
-`batchReplace` makes after rehighlighting. Introduce the **pre-mutation
+`batchReplace` makes after rehighlighting. The audit must also cover
+`synchronizeSharedDocumentState()`, which clamps `textView.selectedRanges`
+directly after replacing a pane's storage: it can move the visible selection
+while leaving the `SelectionSet` that the macro bridge reads stale, so a
+selection counter attached only to the documented paths would miss a real
+change. One selection-mutation boundary updates `SelectionSet`, the AppKit
+selection, and `selectionRevision` exactly once. Introduce the **pre-mutation
 canonicalizer** of §3 and route every ingress in that table through it,
 including the value-backed rewrite of Insert Control Code that §3 requires.
 Introduce the **effective-writability predicate** of §5.3.1 so that read-only
@@ -1075,10 +1144,11 @@ snapshot semantics on both revision counters, atomic application, the **three**
 ordered conflict outcomes of §5.3, the non-writable document states of §5.3.1,
 undo labelling, LF enforcement, and edit-time encoding representability checks;
 `set_selection` and `reveal` with selection revisions; `save_document` preflight
-plus the §6.5 commit protocol, including the three-value split, a
-`markSaved`-equivalent that records `sourceSnapshot` rather than whatever the
-buffer holds when the write returns, and format-dirty preservation; review mode,
-immutable proposals, and the diff banner.
+plus the §6.5 commit protocol, including the three-value split, the per-document
+save fence, a `markSaved`-equivalent that records `sourceSnapshot` rather than
+whatever the buffer holds when the write returns, and format-dirty preservation;
+the split-pane undo decision of §5.3, taken and implemented before any write
+ships; review mode, immutable proposals, and the diff banner.
 *Exit:* an agent edits a dirty Shift_JIS CRLF document while a human types in
 it, and neither loses work; a proposal accepted after the human typed is
 reported `conflicted` rather than applied.
@@ -1091,8 +1161,9 @@ regular-expression search once §6.4's bounding problem has an answer.
 no folder-scoped search escapes its authorized root through a symlink.
 
 **Phase 4 — Change awareness.**
-Coalesced document-change events carrying revisions, so a long-lived agent can
-invalidate its cache instead of re-reading (P8). Delivery follows §5's era table
+The §5.5 resource surface — document URIs, `resources/list`, `resources/read` —
+followed by coalesced document-change events carrying revisions, so a long-lived
+agent can invalidate its cache instead of re-reading (P8). Delivery follows §5's era table
 exactly: content changes are `notifications/resources/updated` in **both** eras,
 established through `subscriptions/listen` with `resourceSubscriptions` in the
 modern era and through `resources/subscribe` per URI in the legacy one.
@@ -1177,7 +1248,20 @@ oversized frames, invalid tokens, stale sockets):
 - **Undo tests.** One tool call is one ⌘Z; review rejection restores exactly.
 - **Authorization tests.** Grants revoked mid-call take effect on the in-flight
   call; an unapproved connection cannot spam approval UI; a second bridge process
-  gets its own approval rather than inheriting the first one's grant.
+  gets its own approval rather than inheriting the first one's grant; a tool call
+  from an unapproved connection returns promptly with a retryable error rather
+  than waiting on the sheet; a document opened after approval is invisible until
+  the human either approves it or turns on the opt-in inheritance switch.
+- **Save fence tests.** A second save of the same document during an in-flight
+  commit is refused with `save.in_progress`; a Save As during the fence cannot
+  make a stale finalizer stamp identity from the wrong file; typing during the
+  fence is never refused.
+- **Undo ownership tests.** After an agent edit, ⌘Z produces the same result in
+  every pane showing that document — or, if the refusal route was taken, the
+  write was refused with `document.multiple_panes` before mutating anything.
+- **Idempotency tests.** The same key with different arguments is refused; a
+  cached conflict is returned rather than re-validated; records expire; a
+  reconnect does not inherit them.
 - **Token-cost regression.** A fixed task on a fixed large document has a
   recorded byte budget for the tool results it returns.
 
