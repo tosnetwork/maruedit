@@ -56,8 +56,9 @@ the newer state. Nothing in the filesystem tells it not to.
 **MCP** (Model Context Protocol) is the agent → tool direction. The current
 revision is **2026-07-28**, and it is a substantial redesign: the
 `initialize`/`initialized` handshake is gone, protocol-level sessions and
-`Mcp-Session-Id` are gone, every request carries its version and client
-identity in `_meta`, servers implement `server/discover`, list results carry
+`Mcp-Session-Id` are gone, every request carries its protocol version in
+`_meta` and *should* carry client identity there, servers identify themselves in
+each result's `_meta`, servers implement `server/discover`, list results carry
 `ttlMs`/`cacheScope`, and servers that need cross-call state are told to mint
 explicit handles and accept them as ordinary tool arguments. Server-initiated
 requests (elicitation, sampling, roots) were replaced by Multi Round-Trip
@@ -350,12 +351,20 @@ conformance:
 - **Modern adapter.** Protocol version and client capabilities arrive in
   `_meta` on *every* request and must be read from the request being served.
   Inheriting them from an earlier request is not an optimization, it is a
-  conformance bug — and client identity there is self-reported, so it is display
-  material, never an authorization input (§4.3).
+  conformance bug. `clientInfo` is only SHOULD, so a request without it is
+  conforming and must be served — the indicator shows "unidentified MCP client"
+  rather than refusing; malformed identity is rejected, absent identity is not.
+  Either way it is self-reported display material, never an authorization input
+  (§4.3). The adapter stamps `io.modelcontextprotocol/serverInfo` on every
+  result.
 
 This also corrects a claim in the first draft of this ADR: the bridge is **not**
 stateless. It holds per-connection state — the selected era, in-flight request
-ids, transport authorization, anchors, and rate-limit accounting. What it holds no state of is *business* state —
+ids, transport authorization, and rate-limit accounting. It does **not** hold
+anchors: MaruEdit mints, validates, and evicts them, keyed by the app-issued
+connection identity, and the bridge relays opaque handles only. Anything else
+would put quota enforcement and disconnect cleanup on the side of the boundary
+that cannot see the document. What it holds no state of is *business* state —
 documents, revisions, anchors, and proposals live in MaruEdit, and every handle
 MaruEdit mints (`documentId`, `editorId`, `anchorId`, `proposalId`) travels back
 as an ordinary tool argument, opaque and re-authorized on every call.
@@ -376,10 +385,14 @@ consequence concrete.
   *same user* and nothing more, and is treated as a precondition rather than an
   authorization.
 - **Phase 1 authorizes per connection, with no persistent identity.** A new
-  connection raises a native approval sheet; the executable path, pid, and any
-  client-supplied name are shown as *display only*, clearly labelled as
-  unverified. Unapproved connections are rate-limited so that a loop cannot spam
-  approval UI.
+  connection raises a request the human answers **in a non-modal surface** — the
+  connected-client indicator gains a pending entry, and opening it shows the
+  executable path, pid, and any client-supplied name as *display only*, clearly
+  labelled as unverified. It is deliberately not a sheet: an AppKit sheet is
+  window-modal and would stop the human editing in that window, which R9 forbids
+  and which would let a background agent's connection attempt interrupt someone
+  mid-sentence. Unapproved connections are rate-limited so that a loop cannot
+  flood the indicator.
 - **Approval never blocks a call** (R17). The private `control.hello` returns
   `authorization.pending` immediately, and every MCP tool call from an
   unapproved connection returns a retryable tool error naming that state and how
@@ -460,18 +473,35 @@ unstated choice here is an off-by-one in every client.
   "documents": [
     { "documentId": "doc_7f3a", "displayName": "notes.txt",
       "path": "/Users/x/notes.txt",
-      "dirty": true, "revision": 412, "metadataRevision": 7,
+      "bufferState": "dirty", "backingFileState": "unchanged",
+      "observedAt": "2026-08-22T09:15:04Z",
+      "revision": 412, "metadataRevision": 7,
       "lines": 1840, "utf16Length": 96431,
       "encoding": "Shift_JIS", "lineEnding": "CRLF", "bom": false,
-      "diskState": "divergent",
+      "editable": true, "savableInPlace": true, "saveAsRequired": false,
       "editorIds": ["ed_1a", "ed_1b"] }
   ]
 }
 ```
 
-`diskState` is one of `clean`, `divergent`, `missing`, `externallyChanged`. It
-is how an agent learns that reading the path with its own filesystem tool would
-give it the wrong text (P2).
+Buffer state and backing-file state are **independent fields**, because they are
+independent facts: a document can be dirty *and* externally modified at once, and
+a single collapsed enum forces an implementer to invent a precedence rule.
+
+- `bufferState`: `clean` | `dirty`
+- `backingFileState`: `unchanged` | `modified` | `missing` | `unknown`
+- `observedAt`: when `backingFileState` was determined
+
+`unknown` is not a hedge, it is the honest answer most of the time. The existing
+detector is revalidation-only — it runs on window focus and before save, and its
+result is presented to the human immediately rather than stored — so the model
+has no continuously accurate answer to hand back. `list_documents` performs a
+fresh off-main revalidation for granted documents and stamps `observedAt`;
+observing an external change must never update the saved disk baseline as a side
+effect, or the next real save would compare against the wrong thing.
+
+Together these are how an agent learns that reading the path with its own
+filesystem tool would give it the wrong text (P2).
 
 Note what is *not* here: a selection. Selection belongs to an editor pane, not
 to a document — `MainWindowController` can hold a `secondaryEditorVC` whose
@@ -518,7 +548,7 @@ leaking.
 // ← structuredContent
 {
   "documentId": "doc_7f3a", "revision": 412, "metadataRevision": 7,
-  "dirty": true, "encoding": "Shift_JIS", "lineEnding": "CRLF",
+  "bufferState": "dirty", "encoding": "Shift_JIS", "lineEnding": "CRLF",
   "startLine": 200, "endLine": 260, "totalLines": 1840,
   "startOffset": 8123, "endOffset": 11004,
   "truncated": false,
@@ -601,10 +631,22 @@ Semantics, each one traceable to a failure mode in §1.1:
   at the revision that minted it. Its value over a raw offset is that the agent
   proves it is editing the region it read by echoing a 32-byte digest instead of
   a paragraph of text (P8).
-- **Atomic.** Edits are validated as a set — bounds, overlap, digests, encoding
-  representability — and then applied in one transaction. Any failure fails the
-  entire call and mutates nothing (R6). Overlapping edits are rejected, not
-  merged.
+- **Atomic, and atomic about more than text.** Edits are validated as a set —
+  bounds, overlap, digests, encoding representability — and then applied in one
+  transaction. Any failure fails the entire call and mutates nothing (R6).
+  Overlapping edits are rejected, not merged.
+
+  "Nothing" has to include the editor's offset-based state. A document carries
+  bookmarks, color markers, edit marks, folds, the line index, selections, and
+  highlight ranges, all addressed by offsets that an edit invalidates. Today
+  these are handled unevenly: `batchReplace` transforms some of them, its undo
+  snapshot restores bookmarks and color markers but not edit marks, and ordinary
+  typing normalizes several sets after the fact. The transaction primitive must
+  state, for every one of those sets, whether an edit transforms it or
+  invalidates it, and its undo must restore exactly what it changed. The
+  atomicity test compares that state too, not just text and undo depth —
+  otherwise a "failed" batch can leave a document whose text is intact and whose
+  bookmarks are not.
 - **Teaching failures, without lying about what is knowable.** Three outcomes
   are distinguishable, and when more than one precondition fails they are
   reported in this precedence order:
@@ -689,9 +731,14 @@ the other and the opened document is invisible to its own caller. The normative
 policy:
 
 - The path must resolve inside a directory root the human authorized for this
-  connection — the same roots that gate folder search — canonicalized, with
-  symlinks resolved and containment re-checked afterwards. Without such a root,
-  the tool is unavailable rather than permissive.
+  connection — the same roots that gate folder search. Without such a root, the
+  tool is unavailable rather than permissive.
+- **Canonicalizing a URL is not the security boundary.** A path component can be
+  replaced between the check and the open, so containment must be enforced by
+  descriptor-relative traversal from an opened root descriptor, refusing
+  symlinks at every component with `O_NOFOLLOW`, and verifying the final file's
+  identity and type before use. String comparison after `resolvingSymlinksInPath`
+  passes a review and loses a race.
 - Opening routes through the normal document lifecycle, so encoding detection,
   profile resolution, and large-file mode behave exactly as they do for a human.
 - A successfully opened document joins the caller's grant, for that document
@@ -764,10 +811,10 @@ MaruEdit should sell (R14).
 
 One honest exception, and not before Phase 3: `search_documents` with a folder
 scope *is* a filesystem read primitive. It is bounded rather than general — an explicitly authorized
-root, canonicalized, containment re-checked after symlink resolution, symlinks
-not followed by default, and a hard cap on matches and bytes returned — and it
-is described that way in the approval sheet rather than hidden behind the
-phrase "search".
+root, entered through a descriptor-relative traversal that refuses symlinked
+components rather than a canonicalized string comparison (§5.3), with a hard cap
+on matches and bytes returned — and it is described that way in the approval
+surface rather than hidden behind the phrase "search".
 
 `external.*` commands stay unreachable in v1. The reason is not that agents
 already have shell access — a sandboxed or remote agent may not — but that
@@ -1116,11 +1163,22 @@ ADR-011 §9 and §16 carry over in full and are not restated here.
 7. **Public wire protocol.** ADR-011 §7 lists "MCP server" among its explicit v1
    exclusions; this profile reverses that for the public surface, which is now
    MCP and nothing else. ADR-011's `control.hello` handshake, request/response
-   envelopes, notification and cancellation frames, method catalog (§6), and
-   two-dimensional version negotiation (§11) now describe **only the private
-   bridge↔app channel**, where they remain normative and where `control.hello`
-   is still the first frame on every connection. They no longer describe
-   anything an agent sees.
+   envelopes, notification and cancellation frames, and two-dimensional version
+   negotiation (§11) now describe **only the private bridge↔app channel**, where
+   they remain normative and where `control.hello` is still the first frame on
+   every connection. They no longer describe anything an agent sees.
+
+   ADR-011's **method catalog (§6) is superseded outright**, on the private
+   channel too. It has no representation for ranged reads, anchors, edit
+   transactions, metadata preconditions, proposals, outline or search, structured
+   save preflight, the fenced commit, or idempotency — that is, for most of what
+   this profile does. Claiming it stayed normative while Phase 1 also specified a
+   new internal protocol was a contradiction. The private channel carries a
+   single versioned `agent.call` envelope wrapping a typed internal request and
+   outcome, so the internal operation set tracks the tool catalog without a
+   second protocol negotiation, and that envelope carries the connection
+   identity, grant generation, cancellation token, and error mapping the tools
+   depend on.
 8. **Actor boundary.** ADR-011 §8.1 places target resolution before main-actor
    dispatch. This profile puts target resolution *on* the main actor (§6.4),
    because resolving a `documentId` or `editorId` means reading live controller
@@ -1133,7 +1191,8 @@ ADR-011 §9 and §16 carry over in full and are not restated here.
 `documents.read`, `documents.write`, `documents.open`, `documents.save`,
 `selection.read`, `selection.write`, `search.folder`, `commands.run`,
 `clipboard.read`, `clipboard.write` — each scoped per §8.1(4), each revocable
-individually in Settings, each surfaced in plain language in the approval sheet.
+individually in Settings, each surfaced in plain language when approval is
+requested.
 
 ### 8.3 Residual risk
 
@@ -1196,8 +1255,8 @@ Specify the bridge↔app internal protocol — request ids, cancellation, error
 model, caller credential propagation, reconnect — with framing and fuzz tests,
 and generate the bridge's static tool catalog from the same schema source as the
 app so the two cannot drift. Implement the socket, token file, peer-credential
-check, per-connection approval sheet, rate limiting, status-bar indicator, and
-audit log. Ship `list_documents`, `list_editors`, `read_document`, `get_outline`,
+check, the non-modal per-connection approval surface, rate limiting, the
+connected-client indicator, and the audit log. Ship `list_documents`, `list_editors`, `read_document`, `get_outline`,
 `search_documents` (literal, open buffers only), and `get_selection`, all
 executing off-main with bounds and all filtered to the caller's grant.
 *Exit:* `claude mcp add maruedit -- …`, the equivalent Codex `config.toml` block,
@@ -1401,9 +1460,10 @@ upstream.
   tracking.
 - **OQ-3 — Persistent-grant inheritance.** Does a *persistent* grant, once OQ-1
   exists, cover documents opened in a later session? This does not reopen the
-  Phase 1 rule in §8.1(4), which is already decided: a live grant covers what was
-  open when it was made plus what the human opens while the indicator shows the
-  client connected.
+  Phase 1 rule in §8.1(4), which is already decided: a grant **freezes at
+  approval** and covers only the documents open at that moment. Later-opened
+  documents are excluded unless the human turns on the per-connection
+  inheritance switch, which is default off and lapses with the connection.
 - **OQ-4 — Large documents.** What is the read budget, and does the answer need
   chunking beyond line ranges plus outline plus search?
 - **OQ-5 — ~~Proposal expiry~~.** Resolved in §7.1: 10 minutes, no notification;
