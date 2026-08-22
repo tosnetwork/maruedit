@@ -6,6 +6,12 @@ semantic version tags.
 
 ## [Unreleased]
 
+### Release engineering
+
+- Moved the release workflow off the deprecated Node 20 action runtime:
+  `actions/checkout` now matches CI at v7, and `softprops/action-gh-release`
+  moves to v3, whose only change from v2 is the Node 24 runtime.
+
 ## [0.1.5] - 2026-08-22
 
 ### Changed
