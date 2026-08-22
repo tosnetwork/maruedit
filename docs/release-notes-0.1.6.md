@@ -44,25 +44,52 @@ build has no stable code signature, so agent credentials are kept in a file only
 your account can read; MaruEdit says so during pairing rather than implying
 more.
 
-The download requires macOS 13 or later. Verify the DMG against the attached
-SHA-256 file before installation.
+The download requires macOS 13 or later.
 
-## Unsigned preview
+## Verifying and opening this build
 
-This build is not yet signed with a Developer ID Application certificate or
-notarized by Apple. macOS may block its first launch. After copying MaruEdit to
-Applications, Control-click it, choose **Open**, and confirm only if you trust
-this repository. If it remains blocked, use **System Settings → Privacy &
-Security → Open Anyway**. As a last resort, after verifying the attached
-SHA-256 checksum, remove only MaruEdit's quarantine attribute:
+This build is signed ad-hoc and is not notarized by Apple, so macOS cannot tell
+you who built it. Two consequences follow, and they are separate:
+
+**1. Check what you downloaded.** The published SHA-256 is what stands in for a
+developer signature:
+
+```bash
+shasum -a 256 -c MaruEdit-0.1.6.dmg.sha256
+```
+
+Be clear about its limit: the DMG and the checksum come from the same GitHub
+release, so this catches a corrupted or truncated download, not a compromised
+release. If you need a stronger guarantee, rebuild from the tag —
+`docs/reproducible-releases.md` gives the procedure, including why a rebuilt
+binary's digest normally differs from the published one and what inputs have to
+match before a comparison means anything.
+
+**2. Let it open.** macOS quarantines anything downloaded from the internet and
+will refuse to launch a build it cannot attest. After copying MaruEdit to
+Applications, remove the quarantine attribute:
 
 ```bash
 xattr -dr com.apple.quarantine /Applications/MaruEdit.app
 ```
 
-The `-r` matters in this release: the app bundle now contains a second
-executable, the MCP bridge, and a non-recursive removal would leave it
-quarantined.
+The `-r` is required in this release. The bundle now contains a second
+executable — the MCP bridge — and a non-recursive removal leaves it
+quarantined, so the agent interface would fail to start while the editor
+appeared to work.
+
+Alternatively, launch it once, let macOS block it, then allow it under **System
+Settings → Privacy & Security → Open Anyway**. Recent macOS versions no longer
+offer the older Control-click → Open override for apps that fail notarization,
+so that route may not appear.
+
+`spctl --assess` reports `rejected` for this build either way, including after
+the quarantine attribute is removed. That is the absence of notarization, not a
+sign of a damaged download.
+
+Run these commands only if you trust this repository. Removing quarantine
+disables the only check macOS was performing, which is why the checksum step
+comes first.
 
 MaruEdit is an independent open-source project and is not affiliated with or
 endorsed by any commercial editor vendor. See `NOTICE.md` and `UPSTREAM.md` for
