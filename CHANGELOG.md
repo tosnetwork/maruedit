@@ -6,6 +6,28 @@ semantic version tags.
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-08-23
+
+### Fixed
+
+- Corrected the release verification guidance, which told readers to check a
+  download with `spctl --assess` and `stapler validate`. Both fail by design on
+  an unnotarized build — `spctl` reports `rejected` regardless of the
+  quarantine attribute — so following the documented steps looked like evidence
+  of tampering. `codesign --verify --deep --strict` is recommended instead,
+  with its actual guarantee stated.
+- The reproducibility procedure now covers the MCP bridge as well as the
+  application binary, takes the release tag as a variable rather than pinning
+  one that goes stale, and no longer assigns to `path` — a variable bound to
+  `PATH` in zsh, so running the documented commands left the shell unable to
+  find any command.
+- Digest comparison is presented as inconclusive across differing toolchains,
+  which is the expected result, rather than as a pass/fail check with the
+  caveat in a footnote.
+
+The application is functionally unchanged from 0.1.6; only version strings
+differ.
+
 ## [0.1.6] - 2026-08-23
 
 ### Added
