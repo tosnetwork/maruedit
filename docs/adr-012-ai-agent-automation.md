@@ -219,10 +219,23 @@ digests returned alongside it.
 *before* the mutation reaches text storage — not in `textDidChange`, which runs
 after offsets and undo state already reflect the unnormalized text. The MCP
 boundary is stricter: it *rejects* CR rather than normalizing it, so an agent is
-told its payload was wrong instead of having it silently rewritten. This makes
-one deliberate, documented change to macro behavior — `maru.document.setText`
-with a CRLF string now stores LF — which Phase 0's "observably identical" rule
-explicitly carves out rather than blocks on.
+told its payload was wrong instead of having it silently rewritten.
+
+That decision has **two** visible consequences, and both are deliberate:
+
+1. `maru.document.setText` with a CRLF string now stores LF. Phase 0's
+   "observably identical" rule carves this out rather than blocking on it.
+2. The Insert Control Code command currently offers `CR 0D` in its picker. A
+   buffer that cannot hold a CR cannot honestly offer to insert one, so that
+   entry is removed. The inconsistency already exists today: a file containing
+   lone CRs is normalized on load, so the code point survives typing but not a
+   round trip.
+
+The alternative — keeping CR insertion as an exception — was rejected because a
+buffer invariant with an exception is not an invariant, and every offset,
+digest, and anchor guarantee in this document rests on it. If the maintainer
+values the CR entry more than the invariant, that reverses this whole section,
+not just the picker.
 
 The ingress inventory Phase 0 must cover, from the current code:
 
@@ -309,9 +322,14 @@ Therefore:
   sends today — a one-evening exercise with a logging stub server and the three
   binaries — and records the result in this document.
 - The bridge implements **one complete era per connection**, selected on the
-  first frame (a `server/discover` or an `initialize` decides it). If two eras
-  must ship, they are two explicit adapters over one internal request model,
-  each with its own conformance transcript, not a set of conditionals.
+  first frame. Selection is by envelope, not by method name: a frame carrying
+  the modern protocol-version `_meta` selects the modern adapter whatever the
+  method is, and an `initialize` selects the legacy one. `server/discover` is
+  optional in the modern era — a conforming client may open with an ordinary
+  `tools/list` or `tools/call` — so an adapter that waits for discovery would
+  reject valid clients. If two eras must ship, they are two explicit adapters
+  over one internal request model, each with its own conformance transcript, not
+  a set of conditionals.
 - If the measurement shows all three clients on one era, MaruEdit ships that era
   alone and adds the second only when a real client needs it.
 
@@ -368,7 +386,7 @@ table in the bridge, tested by transcript:
 |---|---|---|
 | success | `resultType: "complete"` + `content` + `structuredContent` | same result body, no `resultType` |
 | tool failure | `resultType: "complete"` **and** `isError: true` | `isError: true` |
-| input required | `resultType: "input_required"` + `inputRequests`, resumed by a retry carrying `inputResponses` and `requestState` | not available; the tool returns a tool failure that tells the caller what to supply and to call again |
+| input required | `resultType: "input_required"` + `inputRequests`, resumed by a retry carrying `inputResponses` and `requestState` | the legacy era does have server-initiated `elicitation/create`; MaruEdit **chooses** not to use it and returns a tool failure naming what to supply, because R17 forbids a tool call that waits on a human — a design decision, not a protocol limitation |
 | cancellation (client → server) | `notifications/cancelled` for the request id | `notifications/cancelled` for the request id |
 | cancellation (server behavior) | abandon the in-flight call; ADR-011 §8.5's rules on what is and is not revocable apply unchanged | same |
 | tool list invalidation | `notifications/tools/list_changed`, delivered on a `subscriptions/listen` stream the client opened with `toolsListChanged` | `notifications/tools/list_changed` on the connection |
@@ -495,11 +513,14 @@ From Phase 2 the two request fields are **mutually exclusive**:
   document-relative, not response-relative, must lie inside the returned range,
   must not overlap, and are capped at **32 per call**.
 
-MaruEdit never mints an anchor per line on its own initiative. Each client holds
-at most **256 live anchors**; minting past that evicts the oldest. An anchor is
-invalidated by any text revision change and by document close, so an anchor set
-cannot outlive the snapshot that gave it meaning — which is also why no separate
-expiry timer is needed.
+MaruEdit never mints an anchor per line on its own initiative. Anchors are owned
+by the **connection**, not by a "client" — Phase 1 has no persistent client
+identity to hang them on (§4.3), and a self-declared agent name would make the
+quota spoofable. Each connection holds at most **256 live anchors**; minting
+past that evicts the oldest. An anchor is invalidated by any text revision
+change, by document close, and by the connection ending, so an anchor set cannot
+outlive the snapshot that gave it meaning and repeated reconnects cannot
+accumulate orphaned quota. No separate expiry timer is needed.
 
 Text is always the buffer, never disk (R1, R2), and always LF (R12). `revision`
 and `metadataRevision` are mandatory in the response because they are the
@@ -621,6 +642,23 @@ holds `commands.run`. Registering a command must never make it remotely
 invocable (unchanged from ADR-011 §9.7). Commands that can present modal UI are
 not eligible (R17).
 
+### 5.3.1 Documents this profile will not write
+
+Three document states are reported by `list_documents` as `writable: false` with
+a reason, and every write tool rejects them before any other validation:
+
+- **Binary mode.** A binary document's buffer holds a hex *rendering*, and
+  saving parses that rendering back through `BinaryDocumentCodec` rather than
+  the policy → line-ending → encoding pipeline that §6.5 describes. An agent
+  editing hex text through a text API is a corruption engine, so binary
+  documents are excluded from `apply_edits` and `save_document` in v1 and are
+  readable only.
+- **View mode** and **read-only**, which already disable editing in the app.
+- **Overwrite-prohibited**, which disallows the save even when the edit itself
+  would be fine.
+
+Excluding them is cheap; discovering them at commit time is not.
+
 ### 5.4 Deliberately absent
 
 No `read_file`, `write_file`, `list_directory`, `run_shell`,
@@ -663,10 +701,12 @@ and conflating them makes every precondition either too strict or useless:
 `metadataRevision`'s domain is enumerated rather than described, because "the
 metadata" is exactly the kind of phrase two engineers read differently:
 encoding, BOM presence, line-ending style, file identity and modification date,
-target URL, POSIX permissions, read-only state, the resolved file-type profile,
-and that profile's save policy. The last two matter more than they look — a
+target URL, POSIX permissions, read-only state, view-mode state,
+overwrite-prohibited state, binary-mode state, the resolved file-type profile,
+and that profile's save policy. The last one matters more than it looks — a
 profile change can replace the save policy, which rewrites text on the way to
-disk, without touching any field named earlier in that list.
+disk, without touching any field named earlier in that list. The three state
+flags matter because they decide whether an operation is admissible at all.
 
 | Event | `revision` | `selectionRevision` | `metadataRevision` |
 |---|---|---|---|
@@ -804,6 +844,16 @@ The commit protocol is normative:
    human typed during step 4, that comparison leaves the document **dirty**,
    which is correct: the newer text is genuinely unsaved. Today's `markSaved()`
    copies whatever `content` holds at completion and would claim the opposite.
+
+   Text is not the only thing that can change during step 4. The human can also
+   switch encoding, BOM, line ending, or file-type profile, and the document
+   tracks that separately as format dirtiness (`isFormatModified`). Finalization
+   must therefore keep the *live* metadata, record the plan's serialization
+   settings as what the file on disk actually reflects, and leave the document
+   **format-dirty** whenever a serialization-affecting value changed after
+   step 3. Clearing format dirtiness unconditionally — which today's
+   `markSaved()` also does — would report a document as saved in a form it was
+   never saved in.
 
 The saved baseline is `sourceSnapshot` rather than `serializedBytes` on purpose:
 it preserves the existing clean-state semantics, under which a document whose
@@ -978,18 +1028,22 @@ audit log. Ship `list_documents`, `list_editors`, `read_document`, `get_outline`
 executing off-main with bounds and all filtered to the caller's grant.
 *Exit:* `claude mcp add maruedit -- …`, the equivalent Codex `config.toml` block,
 and `openfox mcp add` each produce a working read-only integration with no
-MaruEdit-specific client code, and a full-document literal search on a 10 MB
-buffer does not measurably affect typing latency.
+MaruEdit-specific client code; and with a full-document literal search running
+against a 10 MB buffer, p99 keystroke-to-glyph latency measured on the existing
+input-latency signpost stays under **16 ms** and within **10%** of the same
+measurement with no client connected. `docs/performance.md` records no keystroke
+budget today, so this ADR sets one rather than leaving the exit untestable.
 
 **Phase 2 — Revision-gated writes.**
-Bounded anchor minting and digest validation; `apply_edits` with strict snapshot
-semantics on both revision counters, atomic application, the two distinguishable
-conflict reports of §5.3, undo labelling, LF enforcement, and edit-time encoding
-representability checks; `set_selection` and `reveal` with selection revisions;
-`save_document` preflight plus the §6.5 commit protocol, including the
-three-value split and a `markSaved`-equivalent that records `sourceSnapshot`
-rather than whatever the buffer holds when the write returns; bounded anchor
-minting per §5.2; review mode, immutable proposals, and the diff banner.
+Bounded anchor minting per §5.2 and digest validation; `apply_edits` with strict
+snapshot semantics on both revision counters, atomic application, the **three**
+ordered conflict outcomes of §5.3, the non-writable document states of §5.3.1,
+undo labelling, LF enforcement, and edit-time encoding representability checks;
+`set_selection` and `reveal` with selection revisions; `save_document` preflight
+plus the §6.5 commit protocol, including the three-value split, a
+`markSaved`-equivalent that records `sourceSnapshot` rather than whatever the
+buffer holds when the write returns, and format-dirty preservation; review mode,
+immutable proposals, and the diff banner.
 *Exit:* an agent edits a dirty Shift_JIS CRLF document while a human types in
 it, and neither loses work; a proposal accepted after the human typed is
 reported `conflicted` rather than applied.
@@ -1003,16 +1057,26 @@ no folder-scoped search escapes its authorized root through a symlink.
 
 **Phase 4 — Change awareness.**
 Coalesced document-change events carrying revisions, so a long-lived agent can
-invalidate its cache instead of re-reading (P8). The delivery mechanism is
-era-dependent per §5: `ttlMs` / `cacheScope` and `subscriptions/listen` exist
-only in the 2026-07-28 era. If Phase 1's measurement lands on the older era,
-this phase ships `listChanged` notifications plus a cheap `revision`-only poll
-tool instead, and the modern mechanism follows when a client needs it.
+invalidate its cache instead of re-reading (P8). Delivery follows §5's era table
+exactly: content changes are `notifications/resources/updated` in **both** eras,
+established through `subscriptions/listen` with `resourceSubscriptions` in the
+modern era and through `resources/subscribe` per URI in the legacy one.
+`ttlMs` / `cacheScope` apply to list results in the modern era only. A
+list-changed notification is never used to signal that a document's contents
+changed.
+*Exit:* a client that subscribes, receives a coalesced update, and re-reads
+converges on the same revision the app holds; golden transcripts exist for each
+supported era; a document closed while subscribed produces a clean unsubscribe
+rather than a dangling subscription.
 
 **Phase 5 — Persistent identity and second adapter.**
 The OQ-1 pairing design and persistent per-agent grants; sandbox/App Group
 decision; revocation and stale-socket regression tests; then evaluate ACP client
 mode (§11).
+*Exit:* a paired agent reconnects across an app restart without a new approval
+sheet while an unpaired one still gets one; revoking a pairing takes effect on
+an in-flight call; a stale socket left by a crashed instance is reclaimed only
+after ownership and object-type checks.
 
 ---
 
@@ -1028,7 +1092,9 @@ oversized frames, invalid tokens, stale sockets):
 - **Race tests.** A human edit interleaved between an agent's read and write
   must produce a conflict, never a lost keystroke; concurrent `apply_edits` from
   two clients must produce exactly one winner; a proposal accepted after an
-  intervening edit must report `conflicted`.
+  intervening edit must report `conflicted`; an encoding, BOM, line-ending, or
+  profile change made *during* the off-main write leaves the document
+  format-dirty rather than clean.
 - **Atomicity tests.** A batch whose third edit fails leaves the document
   byte-identical, including its undo stack.
 - **Encoding and line-ending fidelity.** Shift_JIS, EUC-JP, and UTF-8-with-BOM
