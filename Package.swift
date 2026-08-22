@@ -9,6 +9,7 @@ let package = Package(
         .target(
             name: "MaruEditCore",
             path: "Sources/MaruEditCore",
+            swiftSettings: [.enableExperimentalFeature("StrictConcurrency")],
             linkerSettings: [.linkedFramework("JavaScriptCore")]
         ),
         .executableTarget(

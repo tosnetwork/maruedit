@@ -1519,16 +1519,29 @@ final class MainWindowController: NSWindowController,
         editorVC.textView.insertText(name, replacementRange: editorVC.textView.selectedRange())
     }
 
+    /// Title and byte for every offered control code.
+    ///
+    /// The entries used to be a bare list whose *row index* was the byte, with
+    /// the last row special-cased as DEL. That made the display order and the
+    /// emitted value the same fact, so removing a row silently shifted every
+    /// code after it. They are pairs now, which is also what lets CR be dropped
+    /// safely: the buffer is LF-only (ADR-012 §3), so a picker cannot honestly
+    /// offer to insert a carriage return.
+    static let controlCodeChoices: [(title: String, value: UInt8)] = [
+        ("NUL  00", 0x00), ("SOH  01", 0x01), ("STX  02", 0x02), ("ETX  03", 0x03),
+        ("EOT  04", 0x04), ("ENQ  05", 0x05), ("ACK  06", 0x06), ("BEL  07", 0x07),
+        ("BS   08", 0x08), ("TAB  09", 0x09), ("LF   0A", 0x0A), ("VT   0B", 0x0B),
+        ("FF   0C", 0x0C), ("SO   0E", 0x0E), ("SI   0F", 0x0F),
+        ("DLE  10", 0x10), ("DC1  11", 0x11), ("DC2  12", 0x12), ("DC3  13", 0x13),
+        ("DC4  14", 0x14), ("NAK  15", 0x15), ("SYN  16", 0x16), ("ETB  17", 0x17),
+        ("CAN  18", 0x18), ("EM   19", 0x19), ("SUB  1A", 0x1A), ("ESC  1B", 0x1B),
+        ("FS   1C", 0x1C), ("GS   1D", 0x1D), ("RS   1E", 0x1E), ("US   1F", 0x1F),
+        ("DEL  7F", 0x7F),
+    ]
+
     func insertControlCode() {
-        let names = [
-            "NUL  00", "SOH  01", "STX  02", "ETX  03", "EOT  04", "ENQ  05", "ACK  06", "BEL  07",
-            "BS   08", "TAB  09", "LF   0A", "VT   0B", "FF   0C", "CR   0D", "SO   0E", "SI   0F",
-            "DLE  10", "DC1  11", "DC2  12", "DC3  13", "DC4  14", "NAK  15", "SYN  16", "ETB  17",
-            "CAN  18", "EM   19", "SUB  1A", "ESC  1B", "FS   1C", "GS   1D", "RS   1E", "US   1F",
-            "DEL  7F",
-        ]
         let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 180, height: 26))
-        popup.addItems(withTitles: names)
+        popup.addItems(withTitles: Self.controlCodeChoices.map(\.title))
         let alert = NSAlert()
         alert.messageText = AppLocalization.string("dialog.controlCode.title")
         alert.informativeText = AppLocalization.string("dialog.controlCode.explanation")
@@ -1536,13 +1549,18 @@ final class MainWindowController: NSWindowController,
         alert.addButton(withTitle: AppLocalization.string(.commonInsert))
         alert.addButton(withTitle: AppLocalization.string(.commonCancel))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
-        let value = popup.indexOfSelectedItem == 32 ? UInt8(0x7F) : UInt8(popup.indexOfSelectedItem)
-        _ = insertControlCode(value)
+        let index = popup.indexOfSelectedItem
+        guard Self.controlCodeChoices.indices.contains(index) else { return }
+        _ = insertControlCode(Self.controlCodeChoices[index].value)
     }
 
     @discardableResult
     func insertControlCode(_ value: UInt8) -> Bool {
-        guard value <= 0x1F || value == 0x7F, editorVC.textView.isEditable else { return false }
+        // 0x0D is refused rather than normalized: this command exists for byte
+        // precision, so silently inserting something else would be worse than
+        // saying no.
+        guard value != 0x0D, value <= 0x1F || value == 0x7F,
+              editorVC.textView.isEditable else { return false }
         guard let scalar = UnicodeScalar(Int(value)) else { return false }
         editorVC.textView.insertText(String(Character(scalar)), replacementRange: editorVC.textView.selectedRange())
         return true
@@ -2027,8 +2045,8 @@ final class MainWindowController: NSWindowController,
             scannedFiles: Set(pane.matches.map(\.url)).count,
             matchedFiles: Set(pane.matches.map(\.url)).count,
             matchCount: pane.matches.count)
-        let text = GrepResultFormatter.plainText(
-            matches: pane.matches, summary: summary, pattern: activeSearchQuery()?.pattern ?? "")
+        let text = TextCanonicalization.canonical(GrepResultFormatter.plainText(
+            matches: pane.matches, summary: summary, pattern: activeSearchQuery()?.pattern ?? ""))
         newDocument()
         curDoc?.content = text
         curDoc?.markModified()
@@ -3203,7 +3221,11 @@ final class MainWindowController: NSWindowController,
             secondaryEditorVC = secondary
             editorSplitView.addSubview(secondary.view)
         }
-        if diffTargetDocument == nil { secondaryEditorVC?.textView.isEditable = true }
+        if diffTargetDocument == nil {
+            // A read-only or view-mode document used to become editable in its
+            // second pane, defeating all three read-only sources at once.
+            secondaryEditorVC?.textView.isEditable = !(curDoc?.isEditingDisabled ?? false)
+        }
         editorSplitView.adjustSubviews()
     }
 

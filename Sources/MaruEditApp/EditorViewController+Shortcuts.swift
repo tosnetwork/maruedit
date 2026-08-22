@@ -374,19 +374,30 @@ extension EditorViewController {
         batchReplace(targetRanges, with: Array(repeating: text, count: targetRanges.count))
     }
 
+    /// Lenient adapter over the strict transaction primitive.
+    ///
+    /// Multi-cursor editing has always dropped ranges that no longer exist and
+    /// merged overlapping ones by letting the earliest supply the replacement
+    /// for the union. That behavior is load-bearing for a human dragging
+    /// cursors around, and macros depend on it, so it is preserved here — in
+    /// the adapter — rather than by weakening the primitive that automation
+    /// needs to be strict.
     func batchReplace(_ targetRanges: [NSRange], with replacements: [String]) {
-        guard let ts = textView.textStorage else { return }
+        batchReplace(targetRanges, with: replacements, actionName: "Multiple Selection Edit")
+    }
+
+    func batchReplace(
+        _ targetRanges: [NSRange],
+        with replacements: [String],
+        actionName: String
+    ) {
+        guard let storage = textView.textStorage else { return }
         guard targetRanges.count == replacements.count else { return }
-        beginInputLatencySignpost()
-        defer { endInputLatencySignpost() }
-        if lineIndex.utf16Length != ts.length {
-            lineIndex = LineIndex(textView.string)
-        }
 
         var operations: [(range: NSRange, replacement: String)] = []
         for index in targetRanges.indices {
             let range = targetRanges[index]
-            guard range.location != NSNotFound, NSMaxRange(range) <= ts.length else { continue }
+            guard range.location != NSNotFound, NSMaxRange(range) <= storage.length else { continue }
             operations.append((range, replacements[index]))
         }
         operations.sort {
@@ -409,100 +420,11 @@ extension EditorViewController {
         }
         guard !merged.isEmpty else { return }
 
-        let deleted = merged.compactMap { operation -> String? in
-            guard operation.replacement.isEmpty, operation.range.length > 0 else { return nil }
-            return (textView.string as NSString).substring(with: operation.range)
-        }.joined()
-        rememberDeletedText(deleted)
-
-        var positions: [Int] = []
-        var offset = 0
-        for operation in merged {
-            let range = operation.range
-            let insertLen = (operation.replacement as NSString).length
-            positions.append(range.location + offset + insertLen)
-            offset += insertLen - range.length
-        }
-
-        let oldSnapshot = editorSnapshot()
-
-        ts.beginEditing()
-        for operation in merged.reversed() {
-            document?.bookmarks.applyEdit(range: operation.range, replacement: operation.replacement)
-            document?.colorMarkers.applyEdit(range: operation.range, replacement: operation.replacement)
-            applyTemporaryColorMarkerEdit(range: operation.range, replacement: operation.replacement)
-            lineIndex.applyEdit(range: operation.range, replacement: operation.replacement)
-            ts.replaceCharacters(in: operation.range, with: operation.replacement)
-        }
-        ts.endEditing()
-        refreshColorOverlays()
-
-        let newContent = textView.string
-        document?.bookmarks.normalize(in: newContent as NSString)
-        document?.content = newContent
-        document?.markModified()
-        delegate?.editorTextDidChange(self)
-
-        let maxLen = (newContent as NSString).length
-        let unique = Array(Set(positions.map { max(0, min($0, maxLen)) })).sorted()
-        let newCursors = unique.map { NSRange(location: $0, length: 0) }
-
-        let primary = newCursors.first ?? NSRange(location: 0, length: 0)
-        setSelections(newCursors, primaryRange: primary)
-        isMultiEditActive = newCursors.count > 1
-        refreshBookmarkGutter()
-        rehighlightEntireDocument()
-        // Attribute-only highlighting must not change logical selections.
-        setSelections(newCursors, primaryRange: primary)
-
-        if let undoManager = textView.undoManager {
-            undoManager.beginUndoGrouping()
-            undoManager.registerUndo(withTarget: self) { target in
-                target.restoreEditorSnapshot(oldSnapshot)
-            }
-            undoManager.setActionName("Multiple Selection Edit")
-            undoManager.endUndoGrouping()
-        }
+        _ = commitValidatedTransaction(
+            merged.map { AutomationEdit(range: $0.range, replacement: $0.replacement) },
+            actionName: actionName)
     }
 
-    private struct EditorSnapshot {
-        let text: String
-        let selections: [NSRange]
-        let primary: NSRange
-        let bookmarks: Set<Int>
-        let markers: [Int: MarkerColor]
-    }
-
-    private func editorSnapshot() -> EditorSnapshot {
-        EditorSnapshot(
-            text: textView.string,
-            selections: selectionSet.ranges,
-            primary: selectionSet.primaryRange,
-            bookmarks: document?.bookmarks.offsets ?? [],
-            markers: document?.colorMarkers.markers ?? [:]
-        )
-    }
-
-    private func restoreEditorSnapshot(_ snapshot: EditorSnapshot) {
-        let inverse = editorSnapshot()
-        guard let ts = textView.textStorage else { return }
-        ts.beginEditing()
-        ts.replaceCharacters(in: NSRange(location: 0, length: ts.length), with: snapshot.text)
-        ts.endEditing()
-        document?.content = snapshot.text
-        document?.bookmarks.restore(snapshot.bookmarks)
-        document?.colorMarkers.restore(snapshot.markers)
-        document?.markModified()
-        delegate?.editorTextDidChange(self)
-        setSelections(snapshot.selections, primaryRange: snapshot.primary)
-        isMultiEditActive = snapshot.selections.count > 1
-        refreshBookmarkGutter()
-        rehighlightEntireDocument()
-        setSelections(snapshot.selections, primaryRange: snapshot.primary)
-        textView.undoManager?.registerUndo(withTarget: self) { target in
-            target.restoreEditorSnapshot(inverse)
-        }
-    }
 }
 
 // MARK: - Tab / Shift+Tab — indent / unindent selected lines

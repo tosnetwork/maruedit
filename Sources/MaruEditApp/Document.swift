@@ -13,9 +13,44 @@ struct SearchColorLayer {
 /// transferred exactly once to `MainActor`. After adoption by a window, all
 /// mutation and all `cachedTextStorage` access are main-actor confined.
 final class Document: @unchecked Sendable {
-    var fileURL: URL?
+    /// Opaque, process-lifetime handle. Automation addresses documents by this
+    /// rather than by path, because an unnamed document has no path and a path
+    /// is not unique over time.
+    let automationID = AutomationID.next(prefix: "doc")
+
+    /// Bumped by every text mutation from every source. The observer on
+    /// `content` below is the single boundary that guarantees it: the text
+    /// view delegate, the transaction primitive, undo snapshot restore,
+    /// reload, encoding change, and direct assignment all pass through it.
+    private(set) var textRevision: UInt64 = 0
+
+    /// Bumped by every change to a value that decides whether an edit is
+    /// admissible or how a save serializes — encoding, BOM, line ending, file
+    /// identity, target URL, permissions, read-only, view mode, overwrite
+    /// protection, binary mode, and the resolved file-type profile.
+    private(set) var metadataRevision: UInt64 = 0
+
+    var revisions: DocumentRevisions {
+        DocumentRevisions(text: textRevision, metadata: metadataRevision)
+    }
+
+    var fileURL: URL? { didSet { bumpMetadataIfChanged(oldValue != fileURL) } }
     private var displayNameOverride: String?
-    var content: String
+
+    /// Always canonical: assigning text containing a carriage return stores the
+    /// LF form instead. Assigning inside `didSet` does not re-enter it, so the
+    /// normalization runs exactly once. This is a backstop — every ingress
+    /// canonicalizes before the text reaches storage — but a backstop that
+    /// makes the invariant true for paths nobody audited.
+    var content: String {
+        didSet {
+            if TextCanonicalization.containsCarriageReturn(content) {
+                content = TextCanonicalization.canonical(content)
+            }
+            guard content != oldValue else { return }
+            textRevision &+= 1
+        }
+    }
     var isModified: Bool = false
     var language: Language
     var fileTypeProfile: FileTypeProfile?
@@ -26,31 +61,35 @@ final class Document: @unchecked Sendable {
     /// never-saved document). `save()`/`save(to:)` re-encode using this
     /// same value, not a hardcoded UTF-8 — see ROADMAP.md M2-02's note on
     /// why M2-01's TextFileLoader wasn't wired in without this.
-    var encoding: TextEncoding = .utf8
-    var hasByteOrderMark: Bool = false
+    var encoding: TextEncoding = .utf8 { didSet { bumpMetadataIfChanged(oldValue != encoding) } }
+    var hasByteOrderMark: Bool = false { didSet { bumpMetadataIfChanged(oldValue != hasByteOrderMark) } }
     /// The line-ending style this document was loaded with. `content`
     /// itself always uses `\n` only internally (ROADMAP.md section 10.3)
     /// regardless of this value — `save()` re-applies it on write. A new,
     /// never-saved document defaults to `.lf`, matching this app's
     /// existing native behavior.
-    var lineEnding: LineEndingState = .lf
+    var lineEnding: LineEndingState = .lf { didSet { bumpMetadataIfChanged(oldValue != lineEnding) } }
     /// File metadata captured on open/reopen and refreshed after every
     /// successful save (ROADMAP.md M2-05), so later work (M2-06 external-
     /// modification detection) doesn't need to re-`stat` separately.
     /// `nil` for a document that has never corresponded to a file on disk
     /// (a brand-new, never-saved document, or before the first save-to).
-    var fileIdentity: FileIdentity?
+    var fileIdentity: FileIdentity? { didSet { bumpMetadataIfChanged(oldValue != fileIdentity) } }
     var lastKnownModificationDate: Date?
-    var posixPermissions: Int?
+    var posixPermissions: Int? { didSet { bumpMetadataIfChanged(oldValue != posixPermissions) } }
     /// Whether the file at `fileURL` was not writable as of the last
     /// check (open, reopen, or an explicit `refreshReadOnlyState()` call
     /// — ROADMAP.md M2-08, "React to permission changes while the
     /// document is open"). Always `false` for an unnamed document — the
     /// concept doesn't apply until there's a real file to be locked.
-    var isReadOnly: Bool = false
-    var isViewMode: Bool = false
-    var isOverwriteProhibited: Bool = false
-    var isBinaryMode: Bool = false
+    var isReadOnly: Bool = false { didSet { bumpMetadataIfChanged(oldValue != isReadOnly) } }
+    var isViewMode: Bool = false { didSet { bumpMetadataIfChanged(oldValue != isViewMode) } }
+    var isOverwriteProhibited: Bool = false { didSet { bumpMetadataIfChanged(oldValue != isOverwriteProhibited) } }
+    var isBinaryMode: Bool = false { didSet { bumpMetadataIfChanged(oldValue != isBinaryMode) } }
+    /// Retained separately from `isReadOnly` because `refreshReadOnlyState()`
+    /// recomputes from the filesystem and would otherwise drop the file-type
+    /// profile's `opensReadOnly` policy the moment the window regained focus.
+    var profileForcesReadOnly: Bool = false { didSet { bumpMetadataIfChanged(oldValue != profileForcesReadOnly) } }
     var isVerticalLayout: Bool = false
     var isColumnLayout: Bool = false
     var largeFileMode: LargeFileMode = .normal
@@ -74,14 +113,23 @@ final class Document: @unchecked Sendable {
     private var savedContent: String
     private var isFormatModified = false
 
+    /// A no-op assignment must not bump: revisions answer "did what I read
+    /// change", and a counter that ticks on identical values makes every
+    /// precondition spuriously fail.
+    private func bumpMetadataIfChanged(_ changed: Bool) {
+        guard changed else { return }
+        metadataRevision &+= 1
+    }
+
     init(fileURL: URL? = nil, content: String = "", language: Language = .plainText, recoveryID: RecoveryID = RecoveryID()) {
+        let canonical = TextCanonicalization.canonical(content)
         self.fileURL = fileURL
-        self.content = content
+        self.content = canonical
         self.language = language
-        self.savedContent = content
+        self.savedContent = canonical
         self.recoveryID = recoveryID
-        let outline = OutlineModel(text: content, language: language)
-        self.foldModel = FoldModel(text: content, symbols: outline.symbols)
+        let outline = OutlineModel(text: canonical, language: language)
+        self.foldModel = FoldModel(text: canonical, symbols: outline.symbols)
     }
 
     /// Reconstructs an unnamed document from a crash-recovery record
@@ -169,14 +217,14 @@ final class Document: @unchecked Sendable {
         doc.lastKnownModificationDate = loaded.modificationDate
         doc.posixPermissions = loaded.posixPermissions
         doc.largeFileMode = mode
-        doc.isReadOnly = mode == .readOnly
-            || profile?.settings.loadPolicy?.opensReadOnly == true
-            || !FileManager.default.isWritableFile(atPath: url.path)
+        doc.profileForcesReadOnly = profile?.settings.loadPolicy?.opensReadOnly == true
+        doc.isReadOnly = doc.effectiveReadOnlyState(for: url)
         return doc
     }
 
     static func fromTemplate(profile: FileTypeProfile) throws -> Document {
-        let content = try profile.settings.templatePath.map(ProfileFilePolicy.loadTemplate) ?? ""
+        let content = TextCanonicalization.canonical(
+            try profile.settings.templatePath.map(ProfileFilePolicy.loadTemplate) ?? "")
         let document = Document(content: content, language: profile.settings.syntax)
         document.fileTypeProfile = profile
         if !content.isEmpty {
@@ -209,11 +257,22 @@ final class Document: @unchecked Sendable {
     /// Re-checks whether `fileURL` is currently writable, updating
     /// `isReadOnly` in place. Returns whether the value changed, so
     /// callers know whether to refresh any UI showing it.
+    /// Read-only has three independent sources — filesystem permissions,
+    /// large-file read-only mode, and the file-type profile's load policy —
+    /// and every recomputation must consider all three. Recomputing from the
+    /// filesystem alone used to let a profile-protected document become
+    /// writable again the moment its window regained focus.
+    func effectiveReadOnlyState(for url: URL?) -> Bool {
+        if largeFileMode == .readOnly { return true }
+        if profileForcesReadOnly { return true }
+        guard let url else { return false }
+        return !FileManager.default.isWritableFile(atPath: url.path)
+    }
+
     @discardableResult
     func refreshReadOnlyState() -> Bool {
         guard let url = fileURL else { return false }
-        let current = largeFileMode == .readOnly
-            || !FileManager.default.isWritableFile(atPath: url.path)
+        let current = effectiveReadOnlyState(for: url)
         guard current != isReadOnly else { return false }
         isReadOnly = current
         return true
@@ -362,6 +421,7 @@ final class Document: @unchecked Sendable {
     }
 
     func applyFileTypeProfile(_ profile: FileTypeProfile) {
+        bumpMetadataIfChanged(fileTypeProfile?.id != profile.id)
         fileTypeProfile = profile
         language = profile.settings.syntax
     }

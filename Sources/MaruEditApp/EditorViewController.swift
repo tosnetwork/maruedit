@@ -109,6 +109,19 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     /// multi-edit state, and this state is freed automatically when the
     /// editor is deallocated instead of leaking in a module-level map.
     var isMultiEditActive = false
+
+    /// Opaque, process-lifetime handle for this pane. A document displayed in
+    /// a split has two panes with independent text storage and independent
+    /// cursors, so automation addresses selections by editor, never by
+    /// document.
+    let automationID = AutomationID.next(prefix: "ed")
+
+    /// Bumped by every logical selection change, from either direction: the
+    /// programmatic `setSelections` path that macros and automation use, and
+    /// the AppKit delegate that user selection changes arrive through. A
+    /// counter wired to only one of them misses half the changes.
+    private(set) var selectionRevision: UInt64 = 0
+
     let selectionSet = SelectionSet()
     var selectionHistory: [[NSRange]] = []
     var reservedSelections: [NSRange] = []
@@ -125,7 +138,15 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
 
     func setSelections(_ ranges: [NSRange], primaryRange: NSRange? = nil) {
         let previous = selectionSet.primaryRange.location
+        let previousRanges = selectionSet.ranges
+        let previousPrimary = selectionSet.primaryRange
         selectionSet.update(ranges: ranges, primaryRange: primaryRange)
+        // A duplicate assignment changes nothing and must not bump — the
+        // multi-cursor edit path deliberately re-applies the same selections
+        // after rehighlighting.
+        if selectionSet.ranges != previousRanges || selectionSet.primaryRange != previousPrimary {
+            selectionRevision &+= 1
+        }
         recordCursorTransition(from: previous, to: selectionSet.primaryRange.location)
         guard isViewLoaded else { return }
         var ordered = selectionSet.ranges
@@ -442,13 +463,17 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
                 in: NSRange(location: 0, length: storage.length), with: document.content)
             suppressTextChange = false
             let length = (document.content as NSString).length
-            textView.selectedRanges = selections.map {
-                let range = $0.rangeValue
+            // Clamping used to assign `textView.selectedRanges` directly, which
+            // moved the visible selection while leaving `SelectionSet` — the
+            // value macros and automation read — stale, and bumped no counter.
+            let clamped = selections.map { value -> NSRange in
+                let range = value.rangeValue
                 let location = min(range.location, length)
-                return NSValue(range: NSRange(
+                return NSRange(
                     location: location,
-                    length: min(range.length, max(0, length - location))))
+                    length: min(range.length, max(0, length - location)))
             }
+            setSelections(clamped, primaryRange: clamped.first)
         }
         lineIndex = LineIndex(textView.string)
         refreshBookmarkGutter()
@@ -1139,10 +1164,15 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         }
         guard !isApplyingSelectionSet else { return }
         let previous = selectionSet.primaryRange.location
+        let previousRanges = selectionSet.ranges
+        let previousPrimary = selectionSet.primaryRange
         selectionSet.update(
             ranges: textView.selectedRanges.map(\.rangeValue),
             primaryRange: textView.selectedRange()
         )
+        if selectionSet.ranges != previousRanges || selectionSet.primaryRange != previousPrimary {
+            selectionRevision &+= 1
+        }
         recordCursorTransition(from: previous, to: selectionSet.primaryRange.location)
         lineNumbers?.needsDisplay = true
         if (textView as? MaruTextView)?.highlightsCurrentLine == true { textView.needsDisplay = true }

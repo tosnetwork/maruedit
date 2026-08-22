@@ -309,10 +309,17 @@ final class MaruTextView: NSTextView {
         return true
     }
 
+    /// Every route text takes into this view — typing, standard paste, drag
+    /// and drop, IME commit — passes through here, so this is where the LF
+    /// invariant is enforced. Doing it later, in `textDidChange`, would be too
+    /// late: offsets, undo state, and the line index already reflect the
+    /// unnormalized text by then.
     private func committedString(from value: Any) -> String {
-        if let attributed = value as? NSAttributedString { return attributed.string }
-        if let plain = value as? String { return plain }
-        return String(describing: value)
+        if let attributed = value as? NSAttributedString {
+            return TextCanonicalization.canonical(attributed.string)
+        }
+        if let plain = value as? String { return TextCanonicalization.canonical(plain) }
+        return TextCanonicalization.canonical(String(describing: value))
     }
 
     override func unmarkText() {

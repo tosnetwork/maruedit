@@ -126,7 +126,8 @@ extension EditorViewController {
             guard let current = matches.first(where: { $0.range == selection }) else {
                 return find(query, direction: .next)
             }
-            let replacement = SearchEngine.replacement(for: current, in: text, query: query)
+            let replacement = TextCanonicalization.canonical(
+                SearchEngine.replacement(for: current, in: text, query: query))
             guard textView.shouldChangeText(in: current.range, replacementString: replacement) else {
                 return matchStatus(for: query)
             }
@@ -182,7 +183,8 @@ extension EditorViewController {
                 location: firstNew.location,
                 length: NSMaxRange(lastNew) - firstNew.location
             )
-            let replacementText = (result.text as NSString).substring(with: newSpan)
+            let replacementText = TextCanonicalization.canonical(
+                (result.text as NSString).substring(with: newSpan))
 
             guard textView.shouldChangeText(in: oldSpan, replacementString: replacementText) else {
                 return matchStatus(for: query)
