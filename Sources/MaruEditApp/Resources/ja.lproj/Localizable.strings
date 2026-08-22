@@ -937,3 +937,8 @@
 "agent.pendingEdits" = "確認待ちの編集";
 "agent.applyEdit" = "適用";
 "agent.rejectEdit" = "却下";
+"agent.roots" = "エージェントがファイルを開けるフォルダ";
+"agent.noRoots" = "なし。指定がない限り、ファイルを開く操作は無効です。";
+"agent.addRoot" = "フォルダを追加…";
+"agent.removeRoot" = "削除";
+"agent.remember" = "次回から確認を省略";

@@ -157,6 +157,33 @@ public enum AgentEnvelope {
         }
     }
 
+    /// A document changed. Carries only the identifier, deliberately.
+    ///
+    /// Pushing the new revision would invite a client to trust a number that
+    /// could already be stale by the time it lands; re-reading returns text and
+    /// revision together, which is the only way those two are guaranteed to
+    /// agree.
+    public struct Event: Equatable, Sendable {
+        public let documentID: String
+
+        public init(documentID: String) { self.documentID = documentID }
+
+        public var json: JSONValue {
+            .object([
+                "kind": .string("agent.event"),
+                "event": .string("document.changed"),
+                "documentId": .string(documentID),
+            ])
+        }
+
+        public static func parse(_ value: JSONValue) -> Event? {
+            guard value["kind"]?.stringValue == "agent.event",
+                  let id = value["documentId"]?.stringValue
+            else { return nil }
+            return Event(documentID: id)
+        }
+    }
+
     /// Authorization state pushed by the app without being asked, so the bridge
     /// can turn a pending approval into a retryable tool error instead of
     /// holding a request open while a human decides (R17).

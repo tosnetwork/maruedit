@@ -84,9 +84,27 @@ final class AgentControlService: ObservableObject {
     private(set) var audit: [AuditEntry] = []
     private(set) var pendingPairing: PairingRequest?
     /// Credential id → human-readable label, persisted so a paired config is
-    /// recognized after a restart even though its *grant* is not.
+    /// recognized after a restart.
     private(set) var pairedCredentials: [String: String] = [:]
+
+    /// Credentials the human chose to trust across restarts.
+    ///
+    /// This is the whole of "persistent grants" at the level this trust model
+    /// supports, and the limit is worth naming: the credential is a bearer
+    /// capability any same-user process can read, so remembering it skips the
+    /// approval click and buys nothing else. It does not become authentication
+    /// by being remembered. Unattended trust for something stronger would need
+    /// a real isolation boundary — a signed helper with a Keychain ACL bound to
+    /// its code signature — which is a different product decision (OQ-1).
+    private(set) var rememberedCredentials: Set<String> = []
     let proposals = AgentProposalStore()
+
+    /// Folders the human authorized for file opening and folder search.
+    ///
+    /// Empty by default, which makes those tools unavailable rather than
+    /// permissive: a capability whose scope nobody chose is not a scoped
+    /// capability.
+    private(set) var authorizedRoots: [String] = []
 
     private let home: URL
     let sessionToken: String
@@ -111,6 +129,13 @@ final class AgentControlService: ObservableObject {
 
     // MARK: - Connections
 
+    func setRemembered(_ credentialID: String, _ remembered: Bool) {
+        if remembered { rememberedCredentials.insert(credentialID) }
+        else { rememberedCredentials.remove(credentialID) }
+        saveCredentials()
+        onChange?()
+    }
+
     func register(hello: AgentEnvelope.Hello) -> Result<Connection, AgentToolFailure> {
         guard hello.token == sessionToken else {
             return .failure(AgentToolFailure(
@@ -130,6 +155,14 @@ final class AgentControlService: ObservableObject {
         connections.append(connection)
         record(connection: connection, tool: "control.hello", document: nil,
                outcome: connection.credentialID == nil ? "unpaired" : "paired")
+        // A remembered credential skips the approval click. The grant it
+        // receives is still frozen to what is open right now, because a grant
+        // that also persisted would quietly cover documents the human has never
+        // seen this session.
+        if let credential = connection.credentialID, rememberedCredentials.contains(credential),
+           let coordinator = AppDelegate.sharedCoordinator {
+            approve(connection, documents: coordinator.agentVisibleTargets().map(\.document.automationID))
+        }
         onChange?()
         return .success(connection)
     }
@@ -285,6 +318,7 @@ final class AgentControlService: ObservableObject {
 
     func revokeCredential(_ credentialID: String) {
         pairedCredentials.removeValue(forKey: credentialID)
+        rememberedCredentials.remove(credentialID)
         saveCredentials()
         for connection in connections where connection.credentialID == credentialID {
             revoke(connection)
@@ -301,6 +335,8 @@ final class AgentControlService: ObservableObject {
               let members = value["credentials"]?.objectValue
         else { return }
         pairedCredentials = members.compactMapValues(\.stringValue)
+        rememberedCredentials = Set(
+            (value["remembered"]?.arrayValue ?? []).compactMap(\.stringValue))
     }
 
     private func saveCredentials() {
@@ -310,6 +346,7 @@ final class AgentControlService: ObservableObject {
             attributes: [.posixPermissions: 0o700])
         let payload = JSONValue.object([
             "credentials": .object(pairedCredentials.mapValues(JSONValue.string)),
+            "remembered": .array(rememberedCredentials.sorted().map(JSONValue.string)),
         ])
         try? payload.encoded().write(to: AgentEndpoint.credentialsURL(home: home), options: .atomic)
         try? FileManager.default.setAttributes(
@@ -325,6 +362,25 @@ final class AgentControlService: ObservableObject {
             connections.append(connection)
         }
         approve(connection, documents: coordinator.agentVisibleTargets().map(\.document.automationID))
+    }
+
+    func addAuthorizedRoot(_ path: String) {
+        let standardized = URL(fileURLWithPath: path).standardizedFileURL.path
+        guard !authorizedRoots.contains(standardized) else { return }
+        authorizedRoots.append(standardized)
+        onChange?()
+    }
+
+    func removeAuthorizedRoot(_ path: String) {
+        authorizedRoots.removeAll { $0 == path }
+        onChange?()
+    }
+
+    /// Adds one document to a grant, which only `open_document` may do: the
+    /// human already authorized the folder it came from.
+    func extendGrant(_ connection: Connection, with document: AutomationID) {
+        connection.grantedDocuments.insert(document)
+        onChange?()
     }
 
     // MARK: - Audit

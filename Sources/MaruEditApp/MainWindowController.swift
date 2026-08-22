@@ -1365,6 +1365,27 @@ final class MainWindowController: NSWindowController,
         return document
     }
 
+    /// Adds a document the agent interface opened from a verified descriptor.
+    ///
+    /// It goes through the ordinary document lifecycle from here on — profile
+    /// resolution, encoding, tabs, status — so an agent-opened file behaves
+    /// exactly like one the human opened.
+    @discardableResult
+    func adoptAgentOpenedDocument(url: URL, loaded: LoadedText) -> Document {
+        let document = Document(
+            fileURL: url,
+            content: loaded.content,
+            language: Language.detect(for: url))
+        document.encoding = loaded.encoding
+        document.hasByteOrderMark = loaded.hasByteOrderMark
+        document.lineEnding = LineEndingDetector.detect(loaded.content)
+        document.markSaved()
+        _ = documentController.addDocument(document)
+        editorVC.document = document
+        refreshTabs(); refreshStatus(); layoutContentViews()
+        return document
+    }
+
     func adoptDetachedDocument(_ document: Document) {
         documentController.replaceCurrentDocument(with: document)
         editorVC.document = document
@@ -2880,6 +2901,7 @@ final class MainWindowController: NSWindowController,
 
     func editorTextDidChange(_ vc: EditorViewController) {
         if let doc = curDoc {
+            (NSApp.delegate as? AppDelegate)?.agentServer.documentDidChange(doc.automationID)
             doc.cachedTextStorage = vc.textView.textStorage
             tabBar.updateTab(at: curIdx, item: TabItem(title: doc.localizedDisplayName, isModified: doc.isModified))
             scheduleRecoverySaveIfUnnamed(doc)

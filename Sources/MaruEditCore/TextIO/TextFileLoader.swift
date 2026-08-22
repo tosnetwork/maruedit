@@ -98,6 +98,33 @@ public enum TextFileLoader {
         catch { throw TextFileLoaderError.fileNotReadable(path: path) }
     }
 
+    /// Loads bytes that were already read, from a descriptor the caller
+    /// verified.
+    ///
+    /// The agent interface opens files by walking down from an authorized root
+    /// with `O_NOFOLLOW` at every component; reopening the path afterwards to
+    /// hand it to the ordinary loader would give back the symlink race that
+    /// walk just closed. So the bytes come in, and the URL is used only for
+    /// naming and file-type resolution.
+    public static func load(data: Data, representing url: URL) throws -> LoadedText {
+        let result = EncodingDetector.detect(data)
+        guard result.confidence != .failed else {
+            throw TextFileLoaderError.couldNotDecode(
+                path: url.path,
+                diagnostics: result.diagnostics.map { $0.message }
+            )
+        }
+        return loadedText(
+            content: result.content,
+            encoding: result.encoding,
+            hasByteOrderMark: result.hasByteOrderMark,
+            confidence: result.confidence,
+            diagnostics: result.diagnostics,
+            data: data,
+            url: url
+        )
+    }
+
     /// Loads `url`, auto-detecting its encoding.
     public static func load(contentsOf url: URL) throws -> LoadedText {
         let (path, data) = try readData(at: url)

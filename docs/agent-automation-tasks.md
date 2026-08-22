@@ -163,23 +163,47 @@ Deliberately deferred out of Phase 0, with reasons:
 
 ## Phase 3 — Scoped app control
 
-- [ ] Authorized directory roots with descriptor-relative containment.
-- [ ] `open_document`; fd-based loader so a verified path is never reopened.
-- [ ] `run_command` with explicit targets in `CommandContext`, or a
-      document-independent-only command set.
+- [x] Authorized directory roots with descriptor-relative containment:
+      `openat` with `O_NOFOLLOW` at every component, and a component that fails
+      is classified by asking the filesystem what it is rather than by guessing
+      from `errno` — a symlinked directory reports `ENOTDIR`, not `ELOOP`.
+- [x] `open_document`, with an fd-based loader so a verified path is never
+      reopened. Roots are empty by default, which makes it unavailable rather
+      than permissive.
+- [x] `run_command`, default-deny per command definition. `CommandContext` still
+      carries no explicit target, so only commands whose effect does not depend
+      on which window is key are exposed, and the flag is named
+      `isSafeForAgentsRegardlessOfTarget` to keep that honest.
+- [ ] Explicit targets in `CommandContext` — a real refactor of every command,
+      deferred until more than a handful of commands need exposing.
 - [ ] Regular-expression search once it can be bounded (OQ-8).
 
 ## Phase 4 — Change awareness
 
-- [ ] Resource surface: document URIs, `resources/list`, `resources/read`.
-- [ ] Coalesced URI-only change notifications, per era.
+- [x] Resource surface: opaque `maruedit://document/<id>` URIs, `resources/list`,
+      `resources/read` returning text and both revisions together.
+- [x] Coalesced URI-only change notifications: the app pushes an event, the
+      bridge forwards `notifications/resources/updated`. The notification
+      carries no revision on purpose — a pushed number could be stale by the
+      time it lands.
 
 ## Phase 5 — Persistent grants and second adapter
 
-- [ ] Persistent per-configuration grants and the isolation boundary they need.
-- [ ] Sandbox/App Group decision.
-- [ ] Revocation and stale-socket regression tests.
-- [ ] Evaluate ACP client mode.
+- [x] Persistent per-configuration trust, to the extent this trust model
+      supports it: a paired credential survives a restart and can be marked
+      "skip approval next time". Its *grant* still freezes at each connection,
+      and the session token is new every launch, so remembering a pairing is
+      not remembering a session.
+- [x] Revocation and stale-endpoint regression tests, including that revoking a
+      credential cuts off its live connections.
+- [ ] A real isolation boundary for unattended trust — signed helper plus a
+      Keychain ACL bound to its code signature, or user-presence-bound keys.
+      Blocked on OQ-1 and, as ADR-012 P9 says, on the fact that same-UID is one
+      trust domain no matter what this layer does.
+- [ ] Sandbox/App Group decision — a product decision, not code.
+- [ ] Evaluate ACP client mode: it needs an agent-conversation UI inside
+      MaruEdit, which is a far larger product commitment than an automation
+      interface.
 
 ---
 

@@ -270,3 +270,100 @@ final class AgentProtocolTests: XCTestCase {
                       "phase 1 is read-only by definition")
     }
 }
+
+/// Phase 4: the resource surface and change notification.
+final class AgentResourceTests: XCTestCase {
+
+    private func server(
+        invoke: @escaping @Sendable (String, JSONValue) async -> AgentToolOutcome
+    ) -> MCPServer {
+        MCPServer(
+            info: MCPServer.ServerInfo(name: "maruedit", version: "test"),
+            tools: AgentToolCatalog.tools(throughPhase: 2),
+            servesResources: true,
+            invoke: invoke)
+    }
+
+    func testResourceURIsAreOpaqueAndRoundTrip() {
+        let uri = MCPServer.documentURI("doc_7f3a")
+        XCTAssertEqual(uri, "maruedit://document/doc_7f3a")
+        XCTAssertEqual(MCPServer.documentID(fromURI: uri), "doc_7f3a")
+        // Nothing about the file's location leaks into the handle.
+        XCTAssertFalse(uri.contains("/Users"))
+        XCTAssertNil(MCPServer.documentID(fromURI: "file:///etc/passwd"))
+    }
+
+    func testResourcesAreOnlyAdvertisedWhenServed() async throws {
+        let quiet = MCPServer(
+            info: MCPServer.ServerInfo(name: "maruedit", version: "test"),
+            tools: [], servesResources: false, invoke: { _, _ in .success(.object([:])) })
+        let capabilities = await quiet.handle(JSONRPCMessage(id: .int(1), method: "initialize"))
+        // Phases 1-3 expose none: a second way to read the same text is a
+        // second thing to keep consistent.
+        XCTAssertNil(capabilities?.result?["capabilities"]?["resources"])
+
+        let loud = server { _, _ in .success(.object(["documents": .array([])])) }
+        let advertised = await loud.handle(JSONRPCMessage(id: .int(1), method: "initialize"))
+        XCTAssertEqual(
+            advertised?.result?["capabilities"]?["resources"]?["subscribe"], .bool(true))
+    }
+
+    func testResourcesListMirrorsGrantedDocuments() async throws {
+        let listing = server { tool, _ in
+            XCTAssertEqual(tool, "list_documents")
+            return .success(.object(["documents": .array([
+                .object(["documentId": .string("doc_1"), "displayName": .string("notes.txt")]),
+            ])]))
+        }
+        let reply = await listing.handle(JSONRPCMessage(id: .int(2), method: "resources/list"))
+        let resources = try XCTUnwrap(reply?.result?["resources"]?.arrayValue)
+        XCTAssertEqual(resources.first?["uri"], .string("maruedit://document/doc_1"))
+        XCTAssertEqual(resources.first?["name"], .string("notes.txt"))
+    }
+
+    func testResourceReadReturnsTextAndItsRevisionsTogether() async throws {
+        let reading = server { tool, arguments in
+            XCTAssertEqual(tool, "read_document")
+            XCTAssertEqual(arguments["documentId"], .string("doc_1"))
+            return .success(.object([
+                "text": .string("hello"),
+                "revision": .int(9),
+                "metadataRevision": .int(3),
+            ]))
+        }
+        let reply = await reading.handle(JSONRPCMessage(
+            id: .int(3), method: "resources/read",
+            params: .object(["uri": .string("maruedit://document/doc_1")])))
+        let contents = try XCTUnwrap(reply?.result?["contents"]?.arrayValue?.first)
+        XCTAssertEqual(contents["text"], .string("hello"))
+        // Never text without the revision it belongs to.
+        XCTAssertEqual(contents["_meta"]?["revision"], .int(9))
+        XCTAssertEqual(contents["_meta"]?["metadataRevision"], .int(3))
+    }
+
+    func testUnknownResourceURIIsAProtocolError() async {
+        let any = server { _, _ in .success(.object([:])) }
+        let reply = await any.handle(JSONRPCMessage(
+            id: .int(4), method: "resources/read",
+            params: .object(["uri": .string("http://example.com")])))
+        XCTAssertEqual(reply?.error?["code"], .int(-32602))
+    }
+
+    func testChangeNotificationCarriesOnlyTheURI() {
+        let notification = MCPServer.resourceUpdatedNotification(documentID: "doc_1")
+        XCTAssertEqual(notification.method, "notifications/resources/updated")
+        XCTAssertEqual(notification.params?["uri"], .string("maruedit://document/doc_1"))
+        // No revision: a pushed number could be stale by the time it lands, and
+        // re-reading returns text and revision together.
+        XCTAssertNil(notification.params?["revision"])
+        XCTAssertNil(notification.id, "a notification has no id")
+    }
+
+    func testSubscribeIsAcceptedSoAClientCanExpressInterest() async {
+        let any = server { _, _ in .success(.object([:])) }
+        let reply = await any.handle(JSONRPCMessage(
+            id: .int(5), method: "resources/subscribe",
+            params: .object(["uri": .string("maruedit://document/doc_1")])))
+        XCTAssertNil(reply?.error)
+    }
+}

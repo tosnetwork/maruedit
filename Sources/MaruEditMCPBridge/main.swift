@@ -108,11 +108,21 @@ final class AppConnection {
         }
     }
 
+    /// Invoked for a change event the app pushed while we were reading.
+    var onEvent: ((AgentEnvelope.Event) -> Void)?
+
     func call(tool: String, arguments: JSONValue) throws -> AgentToolOutcome {
         let id = nextCallID
         nextCallID += 1
         try send(AgentEnvelope.Call(id: id, tool: tool, arguments: arguments).json)
         while let frame = try receive() {
+            if let event = AgentEnvelope.Event.parse(frame) {
+                // Events arrive interleaved with replies; forwarding them here
+                // keeps the bridge single-threaded and still delivers them
+                // promptly, since an idle agent is not waiting on anything.
+                onEvent?(event)
+                continue
+            }
             if let state = AgentEnvelope.AuthorizationState.parse(frame) {
                 // Approval never blocks a call: the agent is told to retry
                 // rather than left waiting while a human decides.
@@ -215,12 +225,17 @@ final class LazyConnection: @unchecked Sendable {
     private var connection: AppConnection?
     private let lock = NSLock()
 
+    /// Forwards a document-change event to the MCP client.
+    var onEvent: ((AgentEnvelope.Event) -> Void)?
+
     func call(tool: String, arguments: JSONValue) -> AgentToolOutcome {
         lock.lock()
         defer { lock.unlock() }
         if connection == nil {
             switch openConnection() {
-            case .success(let opened): connection = opened
+            case .success(let opened):
+                opened.onEvent = { [weak self] event in self?.onEvent?(event) }
+                connection = opened
             case .failure(let failure):
                 return .failure(code: "editor.unavailable", message: failure.message, details: nil)
             }
@@ -243,17 +258,24 @@ final class LazyConnection: @unchecked Sendable {
 let connection = LazyConnection()
 
 // Only what is actually wired up is advertised.
-let advertisedPhase = 2
+let advertisedPhase = 3
 
 let server = MCPServer(
     info: MCPServer.ServerInfo(name: "maruedit", version: AgentBridgeVersion.current),
     tools: AgentToolCatalog.tools(throughPhase: advertisedPhase),
+    servesResources: true,
     invoke: { tool, arguments in connection.call(tool: tool, arguments: arguments) })
 
 func emit(_ message: JSONRPCMessage) {
     guard let data = try? message.json.encoded(sortedKeys: false) else { return }
     FileHandle.standardOutput.write(data)
     FileHandle.standardOutput.write(Data("\n".utf8))
+}
+
+connection.onEvent = { event in
+    // The notification carries only the URI: a pushed revision could be stale
+    // by the time it lands, and re-reading returns text and revision together.
+    emit(MCPServer.resourceUpdatedNotification(documentID: event.documentID))
 }
 
 // stdio MCP is line-delimited JSON. Logging goes to stderr, never stdout,

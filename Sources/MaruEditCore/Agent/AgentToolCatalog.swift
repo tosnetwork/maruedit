@@ -242,6 +242,36 @@ public enum AgentToolCatalog {
             outputSchema: schema(properties: [("revealedLine", property("integer", ""))], required: ["revealedLine"])),
 
         Tool(
+            name: "open_document",
+            title: "Open a file",
+            summary: """
+                Open a file into MaruEdit, from a folder the person at the                 keyboard authorized. Without such a folder this is unavailable                 rather than unrestricted, and symbolic links out of it are                 refused.
+                """,
+            phase: 3, isReadOnly: false, isDestructive: false,
+            inputSchema: schema(properties: [
+                ("path", property("string", "Absolute path inside an authorized folder.")),
+            ], required: ["path"]),
+            outputSchema: schema(properties: [
+                ("documentId", property("string", "")),
+                ("revision", property("integer", "")),
+            ], required: ["documentId", "revision"])),
+
+        Tool(
+            name: "run_command",
+            title: "Run an editor command",
+            summary: """
+                Run one of MaruEdit's own commands. Default-deny: only commands                 whose effect does not depend on which window is focused are                 available, because commands carry no explicit target yet.
+                """,
+            phase: 3, isReadOnly: false, isDestructive: true,
+            inputSchema: schema(properties: [
+                ("commandId", property("string", "Stable command identifier, e.g. file.new.")),
+            ], required: ["commandId"]),
+            outputSchema: schema(properties: [
+                ("commandId", property("string", "")),
+                ("ran", property("boolean", "")),
+            ], required: ["commandId", "ran"])),
+
+        Tool(
             name: "save_document",
             title: "Save a document",
             summary: """

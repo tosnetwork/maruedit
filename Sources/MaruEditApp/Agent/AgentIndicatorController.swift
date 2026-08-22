@@ -95,6 +95,22 @@ final class AgentIndicatorController: NSWindowController {
             }
         }
 
+        stack.addArrangedSubview(heading(AppLocalization.string("agent.roots")))
+        if server.control.authorizedRoots.isEmpty {
+            stack.addArrangedSubview(label(AppLocalization.string("agent.noRoots"), secondary: true))
+        } else {
+            for root in server.control.authorizedRoots {
+                let remove = NSButton(
+                    title: AppLocalization.string("agent.removeRoot"),
+                    target: self, action: #selector(removeRoot(_:)))
+                remove.identifier = NSUserInterfaceItemIdentifier(root)
+                stack.addArrangedSubview(row([label(root, monospaced: true), remove]))
+            }
+        }
+        stack.addArrangedSubview(NSButton(
+            title: AppLocalization.string("agent.addRoot"),
+            target: self, action: #selector(addRoot)))
+
         let pending = server.control.proposals.pending
         if !pending.isEmpty {
             stack.addArrangedSubview(heading(AppLocalization.string("agent.pendingEdits")))
@@ -187,11 +203,16 @@ final class AgentIndicatorController: NSWindowController {
     }
 
     private func credentialRow(id: String, name: String) -> NSView {
+        let remember = NSButton(
+            checkboxWithTitle: AppLocalization.string("agent.remember"),
+            target: self, action: #selector(toggleRemembered(_:)))
+        remember.state = server.control.rememberedCredentials.contains(id) ? .on : .off
+        remember.identifier = NSUserInterfaceItemIdentifier(id)
         let revoke = NSButton(
             title: AppLocalization.string("agent.revokeCredential"),
             target: self, action: #selector(revokeCredential(_:)))
         revoke.identifier = NSUserInterfaceItemIdentifier(id)
-        return row([label(name), revoke])
+        return row([label(name), remember, revoke])
     }
 
     /// One pending edit, with the diff the human is actually deciding about.
@@ -295,6 +316,30 @@ final class AgentIndicatorController: NSWindowController {
     @objc private func rejectProposal(_ sender: NSButton) {
         guard let id = sender.identifier?.rawValue else { return }
         server.control.proposals.mark(id, .rejected)
+    }
+
+    @objc private func addRoot() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = AppLocalization.string("agent.addRoot")
+        // Non-modal, like everything else here: the human opens this window
+        // deliberately, so a panel they summoned is not an interruption.
+        panel.begin { [weak self] response in
+            guard response == .OK, let url = panel.url else { return }
+            self?.server.control.addAuthorizedRoot(url.path)
+        }
+    }
+
+    @objc private func removeRoot(_ sender: NSButton) {
+        guard let path = sender.identifier?.rawValue else { return }
+        server.control.removeAuthorizedRoot(path)
+    }
+
+    @objc private func toggleRemembered(_ sender: NSButton) {
+        guard let id = sender.identifier?.rawValue else { return }
+        server.control.setRemembered(id, sender.state == .on)
     }
 
     @objc private func revokeCredential(_ sender: NSButton) {

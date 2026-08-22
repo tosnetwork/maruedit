@@ -100,15 +100,33 @@ public struct MCPServer: Sendable {
     public let tools: [AgentToolCatalog.Tool]
     /// Invoked for `tools/call`. Returns an era-neutral outcome.
     public let invoke: @Sendable (String, JSONValue) async -> AgentToolOutcome
+    /// Whether the resource surface is advertised. Phases 1-3 expose no
+    /// resources: the tools are self-sufficient, and a second way to read the
+    /// same text is a second thing to keep consistent.
+    public let servesResources: Bool
 
     public init(
         info: ServerInfo,
         tools: [AgentToolCatalog.Tool],
+        servesResources: Bool = false,
         invoke: @escaping @Sendable (String, JSONValue) async -> AgentToolOutcome
     ) {
         self.info = info
         self.tools = tools
+        self.servesResources = servesResources
         self.invoke = invoke
+    }
+
+    /// Documents are addressed by an opaque URI so a client never has to build
+    /// one, and so nothing about the file's location leaks into the handle.
+    public static func documentURI(_ documentID: String) -> String {
+        "maruedit://document/\(documentID)"
+    }
+
+    public static func documentID(fromURI uri: String) -> String? {
+        let prefix = "maruedit://document/"
+        guard uri.hasPrefix(prefix) else { return nil }
+        return String(uri.dropFirst(prefix.count))
     }
 
     // MARK: - Dispatch
@@ -129,7 +147,22 @@ public struct MCPServer: Sendable {
         case "tools/call":
             return await callTool(message)
         case "resources/list":
-            return reply(to: message, result: .object(["resources": .array([])]))
+            guard servesResources else {
+                return reply(to: message, result: .object(["resources": .array([])]))
+            }
+            return await listResources(message)
+        case "resources/read":
+            guard servesResources else {
+                return reply(to: message, error: .object([
+                    "code": .int(-32602), "message": .string("This server exposes no resources."),
+                ]))
+            }
+            return await readResource(message)
+        case "resources/subscribe", "resources/unsubscribe":
+            // Subscription is accepted so a client can express interest; the
+            // notification it will receive carries only the URI, because a
+            // pushed revision could already be stale by the time it lands.
+            return reply(to: message, result: .object([:]))
         case "prompts/list":
             return reply(to: message, result: .object(["prompts": .array([])]))
         default:
@@ -150,7 +183,12 @@ public struct MCPServer: Sendable {
             ?? Self.preferredProtocolVersion
         return .object([
             "protocolVersion": .string(negotiated),
-            "capabilities": .object(["tools": .object(["listChanged": .bool(true)])]),
+            "capabilities": servesResources
+                ? .object([
+                    "tools": .object(["listChanged": .bool(true)]),
+                    "resources": .object(["subscribe": .bool(true), "listChanged": .bool(true)]),
+                ])
+                : .object(["tools": .object(["listChanged": .bool(true)])]),
             "serverInfo": .object([
                 "name": .string(info.name),
                 "version": .string(info.version),
@@ -220,6 +258,64 @@ public struct MCPServer: Sendable {
                 "isError": .bool(true),
             ])
         }
+    }
+
+    private func listResources(_ message: JSONRPCMessage) async -> JSONRPCMessage? {
+        let outcome = await invoke("list_documents", .object([:]))
+        guard case .success(let payload) = outcome,
+              let documents = payload["documents"]?.arrayValue
+        else { return reply(to: message, result: .object(["resources": .array([])])) }
+        let resources = documents.compactMap { document -> JSONValue? in
+            guard let id = document["documentId"]?.stringValue else { return nil }
+            return .object([
+                "uri": .string(Self.documentURI(id)),
+                "name": document["displayName"] ?? .string(id),
+                "mimeType": .string("text/plain"),
+            ])
+        }
+        return reply(to: message, result: .object(["resources": .array(resources)]))
+    }
+
+    private func readResource(_ message: JSONRPCMessage) async -> JSONRPCMessage? {
+        guard let uri = message.params?["uri"]?.stringValue,
+              let documentID = Self.documentID(fromURI: uri)
+        else {
+            return reply(to: message, error: .object([
+                "code": .int(-32602), "message": .string("Unknown resource URI."),
+            ]))
+        }
+        let outcome = await invoke("read_document", .object(["documentId": .string(documentID)]))
+        switch outcome {
+        case .success(let payload):
+            return reply(to: message, result: .object([
+                "contents": .array([.object([
+                    "uri": .string(uri),
+                    "mimeType": .string("text/plain"),
+                    "text": payload["text"] ?? .string(""),
+                    // The revisions travel with the text, so a client never
+                    // holds one without the other.
+                    "_meta": .object([
+                        "revision": payload["revision"] ?? .null,
+                        "metadataRevision": payload["metadataRevision"] ?? .null,
+                    ]),
+                ])]),
+            ]))
+        case .failure(let code, let message2, _):
+            return reply(to: message, error: .object([
+                "code": .int(-32602), "message": .string("\(code): \(message2)"),
+            ]))
+        }
+    }
+
+    /// A content-change notification, which carries only the URI.
+    ///
+    /// It is an invalidation hint, not a payload: the client re-reads to get
+    /// text and revision together, which is the only way it can be sure the two
+    /// agree.
+    public static func resourceUpdatedNotification(documentID: String) -> JSONRPCMessage {
+        JSONRPCMessage(
+            method: "notifications/resources/updated",
+            params: .object(["uri": .string(documentURI(documentID))]))
     }
 
     private func reply(to message: JSONRPCMessage, result: JSONValue) -> JSONRPCMessage? {

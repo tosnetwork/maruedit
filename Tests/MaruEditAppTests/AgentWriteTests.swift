@@ -484,3 +484,122 @@ final class AgentWriteTests: XCTestCase {
         XCTAssertEqual(outcome["committed"], .bool(false))
     }
 }
+
+/// Phase 3: the two tools that reach past the documents already open.
+@MainActor
+final class AgentAppControlTests: XCTestCase {
+
+    private var home: URL!
+    private var workspace: URL!
+    private var coordinator: AppCoordinator!
+    private var server: AgentServer!
+    private var connection: AgentControlService.Connection!
+    private var executor: AgentToolExecutor!
+
+    override func setUp() async throws {
+        try await super.setUp()
+        _ = NSApplication.shared
+        home = URL(fileURLWithPath: "/tmp/mac-\(UUID().uuidString.prefix(8))")
+        workspace = home.appendingPathComponent("workspace")
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+        coordinator = AppCoordinator()
+        _ = coordinator.ensureWindowControllerReady(restoreSession: false)
+        server = AgentServer(coordinator: coordinator, home: home)
+        connection = AgentControlService.Connection(
+            id: AutomationID.next(prefix: "conn"),
+            credentialID: nil, claimedName: "test-agent", bridgePID: getpid())
+        server.control.approveForTesting(connection, coordinator: coordinator)
+        executor = AgentToolExecutor(coordinator: coordinator, control: server.control)
+    }
+
+    override func tearDown() async throws {
+        server?.stop()
+        NSApp.windows.filter { $0.windowController is MainWindowController }.forEach { $0.close() }
+        try? FileManager.default.removeItem(at: home)
+        try await super.tearDown()
+    }
+
+    private func run(_ tool: String, _ arguments: [String: JSONValue]) async -> AgentToolOutcome {
+        await executor.run(tool: tool, arguments: .object(arguments), connection: connection)
+    }
+
+    private func failureCode(_ outcome: AgentToolOutcome) -> String? {
+        if case .failure(let code, _, _) = outcome { return code }
+        return nil
+    }
+
+    func testOpeningIsUnavailableUntilAFolderIsAuthorized() async throws {
+        let file = workspace.appendingPathComponent("notes.txt")
+        try "hello".write(to: file, atomically: true, encoding: .utf8)
+
+        // Unavailable rather than permissive: a capability whose scope nobody
+        // chose is not a scoped capability.
+        let refused = await run("open_document", ["path": .string(file.path)])
+        XCTAssertEqual(failureCode(refused), "authorization.no_root")
+
+        server.control.addAuthorizedRoot(workspace.path)
+        let opened = await run("open_document", ["path": .string(file.path)])
+        guard case .success(let payload) = opened else {
+            return XCTFail("expected success, got \(opened)")
+        }
+        let documentID = try XCTUnwrap(payload["documentId"]?.stringValue)
+
+        // The one sanctioned way a frozen grant grows — and it grew by an
+        // object the human's own root authorization already covered.
+        let listed = await run("list_documents", [:])
+        guard case .success(let documents) = listed else { return XCTFail("list failed") }
+        let ids = documents["documents"]?.arrayValue?.compactMap { $0["documentId"]?.stringValue }
+        XCTAssertTrue(ids?.contains(documentID) == true)
+
+        let read = await run("read_document", ["documentId": .string(documentID)])
+        guard case .success(let text) = read else { return XCTFail("read failed") }
+        XCTAssertEqual(text["text"]?.stringValue, "hello")
+    }
+
+    func testOpeningOutsideTheRootOrThroughASymlinkIsRefused() async throws {
+        let secret = home.appendingPathComponent("secret.txt")
+        try "secret".write(to: secret, atomically: true, encoding: .utf8)
+        server.control.addAuthorizedRoot(workspace.path)
+
+        let outside = await run("open_document", ["path": .string(secret.path)])
+        XCTAssertEqual(failureCode(outside), "path.outside_root")
+
+        let link = workspace.appendingPathComponent("link.txt")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: secret)
+        // Inside the root by string comparison, which is exactly why string
+        // comparison is not the boundary.
+        let symlinked = await run("open_document", ["path": .string(link.path)])
+        XCTAssertEqual(failureCode(symlinked), "path.symlink")
+    }
+
+    func testAJapaneseEncodedFileKeepsItsEncodingWhenAnAgentOpensIt() async throws {
+        let file = workspace.appendingPathComponent("sjis.txt")
+        let text = "日本語のテキスト\n"
+        try XCTUnwrap(text.data(using: .shiftJIS)).write(to: file)
+        server.control.addAuthorizedRoot(workspace.path)
+
+        let opened = await run("open_document", ["path": .string(file.path)])
+        guard case .success(let payload) = opened else { return XCTFail("open failed: \(opened)") }
+        // Routed through the ordinary lifecycle, so detection behaves exactly
+        // as it does when a human opens the file.
+        XCTAssertTrue(payload["encoding"]?.stringValue?.contains("Shift") == true)
+
+        let documentID = try XCTUnwrap(payload["documentId"]?.stringValue)
+        let read = await run("read_document", ["documentId": .string(documentID)])
+        guard case .success(let value) = read else { return XCTFail("read failed") }
+        XCTAssertEqual(value["text"]?.stringValue, text)
+    }
+
+    func testCommandsAreDefaultDenyAndOnlyDocumentIndependentOnesAreExposed() async {
+        let unexposed = await run("run_command", ["commandId": .string("app.settings")])
+        // Registering a command must never be what makes it remotely invocable.
+        XCTAssertEqual(failureCode(unexposed), "command.not_exposed")
+
+        let unknown = await run("run_command", ["commandId": .string("no.such.command")])
+        XCTAssertEqual(failureCode(unknown), "command.unknown")
+
+        let exposed = await run("run_command", ["commandId": .string("file.new")])
+        guard case .success(let payload) = exposed else { return XCTFail("expected success") }
+        XCTAssertEqual(payload["ran"], .bool(true))
+    }
+}

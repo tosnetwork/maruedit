@@ -17,6 +17,7 @@ final class AgentServer {
     private var listenerDescriptor: Int32 = -1
     private var acceptSource: DispatchSourceRead?
     private var connections: [ObjectIdentifier: ConnectionState] = [:]
+    private var pendingChangeIDs: Set<AutomationID> = []
 
     private(set) var isRunning = false
 
@@ -220,6 +221,31 @@ final class AgentServer {
               let frame = try? AgentFraming.encode(payload)
         else { return }
         try? UnixSocket.writeAll(state.descriptor, frame)
+    }
+
+    /// Tells approved clients that a document changed, so a long-lived agent
+    /// can invalidate its cache instead of polling.
+    ///
+    /// Coalesced per document per run-loop turn: typing produces one revision
+    /// per keystroke, and a notification per keystroke would be worse than
+    /// useless.
+    func documentDidChange(_ documentID: AutomationID) {
+        guard isRunning, !pendingChangeIDs.contains(documentID) else { return }
+        pendingChangeIDs.insert(documentID)
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            let ids = self.pendingChangeIDs
+            self.pendingChangeIDs.removeAll()
+            for id in ids {
+                for state in self.connections.values {
+                    guard let connection = state.connection,
+                          connection.status == .approved,
+                          self.control.mayAccess(connection, document: id)
+                    else { continue }
+                    self.send(AgentEnvelope.Event(documentID: id.rawValue).json, on: state)
+                }
+            }
+        }
     }
 
     /// Pushes an approval decision to every connection that was waiting.

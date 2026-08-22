@@ -43,6 +43,8 @@ struct AgentToolExecutor {
         case "set_selection": outcome = setSelection(arguments, connection)
         case "reveal": outcome = reveal(arguments, connection)
         case "save_document": outcome = saveDocument(arguments, connection)
+        case "open_document": outcome = openDocument(arguments, connection)
+        case "run_command": outcome = runCommand(arguments, connection)
         default:
             outcome = .failure(
                 code: "tool.unknown",

@@ -937,3 +937,8 @@
 "agent.pendingEdits" = "Edits waiting for your review";
 "agent.applyEdit" = "Apply";
 "agent.rejectEdit" = "Reject";
+"agent.roots" = "Folders agents may open files from";
+"agent.noRoots" = "None. Without one, opening files is unavailable rather than unrestricted.";
+"agent.addRoot" = "Add folder…";
+"agent.removeRoot" = "Remove";
+"agent.remember" = "Skip approval next time";
