@@ -1231,7 +1231,10 @@ Introduce the **effective-writability predicate** of §5.3.1 so that read-only
 stops depending on which code path last recomputed it. Build the
 **validated transaction primitive** underneath both adapters: bounds and overlap
 rejection before any mutation, one undo snapshot, caller-supplied undo label,
-typed result. Keep the macro path's existing lenient overlap behavior by adapting
+typed result, and a written contract for every offset-based set a document
+carries — bookmarks, color markers, edit marks, folds, line index, selections,
+highlight ranges — saying whether an edit transforms or invalidates each, with
+undo restoring exactly what was changed. Keep the macro path's existing lenient overlap behavior by adapting
 it, not by weakening the primitive. Define the `Sendable` snapshot and result
 DTOs the off-main workers will use, forbid `Document`, controller, and AppKit
 references in worker closures, and build the new targets under strict
@@ -1344,7 +1347,9 @@ oversized frames, invalid tokens, stale sockets):
   profile change made *during* the off-main write leaves the document
   format-dirty rather than clean.
 - **Atomicity tests.** A batch whose third edit fails leaves the document
-  byte-identical, including its undo stack.
+  byte-identical, including its undo stack **and** every offset-based set the
+  transaction contract names — bookmarks, color markers, edit marks, folds, and
+  selections.
 - **Encoding and line-ending fidelity.** Shift_JIS, EUC-JP, and UTF-8-with-BOM
   documents survive an agent edit round trip byte-identically outside the edited
   region **under a profile whose save policy does not transform content**. Under
@@ -1377,7 +1382,9 @@ oversized frames, invalid tokens, stale sockets):
 - **Era transcript tests.** For each supported era, golden transcripts for
   success, tool failure, cancellation, list invalidation, and document-content
   update — including that a modern-era failure carries both
-  `resultType: "complete"` and `isError: true`.
+  `resultType: "complete"` and `isError: true`, that a modern request without
+  `clientInfo` is served rather than refused, and that every modern result
+  stamps `serverInfo`.
 - **Anchor bound tests.** Minting past the **per-connection** quota evicts
   oldest-first; an anchor does not survive a text revision change, a document
   close, or the connection ending; reconnecting does not inherit anchors;
@@ -1393,8 +1400,10 @@ oversized frames, invalid tokens, stale sockets):
   concurrency checking, and no worker closure captures `Document`, a view
   controller, or an AppKit object.
 - **Undo tests.** One tool call is one ⌘Z; review rejection restores exactly.
-- **Authorization tests.** Grants revoked mid-call take effect on the in-flight
-  call; an unapproved connection cannot spam approval UI; a second bridge process
+- **Authorization tests.** No agent-initiated path presents a window-modal
+  sheet, approval included; a document opened after approval stays invisible
+  until the human approves it or turns on the default-off inheritance switch;
+  grants revoked mid-call take effect on the in-flight call; an unapproved connection cannot spam approval UI; a second bridge process
   gets its own approval rather than inheriting the first one's grant; a tool call
   from an unapproved connection returns promptly with a retryable error rather
   than waiting on the sheet; a document opened after approval is invisible until
