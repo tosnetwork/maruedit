@@ -1390,7 +1390,7 @@ no bridge, no protocol.
 *Exit:* macro tests pass unchanged apart from the documented CR carve-out;
 Insert Control Code maps `SO`, `US`, and `DEL` to the same bytes as before the
 rewrite and no longer offers CR; every read-only source survives a
-window-focus refresh;
+window-focus refresh and in a pane created later by a split;
 revision-source tests cover every text and selection mutation path and every row
 of §6.1's event table; a CR inserted through every row of §3's ingress table is
 normalized; the transaction primitive rejects a batch containing one invalid
