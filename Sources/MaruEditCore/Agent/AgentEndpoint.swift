@@ -41,7 +41,8 @@ public enum AgentEndpoint {
 
         public static func parse(_ value: JSONValue) -> Instance? {
             guard let id = value["serverInstanceID"]?.stringValue,
-                  let pid = value["pid"]?.intValue,
+                  let rawPID = value["pid"]?.intValue,
+                  let pid = Int32(exactly: rawPID),
                   let socketPath = value["socketPath"]?.stringValue
             else { return nil }
             let startTime = value["startTime"].flatMap {
@@ -50,7 +51,7 @@ public enum AgentEndpoint {
                 return nil
             } ?? 0
             return Instance(
-                serverInstanceID: id, pid: Int32(pid), startTime: startTime,
+                serverInstanceID: id, pid: pid, startTime: startTime,
                 socketPath: socketPath,
                 protocolMajor: value["protocolMajor"]?.intValue ?? AgentEnvelope.version)
         }

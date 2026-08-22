@@ -34,6 +34,24 @@ public enum UnixSocket {
         return addr
     }
 
+    /// Writing to a socket whose peer has gone raises `SIGPIPE`, which
+    /// terminates the process by default — an agent that quits at the wrong
+    /// moment would take the editor and any unsaved work with it. Every socket
+    /// this module creates opts out and gets `EPIPE` instead.
+    private static func configure(_ descriptor: Int32) {
+        var on: Int32 = 1
+        setsockopt(descriptor, SOL_SOCKET, SO_NOSIGPIPE, &on, socklen_t(MemoryLayout<Int32>.size))
+    }
+
+    /// A peer that stops reading must not be able to freeze the editor, so
+    /// writes give up rather than blocking forever.
+    private static func setWriteTimeout(_ descriptor: Int32, seconds: Int) {
+        var timeout = timeval(tv_sec: seconds, tv_usec: 0)
+        setsockopt(
+            descriptor, SOL_SOCKET, SO_SNDTIMEO, &timeout,
+            socklen_t(MemoryLayout<timeval>.size))
+    }
+
     /// Creates a listening socket with `0600` permissions.
     ///
     /// The mode is set with `umask` around `bind` rather than `chmod`
@@ -44,6 +62,7 @@ public enum UnixSocket {
         var addr = try address(for: path)
         let descriptor = socket(AF_UNIX, SOCK_STREAM, 0)
         guard descriptor >= 0 else { throw SocketError.createFailed(errno) }
+        configure(descriptor)
 
         let previousMask = umask(0o177)
         let bound = withUnsafePointer(to: &addr) { pointer in
@@ -69,6 +88,8 @@ public enum UnixSocket {
         var addr = try address(for: path)
         let descriptor = socket(AF_UNIX, SOCK_STREAM, 0)
         guard descriptor >= 0 else { throw SocketError.createFailed(errno) }
+        configure(descriptor)
+        setWriteTimeout(descriptor, seconds: 30)
         let connected = withUnsafePointer(to: &addr) { pointer in
             pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
                 Foundation.connect(descriptor, $0, socklen_t(MemoryLayout<sockaddr_un>.size))
@@ -107,6 +128,12 @@ public enum UnixSocket {
 
     // MARK: - Blocking IO
 
+    /// Prepares an accepted connection: no `SIGPIPE`, and a bounded write.
+    public static func prepareAccepted(_ descriptor: Int32, writeTimeoutSeconds: Int = 5) {
+        configure(descriptor)
+        setWriteTimeout(descriptor, seconds: writeTimeoutSeconds)
+    }
+
     public static func writeAll(_ descriptor: Int32, _ data: Data) throws {
         var remaining = data
         while !remaining.isEmpty {
@@ -118,6 +145,8 @@ public enum UnixSocket {
             } else if written < 0 && errno == EINTR {
                 continue
             } else {
+                // EPIPE (the peer went away) and EAGAIN (it stopped reading
+                // and the timeout fired) are both "this connection is over".
                 throw SocketError.closed
             }
         }

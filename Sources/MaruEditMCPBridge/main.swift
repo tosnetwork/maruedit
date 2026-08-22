@@ -111,6 +111,9 @@ final class AppConnection {
     /// Invoked for a change event the app pushed while we were reading.
     var onEvent: ((AgentEnvelope.Event) -> Void)?
 
+    /// Latest authorization state the app pushed. Informational only.
+    private(set) var authorization: AgentEnvelope.AuthorizationState.Status = .pending
+
     func call(tool: String, arguments: JSONValue) throws -> AgentToolOutcome {
         let id = nextCallID
         nextCallID += 1
@@ -124,24 +127,15 @@ final class AppConnection {
                 continue
             }
             if let state = AgentEnvelope.AuthorizationState.parse(frame) {
-                // Approval never blocks a call: the agent is told to retry
-                // rather than left waiting while a human decides.
-                switch state.status {
-                case .pending:
-                    return .failure(
-                        code: "authorization.pending",
-                        message: state.message.isEmpty
-                            ? "MaruEdit is waiting for the person at the keyboard to approve this connection. Try again shortly."
-                            : state.message,
-                        details: nil)
-                case .denied, .expired, .disconnected:
-                    return .failure(
-                        code: "authorization.denied",
-                        message: state.message.isEmpty ? "Access was declined in MaruEdit." : state.message,
-                        details: nil)
-                case .approved:
-                    continue
-                }
+                // Authorization frames are *state*, never the answer to a call.
+                // Treating one as an answer meant the frame the app sends right
+                // after hello was consumed as the result of the first call — so
+                // an approved call reported "pending" while the app went ahead
+                // and ran it, and pairing could never complete. The app answers
+                // every call with a reply, including a refusal, so waiting for
+                // that reply is both correct and simpler.
+                authorization = state.status
+                continue
             }
             if let reply = AgentEnvelope.Reply.parse(frame), reply.id == id {
                 return reply.outcome
@@ -263,7 +257,10 @@ let advertisedPhase = 3
 let server = MCPServer(
     info: MCPServer.ServerInfo(name: "maruedit", version: AgentBridgeVersion.current),
     tools: AgentToolCatalog.tools(throughPhase: advertisedPhase),
-    servesResources: true,
+    // Resources stay unadvertised until the bridge reads the app continuously
+    // rather than only while a call is outstanding: an idle subscriber would
+    // otherwise be promised notifications it can never receive.
+    servesResources: false,
     invoke: { tool, arguments in connection.call(tool: tool, arguments: arguments) })
 
 func emit(_ message: JSONRPCMessage) {

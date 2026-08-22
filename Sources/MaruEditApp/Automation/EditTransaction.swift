@@ -54,12 +54,28 @@ extension EditorViewController {
 
     /// Applies edits already known to be in bounds, ordered, and disjoint.
     ///
-    /// Every offset-addressed set the document carries is transformed here in
-    /// the same pass as the text — bookmarks, color markers, temporary color
-    /// markers, and the line index — because an edit that moves text without
-    /// moving them corrupts them silently. Folds and highlight ranges are
-    /// rebuilt afterwards rather than transformed, and edit marks are
-    /// recomputed from the resulting text by the existing change handling.
+    /// Every offset-addressed set a document carries has a stated policy here,
+    /// because an edit that moves text without moving them corrupts them
+    /// silently and no text comparison notices:
+    ///
+    /// | Set | Policy |
+    /// |---|---|
+    /// | Bookmarks | transformed with the edit, then normalized |
+    /// | Color markers | transformed with the edit |
+    /// | Temporary color markers | transformed with the edit |
+    /// | Line index | transformed with the edit |
+    /// | Selections | recomputed from the applied edits |
+    /// | Edit marks | transformed *and* extended — the gutter's job is to show
+    ///   which lines changed, and an agent's edit is a change |
+    /// | Search color layers | **invalidated** — they are results of a query
+    ///   against text that no longer exists |
+    /// | Folds | **invalidated** — ranges are rebuilt from the new outline |
+    /// | Syntax highlighting | rebuilt asynchronously |
+    ///
+    /// Invalidation is a real choice, not an omission: a stale search highlight
+    /// pointing into moved text is worse than none. So is transformation where
+    /// it is meaningful — an edit mark that did not follow its line would send
+    /// the human to the wrong place.
     func commitValidatedTransaction(
         _ ordered: [AutomationEdit],
         actionName: String
@@ -90,15 +106,22 @@ extension EditorViewController {
 
         let snapshot = transactionSnapshot()
 
+        let textBeforeEdit = textView.string as NSString
         storage.beginEditing()
         for edit in ordered.reversed() {
             document?.bookmarks.applyEdit(range: edit.range, replacement: edit.replacement)
+            document?.editMarks.recordEdit(
+                range: edit.range, replacement: edit.replacement, in: textBeforeEdit)
             document?.colorMarkers.applyEdit(range: edit.range, replacement: edit.replacement)
             applyTemporaryColorMarkerEdit(range: edit.range, replacement: edit.replacement)
             lineIndex.applyEdit(range: edit.range, replacement: edit.replacement)
             storage.replaceCharacters(in: edit.range, with: edit.replacement)
         }
         storage.endEditing()
+
+        // Search highlights are results of a query against text that no longer
+        // exists, so they go rather than being dragged along.
+        document?.searchColorLayers.removeAll()
         refreshColorOverlays()
 
         let newContent = textView.string
@@ -139,6 +162,12 @@ extension EditorViewController {
         let primary: NSRange
         let bookmarks: Set<Int>
         let markers: [Int: MarkerColor]
+        /// Restored because the transaction moves and adds to them; without
+        /// this, undo gives back the text and leaves the gutter describing
+        /// changes that no longer exist.
+        let editMarks: Set<Int>
+        let lastRecordedEditMark: Int?
+        let searchLayers: [SearchColorLayer]
     }
 
     func transactionSnapshot() -> TransactionSnapshot {
@@ -147,7 +176,10 @@ extension EditorViewController {
             selections: selectionSet.ranges,
             primary: selectionSet.primaryRange,
             bookmarks: document?.bookmarks.offsets ?? [],
-            markers: document?.colorMarkers.markers ?? [:]
+            markers: document?.colorMarkers.markers ?? [:],
+            editMarks: document?.editMarks.offsets ?? [],
+            lastRecordedEditMark: document?.editMarks.lastRecordedOffset,
+            searchLayers: document?.searchColorLayers ?? []
         )
     }
 
@@ -171,6 +203,9 @@ extension EditorViewController {
         document?.content = snapshot.text
         document?.bookmarks.restore(snapshot.bookmarks)
         document?.colorMarkers.restore(snapshot.markers)
+        document?.editMarks.restore(
+            snapshot.editMarks, lastRecorded: snapshot.lastRecordedEditMark)
+        document?.searchColorLayers = snapshot.searchLayers
         document?.markModified()
         delegate?.editorTextDidChange(self)
         lineIndex = LineIndex(snapshot.text)

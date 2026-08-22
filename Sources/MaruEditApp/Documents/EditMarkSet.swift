@@ -9,6 +9,12 @@ final class EditMarkSet {
 
     func clear() { offsets.removeAll(); lastRecordedOffset = nil }
 
+    /// Puts back a previously captured set, for Undo.
+    func restore(_ saved: Set<Int>, lastRecorded: Int?) {
+        offsets = saved
+        lastRecordedOffset = lastRecorded
+    }
+
     func recordEdit(range: NSRange, replacement: String, in textBeforeEdit: NSString) {
         applyEdit(range: range, replacement: replacement)
         let safe = min(max(0, range.location), textBeforeEdit.length)

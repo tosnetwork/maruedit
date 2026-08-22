@@ -439,3 +439,187 @@ final class AgentPersistenceTests: XCTestCase {
             AgentEndpoint.isAlive(dead, now: AgentEndpoint.processStartTime(pid:)))
     }
 }
+
+/// Authorization behaviour from the implementation review: capabilities are
+/// separate, the write mode is the human's choice, and a revoked grant stops
+/// work that is already in flight.
+@MainActor
+final class AgentAuthorizationTests: XCTestCase {
+
+    private var home: URL!
+    private var coordinator: AppCoordinator!
+    private var server: AgentServer!
+    private var connection: AgentControlService.Connection!
+    private var executor: AgentToolExecutor!
+    private var controller: MainWindowController!
+
+    override func setUp() async throws {
+        try await super.setUp()
+        _ = NSApplication.shared
+        home = URL(fileURLWithPath: "/tmp/maz-\(UUID().uuidString.prefix(8))")
+        try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
+        coordinator = AppCoordinator()
+        controller = coordinator.ensureWindowControllerReady(restoreSession: false)
+        controller.prepareUITestDocument(content: "hello world", selections: [])
+        server = AgentServer(coordinator: coordinator, home: home)
+        connection = AgentControlService.Connection(
+            id: AutomationID.next(prefix: "conn"),
+            credentialID: nil, claimedName: "test-agent", bridgePID: getpid())
+        executor = AgentToolExecutor(coordinator: coordinator, control: server.control)
+    }
+
+    override func tearDown() async throws {
+        server?.stop()
+        NSApp.windows.filter { $0.windowController is MainWindowController }.forEach { $0.close() }
+        try? FileManager.default.removeItem(at: home)
+        try await super.tearDown()
+    }
+
+    private func run(_ tool: String, _ arguments: [String: JSONValue] = [:]) async -> AgentToolOutcome {
+        await executor.run(tool: tool, arguments: .object(arguments), connection: connection)
+    }
+
+    private func failureCode(_ outcome: AgentToolOutcome) -> String? {
+        if case .failure(let code, _, _) = outcome { return code }
+        return nil
+    }
+
+    private var document: Document { controller.macroEditor.document! }
+
+    private func editArguments() -> [String: JSONValue] {
+        [
+            "documentId": .string(document.automationID.rawValue),
+            "baseRevision": .int(Int(document.textRevision)),
+            "baseMetadataRevision": .int(Int(document.metadataRevision)),
+            "edits": .array([.object([
+                "start": .int(0), "end": .int(5), "text": .string("HELLO"),
+            ])]),
+        ]
+    }
+
+    func testApproveGrantsReadingAndNothingElse() async {
+        server.control.approveForTesting(connection, coordinator: coordinator)
+
+        // One button used to hand over reading, editing, saving, opening files
+        // and running commands together.
+        guard case .success = await run("list_documents") else {
+            return XCTFail("reading is what Approve grants")
+        }
+        let denied1 = await run("apply_edits", editArguments())
+        XCTAssertEqual(failureCode(denied1), "authorization.capability")
+        let denied2 = await run("open_document", ["path": .string("/tmp/x")])
+        XCTAssertEqual(failureCode(denied2), "authorization.capability")
+        let denied3 = await run("run_command", ["commandId": .string("file.new")])
+        XCTAssertEqual(failureCode(denied3), "authorization.capability")
+        XCTAssertEqual(document.content, "hello world")
+    }
+
+    func testEditingWithoutTheAutoModeQueuesForReviewEvenWhenTheAgentAsksToApply() async throws {
+        server.control.approveForTesting(
+            connection, coordinator: coordinator,
+            capabilities: [.readOnly, .writeDocuments], writeMode: .review)
+
+        var arguments = editArguments()
+        arguments["mode"] = .string("apply")
+        let outcome = await run("apply_edits", arguments)
+
+        guard case .success(let payload) = outcome else { return XCTFail("expected a proposal") }
+        // The grant decides, not the caller.
+        XCTAssertEqual(payload["status"], .string("pending"))
+        XCTAssertEqual(document.content, "hello world")
+    }
+
+    func testAnUnknownWriteModeIsRefusedRatherThanTreatedAsApply() async {
+        server.control.approveForTesting(
+            connection, coordinator: coordinator,
+            capabilities: [.readOnly, .writeDocuments], writeMode: .auto)
+
+        var arguments = editArguments()
+        arguments["mode"] = .string("reveiw")
+        // A typo used to mean "apply immediately".
+        let denied4 = await run("apply_edits", arguments)
+        XCTAssertEqual(failureCode(denied4), "argument.invalid")
+        XCTAssertEqual(document.content, "hello world")
+    }
+
+    func testRevokingStopsFurtherWorkAndClearsAnchors() async {
+        server.control.approveForTesting(
+            connection, coordinator: coordinator,
+            capabilities: [.readOnly, .writeDocuments], writeMode: .auto)
+        _ = connection.anchors.mint(revision: 1, start: 0, end: 1, text: "h")
+        XCTAssertEqual(connection.anchors.count, 1)
+
+        server.control.revoke(connection)
+
+        XCTAssertEqual(connection.anchors.count, 0)
+        let denied5 = await run("list_documents")
+        XCTAssertEqual(failureCode(denied5), "authorization.denied")
+        let denied6 = await run("apply_edits", editArguments())
+        XCTAssertEqual(failureCode(denied6), "authorization.denied")
+        XCTAssertEqual(document.content, "hello world")
+    }
+
+    func testGrantStampsNoticeARevocationThatHappensMidCall() {
+        server.control.approveForTesting(connection, coordinator: coordinator)
+        let stamp = server.control.stamp(connection)
+        XCTAssertTrue(server.control.isStillValid(stamp))
+
+        // The counter existed from the start; nothing read it, so a revoked
+        // in-flight read still returned document contents.
+        server.control.revoke(connection)
+        XCTAssertFalse(server.control.isStillValid(stamp))
+    }
+
+    func testFoldersAreGrantedPerConnectionRatherThanProcessWide() {
+        let other = AgentControlService.Connection(
+            id: AutomationID.next(prefix: "conn"),
+            credentialID: nil, claimedName: "other", bridgePID: getpid())
+        server.control.approveForTesting(connection, coordinator: coordinator)
+        server.control.approveForTesting(other, coordinator: coordinator)
+        server.control.addAuthorizedRoot("/tmp")
+
+        server.control.grantRoots(connection, ["/tmp"])
+
+        XCTAssertEqual(connection.authorizedRoots, ["/tmp"])
+        // A folder authorized for one configuration must not silently authorize
+        // every other connection.
+        XCTAssertTrue(other.authorizedRoots.isEmpty)
+    }
+
+    func testAnIdempotencyKeyReturnsTheFirstOutcomeRatherThanEditingTwice() async throws {
+        server.control.approveForTesting(
+            connection, coordinator: coordinator,
+            capabilities: [.readOnly, .writeDocuments], writeMode: .auto)
+
+        var arguments = editArguments()
+        arguments["idempotencyKey"] = .string("k1")
+        guard case .success = await run("apply_edits", arguments) else {
+            return XCTFail("first call should apply")
+        }
+        XCTAssertEqual(document.content, "HELLO world")
+
+        // A client that lost the reply and retried used to get a second edit.
+        guard case .success(let repeated) = await run("apply_edits", arguments) else {
+            return XCTFail("a repeat returns the first outcome")
+        }
+        XCTAssertEqual(repeated["status"], .string("applied"))
+        XCTAssertEqual(document.content, "HELLO world")
+    }
+
+    func testReusingAKeyWithDifferentArgumentsIsRefused() async {
+        server.control.approveForTesting(
+            connection, coordinator: coordinator,
+            capabilities: [.readOnly, .writeDocuments], writeMode: .auto)
+
+        var first = editArguments()
+        first["idempotencyKey"] = .string("k2")
+        _ = await run("apply_edits", first)
+
+        var second = editArguments()
+        second["idempotencyKey"] = .string("k2")
+        second["label"] = .string("something else")
+        // Answering with someone else's result would be worse than refusing.
+        let denied7 = await run("apply_edits", second)
+        XCTAssertEqual(failureCode(denied7), "idempotency.mismatch")
+    }
+}

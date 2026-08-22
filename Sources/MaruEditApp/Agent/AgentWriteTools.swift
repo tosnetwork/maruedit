@@ -14,13 +14,32 @@ extension AgentToolExecutor {
     func applyEdits(
         _ arguments: JSONValue, _ connection: AgentControlService.Connection
     ) -> AgentToolOutcome {
+        // A client that lost a reply and retried used to get a second edit or a
+        // duplicate proposal; the key was advertised and never read.
+        if let key = arguments["idempotencyKey"]?.stringValue {
+            if let remembered = control.rememberedOutcome(
+                connection, tool: "apply_edits", key: key, arguments: arguments) {
+                return remembered
+            }
+            let outcome = applyEditsUnchecked(arguments, connection)
+            control.remember(
+                connection, tool: "apply_edits", key: key,
+                arguments: arguments, outcome: outcome)
+            return outcome
+        }
+        return applyEditsUnchecked(arguments, connection)
+    }
+
+    private func applyEditsUnchecked(
+        _ arguments: JSONValue, _ connection: AgentControlService.Connection
+    ) -> AgentToolOutcome {
         let resolved = resolveForWrite(arguments, connection)
         guard case .success(let target) = resolved else {
             if case .failure(let failure) = resolved { return failure.outcome }
             return .failure(code: "internal", message: "unreachable", details: nil)
         }
-        guard let baseRevision = arguments["baseRevision"]?.intValue.map(UInt64.init),
-              let baseMetadataRevision = arguments["baseMetadataRevision"]?.intValue.map(UInt64.init)
+        guard let baseRevision = arguments["baseRevision"]?.unsignedValue,
+              let baseMetadataRevision = arguments["baseMetadataRevision"]?.unsignedValue
         else {
             return .failure(
                 code: "argument.missing",
@@ -113,8 +132,8 @@ extension AgentToolExecutor {
                 }
                 range = NSRange(location: anchor.start, length: anchor.end - anchor.start)
             } else {
-                guard let start = raw["start"]?.intValue, let end = raw["end"]?.intValue,
-                      start >= 0, end >= start, end <= text.length
+                guard let start = raw["start"]?.offsetValue, let end = raw["end"]?.offsetValue,
+                      end >= start, end <= text.length
                 else {
                     return .failure(
                         code: "edit.range_invalid",
@@ -156,7 +175,21 @@ extension AgentToolExecutor {
                 details: .object(["characters": .string(offending)]))
         }
 
-        let mode = arguments["mode"]?.stringValue ?? "apply"
+        // "anything except review means apply" made a typo destructive:
+        // `"reveiw"` would have written straight to the document.
+        let requested = arguments["mode"]?.stringValue ?? "apply"
+        guard requested == "apply" || requested == "review" else {
+            return .failure(
+                code: "argument.invalid",
+                message: "mode must be \"apply\" or \"review\"; got \"\(requested)\".",
+                details: nil)
+        }
+        // The grant decides, not the caller: an agent asking to apply directly
+        // gets review anyway unless the human granted that mode. Asking for
+        // review when the grant allows applying is honoured, since a client may
+        // want a human to look at something.
+        let mode = (connection.writeMode == .auto && requested == "apply") ? "apply" : "review"
+
         if mode == "review" {
             let created = control.proposals.create(
                 connectionID: connection.id,
@@ -177,6 +210,14 @@ extension AgentToolExecutor {
             }
         }
 
+        // Re-check the grant immediately before mutating: it may have been
+        // revoked while the edits were being validated.
+        guard control.isStillValid(control.stamp(connection)) else {
+            return .failure(
+                code: "authorization.denied",
+                message: "This client's access was revoked before the edit was applied.",
+                details: nil)
+        }
         return Self.commit(
             edits: edits,
             label: "\(connection.claimedName ?? "agent"): \(label)",
@@ -277,8 +318,8 @@ extension AgentToolExecutor {
         _ arguments: JSONValue, _ connection: AgentControlService.Connection
     ) -> AgentToolOutcome {
         guard let raw = arguments["editorId"]?.stringValue,
-              let baseRevision = arguments["baseRevision"]?.intValue.map(UInt64.init),
-              let baseSelectionRevision = arguments["baseSelectionRevision"]?.intValue.map(UInt64.init)
+              let baseRevision = arguments["baseRevision"]?.unsignedValue,
+              let baseSelectionRevision = arguments["baseSelectionRevision"]?.unsignedValue
         else {
             return .failure(
                 code: "argument.missing",
@@ -312,8 +353,8 @@ extension AgentToolExecutor {
         let length = (target.document.content as NSString).length
         var ranges: [NSRange] = []
         for raw in rawSelections {
-            guard let start = raw["start"]?.intValue, let end = raw["end"]?.intValue,
-                  start >= 0, end >= start, end <= length
+            guard let start = raw["start"]?.offsetValue, let end = raw["end"]?.offsetValue,
+                  end >= start, end <= length
             else {
                 return .failure(
                     code: "edit.range_invalid",
@@ -335,8 +376,8 @@ extension AgentToolExecutor {
         _ arguments: JSONValue, _ connection: AgentControlService.Connection
     ) -> AgentToolOutcome {
         guard let raw = arguments["editorId"]?.stringValue,
-              let baseRevision = arguments["baseRevision"]?.intValue.map(UInt64.init),
-              let line = arguments["line"]?.intValue
+              let baseRevision = arguments["baseRevision"]?.unsignedValue,
+              let line = arguments["line"]?.offsetValue
         else {
             return .failure(
                 code: "argument.missing",
@@ -382,15 +423,25 @@ extension AgentToolExecutor {
         // The preconditions are handed to the coordinator rather than checked
         // here, so they are revalidated atomically immediately before the
         // commit rather than a few statements earlier.
+        let grant = control.stamp(connection)
         let outcome = await withCheckedContinuation { continuation in
             SaveCoordinator.shared.save(
                 document: document,
                 requester: .agent,
-                requiredTextRevision: arguments["expectRevision"]?.intValue.map(UInt64.init),
-                requiredMetadataRevision: arguments["expectMetadataRevision"]?.intValue.map(UInt64.init)
+                requiredTextRevision: arguments["expectRevision"]?.unsignedValue,
+                requiredMetadataRevision: arguments["expectMetadataRevision"]?.unsignedValue
             ) { result in
                 continuation.resume(returning: result)
             }
+        }
+
+        // A revocation that landed while the save was preparing arrives too
+        // late to stop the write, so it is reported rather than hidden.
+        if !control.isStillValid(grant), case .succeeded = outcome {
+            return .failure(
+                code: "authorization.revoked_after_write",
+                message: "Access was revoked while the save was in flight; the file was already written.",
+                details: nil)
         }
 
         switch outcome {
@@ -401,6 +452,12 @@ extension AgentToolExecutor {
                 "metadataRevision": .int(Int(document.metadataRevision)),
                 "stillDirty": .bool(document.isModified),
             ]))
+        case .queuedBehindAnotherSave:
+            // Only a human save is ever queued, so an agent cannot reach this.
+            return .failure(
+                code: "save.in_progress",
+                message: "A save of this document is already running.",
+                details: nil)
         case .inProgress:
             return .failure(
                 code: "save.in_progress",

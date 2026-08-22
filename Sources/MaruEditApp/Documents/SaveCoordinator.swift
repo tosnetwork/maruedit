@@ -69,8 +69,11 @@ final class SaveCoordinator {
         case superseded
         /// A precondition moved between planning and committing.
         case conflicted(String)
-        /// Another save of this document is mid-flight.
+        /// Another *agent* save of this document is mid-flight.
         case inProgress
+        /// A human save arrived mid-flight and will run as soon as the current
+        /// one unwinds. It is queued, not refused.
+        case queuedBehindAnotherSave
     }
 
     enum Requester: Equatable {
@@ -211,7 +214,22 @@ final class SaveCoordinator {
         requester: Requester = .human
     ) -> Outcome {
         let id = document.automationID
-        if inFlight.contains(id) { return .inProgress }
+        if inFlight.contains(id) {
+            switch requester {
+            case .agent:
+                return .inProgress
+            case .human:
+                // Never dropped. The agent save in flight has already been told
+                // to stand down by `supersede`; this one runs the moment it
+                // unwinds. Returning `.inProgress` here — which is what the
+                // first version did — silently threw away a ⌘S, which is
+                // precisely the failure the human-first rule exists to prevent.
+                pendingHumanSaves[id] = { [weak self] in
+                    _ = self?.saveSynchronously(document: document, as: url, requester: .human)
+                }
+                return .queuedBehindAnotherSave
+            }
+        }
         if let failure = preflightFailure(for: document, savingAs: url) {
             return .failedBeforeIrreversible(failure)
         }
@@ -317,7 +335,14 @@ final class SaveCoordinator {
                 url: plan.url,
                 knownIdentity: plan.diskIdentity,
                 knownModificationDate: plan.diskModificationDate)
-            if status == .modified { return finish(.conflicted("external_change")) }
+            // Anything but `.unchanged`: a file that was deleted or moved after
+            // it was opened must not be silently recreated by a save the human
+            // did not ask for.
+            switch status {
+            case .unchanged: break
+            case .modified: return finish(.conflicted("external_change"))
+            default: return finish(.conflicted("external_missing"))
+            }
         }
 
         // Irreversible from here. Backup creation counts: it copies the old

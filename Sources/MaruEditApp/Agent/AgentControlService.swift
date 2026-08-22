@@ -19,6 +19,60 @@ final class AgentControlService: ObservableObject {
         case pending, approved, denied, disconnected, expired
     }
 
+    /// What a connection is allowed to do.
+    ///
+    /// One Approve button used to grant reads, direct edits, selection changes,
+    /// saves, file opening, and commands together — every capability the ADR
+    /// says must be separable. They are separable now, and the write mode is
+    /// part of the grant rather than something an agent chooses per call.
+    struct Capabilities: OptionSet {
+        let rawValue: Int
+        static let readDocuments = Capabilities(rawValue: 1 << 0)
+        static let readSelection = Capabilities(rawValue: 1 << 1)
+        static let writeDocuments = Capabilities(rawValue: 1 << 2)
+        static let writeSelection = Capabilities(rawValue: 1 << 3)
+        static let saveDocuments = Capabilities(rawValue: 1 << 4)
+        static let openDocuments = Capabilities(rawValue: 1 << 5)
+        static let runCommands = Capabilities(rawValue: 1 << 6)
+
+        /// What Approve grants on its own: reading, and nothing else.
+        static let readOnly: Capabilities = [.readDocuments, .readSelection]
+        static let editing: Capabilities = [.readOnly, .writeDocuments, .writeSelection]
+        static let everything: Capabilities = [.editing, .saveDocuments, .openDocuments, .runCommands]
+
+        /// Which capability each tool needs. A tool absent from this table is
+        /// refused rather than allowed by default.
+        static func required(for tool: String) -> Capabilities? {
+            switch tool {
+            case "list_documents", "list_editors", "read_document",
+                 "get_outline", "search_documents":
+                return .readDocuments
+            case "get_selection":
+                return .readSelection
+            case "apply_edits", "review_status":
+                return .writeDocuments
+            case "set_selection", "reveal":
+                return .writeSelection
+            case "save_document":
+                return .saveDocuments
+            case "open_document":
+                return .openDocuments
+            case "run_command":
+                return .runCommands
+            default:
+                return nil
+            }
+        }
+    }
+
+    /// How a granted client's edits reach the document.
+    enum WriteMode: String {
+        /// Edits are queued for the human to accept or reject.
+        case review
+        /// Edits apply immediately, still as one undo entry each.
+        case auto
+    }
+
     /// One live bridge connection.
     final class Connection {
         let id: AutomationID
@@ -32,6 +86,15 @@ final class AgentControlService: ObservableObject {
         /// silently grew to cover whatever the human opened next would turn
         /// "read what I have open" into "read anything I open".
         var grantedDocuments: Set<AutomationID> = []
+        /// Reading only, until the human says otherwise.
+        var capabilities: Capabilities = []
+        /// Review by default: an edit the human has not seen is the thing this
+        /// interface is most likely to get wrong.
+        var writeMode: WriteMode = .review
+        /// Folders this connection may open files from. Per connection, not per
+        /// process: a root authorized for one configuration must not silently
+        /// authorize every other one.
+        var authorizedRoots: [String] = []
         /// Opt-in, default off, and lapses with the connection.
         var inheritsNewDocuments = false
         /// Bumped on revoke so an in-flight call can notice before it commits.
@@ -41,6 +104,14 @@ final class AgentControlService: ObservableObject {
         /// persistent identity to hang them on, and a self-declared name would
         /// make the quota spoofable.
         let anchors = AgentAnchorStore()
+        /// Outcomes keyed by (tool, idempotency key), so a client that loses a
+        /// reply and retries gets the first answer instead of a second edit.
+        ///
+        /// Bounded and per connection, and deliberately not surviving a
+        /// reconnect: without persistent identity there is nothing to key it to
+        /// on the far side, and the ADR says so rather than pretending.
+        var idempotency: [IdempotencyKey: IdempotencyRecord] = [:]
+        var idempotencyOrder: [IdempotencyKey] = []
 
         init(id: AutomationID, credentialID: String?, claimedName: String?, bridgePID: Int32) {
             self.id = id
@@ -53,6 +124,23 @@ final class AgentControlService: ObservableObject {
             claimedName.map { "\($0) (unverified)" } ?? "Unidentified MCP client"
         }
     }
+
+    struct IdempotencyKey: Hashable {
+        let tool: String
+        let key: String
+    }
+
+    struct IdempotencyRecord {
+        /// Digest of the canonical arguments, so the same key with different
+        /// arguments is refused rather than answered with someone else's
+        /// result.
+        let argumentDigest: String
+        let outcome: AgentToolOutcome
+        let at: Date
+    }
+
+    static let idempotencyRecordLimit = 64
+    static let idempotencyLifetime: TimeInterval = 600
 
     struct AuditEntry: Identifiable {
         let id = UUID()
@@ -99,12 +187,9 @@ final class AgentControlService: ObservableObject {
     private(set) var rememberedCredentials: Set<String> = []
     let proposals = AgentProposalStore()
 
-    /// Folders the human authorized for file opening and folder search.
-    ///
-    /// Empty by default, which makes those tools unavailable rather than
-    /// permissive: a capability whose scope nobody chose is not a scoped
-    /// capability.
-    private(set) var authorizedRoots: [String] = []
+    /// Folders offered when approving a connection. A connection only ever
+    /// uses the copy on its own grant.
+    private(set) var offeredRoots: [String] = []
 
     private let home: URL
     let sessionToken: String
@@ -179,12 +264,35 @@ final class AgentControlService: ObservableObject {
     /// Approval is granted in the non-modal indicator, never a sheet: a sheet is
     /// window-modal and would stop the human typing, which R9 forbids and which
     /// would let a background agent interrupt someone mid-sentence.
-    func approve(_ connection: Connection, documents: [AutomationID]) {
+    func approve(
+        _ connection: Connection,
+        documents: [AutomationID],
+        capabilities: Capabilities = .readOnly,
+        writeMode: WriteMode = .review
+    ) {
         connection.status = .approved
         connection.grantedDocuments = Set(documents)
+        connection.capabilities = capabilities
+        connection.writeMode = writeMode
         connection.grantGeneration &+= 1
         record(connection: connection, tool: "control.approve", document: nil,
-               outcome: "granted \(documents.count) document(s)")
+               outcome: "granted \(documents.count) document(s), \(capabilities.rawValue), \(writeMode.rawValue)")
+        onChange?()
+    }
+
+    func setCapabilities(_ connection: Connection, _ capabilities: Capabilities) {
+        connection.capabilities = capabilities
+        connection.grantGeneration &+= 1
+        record(connection: connection, tool: "control.capabilities", document: nil,
+               outcome: String(capabilities.rawValue))
+        onChange?()
+    }
+
+    func setWriteMode(_ connection: Connection, _ mode: WriteMode) {
+        connection.writeMode = mode
+        connection.grantGeneration &+= 1
+        record(connection: connection, tool: "control.writeMode", document: nil,
+               outcome: mode.rawValue)
         onChange?()
     }
 
@@ -201,6 +309,8 @@ final class AgentControlService: ObservableObject {
         proposals.dropAll(for: connection.id)
         connection.status = .denied
         connection.grantedDocuments = []
+        connection.capabilities = []
+        connection.authorizedRoots = []
         connection.inheritsNewDocuments = false
         connection.grantGeneration &+= 1
         record(connection: connection, tool: "control.revoke", document: nil, outcome: "revoked")
@@ -231,6 +341,28 @@ final class AgentControlService: ObservableObject {
     /// Cheap check before the work is queued. It is deliberately not the only
     /// one: §6.3 requires a second, atomic re-validation immediately before any
     /// commit, because a grant can be revoked in between.
+    /// Snapshot of a grant, taken when a call is dispatched and re-checked
+    /// immediately before anything sensitive is returned or committed.
+    ///
+    /// Without this, a revocation during a suspended read or save would arrive
+    /// too late to matter: the counter was incremented and nobody read it.
+    struct GrantStamp: Equatable {
+        let connectionID: AutomationID
+        let generation: UInt64
+    }
+
+    func stamp(_ connection: Connection) -> GrantStamp {
+        GrantStamp(connectionID: connection.id, generation: connection.grantGeneration)
+    }
+
+    /// Whether a stamped grant is still the grant that was checked.
+    func isStillValid(_ stamp: GrantStamp) -> Bool {
+        guard let connection = connections.first(where: { $0.id == stamp.connectionID }) else {
+            return false
+        }
+        return connection.status == .approved && connection.grantGeneration == stamp.generation
+    }
+
     func authorize(_ connection: Connection, tool: String) -> AgentToolOutcome? {
         if tool == "control.pair" { return nil }
         switch connection.status {
@@ -245,6 +377,23 @@ final class AgentControlService: ObservableObject {
             return .failure(
                 code: "authorization.denied",
                 message: "Access was declined in MaruEdit.",
+                details: nil)
+        }
+        guard let required = Capabilities.required(for: tool) else {
+            return .failure(
+                code: "tool.unknown",
+                message: "MaruEdit does not implement \(tool).",
+                details: nil)
+        }
+        guard connection.capabilities.contains(required) else {
+            return .failure(
+                code: "authorization.capability",
+                message: """
+                    This client has not been granted that. Capabilities are \
+                    separate — reading, editing, moving the cursor, saving, \
+                    opening files, and running commands are each granted on \
+                    their own in MaruEdit's agent window.
+                    """,
                 details: nil)
         }
         guard allowRequest(connection) else {
@@ -357,22 +506,45 @@ final class AgentControlService: ObservableObject {
     ///
     /// Only the approval path is short-circuited; the grant is still frozen to
     /// what exists at the moment it is called, exactly as the UI does it.
-    func approveForTesting(_ connection: Connection, coordinator: AppCoordinator) {
+    func approveForTesting(
+        _ connection: Connection,
+        coordinator: AppCoordinator,
+        capabilities: Capabilities = .readOnly,
+        writeMode: WriteMode = .auto,
+        roots: [String] = []
+    ) {
         if !connections.contains(where: { $0 === connection }) {
             connections.append(connection)
         }
-        approve(connection, documents: coordinator.agentVisibleTargets().map(\.document.automationID))
+        approve(
+            connection,
+            documents: coordinator.agentVisibleTargets().map(\.document.automationID),
+            capabilities: capabilities,
+            writeMode: writeMode)
+        if !roots.isEmpty { grantRoots(connection, roots) }
     }
 
     func addAuthorizedRoot(_ path: String) {
         let standardized = URL(fileURLWithPath: path).standardizedFileURL.path
-        guard !authorizedRoots.contains(standardized) else { return }
-        authorizedRoots.append(standardized)
+        guard !offeredRoots.contains(standardized) else { return }
+        offeredRoots.append(standardized)
         onChange?()
     }
 
     func removeAuthorizedRoot(_ path: String) {
-        authorizedRoots.removeAll { $0 == path }
+        offeredRoots.removeAll { $0 == path }
+        for connection in connections {
+            connection.authorizedRoots.removeAll { $0 == path }
+            connection.grantGeneration &+= 1
+        }
+        onChange?()
+    }
+
+    func grantRoots(_ connection: Connection, _ roots: [String]) {
+        connection.authorizedRoots = roots
+        connection.grantGeneration &+= 1
+        record(connection: connection, tool: "control.roots", document: nil,
+               outcome: "\(roots.count) folder(s)")
         onChange?()
     }
 
@@ -381,6 +553,60 @@ final class AgentControlService: ObservableObject {
     func extendGrant(_ connection: Connection, with document: AutomationID) {
         connection.grantedDocuments.insert(document)
         onChange?()
+    }
+
+    // MARK: - Idempotency
+
+    /// The remembered outcome for this key, or a refusal if the key was reused
+    /// with different arguments.
+    func rememberedOutcome(
+        _ connection: Connection, tool: String, key: String, arguments: JSONValue
+    ) -> AgentToolOutcome? {
+        prune(connection)
+        let identifier = IdempotencyKey(tool: tool, key: key)
+        guard let record = connection.idempotency[identifier] else { return nil }
+        guard record.argumentDigest == Self.digest(of: arguments) else {
+            return .failure(
+                code: "idempotency.mismatch",
+                message: "That idempotency key was used with different arguments.",
+                details: nil)
+        }
+        return record.outcome
+    }
+
+    /// Records an outcome — including a failure, so a blind retry after a
+    /// conflict gets the same conflict rather than re-running validation.
+    func remember(
+        _ connection: Connection, tool: String, key: String,
+        arguments: JSONValue, outcome: AgentToolOutcome
+    ) {
+        let identifier = IdempotencyKey(tool: tool, key: key)
+        if connection.idempotency[identifier] == nil {
+            connection.idempotencyOrder.append(identifier)
+        }
+        connection.idempotency[identifier] = IdempotencyRecord(
+            argumentDigest: Self.digest(of: arguments), outcome: outcome, at: Date())
+        prune(connection)
+    }
+
+    private func prune(_ connection: Connection) {
+        let now = Date()
+        connection.idempotencyOrder.removeAll { identifier in
+            guard let record = connection.idempotency[identifier] else { return true }
+            if now.timeIntervalSince(record.at) > Self.idempotencyLifetime {
+                connection.idempotency.removeValue(forKey: identifier)
+                return true
+            }
+            return false
+        }
+        while connection.idempotencyOrder.count > Self.idempotencyRecordLimit {
+            let oldest = connection.idempotencyOrder.removeFirst()
+            connection.idempotency.removeValue(forKey: oldest)
+        }
+    }
+
+    private static func digest(of arguments: JSONValue) -> String {
+        AgentDigest.of((try? arguments.encodedString()) ?? "")
     }
 
     // MARK: - Audit

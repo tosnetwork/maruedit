@@ -357,7 +357,17 @@ final class AgentAutomationPhase0Tests: XCTestCase {
         XCTAssertNotEqual(firstEditor.automationID, secondEditor.automationID)
         XCTAssertTrue(firstDocument.automationID.rawValue.hasPrefix("doc_"))
         XCTAssertTrue(firstEditor.automationID.rawValue.hasPrefix("ed_"))
-        XCTAssertFalse(firstDocument.automationID.rawValue.contains("a"))
+
+        // Opaque means it carries nothing about the document: not its name, not
+        // its path, not its contents. (Checking that a hex id lacks the letter
+        // "a" — the first version of this assertion — tested nothing and failed
+        // as soon as the counter reached 0xa.)
+        let named = Document(fileURL: URL(fileURLWithPath: "/tmp/secret-name.txt"), content: "body")
+        let raw = named.automationID.rawValue
+        XCTAssertFalse(raw.contains("secret"))
+        XCTAssertFalse(raw.contains("tmp"))
+        XCTAssertFalse(raw.contains("body"))
+        XCTAssertEqual(raw.dropFirst(4).allSatisfy(\.isHexDigit), true)
     }
 
     func testAutomationServiceExposesValuesOnly() {

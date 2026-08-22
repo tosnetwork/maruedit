@@ -54,7 +54,8 @@ public enum AgentEnvelope {
                   let envelopeVersion = value["envelopeVersion"]?.intValue,
                   let catalogVersion = value["catalogVersion"]?.intValue,
                   let token = value["token"]?.stringValue,
-                  let pid = value["bridgePid"]?.intValue
+                  let rawPID = value["bridgePid"]?.intValue,
+                  let pid = Int32(exactly: rawPID)
             else { return nil }
             return Hello(
                 envelopeVersion: envelopeVersion,
@@ -62,7 +63,7 @@ public enum AgentEnvelope {
                 token: token,
                 credential: value["credential"]?.stringValue,
                 clientName: value["clientName"]?.stringValue,
-                bridgePID: Int32(pid))
+                bridgePID: pid)
         }
     }
 

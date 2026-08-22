@@ -942,3 +942,10 @@
 "agent.addRoot" = "フォルダを追加…";
 "agent.removeRoot" = "削除";
 "agent.remember" = "次回から確認を省略";
+"agent.capEdit" = "文書を編集";
+"agent.capSelection" = "カーソルを移動";
+"agent.capSave" = "保存";
+"agent.capOpen" = "ファイルを開く";
+"agent.capCommands" = "コマンドを実行";
+"agent.autoApply" = "確認なしで編集を適用";
+"agent.grantRoots" = "フォルダを許可";

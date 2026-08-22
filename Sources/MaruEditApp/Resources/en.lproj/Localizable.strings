@@ -942,3 +942,10 @@
 "agent.addRoot" = "Add folder…";
 "agent.removeRoot" = "Remove";
 "agent.remember" = "Skip approval next time";
+"agent.capEdit" = "Edit documents";
+"agent.capSelection" = "Move the cursor";
+"agent.capSave" = "Save";
+"agent.capOpen" = "Open files";
+"agent.capCommands" = "Run commands";
+"agent.autoApply" = "Apply edits without review";
+"agent.grantRoots" = "Grant folders";

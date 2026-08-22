@@ -216,6 +216,57 @@ Deliberately deferred out of Phase 0, with reasons:
 
 ---
 
+## Applied from the first implementation review (2026-08-23)
+
+Seventeen findings against roughly 8000 lines of new Swift. The ones that
+mattered, and what they were:
+
+- **Two crashes reachable by an approved client.** `Int(1e300)` and
+  `UInt64(-1)` trap rather than failing, and every revision and offset field
+  went through them. Numeric reads are total now, with the conversions in one
+  place and fuzzed.
+- **`SIGPIPE`.** Writing to a socket whose peer just quit terminates the
+  process by default, taking unsaved work with it. Every socket sets
+  `SO_NOSIGPIPE`, and writes have a timeout so a peer that stops reading cannot
+  freeze the editor either.
+- **The authorization frame was being read as a call result.** The bridge
+  treated the state frame the app sends after hello as the answer to the first
+  call, so an approved call reported "pending" while the app went ahead and ran
+  it — and pairing could never complete at all. Authorization frames are state;
+  the app answers every call with a reply, including refusals.
+- **A ⌘S could be silently dropped.** `saveSynchronously` returned
+  `.inProgress` when an agent save was in flight, throwing the human's save
+  away — the exact failure the human-first rule exists to prevent. It is queued
+  and runs when the current save unwinds.
+- **One Approve button granted everything.** Capabilities are separate now —
+  reading, editing, cursor movement, saving, opening files, running commands —
+  Approve grants reading only, and the write mode is the human's choice rather
+  than the caller's. An agent asking to apply directly gets review unless the
+  grant says otherwise.
+- **`grantGeneration` was written and never read**, so a revocation during a
+  suspended read or save arrived too late to matter. Grants are stamped at
+  dispatch and re-checked before anything sensitive is returned or committed.
+- **Authorized folders were process-wide**, so a folder granted to one
+  configuration authorized every connection. They live on the grant.
+- **A typo was destructive**: any `mode` except exactly `"review"` applied
+  immediately. Unknown modes are refused.
+- **`idempotencyKey` was advertised and never implemented.** It is implemented,
+  bounded, and explicitly does not survive a reconnect.
+- **`read_document` re-read the buffer after its await** to mint anchors, so
+  offsets validated against one string got digests from another — and a
+  shortened document could throw outright.
+- A file that was deleted or moved is a save conflict, not something to
+  recreate. Edit marks are transformed and extended rather than ignored, and
+  undo restores them. Resources are no longer advertised while the bridge can
+  only receive events during a call.
+
+One finding was **not** applied: the claim that the transaction primitive
+writes un-canonicalized text into storage. `AutomationEdit` canonicalizes at
+construction, so every replacement is LF before it reaches text storage; a test
+covers it.
+
+---
+
 ## Open questions that gate work
 
 - **OQ-1** — credential format, rotation, and what binds a credential to one

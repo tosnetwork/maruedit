@@ -133,6 +133,7 @@ final class AgentServer {
     private func acceptOne() {
         let descriptor = accept(listenerDescriptor, nil, nil)
         guard descriptor >= 0 else { return }
+        UnixSocket.prepareAccepted(descriptor)
         do {
             // Proves same user and nothing more: a precondition, never an
             // authorization (ADR-012 §4.3).
@@ -180,9 +181,15 @@ final class AgentServer {
             switch control.register(hello: hello) {
             case .success(let connection):
                 state.connection = connection
+                // The true status: a remembered credential is approved on
+                // arrival, and saying "pending" there would be a lie the bridge
+                // used to act on.
+                let approved = connection.status == .approved
                 send(AgentEnvelope.AuthorizationState(
-                    status: .pending,
-                    message: "Waiting for approval in MaruEdit's agent indicator.").json, on: state)
+                    status: approved ? .approved : .pending,
+                    message: approved
+                        ? ""
+                        : "Waiting for approval in MaruEdit's agent indicator.").json, on: state)
             case .failure(let failure):
                 send(AgentEnvelope.Reply(id: 0, outcome: failure.outcome).json, on: state)
                 state.close()

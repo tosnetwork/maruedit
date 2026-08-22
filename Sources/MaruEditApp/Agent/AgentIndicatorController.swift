@@ -96,10 +96,10 @@ final class AgentIndicatorController: NSWindowController {
         }
 
         stack.addArrangedSubview(heading(AppLocalization.string("agent.roots")))
-        if server.control.authorizedRoots.isEmpty {
+        if server.control.offeredRoots.isEmpty {
             stack.addArrangedSubview(label(AppLocalization.string("agent.noRoots"), secondary: true))
         } else {
-            for root in server.control.authorizedRoots {
+            for root in server.control.offeredRoots {
                 let remove = NSButton(
                     title: AppLocalization.string("agent.removeRoot"),
                     target: self, action: #selector(removeRoot(_:)))
@@ -183,8 +183,48 @@ final class AgentIndicatorController: NSWindowController {
                 target: self, action: #selector(revoke(_:)))
             revoke.identifier = NSUserInterfaceItemIdentifier(connection.id.rawValue)
             views.append(contentsOf: [inherit, revoke])
+            return NSStackView(views: [row(views), capabilityRow(connection)]).configuredAsColumn()
         default:
             break
+        }
+        return row(views)
+    }
+
+    /// What this client may do, each granted on its own.
+    ///
+    /// One Approve button used to hand over reading, editing, saving, opening
+    /// files, and running commands together. They are separate switches now,
+    /// because they are separate decisions.
+    private func capabilityRow(_ connection: AgentControlService.Connection) -> NSView {
+        let options: [(String, AgentControlService.Capabilities)] = [
+            ("agent.capEdit", .writeDocuments),
+            ("agent.capSelection", .writeSelection),
+            ("agent.capSave", .saveDocuments),
+            ("agent.capOpen", .openDocuments),
+            ("agent.capCommands", .runCommands),
+        ]
+        var views: [NSView] = options.map { key, capability in
+            let box = NSButton(
+                checkboxWithTitle: AppLocalization.string(key),
+                target: self, action: #selector(toggleCapability(_:)))
+            box.state = connection.capabilities.contains(capability) ? .on : .off
+            box.identifier = NSUserInterfaceItemIdentifier(
+                "\(connection.id.rawValue)|\(capability.rawValue)")
+            return box
+        }
+        let auto = NSButton(
+            checkboxWithTitle: AppLocalization.string("agent.autoApply"),
+            target: self, action: #selector(toggleWriteMode(_:)))
+        auto.state = connection.writeMode == .auto ? .on : .off
+        auto.identifier = NSUserInterfaceItemIdentifier(connection.id.rawValue)
+        views.append(auto)
+
+        if !server.control.offeredRoots.isEmpty {
+            let grantRoots = NSButton(
+                title: AppLocalization.string("agent.grantRoots"),
+                target: self, action: #selector(grantRoots(_:)))
+            grantRoots.identifier = NSUserInterfaceItemIdentifier(connection.id.rawValue)
+            views.append(grantRoots)
         }
         return row(views)
     }
@@ -268,12 +308,42 @@ final class AgentIndicatorController: NSWindowController {
     @objc private func approve(_ sender: NSButton) {
         guard let connection = connection(for: sender) else { return }
         // The grant freezes here, covering what is open at this moment. Nothing
-        // opened afterwards joins it unless the human ticks the box.
-        let documents = server.control.connections.isEmpty
-            ? []
-            : AppDelegate.sharedCoordinator?.agentVisibleTargets().map(\.document.automationID) ?? []
-        server.control.approve(connection, documents: Array(Set(documents)))
+        // opened afterwards joins it unless the human ticks the box — and
+        // Approve grants reading only, with everything else a separate switch.
+        let documents = AppDelegate.sharedCoordinator?
+            .agentVisibleTargets().map(\.document.automationID) ?? []
+        server.control.approve(
+            connection, documents: Array(Set(documents)),
+            capabilities: .readOnly, writeMode: .review)
         server.notifyAuthorization(connection)
+    }
+
+    @objc private func toggleCapability(_ sender: NSButton) {
+        guard let raw = sender.identifier?.rawValue else { return }
+        let parts = raw.split(separator: "|")
+        guard parts.count == 2, let bits = Int(parts[1]),
+              let connection = server.control.connections.first(where: { $0.id.rawValue == parts[0] })
+        else { return }
+        let capability = AgentControlService.Capabilities(rawValue: bits)
+        var capabilities = connection.capabilities
+        if sender.state == .on {
+            capabilities.insert(capability)
+            // Anything that writes needs to be able to read what it is editing.
+            capabilities.formUnion(.readOnly)
+        } else {
+            capabilities.remove(capability)
+        }
+        server.control.setCapabilities(connection, capabilities)
+    }
+
+    @objc private func toggleWriteMode(_ sender: NSButton) {
+        guard let connection = connection(for: sender) else { return }
+        server.control.setWriteMode(connection, sender.state == .on ? .auto : .review)
+    }
+
+    @objc private func grantRoots(_ sender: NSButton) {
+        guard let connection = connection(for: sender) else { return }
+        server.control.grantRoots(connection, server.control.offeredRoots)
     }
 
     @objc private func deny(_ sender: NSButton) {
@@ -345,5 +415,15 @@ final class AgentIndicatorController: NSWindowController {
     @objc private func revokeCredential(_ sender: NSButton) {
         guard let id = sender.identifier?.rawValue else { return }
         server.control.revokeCredential(id)
+    }
+}
+
+private extension NSStackView {
+    /// Stacks rows vertically, left-aligned, for the two-line connection entry.
+    func configuredAsColumn() -> NSStackView {
+        orientation = .vertical
+        alignment = .leading
+        spacing = 4
+        return self
     }
 }

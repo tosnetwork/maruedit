@@ -209,9 +209,10 @@ struct AgentToolExecutor {
         let text = document.content
         let revision = document.textRevision
         let metadataRevision = document.metadataRevision
-        let startLine = arguments["startLine"]?.intValue
-        let endLine = arguments["endLine"]?.intValue
-        let maxBytes = min(arguments["maxBytes"]?.intValue ?? Self.defaultMaxBytes, Self.hardMaxBytes)
+        let startLine = arguments["startLine"]?.offsetValue
+        let endLine = arguments["endLine"]?.offsetValue
+        let maxBytes = min(
+            max(1, arguments["maxBytes"]?.offsetValue ?? Self.defaultMaxBytes), Self.hardMaxBytes)
 
         let slice = await Task.detached(priority: .userInitiated) {
             AgentTextSlicer.slice(
@@ -229,7 +230,24 @@ struct AgentToolExecutor {
                 message: "withAnchors and anchorRanges are mutually exclusive.",
                 details: nil)
         }
-        let full = document.content as NSString
+        guard control.isStillValid(control.stamp(connection)) else {
+            return .failure(
+                code: "authorization.denied",
+                message: "This client's access was revoked while the document was being read.",
+                details: nil)
+        }
+        // Deliberately the captured snapshot, not `document.content`: the
+        // human may have edited during the detached slice, and re-reading here
+        // would mint anchors whose offsets were validated against one string
+        // and whose digests came from another — or throw outright if the
+        // document got shorter.
+        let full = text as NSString
+        guard full.length >= slice.endOffset else {
+            return .failure(
+                code: "state.text_revision_conflict",
+                message: "The document changed while it was being read; read it again.",
+                details: .object(["revision": .int(Int(document.textRevision))]))
+        }
         if let anchorRanges {
             guard anchorRanges.count <= AgentAnchorStore.maximumPerCall else {
                 return .failure(
@@ -238,7 +256,7 @@ struct AgentToolExecutor {
                     details: nil)
             }
             for raw in anchorRanges {
-                guard let start = raw["start"]?.intValue, let end = raw["end"]?.intValue,
+                guard let start = raw["start"]?.offsetValue, let end = raw["end"]?.offsetValue,
                       start >= slice.startOffset, end <= slice.endOffset, end >= start
                 else {
                     return .failure(
@@ -256,6 +274,16 @@ struct AgentToolExecutor {
                 start: slice.startOffset,
                 end: slice.endOffset,
                 text: slice.text).json)
+        }
+
+        // An anchor minted against a revision the document has already left is
+        // useless and misleading, so it is not handed out at all.
+        if !anchors.isEmpty && document.textRevision != revision {
+            connection.anchors.invalidate(atOrBefore: revision)
+            return .failure(
+                code: "state.text_revision_conflict",
+                message: "The document changed while it was being read; read it again.",
+                details: .object(["revision": .int(Int(document.textRevision))]))
         }
 
         return .success(.object([
@@ -314,7 +342,9 @@ struct AgentToolExecutor {
                 details: nil)
         }
         let ignoreCase = arguments["ignoreCase"]?.boolValue ?? false
-        let limit = min(arguments["maxResults"]?.intValue ?? Self.defaultSearchResults, Self.maxSearchResults)
+        let limit = min(
+            max(1, arguments["maxResults"]?.offsetValue ?? Self.defaultSearchResults),
+            Self.maxSearchResults)
 
         var scope: [(id: String, revision: UInt64, metadataRevision: UInt64, text: String)] = []
         if arguments["documentId"] != nil {
@@ -333,10 +363,20 @@ struct AgentToolExecutor {
         }
 
         let snapshot = scope
+        let grant = control.stamp(connection)
         let results = await Task.detached(priority: .userInitiated) {
             AgentTextSlicer.searchLiteral(
                 in: snapshot, query: query, ignoreCase: ignoreCase, limit: limit)
         }.value
+
+        // Revoked mid-search means these results are no longer this client's
+        // to see.
+        guard control.isStillValid(grant) else {
+            return .failure(
+                code: "authorization.denied",
+                message: "This client's access was revoked while the search ran.",
+                details: nil)
+        }
 
         return .success(.object([
             "matches": .array(results.matches),

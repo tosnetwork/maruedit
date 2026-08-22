@@ -16,13 +16,16 @@ extension AgentToolExecutor {
         guard let path = arguments["path"]?.stringValue else {
             return .failure(code: "argument.missing", message: "path is required.", details: nil)
         }
-        let roots = control.authorizedRoots
+        // The connection's own roots, not the process-wide list: a folder
+        // authorized for one configuration must not silently authorize every
+        // other connection.
+        let roots = connection.authorizedRoots
         guard !roots.isEmpty else {
             return .failure(
                 code: "authorization.no_root",
                 message: """
                     No folder has been authorized for this client. Ask the person \
-                    at the keyboard to add one in MaruEdit's agent window; \
+                    at the keyboard to grant one in MaruEdit's agent window; \
                     without one this tool is unavailable rather than permissive.
                     """,
                 details: nil)
@@ -53,6 +56,12 @@ extension AgentToolExecutor {
                 details: nil)
         }
 
+        guard control.isStillValid(control.stamp(connection)) else {
+            return .failure(
+                code: "authorization.denied",
+                message: "This client's access was revoked while the file was being read.",
+                details: nil)
+        }
         guard let controller = coordinator.agentWindowControllers().first else {
             return .failure(code: "internal", message: "No window is available.", details: nil)
         }

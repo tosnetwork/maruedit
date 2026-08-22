@@ -1040,6 +1040,9 @@ final class MainWindowController: NSWindowController,
             return false
         case .superseded, .inProgress:
             return false
+        case .queuedBehindAnotherSave:
+            // Queued behind an in-flight save; it runs when that one unwinds.
+            return false
         }
     }
 
@@ -1068,6 +1071,9 @@ final class MainWindowController: NSWindowController,
             showStatusMessage(reason, duration: 3)
             return false
         case .superseded, .inProgress:
+            return false
+        case .queuedBehindAnotherSave:
+            // Queued behind an in-flight save; it runs when that one unwinds.
             return false
         }
     }

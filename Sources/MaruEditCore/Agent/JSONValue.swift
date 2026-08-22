@@ -23,12 +23,32 @@ public enum JSONValue: Equatable, Sendable {
     public var arrayValue: [JSONValue]? { if case .array(let value) = self { value } else { nil } }
     public var objectValue: [String: JSONValue]? { if case .object(let value) = self { value } else { nil } }
 
+    /// Every numeric accessor is total.
+    ///
+    /// These read values an untrusted client supplied, and `Int(1e300)` traps
+    /// rather than returning anything — a crash an approved agent could cause
+    /// with one malformed argument, taking unsaved work with it.
     public var intValue: Int? {
         switch self {
         case .int(let value): value
-        case .double(let value) where value == value.rounded(): Int(value)
+        case .double(let value) where value == value.rounded(): Int(exactly: value)
         default: nil
         }
+    }
+
+    /// A non-negative integer, for the revision and offset fields.
+    ///
+    /// `UInt64(someNegativeInt)` traps too, so the conversion is checked here
+    /// once rather than at every call site that could forget.
+    public var unsignedValue: UInt64? {
+        guard let value = intValue, value >= 0 else { return nil }
+        return UInt64(value)
+    }
+
+    /// A non-negative integer usable as an offset or length.
+    public var offsetValue: Int? {
+        guard let value = intValue, value >= 0 else { return nil }
+        return value
     }
 
     public subscript(key: String) -> JSONValue? {

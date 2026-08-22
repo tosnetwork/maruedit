@@ -29,7 +29,12 @@ final class AgentWriteTests: XCTestCase {
         connection = AgentControlService.Connection(
             id: AutomationID.next(prefix: "conn"),
             credentialID: nil, claimedName: "test-agent", bridgePID: getpid())
-        server.control.approveForTesting(connection, coordinator: coordinator)
+        // States what this suite is testing: editing, cursor movement, and
+        // saving, applied directly rather than queued for review.
+        server.control.approveForTesting(
+            connection, coordinator: coordinator,
+            capabilities: [.readOnly, .writeDocuments, .writeSelection, .saveDocuments],
+            writeMode: .auto)
         executor = AgentToolExecutor(coordinator: coordinator, control: server.control)
     }
 
@@ -323,7 +328,9 @@ final class AgentWriteTests: XCTestCase {
         let doc = document("split me")
         controller.showEditorSplit(.vertical)
         defer { controller.closeEditorSplit() }
-        server.control.approveForTesting(connection, coordinator: coordinator)
+        server.control.approveForTesting(
+            connection, coordinator: coordinator,
+            capabilities: [.readOnly, .writeDocuments], writeMode: .auto)
 
         let outcome = await run("apply_edits", [
             "documentId": .string(doc.automationID.rawValue),
@@ -488,7 +495,9 @@ final class AgentWriteTests: XCTestCase {
         try "before\n".write(to: url, atomically: true, encoding: .utf8)
 
         controller.adoptAgentOpenedDocument(url: url, loaded: try TextFileLoader.load(contentsOf: url))
-        server.control.approveForTesting(connection, coordinator: coordinator)
+        server.control.approveForTesting(
+            connection, coordinator: coordinator,
+            capabilities: [.readOnly, .writeDocuments, .saveDocuments], writeMode: .auto)
         let doc = try XCTUnwrap(controller.macroEditor.document)
 
         let edited = await run("apply_edits", [
@@ -517,7 +526,9 @@ final class AgentWriteTests: XCTestCase {
         let url = directory.appendingPathComponent("stale.txt")
         try "before\n".write(to: url, atomically: true, encoding: .utf8)
         controller.adoptAgentOpenedDocument(url: url, loaded: try TextFileLoader.load(contentsOf: url))
-        server.control.approveForTesting(connection, coordinator: coordinator)
+        server.control.approveForTesting(
+            connection, coordinator: coordinator,
+            capabilities: [.readOnly, .writeDocuments, .saveDocuments], writeMode: .auto)
         let doc = try XCTUnwrap(controller.macroEditor.document)
 
         let stale = doc.textRevision
@@ -557,7 +568,11 @@ final class AgentAppControlTests: XCTestCase {
         connection = AgentControlService.Connection(
             id: AutomationID.next(prefix: "conn"),
             credentialID: nil, claimedName: "test-agent", bridgePID: getpid())
-        server.control.approveForTesting(connection, coordinator: coordinator)
+        // Opening files and running commands, but no folder yet — the point of
+        // the first test is that the capability alone is not enough.
+        server.control.approveForTesting(
+            connection, coordinator: coordinator,
+            capabilities: [.readOnly, .openDocuments, .runCommands])
         executor = AgentToolExecutor(coordinator: coordinator, control: server.control)
     }
 
@@ -577,6 +592,11 @@ final class AgentAppControlTests: XCTestCase {
         return nil
     }
 
+    /// Grants the connection the folders the human offered.
+    private func grantRoots() {
+        server.control.grantRoots(connection, server.control.offeredRoots)
+    }
+
     func testOpeningIsUnavailableUntilAFolderIsAuthorized() async throws {
         let file = workspace.appendingPathComponent("notes.txt")
         try "hello".write(to: file, atomically: true, encoding: .utf8)
@@ -587,6 +607,7 @@ final class AgentAppControlTests: XCTestCase {
         XCTAssertEqual(failureCode(refused), "authorization.no_root")
 
         server.control.addAuthorizedRoot(workspace.path)
+        grantRoots()
         let opened = await run("open_document", ["path": .string(file.path)])
         guard case .success(let payload) = opened else {
             return XCTFail("expected success, got \(opened)")
@@ -609,6 +630,7 @@ final class AgentAppControlTests: XCTestCase {
         let secret = home.appendingPathComponent("secret.txt")
         try "secret".write(to: secret, atomically: true, encoding: .utf8)
         server.control.addAuthorizedRoot(workspace.path)
+        grantRoots()
 
         let outside = await run("open_document", ["path": .string(secret.path)])
         XCTAssertEqual(failureCode(outside), "path.outside_root")
@@ -626,6 +648,7 @@ final class AgentAppControlTests: XCTestCase {
         let text = "日本語のテキスト\n"
         try XCTUnwrap(text.data(using: .shiftJIS)).write(to: file)
         server.control.addAuthorizedRoot(workspace.path)
+        grantRoots()
 
         let opened = await run("open_document", ["path": .string(file.path)])
         guard case .success(let payload) = opened else { return XCTFail("open failed: \(opened)") }
