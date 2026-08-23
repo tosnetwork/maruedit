@@ -40,6 +40,7 @@ Additional Classic workspace states—including light/dark appearance, standard/
 - Syntax highlighting and file-type detection for common programming, markup, configuration, and data formats
 - Bookmarks, edit marks, tags, outline navigation, folding, differences, completion, and spelling commands
 - Tabs, split-window commands, line numbers, horizontal ruler, wrap guides, invisibles, and configurable status fields
+- Current-line highlight that follows every caret, including in multi-cursor mode
 
 ### Search across a file or a project
 
@@ -67,11 +68,23 @@ See the [User Guide](docs/user-guide.md), [File-type Profiles](docs/file-type-pr
 - Maru Classic toolbar with configurable commands, icon size, labels, search field, and Help button
 - Compact default menus plus a menu editor that can restore or expose the complete command catalog
 - Configurable function-key strip and status bar; both adapt to narrow windows
+- Tab bar at the top or bottom, hidden when only one tab is open, with drag reordering, middle-click close, and adjustable active-tab emphasis
+- Batch tab closes — others, to the left, to the right, or all — that ask about every unsaved document in the batch once instead of once per tab
 - Built-in macOS-style and Windows-style key-binding profiles, custom bindings, and multi-stroke chords
 - Settings for fonts, themes, syntax colors, rulers, wrapping, tabs, indentation, invisibles, and file profiles
 - Runtime English and Japanese UI switching through semantic localization resources
 
 See [Settings](docs/settings.md), [Key Bindings](docs/key-bindings.md), [Menu Customization](docs/menu-customization.md), and [Display Settings](docs/display-settings.md).
+
+### Editing alongside an AI agent
+
+- Model Context Protocol interface that lets an external agent read and edit the documents you have open, through a bridge shipped inside the app bundle
+- Off by default; each agent configuration pairs once through a verification code shown in the editor
+- Approval grants reading only, frozen to the documents already open — editing, cursor movement, saving, file opening, and running commands are separate switches, revocable at any time
+- Optimistic concurrency on every write: an edit carries the revisions it was computed against, and one that is out of date is refused and told the current state instead of overwriting your work
+- Agent edits queue for your review by default, and one agent call is one undo entry
+
+See [Agent Automation](docs/agent-automation.md) and [ADR-012](docs/adr-012-ai-agent-automation.md).
 
 ### Automation without a bundled web runtime
 
@@ -167,12 +180,16 @@ maruedit/
 ├── Package.swift
 ├── Sources/
 │   ├── MaruEditCore/       Documents, text I/O, search, commands, settings,
-│   │                       key bindings, macros, navigation, diff, and sessions
-│   └── MaruEditApp/        App lifecycle, AppKit editor UI, Classic workspace,
-│                           menus, settings panels, resources, Help, and output
+│   │                       key bindings, macros, navigation, diff, sessions,
+│   │                       and the agent protocol
+│   ├── MaruEditApp/        App lifecycle, AppKit editor UI, Classic workspace,
+│   │                       menus, settings panels, resources, Help, output,
+│   │                       and the agent control service
+│   └── MaruEditMCPBridge/  Stdio MCP bridge, shipped inside the app bundle
 ├── Tests/
 │   ├── MaruEditCoreTests/
 │   ├── MaruEditAppTests/
+│   ├── MaruEditAgentTests/
 │   └── MaruEditTextKit2SpikeTests/
 ├── docs/                   User, architecture, security, and release documents
 ├── screenshots/            README and visual-regression images
@@ -197,7 +214,7 @@ The test suite covers core models, file round trips, search and replacement, com
 | Editing | [Multiple Selections](docs/multiple-selections.md), [Completion and Spelling](docs/completion-and-spelling.md), [Syntax Highlighting](docs/syntax-highlighting.md) |
 | Search | [Search and Grep](docs/search-and-grep.md), [Grep Replace](docs/grep-replace.md) |
 | Customization | [Settings](docs/settings.md), [Display Settings](docs/display-settings.md), [File-type Profiles](docs/file-type-profiles.md), [Key Bindings](docs/key-bindings.md), [Menu Customization](docs/menu-customization.md) |
-| Automation | [Macros](docs/macros.md), [Macro API](docs/macro-api-v1.md), [External Commands](docs/external-commands.md), [Output Pane](docs/output-pane.md) |
+| Automation | [Agent Automation](docs/agent-automation.md), [Macros](docs/macros.md), [Macro API](docs/macro-api-v1.md), [External Commands](docs/external-commands.md), [Output Pane](docs/output-pane.md) |
 | Reliability | [Large-file Mode](docs/large-file-mode.md), [Performance](docs/performance.md), [Crash Recovery](docs/crash-recovery-tests.md), [Security](docs/security-threat-model.md) |
 | Project | [Roadmap](ROADMAP.md), [Release Policy](docs/release-policy.md), [Reproducible Releases](docs/reproducible-releases.md), [Attribution](NOTICE.md) |
 
