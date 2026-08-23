@@ -5,12 +5,17 @@ protocol TabBarViewDelegate: AnyObject {
     func tabBarDidSelectTab(at index: Int)
     func tabBarDidCloseTab(at index: Int)
     func tabBarDidMoveTab(from source: Int, to destination: Int)
-    func tabBarDidRequestClose(_ scope: TabCloseScope, at index: Int)
+    func tabBarDidRequestClose(_ scope: TabCloseScope, disposition: TabCloseDisposition, at index: Int)
     func tabBarLayoutOptionsDidChange()
 }
 
 enum TabBarPosition: String { case top, bottom }
-enum TabCloseScope { case current, others, left, right }
+enum TabCloseScope { case current, others, left, right, all }
+
+/// How a close request treats documents with unsaved changes. Deciding once
+/// for the whole batch is what keeps closing ten tabs from raising ten
+/// separate save prompts.
+enum TabCloseDisposition { case ask, saveAll, discardAll }
 
 struct TabItem: Equatable {
     let title: String
@@ -343,8 +348,15 @@ final class TabBarView: NSView {
 
     override func rightMouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
-        let clickedIndex = tabIndex(at: point)
+        let menu = contextMenu(forTabAt: tabIndex(at: point))
+        NSMenu.popUpContextMenu(menu, with: event, for: self)
+    }
+
+    func contextMenu(forTabAt clickedIndex: Int?) -> NSMenu {
         let menu = NSMenu(title: AppLocalization.string("tab.menu.title"))
+        // Enablement below is computed from the tab layout, so opt out of the
+        // automatic validation that would otherwise override it.
+        menu.autoenablesItems = false
         if let clickedIndex {
             addCloseItem(AppLocalization.string("tab.close"), scope: .current, index: clickedIndex, to: menu)
             addCloseItem(AppLocalization.string("tab.closeOthers"), scope: .others, index: clickedIndex, to: menu)
@@ -352,6 +364,17 @@ final class TabBarView: NSView {
             addCloseItem(AppLocalization.string("tab.closeRight"), scope: .right, index: clickedIndex, to: menu)
             menu.addItem(.separator())
         }
+        // Batch closes: one decision covers every tab instead of one prompt per tab.
+        let anchorIndex = clickedIndex ?? selectedIndex
+        addCloseItem(
+            AppLocalization.string("tab.closeAll"), scope: .all, index: anchorIndex, to: menu)
+        addCloseItem(
+            AppLocalization.string("tab.saveAllAndCloseAll"), scope: .all,
+            disposition: .saveAll, index: anchorIndex, to: menu)
+        addCloseItem(
+            AppLocalization.string("tab.discardAllAndCloseAll"), scope: .all,
+            disposition: .discardAll, index: anchorIndex, to: menu)
+        menu.addItem(.separator())
         let top = NSMenuItem(title: AppLocalization.string("tab.positionTop"), action: #selector(placeAtTop), keyEquivalent: "")
         top.target = self; top.state = position == .top ? .on : .off; menu.addItem(top)
         let bottom = NSMenuItem(title: AppLocalization.string("tab.positionBottom"), action: #selector(placeAtBottom), keyEquivalent: "")
@@ -363,7 +386,7 @@ final class TabBarView: NSView {
         line.target = self; line.state = showsActiveLine ? .on : .off; menu.addItem(line)
         let face = NSMenuItem(title: AppLocalization.string("tab.activeFace"), action: #selector(toggleActiveFace), keyEquivalent: "")
         face.target = self; face.state = showsActiveFace ? .on : .off; menu.addItem(face)
-        NSMenu.popUpContextMenu(menu, with: event, for: self)
+        return menu
     }
 
     private func tabIndex(at point: NSPoint) -> Int? {
@@ -372,28 +395,40 @@ final class TabBarView: NSView {
         return tabs.indices.contains(index) ? index : nil
     }
 
-    private func addCloseItem(_ title: String, scope: TabCloseScope, index: Int, to menu: NSMenu) {
+    private func addCloseItem(
+        _ title: String, scope: TabCloseScope, disposition: TabCloseDisposition = .ask,
+        index: Int, to menu: NSMenu
+    ) {
         let item = NSMenuItem(title: title, action: #selector(closeFromMenu(_:)), keyEquivalent: "")
         item.target = self
-        item.representedObject = [scopeValue(scope), index]
+        item.representedObject = [scopeValue(scope), dispositionValue(disposition), index]
         switch scope {
         case .left: item.isEnabled = index > 0
         case .right: item.isEnabled = index + 1 < tabs.count
         case .others: item.isEnabled = tabs.count > 1
+        case .all: item.isEnabled = !tabs.isEmpty
         case .current: break
         }
         menu.addItem(item)
     }
 
     private func scopeValue(_ scope: TabCloseScope) -> Int {
-        switch scope { case .current: 0; case .others: 1; case .left: 2; case .right: 3 }
+        switch scope {
+        case .current: 0; case .others: 1; case .left: 2; case .right: 3; case .all: 4
+        }
+    }
+
+    private func dispositionValue(_ disposition: TabCloseDisposition) -> Int {
+        switch disposition { case .ask: 0; case .saveAll: 1; case .discardAll: 2 }
     }
 
     @objc private func closeFromMenu(_ sender: NSMenuItem) {
-        guard let values = sender.representedObject as? [Int], values.count == 2 else { return }
-        let scopes: [TabCloseScope] = [.current, .others, .left, .right]
-        guard scopes.indices.contains(values[0]) else { return }
-        delegate?.tabBarDidRequestClose(scopes[values[0]], at: values[1])
+        guard let values = sender.representedObject as? [Int], values.count == 3 else { return }
+        let scopes: [TabCloseScope] = [.current, .others, .left, .right, .all]
+        let dispositions: [TabCloseDisposition] = [.ask, .saveAll, .discardAll]
+        guard scopes.indices.contains(values[0]), dispositions.indices.contains(values[1]) else { return }
+        delegate?.tabBarDidRequestClose(
+            scopes[values[0]], disposition: dispositions[values[1]], at: values[2])
     }
 
     // Deterministic geometry hooks for interaction tests.

@@ -16,7 +16,7 @@ Set `TAG` to the release being verified — this procedure is for whichever tag
 you have, not only the newest one.
 
 ```bash
-TAG=v0.1.7
+TAG=v0.1.8
 
 git clone https://github.com/tosnetwork/maruedit.git
 cd maruedit

@@ -13,7 +13,12 @@ final class TabBarParityTests: XCTestCase {
         func tabBarDidSelectTab(at index: Int) { selected.append(index) }
         func tabBarDidCloseTab(at index: Int) { closed.append(index) }
         func tabBarDidMoveTab(from source: Int, to destination: Int) {}
-        func tabBarDidRequestClose(_ scope: TabCloseScope, at index: Int) {}
+        var closeRequests: [(scope: TabCloseScope, disposition: TabCloseDisposition, index: Int)] = []
+        func tabBarDidRequestClose(
+            _ scope: TabCloseScope, disposition: TabCloseDisposition, at index: Int
+        ) {
+            closeRequests.append((scope, disposition, index))
+        }
         func tabBarLayoutOptionsDidChange() {}
     }
     override func tearDown() {
@@ -190,6 +195,93 @@ final class TabBarParityTests: XCTestCase {
         XCTAssertEqual(controller.selectedTabIndexForTesting, 0)
         controller.selectRelativeTab(-1)
         XCTAssertEqual(controller.selectedTabIndexForTesting, 2)
+    }
+
+    func testTabContextMenuOffersBatchCloseDispositions() {
+        let bar = TabBarView(frame: NSRect(x: 0, y: 0, width: 500, height: 32))
+        let delegate = Delegate()
+        bar.delegate = delegate
+        bar.setTabs(
+            [TabItem(title: "a", isModified: true), TabItem(title: "b", isModified: false)],
+            selectedIndex: 0)
+
+        let menu = bar.contextMenu(forTabAt: 0)
+        let titles = menu.items.map(\.title)
+        XCTAssertTrue(titles.contains("Close All Tabs"))
+        XCTAssertTrue(titles.contains("Save All and Close All Tabs"))
+        XCTAssertTrue(titles.contains("Close All Tabs Without Saving"))
+
+        let index = try! XCTUnwrap(titles.firstIndex(of: "Close All Tabs Without Saving"))
+        menu.performActionForItem(at: index)
+        XCTAssertEqual(delegate.closeRequests.count, 1)
+        XCTAssertEqual(delegate.closeRequests.first?.scope, .all)
+        XCTAssertEqual(delegate.closeRequests.first?.disposition, .discardAll)
+    }
+
+    func testBatchCloseMenuIsAvailableWhenClickingEmptyTabBarSpace() {
+        let bar = TabBarView(frame: NSRect(x: 0, y: 0, width: 500, height: 32))
+        bar.setTabs([TabItem(title: "only", isModified: false)], selectedIndex: 0)
+
+        let titles = bar.contextMenu(forTabAt: nil).items.map(\.title)
+        XCTAssertFalse(titles.contains("Close Tab"))
+        XCTAssertTrue(titles.contains("Save All and Close All Tabs"))
+    }
+
+    func testCloseAllWithoutSavingClosesEveryTabWithoutWritingChanges() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MaruEdit-tab-discard-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let file = directory.appendingPathComponent("kept.txt")
+        try "one".write(to: file, atomically: true, encoding: .utf8)
+
+        let controller = MainWindowController()
+        controller.openFile(file)
+        controller.newDocument()
+        let openTabs = controller.tabCountForTesting
+
+        // Nothing is modified, so the discard confirmation never appears.
+        controller.closeTabs(.all, disposition: .discardAll)
+
+        XCTAssertLessThan(controller.tabCountForTesting, openTabs)
+        XCTAssertEqual(controller.tabCountForTesting, 1)
+        XCTAssertEqual(try String(contentsOf: file, encoding: .utf8), "one")
+    }
+
+    func testSaveAllAndCloseAllFromTheTabBarWritesEveryNamedDocument() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MaruEdit-tab-save-all-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let first = directory.appendingPathComponent("first.txt")
+        let second = directory.appendingPathComponent("second.txt")
+        try "one".write(to: first, atomically: true, encoding: .utf8)
+        try "two".write(to: second, atomically: true, encoding: .utf8)
+
+        let controller = MainWindowController()
+        controller.openFile(first)
+        controller.macroEditor.batchReplace([NSRange(location: 0, length: 3)], with: "ONE")
+        controller.openFile(second)
+        controller.macroEditor.batchReplace([NSRange(location: 0, length: 3)], with: "TWO")
+
+        controller.closeTabs(.all, disposition: .saveAll)
+
+        XCTAssertEqual(try String(contentsOf: first, encoding: .utf8), "ONE")
+        XCTAssertEqual(try String(contentsOf: second, encoding: .utf8), "TWO")
+        XCTAssertEqual(controller.tabCountForTesting, 1)
+    }
+
+    func testCloseTabsToTheRightLeavesTabsLeftOfTheClickedTab() {
+        let controller = MainWindowController()
+        controller.newDocument()
+        controller.newDocument()
+        controller.newDocument()
+        XCTAssertEqual(controller.tabCountForTesting, 4)
+
+        controller.tabBarDidRequestClose(.right, disposition: .discardAll, at: 1)
+
+        XCTAssertEqual(controller.tabCountForTesting, 2)
+        XCTAssertEqual(controller.selectedTabIndexForTesting, 1)
     }
 
     func testCloseOtherTabsKeepsClickedTab() {

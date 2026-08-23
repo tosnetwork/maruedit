@@ -15,6 +15,7 @@
 "common.open" = "開く";
 "common.save" = "保存";
 "common.dontSave" = "保存しない";
+"common.saveAll" = "すべて保存";
 "common.reload" = "再読み込み";
 "common.select" = "選択";
 "common.insert" = "挿入";
@@ -353,6 +354,9 @@
 "tab.closeOthers" = "ほかのタブを閉じる";
 "tab.closeLeft" = "左側のタブを閉じる";
 "tab.closeRight" = "右側のタブを閉じる";
+"tab.closeAll" = "すべてのタブを閉じる";
+"tab.saveAllAndCloseAll" = "すべて保存して閉じる";
+"tab.discardAllAndCloseAll" = "保存せずにすべて閉じる";
 "tab.positionTop" = "タブバーを上に表示";
 "tab.positionBottom" = "タブバーを下に表示";
 "tab.hideSingle" = "タブが1つなら隠す";
@@ -534,6 +538,11 @@
 "dialog.rename.title" = "ファイル名を変更";
 "dialog.close.saveTitle" = "%@ への変更を保存しますか？";
 "dialog.close.explanation" = "保存しない場合、変更内容は失われます。";
+"dialog.closeBatch.title" = "閉じる前に %d 個の書類の変更を保存しますか？";
+"dialog.closeBatch.explanation" = "次の書類に未保存の変更があります:\n%@";
+"dialog.closeBatch.more" = "ほか %d 個";
+"dialog.discardBatch.title" = "%d 個の書類の変更を破棄しますか？";
+"dialog.discardBatch.explanation" = "次の書類を閉じ、変更内容は失われます:\n%@";
 "common.goTo" = "移動";
 "common.generate" = "生成";
 "dialog.tabs.title" = "タブ一覧";

@@ -66,6 +66,12 @@ final class MainWindowController: NSWindowController,
     private var currentDiffIndex = 0
     private var tagBackStack: [(url: URL, offset: Int)] = []
     var openAssociatedURL: (URL) -> Void = { NSWorkspace.shared.open($0) }
+    /// Substituted in tests, which cannot run a modal alert. Nil means the
+    /// real dialogs in `presentCloseChoice` / `batchCloseDisposition` /
+    /// `confirmDiscardingChanges`.
+    var presentSingleCloseChoice: ((Document) -> NSApplication.ModalResponse)?
+    var presentBatchCloseChoice: (([Document]) -> TabCloseDisposition?)?
+    var presentDiscardConfirmation: (([Document]) -> Bool)?
     private var statusBar: StatusBarView!
     private var cursorPositionAccessory: NSTitlebarAccessoryViewController!
     private var cursorPositionLabel: TitlebarCursorPositionLabel!
@@ -1086,16 +1092,18 @@ final class MainWindowController: NSWindowController,
         saveAndClose(documents: documentController.documents)
     }
 
-    private func saveAndClose(documents: [Document]) {
-        guard let document = documents.first else { return }
+    private func saveAndClose(
+        documents: [Document], completion: @escaping (Bool) -> Void = { _ in }
+    ) {
+        guard let document = documents.first else { completion(true); return }
         guard let index = documentController.documents.firstIndex(where: { $0 === document }) else {
-            saveAndClose(documents: Array(documents.dropFirst()))
+            saveAndClose(documents: Array(documents.dropFirst()), completion: completion)
             return
         }
         tabBarDidSelectTab(at: index)
         saveAndCloseCurrentTab { [weak self] closed in
-            guard closed else { return }
-            self?.saveAndClose(documents: Array(documents.dropFirst()))
+            guard let self, closed else { completion(false); return }
+            self.saveAndClose(documents: Array(documents.dropFirst()), completion: completion)
         }
     }
 
@@ -1373,18 +1381,27 @@ final class MainWindowController: NSWindowController,
         }
     }
 
+    /// Save / Don't Save / Cancel for one document, as first / second / third
+    /// button.
+    private func presentCloseChoice(for document: Document) -> NSApplication.ModalResponse {
+        if let presentSingleCloseChoice { return presentSingleCloseChoice(document) }
+        let a = NSAlert()
+        a.messageText = AppLocalization.string("dialog.close.saveTitle", [document.localizedDisplayName])
+        a.informativeText = AppLocalization.string("dialog.close.explanation")
+        a.addButton(withTitle: AppLocalization.string(.commonSave))
+        a.addButton(withTitle: AppLocalization.string(.commonDontSave))
+        // AppKit only binds Escape to a button literally titled "Cancel", so a
+        // localized title needs the key equivalent set explicitly.
+        a.addButton(withTitle: AppLocalization.string(.commonCancel)).keyEquivalent = "\u{1b}"
+        return a.runModal()
+    }
+
     @discardableResult
     func closeCurrentTab() -> Bool {
         guard let doc = curDoc else { return false }
         let indexToClose = curIdx
         if doc.isModified {
-            let a = NSAlert()
-            a.messageText = AppLocalization.string("dialog.close.saveTitle", [doc.localizedDisplayName])
-            a.informativeText = AppLocalization.string("dialog.close.explanation")
-            a.addButton(withTitle: AppLocalization.string(.commonSave))
-            a.addButton(withTitle: AppLocalization.string(.commonDontSave))
-            a.addButton(withTitle: AppLocalization.string(.commonCancel))
-            let resp = a.runModal()
+            let resp = presentCloseChoice(for: doc)
             if resp == .alertFirstButtonReturn {
                 saveDocument()
                 // Save panels can themselves be cancelled.
@@ -1549,8 +1566,8 @@ final class MainWindowController: NSWindowController,
         tabBarDidSelectTab(at: popup.indexOfSelectedItem)
     }
 
-    func closeTabs(_ scope: TabCloseScope) {
-        tabBarDidRequestClose(scope, at: curIdx)
+    func closeTabs(_ scope: TabCloseScope, disposition: TabCloseDisposition = .ask) {
+        tabBarDidRequestClose(scope, disposition: disposition, at: curIdx)
     }
 
     func focusEditor() { window?.makeFirstResponder(editorVC.textView) }
@@ -2468,7 +2485,11 @@ final class MainWindowController: NSWindowController,
         let items = documentController.documents.map { TabItem(title: $0.localizedDisplayName, isModified: $0.isModified) }
         classicChrome.setDocumentCount(items.count)
         tabBar.setTabs(items, selectedIndex: curIdx)
-        classicChrome.updateHeading(curDoc?.localizedDisplayName ?? AppLocalization.string("window.untitled"))
+        let name = curDoc?.localizedDisplayName ?? AppLocalization.string("window.untitled")
+        classicChrome.updateHeading(name)
+        // Closing tabs changes which document is current without going through
+        // tab selection, so the title is refreshed here rather than only there.
+        window?.title = AppLocalization.string("window.document.title", [name])
         layoutContentViews()
     }
 
@@ -3019,27 +3040,118 @@ final class MainWindowController: NSWindowController,
     }
 
     func tabBarDidRequestClose(_ scope: TabCloseScope, at index: Int) {
-        guard documentController.documents.indices.contains(index) else { return }
+        tabBarDidRequestClose(scope, disposition: .ask, at: index)
+    }
+
+    func tabBarDidRequestClose(
+        _ scope: TabCloseScope, disposition: TabCloseDisposition, at index: Int
+    ) {
+        let documents = documentController.documents
+        let hasAnchor = documents.indices.contains(index)
+        guard scope == .all || hasAnchor else { return }
+
+        let targets: [Document]
         switch scope {
-        case .current:
-            tabBarDidCloseTab(at: index)
-        case .others, .left, .right:
-            let anchor = documentController.documents[index]
-            let indices: [Int]
-            switch scope {
-            case .others: indices = documentController.documents.indices.filter { $0 != index }
-            case .left: indices = Array(documentController.documents.indices.prefix(index))
-            case .right: indices = Array(documentController.documents.indices.suffix(from: index + 1))
-            case .current: indices = []
-            }
-            for target in indices.reversed() {
-                documentController.selectDocument(at: target)
-                if !closeCurrentTab() { break }
-            }
-            if let anchorIndex = documentController.documents.firstIndex(where: { $0 === anchor }) {
-                tabBarDidSelectTab(at: anchorIndex)
-            }
+        case .current: targets = [documents[index]]
+        case .others: targets = documents.enumerated().filter { $0.offset != index }.map(\.element)
+        case .left: targets = Array(documents.prefix(index))
+        case .right: targets = Array(documents.suffix(from: index + 1))
+        case .all: targets = documents
         }
+        guard !targets.isEmpty else { return }
+        // The clicked tab survives every scope except `.current` and `.all`,
+        // so it is restored as the selection once the batch has been closed.
+        let anchor = (scope == .current || scope == .all || !hasAnchor) ? nil : documents[index]
+
+        var resolved = disposition
+        let unsaved = targets.filter(\.isModified)
+        switch disposition {
+        case .ask where unsaved.count > 1:
+            guard let choice = batchCloseDisposition(for: unsaved) else { return }
+            resolved = choice
+        case .discardAll where !unsaved.isEmpty:
+            guard confirmDiscardingChanges(in: unsaved) else { return }
+        default:
+            break
+        }
+
+        switch resolved {
+        case .ask:
+            for document in targets {
+                guard selectDocument(document) else { continue }
+                guard closeCurrentTab() else { break }
+            }
+            reselectTab(showing: anchor)
+        case .discardAll:
+            for document in targets where selectDocument(document) {
+                _ = discardAndCloseCurrentTab()
+            }
+            reselectTab(showing: anchor)
+        case .saveAll:
+            saveAndClose(documents: targets) { [weak self] _ in self?.reselectTab(showing: anchor) }
+        }
+    }
+
+    /// Makes `document` current so the single-tab close helpers act on it.
+    /// Returns false when it was already closed by an earlier step.
+    private func selectDocument(_ document: Document) -> Bool {
+        guard let index = documentController.documents.firstIndex(where: { $0 === document })
+        else { return false }
+        documentController.selectDocument(at: index)
+        return true
+    }
+
+    private func reselectTab(showing document: Document?) {
+        guard let document,
+              let index = documentController.documents.firstIndex(where: { $0 === document })
+        else { return }
+        tabBarDidSelectTab(at: index)
+    }
+
+    /// Asks once for a whole batch. Closing many modified tabs otherwise
+    /// raises the per-document save prompt once per tab, which is exactly the
+    /// interruption "close all and save" / "close all without saving" exist
+    /// to avoid.
+    private func batchCloseDisposition(for documents: [Document]) -> TabCloseDisposition? {
+        if let presentBatchCloseChoice { return presentBatchCloseChoice(documents) }
+        let alert = NSAlert()
+        alert.messageText = AppLocalization.string("dialog.closeBatch.title", [documents.count])
+        alert.informativeText = AppLocalization.string(
+            "dialog.closeBatch.explanation", [unsavedDocumentList(documents)])
+        alert.addButton(withTitle: AppLocalization.string("common.saveAll"))
+        alert.addButton(withTitle: AppLocalization.string(.commonDontSave))
+        alert.addButton(withTitle: AppLocalization.string(.commonCancel)).keyEquivalent = "\u{1b}"
+        switch alert.runModal() {
+        case .alertFirstButtonReturn: return .saveAll
+        case .alertSecondButtonReturn: return .discardAll
+        default: return nil
+        }
+    }
+
+    private func confirmDiscardingChanges(in documents: [Document]) -> Bool {
+        if let presentDiscardConfirmation { return presentDiscardConfirmation(documents) }
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = AppLocalization.string("dialog.discardBatch.title", [documents.count])
+        alert.informativeText = AppLocalization.string(
+            "dialog.discardBatch.explanation", [unsavedDocumentList(documents)])
+        // Cancel is added first so it is the default: Return must not be able
+        // to throw away every unsaved document.
+        alert.addButton(withTitle: AppLocalization.string(.commonCancel)).keyEquivalent = "\u{1b}"
+        alert.addButton(withTitle: AppLocalization.string(.commonDontSave))
+        return alert.runModal() == .alertSecondButtonReturn
+    }
+
+    /// A long list would push the alert's buttons off screen, so it is capped
+    /// and the remainder is summarized.
+    private func unsavedDocumentList(_ documents: [Document]) -> String {
+        let limit = 10
+        var lines = documents.prefix(limit).map(\.localizedDisplayName)
+        if documents.count > limit {
+            lines.append(
+                AppLocalization.string("dialog.closeBatch.more", [documents.count - limit]))
+        }
+        return lines.joined(separator: "\n")
     }
 
     func tabBarLayoutOptionsDidChange() { layoutContentViews() }
@@ -3048,6 +3160,9 @@ final class MainWindowController: NSWindowController,
     var isTabModeEnabled: Bool { tabBar.isTabModeEnabled }
 
     var selectedTabIndexForTesting: Int { curIdx }
+    /// The live tab bar, so tests can exercise its real context menu rather
+    /// than a stand-in delegate.
+    var tabBarForTesting: TabBarView { tabBar }
     var tabCountForTesting: Int { documentController.documents.count }
     var editorTextForTesting: String { editorVC.textView.string }
 

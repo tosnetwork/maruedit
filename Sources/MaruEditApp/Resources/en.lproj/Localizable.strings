@@ -15,6 +15,7 @@
 "common.open" = "Open";
 "common.save" = "Save";
 "common.dontSave" = "Don't Save";
+"common.saveAll" = "Save All";
 "common.reload" = "Reload";
 "common.select" = "Select";
 "common.insert" = "Insert";
@@ -353,6 +354,9 @@
 "tab.closeOthers" = "Close Other Tabs";
 "tab.closeLeft" = "Close Tabs to the Left";
 "tab.closeRight" = "Close Tabs to the Right";
+"tab.closeAll" = "Close All Tabs";
+"tab.saveAllAndCloseAll" = "Save All and Close All Tabs";
+"tab.discardAllAndCloseAll" = "Close All Tabs Without Saving";
 "tab.positionTop" = "Tab Bar at Top";
 "tab.positionBottom" = "Tab Bar at Bottom";
 "tab.hideSingle" = "Hide When One Tab";
@@ -534,6 +538,11 @@
 "dialog.rename.title" = "Rename File";
 "dialog.close.saveTitle" = "Save changes to %@?";
 "dialog.close.explanation" = "Your changes will be lost if you don't save them.";
+"dialog.closeBatch.title" = "Save changes to %d documents before closing?";
+"dialog.closeBatch.explanation" = "These documents have unsaved changes:\n%@";
+"dialog.closeBatch.more" = "and %d more";
+"dialog.discardBatch.title" = "Discard changes to %d documents?";
+"dialog.discardBatch.explanation" = "These documents will be closed and their changes lost:\n%@";
 "common.goTo" = "Go To";
 "common.generate" = "Generate";
 "dialog.tabs.title" = "Tab List";

@@ -31,9 +31,9 @@ significantly, replace this with a small script that generates it from
 | `file.closeAndOpen` | Close and Open… | File | — | `AppCoordinator.closeAndOpen()` |
 | `file.closeWorkspace` | Close Workspace | File | — | Closes every workspace document with normal save/discard/cancel confirmation |
 | `window.tabList` | Tab List… | Window | — | Selects an open document from a complete list |
-| `window.closeOtherTabs` | Close Other Tabs | Window | — | Closes all tabs except the active tab with save confirmation |
-| `window.closeTabsLeft` | Close Tabs to the Left | Window | — | Closes tabs left of the active tab with save confirmation |
-| `window.closeTabsRight` | Close Tabs to the Right | Window | — | Closes tabs right of the active tab with save confirmation |
+| `window.closeOtherTabs` | Close Other Tabs | Window | — | Closes all tabs except the active tab, asking once for the whole batch |
+| `window.closeTabsLeft` | Close Tabs to the Left | Window | — | Closes tabs left of the active tab, asking once for the whole batch |
+| `window.closeTabsRight` | Close Tabs to the Right | Window | — | Closes tabs right of the active tab, asking once for the whole batch |
 | `window.focusEditor` | Focus Editor | Window | — | Moves keyboard focus to the editor |
 | `window.focusUtilityPane` | Focus Utility Pane | Window | — | Reveals and focuses the utility pane |
 | `window.tileVertical` | Tile Vertically | Window | — | Tiles managed document windows in columns on the current screen |

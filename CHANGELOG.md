@@ -6,6 +6,36 @@ semantic version tags.
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-08-23
+
+### Added
+
+- The tab bar context menu now offers batch closes: **Close All Tabs**, **Save
+  All and Close All Tabs**, and **Close All Tabs Without Saving**. They are
+  available from any point on the bar, including empty space to the right of
+  the last tab.
+
+### Changed
+
+- Closing several tabs at once (Close Other Tabs, Close Tabs to the Left /
+  Right, Close All Tabs) now asks a single Save All / Don't Save / Cancel
+  question covering every unsaved document in the batch, instead of raising the
+  per-document save prompt once per tab. A batch with only one unsaved document
+  still gets the ordinary single-document prompt.
+- Closing all tabs without saving asks for confirmation once when the batch
+  contains unsaved changes. Cancel is that alert's default button, so Return
+  cannot discard every unsaved document.
+
+### Fixed
+
+- Escape now cancels the close-confirmation alerts. AppKit only binds Escape to
+  a button literally titled "Cancel", so the localized button had no key
+  equivalent and the alerts could only be dismissed with the mouse. This also
+  fixes the existing single-document "Save changes to …?" alert.
+- The window title no longer keeps naming a document after that document's tab
+  has been closed; it now follows the current tab, including when closing every
+  tab leaves an empty Untitled one.
+
 ## [0.1.7] - 2026-08-23
 
 ### Fixed
