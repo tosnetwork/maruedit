@@ -6,6 +6,26 @@ semantic version tags.
 
 ## [Unreleased]
 
+### Fixed
+
+- Three missing line continuations in `open_document`'s tool description left
+  the source file's indentation in the text as runs of spaces mid-sentence.
+  That description is what an agent reads from `tools/list`, so the defect was
+  visible to every client.
+
+### Documentation
+
+- The README described the feature set as of 0.1.1. It now covers the agent
+  automation interface from 0.1.6 — previously written up only in an ADR and
+  the release notes, with nothing a person turning the feature on could read —
+  along with the current-line highlight from 0.1.3, the tab bar options from
+  0.1.5, and the batch tab closes from 0.1.8. Its architecture tree listed
+  neither the MCP bridge target nor its tests.
+- Added `docs/agent-automation.md`: the settings toggle and the connections
+  window, the bundled bridge and its pairing flow, which credential backend a
+  build uses and why, the capability grants, the review queue, authorized
+  folders, the revision model, and the tool set.
+
 ## [0.1.8] - 2026-08-23
 
 ### Added
