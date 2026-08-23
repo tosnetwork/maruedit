@@ -253,7 +253,10 @@ public enum AgentToolCatalog {
             name: "open_document",
             title: "Open a file",
             summary: """
-                Open a file into MaruEdit, from a folder the person at the                 keyboard authorized. Without such a folder this is unavailable                 rather than unrestricted, and symbolic links out of it are                 refused.
+                Open a file into MaruEdit, from a folder the person at the \
+                keyboard authorized. Without such a folder this is unavailable \
+                rather than unrestricted, and symbolic links out of it are \
+                refused.
                 """,
             phase: 3, isReadOnly: false, isDestructive: false,
             inputSchema: schema(properties: [
